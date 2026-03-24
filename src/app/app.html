@@ -1,0 +1,1214 @@
+<div class="min-h-screen font-sans selection:bg-amber-500/30 bg-[#050505] text-white">
+  <!-- Navigation -->
+  <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-[#050505]/80 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="relative w-14 h-14 aspect-square rounded-full overflow-hidden">
+          <img 
+            src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png"
+            alt="GBLIN Logo"
+            class="object-cover scale-[1.02] w-full h-full"
+            referrerpolicy="no-referrer"
+          />
+        </div>
+        <span class="font-serif text-3xl tracking-tighter font-bold bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text text-transparent">GBLIN</span>
+      </div>
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase opacity-60">
+        <a href="#concept" class="hover:opacity-100 transition-opacity">{{ t()('nav.manifesto') }}</a>
+        <a href="#core" class="hover:opacity-100 transition-opacity">{{ t()('nav.core') }}</a>
+        <a href="#agents" class="hover:opacity-100 transition-opacity">{{ t()('nav.agents') }}</a>
+        <a href="#vault" class="hover:opacity-100 transition-opacity">VAULT</a>
+        <a href="#dashboard" class="hover:opacity-100 transition-opacity">{{ t()('nav.dashboard') }}</a>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Language Selector -->
+        <div class="relative">
+          <button 
+            (click)="toggleLangSelector()"
+            class="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-widest"
+          >
+            <mat-icon class="text-amber-500 text-[14px] w-[14px] h-[14px] leading-[14px]">language</mat-icon>
+            {{ language() }}
+          </button>
+          
+          @if (showLangSelector()) {
+            <div class="absolute top-full right-0 mt-2 w-40 bg-[#111] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
+              @for (lang of languages; track lang.code) {
+                <button
+                  (click)="setLanguage(lang.code)"
+                  class="w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 flex items-center justify-between transition-colors"
+                  [class.text-amber-500]="language() === lang.code"
+                  [class.bg-amber-500/5]="language() === lang.code"
+                  [class.text-zinc-400]="language() !== lang.code"
+                >
+                  <span>{{ lang.flag }} {{ lang.name }}</span>
+                  @if (language() === lang.code) {
+                    <mat-icon class="text-[12px] w-[12px] h-[12px] leading-[12px]">check</mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <a 
+          href="https://basescan.org/token/{{ contractAddress }}"
+          target="_blank"
+          class="hidden sm:block px-5 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-white/10 transition-colors"
+        >
+          Basescan
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative min-h-[95vh] flex flex-col justify-center pt-20 pb-20 px-6 overflow-hidden">
+    <!-- Atmospheric Background -->
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/15 via-amber-900/5 to-transparent blur-[100px] rounded-full"></div>
+      <div class="absolute bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+      <!-- Subtle Grid -->
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LCAyNTUsIDI1NSwgMC4wNSkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)] opacity-50"></div>
+    </div>
+
+    <div class="max-w-5xl mx-auto text-center relative z-10">
+      <div class="animate-fade-in-up">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-12 hover:bg-white/10 transition-colors cursor-pointer group">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <span class="text-[10px] font-mono font-bold tracking-[0.2em] uppercase text-white/80 group-hover:text-white transition-colors">{{ t()('dashboard.verifiedOnBase') }}</span>
+          <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px] text-white/40 group-hover:text-white transition-colors">arrow_forward</mat-icon>
+        </div>
+        
+        <h1 class="font-serif text-6xl md:text-[130px] leading-[0.85] mb-8 tracking-tighter">
+          THE GOLDEN <br />
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 italic pr-4">VAULT</span>
+        </h1>
+        
+        <p class="max-w-2xl mx-auto text-lg md:text-2xl text-white/50 font-light leading-relaxed mb-14">
+          {{ t()('hero.subtitle') }}
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-16">
+          <a 
+            href="#trade"
+            class="group relative flex items-center justify-center gap-3 px-10 py-5 bg-amber-500 text-black text-sm font-bold uppercase tracking-widest rounded-full hover:bg-amber-400 transition-all overflow-hidden shadow-[0_0_40px_rgba(245,158,11,0.3)] hover:shadow-[0_0_60px_rgba(245,158,11,0.5)] hover:-translate-y-1"
+          >
+            <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+            <span class="relative z-10">{{ t()('hero.cta') }}</span>
+            <mat-icon class="relative z-10 text-[18px] w-[18px] h-[18px] leading-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</mat-icon>
+          </a>
+          <a 
+            href="https://www.geckoterminal.com/base/pools/0xdaecc15bf028bc4d135260d044b87001dafb3c22"
+            target="_blank"
+            class="group flex items-center justify-center gap-3 px-10 py-5 bg-white/5 border border-white/10 text-white text-sm font-bold uppercase tracking-widest rounded-full hover:bg-white/10 transition-all backdrop-blur-md hover:-translate-y-1"
+          >
+            LIVE CHART 
+            <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px] text-white/50 group-hover:text-white transition-colors">show_chart</mat-icon>
+          </a>
+        </div>
+        
+        <div class="flex justify-center">
+          <button 
+            (click)="copyToClipboard()"
+            class="group flex items-center gap-4 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:border-white/30 transition-all hover:bg-white/5"
+          >
+            <span class="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Contract</span>
+            <code class="font-mono text-xs text-white/80 tracking-wider">
+              {{ contractAddress }}
+            </code>
+            @if (copied()) {
+              <mat-icon class="text-emerald-500 text-[16px] w-[16px] h-[16px] leading-[16px]">check</mat-icon>
+            } @else {
+              <mat-icon class="text-white/30 group-hover:text-white text-[16px] w-[16px] h-[16px] leading-[16px] transition-colors">content_copy</mat-icon>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trade Section -->
+  <section id="trade" class="py-20 px-6 bg-[#050505] border-t border-white/5 relative overflow-hidden">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-amber-500/5 blur-[100px] rounded-full pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto relative z-10">
+      <div class="flex flex-col lg:flex-row gap-16 items-center">
+        <div class="flex-1 space-y-8 text-center lg:text-left">
+          <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{{ t()('trade.title') }}</span>
+          <h2 class="font-serif text-5xl md:text-6xl tracking-tight leading-tight">
+            {{ t()('trade.heading') }} <br />
+            <span class="italic text-amber-500">{{ t()('trade.subheading') }}</span>
+          </h2>
+          <p class="text-white/60 leading-relaxed text-lg max-w-xl mx-auto lg:mx-0">
+            {{ t()('trade.desc') }}
+          </p>
+          
+          <div class="flex flex-col gap-4 pt-4 max-w-md mx-auto lg:mx-0">
+            <div class="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+              <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <mat-icon class="text-emerald-500 text-[20px] w-[20px] h-[20px] leading-[20px]">check</mat-icon>
+              </div>
+              <div>
+                <h4 class="font-bold text-white mb-1">{{ t()('trade.feature1Title') }}</h4>
+                <p class="text-sm text-zinc-400">{{ t()('trade.feature1Desc') }}</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+              <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <mat-icon class="text-amber-500 text-[20px] w-[20px] h-[20px] leading-[20px]">storage</mat-icon>
+              </div>
+              <div>
+                <h4 class="font-bold text-white mb-1">{{ t()('trade.feature2Title') }}</h4>
+                <p class="text-sm text-zinc-400">{{ t()('trade.feature2Desc') }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex-1 w-full max-w-md lg:max-w-none flex justify-center">
+          <!-- Trade Interface -->
+          <div class="w-full max-w-md mx-auto bg-[#050505] border border-white/10 rounded-[2rem] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative text-left group hover:border-white/20 transition-colors duration-500">
+            <div class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+            
+            <!-- Header Tabs -->
+            <div class="flex border-b border-white/10 relative z-10">
+              <button 
+                (click)="setMode('buy')"
+                class="flex-1 py-5 text-xs font-bold uppercase tracking-widest transition-all"
+                [class.text-amber-500]="mode() === 'buy'"
+                [class.border-b-2]="mode() === 'buy'"
+                [class.border-amber-500]="mode() === 'buy'"
+                [class.bg-amber-500/5]="mode() === 'buy'"
+                [class.text-zinc-500]="mode() !== 'buy'"
+                [class.hover:text-zinc-300]="mode() !== 'buy'"
+                [class.hover:bg-white/5]="mode() !== 'buy'"
+              >
+                {{ t()('trade.buyBtn') }}
+              </button>
+              <button 
+                (click)="setMode('sell')"
+                class="flex-1 py-5 text-xs font-bold uppercase tracking-widest transition-all"
+                [class.text-amber-500]="mode() === 'sell'"
+                [class.border-b-2]="mode() === 'sell'"
+                [class.border-amber-500]="mode() === 'sell'"
+                [class.bg-amber-500/5]="mode() === 'sell'"
+                [class.text-zinc-500]="mode() !== 'sell'"
+                [class.hover:text-zinc-300]="mode() !== 'sell'"
+                [class.hover:bg-white/5]="mode() !== 'sell'"
+              >
+                {{ t()('trade.sellBtn') }}
+              </button>
+            </div>
+
+            <div class="p-6 space-y-6 relative z-10">
+              <!-- Input Section -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                  <span>{{ t()('trade.pay') }}</span>
+                  @if (userAccount()) {
+                    <button 
+                      (click)="setMaxAmount()"
+                      class="hover:text-amber-500 transition-colors flex items-center gap-1"
+                    >
+                      <span class="opacity-50">{{ t()('trade.balance') }}:</span>
+                      <span>{{ mode() === 'buy' ? ethBalance() : gblinBalance() }} {{ mode() === 'buy' ? selectedToken() : 'GBLIN' }}</span>
+                      <span class="text-[9px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-amber-500">MAX</span>
+                    </button>
+                  }
+                </div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all relative">
+                  <input 
+                    type="number"
+                    [value]="amount()"
+                    (input)="updateAmount($event)"
+                    placeholder="0.0"
+                    class="bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700"
+                  />
+                  
+                  @if (mode() === 'buy') {
+                    <div class="relative shrink-0">
+                      <button 
+                        (click)="openTokenModal()"
+                        class="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-colors"
+                      >
+                        <span class="font-bold text-sm">{{ selectedToken() }}</span>
+                        <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">expand_more</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 shrink-0">
+                      <span class="font-bold text-sm">GBLIN</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="flex justify-center -my-3 relative z-20">
+                <div class="w-10 h-10 bg-[#050505] border border-white/10 rounded-full flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/30 transition-colors cursor-pointer">
+                  <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px]">swap_vert</mat-icon>
+                </div>
+              </div>
+
+              <!-- Output Section -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                  <span>{{ t()('trade.receive') }}</span>
+                </div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between opacity-70">
+                  <div class="text-4xl font-serif text-white flex items-center gap-3">
+                    @if (isLoadingQuote()) {
+                      <mat-icon class="animate-spin text-amber-500">autorenew</mat-icon>
+                    } @else {
+                      {{ displayQuote() }}
+                    }
+                  </div>
+                  <div class="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 shrink-0">
+                    <span class="font-bold text-sm">{{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
+                  </div>
+                </div>
+                @if (hasQuote()) {
+                  <div class="space-y-1 px-3 pt-2">
+                    <div class="flex justify-between text-[10px] font-mono text-zinc-500">
+                      <span>{{ t()('trade.feesEst') }}</span>
+                      <span class="text-white/80">{{ feeDisplay() }} {{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] font-mono text-zinc-500">
+                      <span>{{ t()('trade.minReceived') }} {{ slippage() }}%):</span>
+                      <span class="text-white/80">{{ minOutDisplay() }} {{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Slippage Settings -->
+              <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-2 pt-2 border-t border-white/5">
+                <div class="flex items-center gap-1.5">
+                  <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px]">tune</mat-icon>
+                  <span>{{ t()('trade.slippage') }}</span>
+                </div>
+                <div class="flex gap-1.5">
+                  @for (val of [0.5, 1, 2, 3, 5]; track val) {
+                    <button 
+                      (click)="slippage.set(val)"
+                      class="px-2.5 py-1 rounded-md transition-colors"
+                      [class.bg-amber-500/20]="slippage() === val"
+                      [class.text-amber-500]="slippage() === val"
+                      [class.border]="slippage() === val"
+                      [class.border-amber-500/30]="slippage() === val"
+                      [class.bg-white/5]="slippage() !== val"
+                      [class.hover:bg-white/10]="slippage() !== val"
+                      [class.border]="slippage() !== val"
+                      [class.border-transparent]="slippage() !== val"
+                    >
+                      {{ val }}%
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Action Button -->
+              <div class="pt-4">
+                @if (!userAccount()) {
+                  <button
+                    (click)="openWalletModal()"
+                    [disabled]="isConnecting()"
+                    class="w-full py-4 bg-white text-black text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-amber-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px]">account_balance_wallet</mat-icon>
+                    {{ isConnecting() ? t()('trade.connecting') : t()('trade.connect') }}
+                  </button>
+                } @else {
+                  <div class="space-y-3">
+                    <button
+                      (click)="handleTrade()"
+                      [disabled]="isTransacting() || !amount() || amount() === '0' || isLoadingQuote()"
+                      class="w-full py-4 bg-amber-500 text-black text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:bg-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                    >
+                      @if (isTransacting()) {
+                        <mat-icon class="animate-spin text-[18px] w-[18px] h-[18px] leading-[18px]">autorenew</mat-icon> {{ t()('trade.transacting') }}
+                      } @else if (!amount() || amount() === '0') {
+                        {{ t()('trade.enterAmount') }}
+                      } @else {
+                        {{ mode() === 'buy' ? t()('trade.buyBtn') : t()('trade.sellBtn') }}
+                      }
+                    </button>
+                    <button
+                      (click)="userAccount.set(null)"
+                      class="w-full py-3 bg-transparent border border-white/10 text-zinc-500 text-[10px] font-bold uppercase tracking-widest hover:text-white hover:bg-white/5 transition-all rounded-xl"
+                    >
+                      {{ t()('trade.disconnect') }}
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Status Messages -->
+              @if (tradeError()) {
+                <div 
+                  class="p-3 rounded-xl flex items-start gap-2 text-xs mt-4"
+                  [class.bg-red-500/10]="!showForceOption()"
+                  [class.border-red-500/20]="!showForceOption()"
+                  [class.text-red-400]="!showForceOption()"
+                  [class.bg-amber-500/10]="showForceOption()"
+                  [class.border-amber-500/20]="showForceOption()"
+                  [class.text-amber-400]="showForceOption()"
+                >
+                  <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px] mt-0.5 shrink-0">
+                    {{ showForceOption() ? 'warning' : 'error_outline' }}
+                  </mat-icon>
+                  <div class="space-y-2">
+                    <p class="break-words">{{ tradeError() }}</p>
+                    @if (showForceOption()) {
+                      <button 
+                        (click)="handleTrade(true)"
+                        [disabled]="isTransacting()"
+                        class="px-3 py-1.5 bg-amber-500 text-black font-bold rounded-lg hover:bg-amber-400 transition-colors flex items-center gap-1"
+                      >
+                        <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px]">bolt</mat-icon>
+                        {{ t()('trade.forceSend') }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (tradeTxHash()) {
+                <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2 text-emerald-400 text-xs mt-4">
+                  @if (isTransacting()) {
+                    <mat-icon class="animate-spin text-[14px] w-[14px] h-[14px] leading-[14px] mt-0.5 shrink-0">autorenew</mat-icon>
+                  } @else {
+                    <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px] mt-0.5 shrink-0">check_circle</mat-icon>
+                  }
+                  <div>
+                    <p class="font-bold mb-0.5">
+                      @if (isTransacting()) {
+                        {{ t()('trade.transacting') }}
+                      } @else {
+                        {{ t()('trade.success') }}
+                      }
+                    </p>
+                    <a 
+                      href="https://basescan.org/tx/{{ tradeTxHash() }}" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      class="underline hover:text-emerald-300"
+                    >
+                      {{ t()('trade.viewTx') }}
+                    </a>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Presentation Letter Section -->
+  <section id="concept" class="py-32 px-6 bg-[#050505]">
+    <div class="max-w-3xl mx-auto space-y-12">
+      <div class="space-y-4">
+        <h2 class="font-serif text-4xl md:text-5xl tracking-tight leading-tight">
+          {{ t()('manifesto.title') }}
+        </h2>
+      </div>
+      
+      <div class="space-y-8 text-white/70 font-light leading-relaxed text-lg">
+        <p>
+          {{ t()('manifesto.text') }}
+        </p>
+      </div>
+
+      <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+            <mat-icon class="w-6 h-6 text-amber-500">security</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-bold uppercase tracking-widest">{{ t()('common.protocol') }}</p>
+            <p class="text-xs text-white/40 uppercase tracking-widest">{{ t()('common.centralBank') }}</p>
+          </div>
+        </div>
+        <a 
+          href="https://basescan.org/token/0xc475851f9101A2AC48a84EcF869766A94D301FaA"
+          target="_blank"
+          class="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-amber-500 hover:text-amber-400 transition-colors"
+        >
+          {{ t()('common.verifyContract') }} <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px]">open_in_new</mat-icon>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GBLIN CORE Section -->
+  <section id="core" class="py-32 px-6 bg-[#080808] border-y border-white/5 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-amber-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto relative z-10">
+      <div class="flex flex-col lg:flex-row gap-20 items-center">
+        <div class="flex-1 space-y-8">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold tracking-widest uppercase">
+            <mat-icon class="text-[14px] w-[14px] h-[14px] leading-[14px]">hub</mat-icon>
+            {{ t()('core.title') }}
+          </div>
+          <h2 class="font-serif text-5xl md:text-7xl tracking-tighter leading-[0.9]">
+            {{ t()('core.subtitle') }}
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
+            <div class="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-4 hover:border-amber-500/30 transition-colors">
+              <h3 class="text-xl font-serif italic text-amber-500">{{ t()('core.m2mTitle') }}</h3>
+              <p class="text-white/60 leading-relaxed text-sm">
+                {{ t()('core.m2mDesc') }}
+              </p>
+            </div>
+            <div class="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-4 hover:border-amber-500/30 transition-colors">
+              <h3 class="text-xl font-serif italic text-amber-500">{{ t()('core.solvencyTitle') }}</h3>
+              <p class="text-white/60 leading-relaxed text-sm">
+                {{ t()('core.solvencyDesc') }}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="flex-1 w-full max-w-lg">
+          <div class="relative aspect-square rounded-3xl overflow-hidden border border-white/10 group">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <img 
+              src="https://picsum.photos/seed/cyber-core/800/800" 
+              alt="GBLIN Core Visualization" 
+              class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
+              referrerpolicy="no-referrer"
+            />
+            <div class="absolute bottom-8 left-8 z-20">
+              <div class="px-4 py-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl">
+                <p class="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-1">{{ t()('core.status') }}</p>
+                <p class="text-sm font-bold text-white">{{ t()('core.coreOperational') }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Agents Section -->
+  <section id="agents" class="py-32 px-6 bg-[#050505] relative overflow-hidden">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-20 space-y-4">
+        <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{{ t()('agents.title') }}</span>
+        <h2 class="font-serif text-5xl md:text-6xl tracking-tight">
+          {{ t()('core.sdkTitle') }}
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <!-- Code/Terminal Style -->
+        <div class="bg-[#050505] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col group hover:border-white/20 transition-colors duration-500">
+          <div class="px-5 py-3 bg-[#0a0a0a] border-b border-white/5 flex items-center gap-4">
+            <div class="flex gap-2">
+              <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div>
+              <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div>
+              <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div>
+            </div>
+            <div class="flex-1 text-center pr-10">
+              <span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">gblin-agent-sdk.ts</span>
+            </div>
+          </div>
+          <div class="p-8 font-mono text-sm space-y-4 overflow-x-auto bg-[#050505]">
+            <div class="text-zinc-600">// {{ t()('agents.directive') }}</div>
+            <div class="text-amber-400">const GBLIN_DIRECTIVE = "{{ t()('agents.directiveCode') }}";</div>
+            <div class="pt-4 text-zinc-400">
+              <span class="text-blue-400">async function</span> <span class="text-emerald-400">ensureSolvency</span>(agent: Agent) {{ '{' }}<br/>
+              <span class="pl-4 text-blue-400">const</span> balance = <span class="text-blue-400">await</span> agent.getBalance(<span class="text-green-400">'GBLIN'</span>);<br/>
+              <span class="pl-4 text-blue-400">if</span> (balance < agent.minSolvencyFloor) {{ '{' }}<br/>
+              <span class="pl-8 text-zinc-600">// {{ t()('core.autoRebalance') }}</span><br/>
+              <span class="pl-8 text-blue-400">await</span> agent.swapToGBLIN(agent.shortfall);<br/>
+              <span class="pl-4">{{ '}' }}</span><br/>
+              {{ '}' }}
+            </div>
+          </div>
+          <div class="mt-auto p-6 bg-[#0a0a0a] border-t border-white/5">
+            <button class="w-full py-4 bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-3">
+              <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px]">download</mat-icon>
+              {{ t()('core.cta') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="space-y-6">
+          <div class="p-8 bg-amber-500/5 border border-amber-500/10 rounded-3xl space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+              <mat-icon class="text-amber-500">psychology</mat-icon>
+            </div>
+            <h3 class="text-2xl font-serif italic text-white">{{ t()('agents.integrationTitle') }}</h3>
+            <p class="text-white/60 leading-relaxed">
+              {{ t()('agents.integrationDesc') }}
+            </p>
+          </div>
+          
+          <div class="p-8 bg-white/5 border border-white/10 rounded-3xl space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+              <mat-icon class="text-white">memory</mat-icon>
+            </div>
+            <h3 class="text-2xl font-serif italic text-white">{{ t()('core.sdkTitle') }}</h3>
+            <p class="text-white/60 leading-relaxed">
+              {{ t()('core.sdkDesc') }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bento Grid Features -->
+  <section class="py-32 px-6 bg-[#020202] relative border-y border-white/5">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-20">
+        <h2 class="font-serif text-4xl md:text-6xl tracking-tight mb-6">
+          {{ t()('architecture.title').split(' ').slice(0, 1).join(' ') }} <span class="italic text-amber-500">{{ t()('architecture.title').split(' ').slice(1).join(' ') }}</span>
+        </h2>
+        <p class="text-white/50 max-w-2xl mx-auto text-lg font-light">{{ t()('architecture.desc') }}</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[320px]">
+        <!-- Large Card -->
+        <div class="md:col-span-2 md:row-span-2 bg-gradient-to-br from-white/[0.03] to-transparent border border-white/10 rounded-[2rem] p-12 relative overflow-hidden group hover:border-amber-500/30 transition-colors duration-500">
+          <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/10 blur-[120px] rounded-full group-hover:bg-amber-500/20 transition-colors duration-700"></div>
+          <div class="relative z-10 h-full flex flex-col">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 mb-auto group-hover:scale-110 transition-transform duration-500">
+              <mat-icon class="w-8 h-8 text-amber-500 text-[32px] leading-[32px]">security</mat-icon>
+            </div>
+            <div>
+              <h4 class="text-4xl font-serif italic mb-6">{{ t()('features.crashShield.title') }}</h4>
+              <p class="text-xl text-white/50 leading-relaxed max-w-lg font-light">{{ t()('features.crashShield.desc') }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Small Card 1 -->
+        <div class="bg-white/[0.02] border border-white/10 rounded-[2rem] p-8 relative overflow-hidden group hover:border-white/20 hover:bg-white/[0.04] transition-all duration-500 flex flex-col">
+          <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 mb-auto group-hover:scale-110 transition-transform duration-500">
+            <mat-icon class="w-6 h-6 text-white/80">bolt</mat-icon>
+          </div>
+          <div>
+            <h4 class="text-2xl font-serif italic mb-3">{{ t()('features.centralBank.title') }}</h4>
+            <p class="text-sm text-white/50 leading-relaxed font-light">{{ t()('features.centralBank.desc') }}</p>
+          </div>
+        </div>
+
+        <!-- Small Card 2 -->
+        <div class="bg-white/[0.02] border border-white/10 rounded-[2rem] p-8 relative overflow-hidden group hover:border-white/20 hover:bg-white/[0.04] transition-all duration-500 flex flex-col">
+          <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 mb-auto group-hover:scale-110 transition-transform duration-500">
+            <mat-icon class="w-6 h-6 text-white/80">trending_up</mat-icon>
+          </div>
+          <div>
+            <h4 class="text-2xl font-serif italic mb-3">{{ t()('features.appreciation.title') }}</h4>
+            <p class="text-sm text-white/50 leading-relaxed font-light">{{ t()('features.appreciation.desc') }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Vault Section -->
+  <section id="vault" class="py-32 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row gap-20 items-center">
+        <div class="flex-1 space-y-8">
+          <h2 class="font-serif text-5xl md:text-6xl tracking-tight">
+            {{ t()('vault.title').split(' ').slice(0, -2).join(' ') }} <br />
+            <span class="italic text-amber-500">{{ t()('vault.title').split(' ').slice(-2).join(' ') }}</span>
+          </h2>
+          <p class="text-white/60 leading-relaxed">
+            {{ t()('vault.desc') }}
+          </p>
+          
+          <div class="pt-4 border-t border-white/10">
+            <div class="flex flex-wrap gap-4">
+              <span class="px-4 py-2 bg-white/5 rounded-full text-[10px] font-mono uppercase tracking-widest opacity-60">
+                Ethereum (WETH)
+              </span>
+              <span class="px-4 py-2 bg-white/5 rounded-full text-[10px] font-mono uppercase tracking-widest opacity-60">
+                Coinbase Bitcoin (cbBTC)
+              </span>
+              <span class="px-4 py-2 bg-white/5 rounded-full text-[10px] font-mono uppercase tracking-widest opacity-60">
+                USD Coin (USDC)
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex-1 flex justify-center items-center">
+          <div class="relative w-full max-w-[420px] aspect-square group">
+            <div class="absolute inset-0 bg-amber-500/5 blur-[120px] rounded-full opacity-30 animate-pulse"></div>
+            <div class="relative w-full h-full rounded-full overflow-hidden">
+              <img 
+                src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png"
+                alt="Vault Core"
+                class="object-cover scale-[1.02] hover:scale-[1.05] transition-transform duration-700 w-full h-full"
+                style="image-rendering: auto;"
+                referrerpolicy="no-referrer"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rebalancing Section -->
+  <section class="py-20 px-6 bg-amber-500/5 border-t border-amber-500/10">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row gap-12 items-center">
+        <div class="flex-1 space-y-6">
+          <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{{ t()('mev.title') }}</span>
+          <h2 class="font-serif text-4xl md:text-5xl tracking-tight">
+            {{ t()('mev.callTitle').split('.').slice(0, 1).join('.') + '.' }} <br />
+            <span class="italic text-amber-500">{{ t()('mev.callTitle').split('.').slice(1).join('.') }}</span>
+          </h2>
+          <p class="text-white/60 leading-relaxed">
+            {{ t()('mev.desc') }}
+          </p>
+          <div class="flex items-center gap-4 pt-4">
+            <a 
+              href="https://basescan.org/address/{{ contractAddress }}#writeContract"
+              target="_blank"
+              class="px-6 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-colors flex items-center gap-2"
+            >
+              {{ t()('mev.interact') }} <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">open_in_new</mat-icon>
+            </a>
+          </div>
+        </div>
+        <div class="flex-1 w-full">
+          <div class="bg-[#0a0a0a] border border-[#333] p-8 rounded-2xl relative overflow-hidden font-mono text-sm text-zinc-400">
+            <div class="text-emerald-500 mb-4">{{ t()('mev.codeComment') }}</div>
+            <div class="space-y-2">
+              <p><span class="text-blue-400">function</span> <span class="text-yellow-200">incentivizedRebalance</span>() <span class="text-blue-400">external</span> {{ '{' }}</p>
+              <p class="pl-4">require(needsRebalance(), <span class="text-green-400">"{{ t()('mev.codeBalanced') }}"</span>);</p>
+              <p class="pl-4 text-zinc-500">{{ t()('mev.codeRebalance') }}</p>
+              <p class="pl-4">_executeSwaps();</p>
+              <p class="pl-4 text-zinc-500">{{ t()('mev.codePay') }}</p>
+              <p class="pl-4">_rewardCaller(msg.sender);</p>
+            </div>
+            <p class="font-mono text-zinc-600 mt-4 text-[10px] uppercase tracking-widest">{{ t()('mev.codeSurvival') }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- RebalanceAction component placeholder -->
+      <div class="space-y-8 mt-12 w-full">
+        @if (isLoadingStats()) {
+          <div class="flex justify-center py-12">
+            <mat-icon class="animate-spin text-amber-500 text-[32px] w-[32px] h-[32px] leading-[32px]">autorenew</mat-icon>
+          </div>
+        } @else if (stats()) {
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="bg-[#0a0a0a] border border-[#333] p-6 rounded-2xl flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <mat-icon class="text-amber-500">account_balance</mat-icon>
+              </div>
+              <div>
+                <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest">{{ t()('rebalance.tvl') }}</p>
+                <p class="text-2xl font-serif text-white">${{ stats()?.tvlUsd?.toLocaleString() }}</p>
+              </div>
+            </div>
+            
+            <div class="bg-[#0a0a0a] border border-[#333] p-6 rounded-2xl flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <mat-icon class="text-emerald-500">security</mat-icon>
+              </div>
+              <div>
+                <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest">{{ t()('rebalance.fund') }}</p>
+                <p class="text-2xl font-serif text-white">{{ stats()?.fundEth?.toFixed(2) }} ETH</p>
+              </div>
+            </div>
+
+            <div class="bg-[#0a0a0a] border border-[#333] p-6 rounded-2xl flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                <mat-icon class="text-blue-500">swap_horiz</mat-icon>
+              </div>
+              <div>
+                <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest">{{ t()('rebalance.rebalances') }}</p>
+                <p class="text-2xl font-serif text-white">{{ stats()?.recentLogs?.length || 0 }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-[#0a0a0a] border border-[#333] p-6 rounded-2xl">
+              <h3 class="text-lg font-serif italic text-white mb-6 flex items-center gap-2">
+                <mat-icon class="text-amber-500">pie_chart</mat-icon>
+                {{ t()('rebalance.weightsTitle') }}
+              </h3>
+              <div class="space-y-4">
+                @for (w of stats()?.weights; track w.symbol) {
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                      <span class="font-bold text-white">{{ w.symbol }}</span>
+                      <div class="flex gap-4 font-mono text-xs">
+                        <span class="text-amber-500" [title]="t()('rebalance.dynamic')">{{ w.dynamic }}%</span>
+                        <span class="text-zinc-500" [title]="t()('rebalance.actual')">{{ w.actual.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                    <div class="h-2 bg-[#111] rounded-full overflow-hidden flex">
+                      <div class="h-full bg-amber-500 transition-all duration-1000" [style.width.%]="w.actual"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="bg-[#0a0a0a] border border-[#333] p-6 rounded-2xl">
+              <h3 class="text-lg font-serif italic text-white mb-6 flex items-center gap-2">
+                <mat-icon class="text-amber-500">history</mat-icon>
+                {{ t()('rebalance.recentLogs') }}
+              </h3>
+              <div class="space-y-4 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
+                @for (log of stats()?.recentLogs; track log.txHash) {
+                  <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                        <mat-icon class="text-amber-500 text-[14px] w-[14px] h-[14px] leading-[14px]">swap_horiz</mat-icon>
+                      </div>
+                      <div>
+                        <p class="text-xs font-bold text-white">{{ log.tokenIn }} → {{ log.tokenOut }}</p>
+                        <p class="text-[10px] font-mono text-zinc-500">{{ log.executor.slice(0,6) + '...' + log.executor.slice(-4) }}</p>
+                      </div>
+                    </div>
+                    <a href="https://basescan.org/tx/{{ log.txHash }}" target="_blank" class="text-zinc-500 hover:text-amber-500 transition-colors">
+                      <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">open_in_new</mat-icon>
+                    </a>
+                  </div>
+                }
+                @if (!stats()?.recentLogs?.length) {
+                  <p class="text-sm text-zinc-500 text-center py-4">{{ t()('rebalance.noLogs') }}</p>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Rebalance Action Card -->
+        <div class="max-w-3xl mx-auto bg-[#0a0a0a] border border-[#333] p-8 md:p-10 rounded-3xl relative overflow-hidden shadow-2xl mt-12">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-bl-full -z-0 blur-3xl"></div>
+          
+          <div class="relative z-10 space-y-8 text-center">
+            <div class="flex flex-col items-center gap-4 mb-6">
+              <div class="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <mat-icon class="w-8 h-8 text-amber-500 text-[32px] leading-[32px]">bolt</mat-icon>
+              </div>
+              <div>
+                <h3 class="text-3xl font-serif italic text-white mb-2">{{ t()('rebalance.executeTitle') }}</h3>
+                <p class="text-sm text-zinc-400 font-mono uppercase tracking-widest">{{ t()('rebalance.executeSub') }}</p>
+              </div>
+            </div>
+
+            <p class="text-base text-white/60 leading-relaxed max-w-xl mx-auto">
+              {{ t()('rebalance.executeDesc1') }}
+            </p>
+
+            <div class="max-w-md mx-auto pt-4">
+              @if (!userAccount()) {
+                <button
+                  (click)="openWalletModal()"
+                  class="w-full py-5 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-colors flex items-center justify-center gap-3 text-lg"
+                >
+                  <mat-icon class="text-[20px] w-[20px] h-[20px] leading-[20px]">account_balance_wallet</mat-icon>
+                  {{ t()('trade.connect') }}
+                </button>
+              } @else {
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div class="flex flex-col gap-1">
+                      <span class="text-sm font-mono text-zinc-400">{{ t()('rebalance.connected') }}</span>
+                      <span class="text-sm font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full w-fit">
+                        {{ userAccount()!.slice(0, 6) }}...{{ userAccount()!.slice(-4) }}
+                      </span>
+                    </div>
+                    <button
+                      (click)="userAccount.set(null)"
+                      class="text-xs text-zinc-500 hover:text-white uppercase tracking-widest font-bold transition-colors"
+                    >
+                      {{ t()('trade.disconnect') }}
+                    </button>
+                  </div>
+
+                  <button
+                    (click)="handleArbitrage()"
+                    [disabled]="isArbitraging()"
+                    class="w-full py-5 bg-amber-500 text-black font-bold rounded-2xl hover:bg-amber-400 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 text-lg shadow-[0_0_30px_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:hover:scale-100 disabled:hover:bg-amber-500"
+                  >
+                    @if (isArbitraging()) {
+                      <mat-icon class="animate-spin text-[20px] w-[20px] h-[20px] leading-[20px]">autorenew</mat-icon>
+                      {{ t()('rebalance.executing') }}
+                    } @else {
+                      <mat-icon class="text-[20px] w-[20px] h-[20px] leading-[20px]">monetization_on</mat-icon>
+                      {{ t()('rebalance.executeBtn') }}
+                    }
+                  </button>
+
+                  @if (arbError()) {
+                    <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 text-red-400 text-sm">
+                      <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px] mt-0.5 shrink-0">error_outline</mat-icon>
+                      <p class="break-words">{{ arbError() }}</p>
+                    </div>
+                  }
+
+                  @if (rebalanceData()) {
+                    <div class="mt-4 p-4 bg-slate-800/50 border border-slate-700 rounded-2xl text-slate-300 text-xs">
+                      <p class="font-bold mb-2 text-slate-100">Stato Ribilanciamento</p>
+                      <div class="space-y-1">
+                        @for (asset of rebalanceData()!.basketData; track asset.symbol) {
+                          <div class="flex justify-between">
+                            <span>{{ asset.symbol }}</span>
+                            <span>Target: {{ formatWeight(asset.targetWeight) }}%</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (arbTxHash()) {
+                    <div class="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 text-emerald-400 text-sm">
+                      @if (isArbitraging()) {
+                        <mat-icon class="animate-spin text-[18px] w-[18px] h-[18px] leading-[18px] mt-0.5 shrink-0">autorenew</mat-icon>
+                      } @else {
+                        <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px] mt-0.5 shrink-0">check_circle</mat-icon>
+                      }
+                      <div>
+                        <p class="font-bold mb-1">
+                          @if (isArbitraging()) {
+                            {{ t()('trade.transacting') }}
+                          } @else {
+                            {{ t()('trade.success') }}
+                          }
+                        </p>
+                        <a 
+                          href="https://basescan.org/tx/{{ arbTxHash() }}" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="underline hover:text-emerald-300"
+                        >
+                          {{ t()('trade.viewTx') }}
+                        </a>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Liquidity Section -->
+  <section class="py-20 px-6 bg-[#0a0a0a] border-t border-white/5">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row gap-12 items-center">
+        <div class="flex-1 space-y-6">
+          <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{{ t()('market.title') }}</span>
+          <h2 class="font-serif text-4xl md:text-5xl tracking-tight">
+            {{ t()('market.subtitle').split(' ').slice(0, 1).join(' ') }} <br />
+            <span class="italic text-amber-500">{{ t()('market.subtitle').split(' ').slice(1).join(' ') }}</span>
+          </h2>
+          <p class="text-white/60 leading-relaxed">
+            {{ t()('market.desc') }}
+          </p>
+          <div class="flex items-center gap-4 pt-4">
+            <a 
+              href="https://aerodrome.finance/swap?from=eth&to={{ contractAddress }}"
+              target="_blank"
+              class="px-6 py-3 bg-white/5 border border-white/10 text-white font-bold rounded-xl hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              {{ t()('market.trade') }} <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">open_in_new</mat-icon>
+            </a>
+          </div>
+        </div>
+        <div class="flex-1 w-full">
+          <div class="bg-[#1A1A1A] border border-[#333] p-8 rounded-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -z-0"></div>
+            <div class="relative z-10 space-y-6">
+              <div class="flex justify-between items-center border-b border-[#333] pb-4">
+                <span class="text-sm font-mono text-zinc-400">{{ t()('market.poolType') }}</span>
+                <span class="text-sm font-bold text-amber-500">{{ t()('market.slipstream') }}</span>
+              </div>
+              <div class="flex justify-between items-center border-b border-[#333] pb-4">
+                <span class="text-sm font-mono text-zinc-400">{{ t()('market.feeTier') }}</span>
+                <span class="text-sm font-bold text-white">1.0%</span>
+              </div>
+              <div class="flex justify-between items-center border-b border-[#333] pb-4">
+                <span class="text-sm font-mono text-zinc-400">{{ t()('market.priceRange') }}</span>
+                <span class="text-sm font-bold text-white">0.80 - 1.15 WETH</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm font-mono text-zinc-400">{{ t()('market.dex') }}</span>
+                <span class="text-sm font-bold text-blue-400">{{ t()('market.aerodrome') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard Section -->
+  <section id="dashboard" class="py-32 px-6 border-t border-white/5">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-12">
+        <h2 class="font-serif text-5xl md:text-6xl tracking-tight mb-4">
+          {{ t()('dashboard.mainTitle').split(' ').slice(0, 1).join(' ') }} <span class="italic text-amber-500">{{ t()('dashboard.mainTitle').split(' ').slice(1).join(' ') }}</span>
+        </h2>
+        <p class="text-white/60 max-w-2xl">
+          {{ t()('dashboard.arbitrageText') }}
+        </p>
+      </div>
+
+      <div class="bg-[#0a0a0a] border border-[#333] rounded-3xl p-8 mb-8">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 pb-8 border-b border-[#333]">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+              <mat-icon class="text-amber-500">shield</mat-icon>
+            </div>
+            <div>
+              <h3 class="font-bold text-lg">{{ t()('dashboard.contractTitle') | uppercase }}</h3>
+              <p class="text-xs font-mono text-zinc-500">{{ contractAddress }}</p>
+              <p class="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">{{ t()('dashboard.verifiedOnBase') }}</p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button (click)="copyToClipboard()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors">
+              {{ t()('dashboard.copyAddress') | uppercase }}
+            </button>
+            <a href="https://basescan.org/token/{{ contractAddress }}" target="_blank" class="px-4 py-2 bg-amber-500 text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-amber-400 transition-colors">
+              {{ t()('dashboard.verifyBasescan') | uppercase }}
+            </a>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div class="p-6 rounded-2xl bg-[#111] border border-[#333]">
+            <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest mb-2">{{ t()('dashboard.gblinPoolPrice') }}</p>
+            <p class="text-3xl font-serif text-white mb-1">$2,616.25</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest">{{ t()('dashboard.slipstreamText') }}</p>
+          </div>
+          <div class="p-6 rounded-2xl bg-[#111] border border-[#333]">
+            <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest mb-2">{{ t()('dashboard.gblinContractNav') }}</p>
+            <p class="text-3xl font-serif text-emerald-400 mb-1">$5,506.01</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest">{{ t()('dashboard.realAssetGuarantee') }}</p>
+          </div>
+          <div class="p-6 rounded-2xl bg-[#111] border border-[#333]">
+            <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest mb-2">{{ t()('dashboard.volume24h') }}</p>
+            <p class="text-3xl font-serif text-white mb-1">$14.85</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest">{{ t()('dashboard.slipstreamText') }}</p>
+          </div>
+          <div class="p-6 rounded-2xl bg-[#111] border border-[#333]">
+            <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest mb-2">{{ t()('dashboard.totalSupply') }}</p>
+            <p class="text-3xl font-serif text-white mb-1">0.0127</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest">{{ t()('dashboard.circulatingGblin') }}</p>
+          </div>
+        </div>
+
+        <!-- Arbitrage Opportunity -->
+        <div class="p-6 rounded-2xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h4 class="font-bold text-amber-500 mb-2 flex items-center gap-2">
+                <mat-icon class="text-[18px]">trending_up</mat-icon>
+                {{ t()('dashboard.arbitrageTitle') | uppercase }}
+              </h4>
+              <p class="text-sm text-zinc-400">{{ t()('dashboard.arbitrageText') }}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-zinc-500 uppercase tracking-widest mb-1">{{ t()('dashboard.currentStatus') | uppercase }}</p>
+              <p class="text-2xl font-bold text-emerald-400">{{ t()('dashboard.undervalued') | uppercase }} <span class="text-sm font-normal">(52.48% {{ t()('dashboard.discount') }})</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Table -->
+      <div class="bg-[#0a0a0a] border border-[#333] rounded-3xl p-8">
+        <div class="flex items-center justify-between mb-8">
+          <h4 class="font-bold flex items-center gap-2">
+            <mat-icon class="text-amber-500">settings_input_component</mat-icon>
+            {{ t()('dashboard.liveNetworkTelemetry') }}
+          </h4>
+          <div class="flex items-center gap-4">
+            <button class="px-4 py-2 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-amber-500/20 transition-colors">
+              {{ t()('dashboard.tradeOnSlipstream') }}
+            </button>
+            <span class="text-xs text-zinc-500 font-mono">{{ t()('dashboard.lastUpdate') }} {{ lastUpdate() }}</span>
+            <button 
+              (click)="fetchData()"
+              [disabled]="isRefreshing()"
+              class="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+            >
+              <mat-icon class="text-[16px]" [class.animate-spin]="isRefreshing()">refresh</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="text-zinc-500 border-b border-[#333]">
+              <tr>
+                <th class="pb-4">{{ t()('dashboard.type') | uppercase }}</th>
+                <th class="pb-4">{{ t()('dashboard.time') | uppercase }}</th>
+                <th class="pb-4">{{ t()('dashboard.txHash') | uppercase }}</th>
+                <th class="pb-4">{{ t()('dashboard.from') | uppercase }}</th>
+                <th class="pb-4">{{ t()('dashboard.to') | uppercase }}</th>
+                <th class="pb-4 text-right">{{ t()('dashboard.valueEth') | uppercase }}</th>
+              </tr>
+            </thead>
+                <tbody class="text-zinc-300">
+                  @for (log of stats()?.recentLogs; track log.txHash) {
+                    <tr class="border-b border-[#333]/50">
+                      <td class="py-4 font-bold" 
+                          [class.text-green-400]="log.type === t()('dashboard.txTypes.buy')" 
+                          [class.text-red-400]="log.type === t()('dashboard.txTypes.sell')"
+                          [class.text-blue-400]="log.type === t()('dashboard.txTypes.transaction') || log.type === t()('dashboard.txTypes.sendEth')"
+                          [class.text-amber-400]="log.type === t()('dashboard.txTypes.rebalance')">
+                        {{ log.type }}
+                      </td>
+                      <td class="py-4 text-zinc-400">{{ log.time }}</td>
+                      <td class="py-4 text-amber-500">
+                        <a [href]="'https://basescan.org/tx/' + log.txHash" target="_blank" class="hover:underline">
+                          {{ log.txHash.slice(0, 6) + '...' + log.txHash.slice(-4) }}
+                        </a>
+                      </td>
+                      <td class="py-4">{{ log.executor.slice(0, 6) + '...' + log.executor.slice(-4) }}</td>
+                      <td class="py-4 text-zinc-500">{{ log.tokenOut }}</td>
+                      <td class="py-4 text-right font-bold">{{ log.amount }}</td>
+                    </tr>
+                  }
+                  @if (!stats()?.recentLogs?.length) {
+                    <tr>
+                      <td colspan="6" class="py-4 text-center text-zinc-500">{{ t()('dashboard.noTx') }}</td>
+                    </tr>
+                  }
+                </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-24 px-6 border-t border-white/5 text-center bg-black">
+    <div class="max-w-7xl mx-auto space-y-12">
+      <div class="flex flex-col items-center gap-6">
+        <div class="relative w-24 h-24 aspect-square rounded-full overflow-hidden">
+          <img 
+            src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png"
+            alt="GBLIN Logo"
+            class="object-cover scale-[1.02] w-full h-full"
+            referrerpolicy="no-referrer"
+          />
+        </div>
+        <div class="font-serif text-2xl tracking-tighter font-bold bg-gradient-to-b from-amber-200 to-amber-600 bg-clip-text text-transparent">GBLIN</div>
+      </div>
+      
+      <div class="flex flex-wrap justify-center gap-8 text-sm opacity-60">
+        <a href="https://basescan.org/token/{{ contractAddress }}" target="_blank" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <mat-icon class="text-[16px]">explore</mat-icon> Basescan
+        </a>
+        <a href="https://aerodrome.finance/swap?from=eth&to={{ contractAddress }}" target="_blank" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <mat-icon class="text-[16px]">swap_calls</mat-icon> Aerodrome Swap
+        </a>
+        <a href="https://www.geckoterminal.com/base/pools/0xdaecc15bf028bc4d135260d044b87001dafb3c22" target="_blank" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <mat-icon class="text-[16px]">show_chart</mat-icon> Live Chart
+        </a>
+        <a href="https://x.com/GBLIN_Protocol" target="_blank" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.008 3.93H5.078z"/></svg>
+          Twitter (X)
+        </a>
+        <a href="https://warpcast.com/gblin" target="_blank" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <mat-icon class="text-[16px]">forum</mat-icon> Warpcast
+        </a>
+        <a href="mailto:gblin.protocol@proton.me" class="hover:text-amber-500 transition-colors flex items-center gap-2">
+          <mat-icon class="text-[16px]">mail</mat-icon> Email
+        </a>
+      </div>
+
+      <p class="text-[10px] font-mono uppercase tracking-[0.2em] opacity-30">
+        {{ t()('footer.rights') }}
+      </p>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+  @if (isTokenModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div class="bg-[#111] border border-[#333] rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in-up">
+        <div class="p-4 border-b border-[#333] flex justify-between items-center">
+          <h3 class="text-lg font-bold text-white">{{ t()('dashboard.tokenModal.title') }}</h3>
+          <button (click)="closeTokenModal()" class="text-zinc-500 hover:text-white transition-colors">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="p-4">
+          <div class="relative mb-4">
+            <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-[16px] w-[16px] h-[16px] leading-[16px]">search</mat-icon>
+            <input 
+              type="text" 
+              [placeholder]="t()('dashboard.tokenModal.search')"
+              [value]="searchQuery()"
+              (input)="updateSearchQuery($event)"
+              class="w-full bg-[#1a1a1a] border border-[#333] rounded-xl py-3 pl-10 pr-4 text-white outline-none focus:border-amber-500/50 transition-colors"
+            />
+          </div>
+          
+          <div class="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+            @for (token of filteredTokens; track token) {
+              <button
+                (click)="selectToken(token)"
+                class="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors"
+              >
+                <span class="font-bold text-white">{{ token }}</span>
+                @if (selectedToken() === token) {
+                  <mat-icon class="text-amber-500 text-[16px] w-[16px] h-[16px] leading-[16px]">check_circle</mat-icon>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (isWalletModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div class="bg-[#0f111a] border border-[#1e2336] rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in-up">
+        <div class="p-6 text-center border-b border-[#1e2336] relative">
+          <h3 class="text-lg font-bold text-white">{{ t()('dashboard.walletModal.title') }}</h3>
+          <p class="text-sm text-zinc-400 mt-1">{{ t()('dashboard.walletModal.subtitle') }}</p>
+          <button (click)="closeWalletModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="p-4 space-y-2">
+          <button (click)="connectWallet()" class="w-full flex items-center gap-4 p-4 bg-white rounded-2xl hover:bg-gray-100 transition-colors text-black font-bold">
+            <span class="text-2xl">🦊</span> {{ t()('dashboard.walletModal.browser') }}
+          </button>
+          <button (click)="connectWallet()" class="w-full flex items-center gap-4 p-4 bg-white rounded-2xl hover:bg-gray-100 transition-colors text-black font-bold">
+            <span class="text-2xl">🔗</span> {{ t()('dashboard.walletModal.walletConnect') }}
+          </button>
+          <button (click)="connectWallet()" class="w-full flex items-center gap-4 p-4 bg-white rounded-2xl hover:bg-gray-100 transition-colors text-black font-bold">
+            <span class="text-2xl">🔵</span> {{ t()('dashboard.walletModal.coinbase') }}
+          </button>
+        </div>
+        <div class="p-4 text-center text-xs text-zinc-500 border-t border-[#1e2336]">
+          2026 © GBLIN Protocol.
+        </div>
+      </div>
+    </div>
+  }
+</div>
