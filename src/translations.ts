@@ -241,6 +241,18 @@ export const translations = {
       success: "Arbitrage executed successfully!",
       connected: "Wallet Connected"
     },
+    yield: {
+      title: "Yield Mechanism",
+      subtitle: "Guaranteed Mathematical Appreciation",
+      accumulationTitle: "1. Accumulation (Stability Fee)",
+      accumulationDesc: "Every time a user buys GBLIN, the protocol applies a 0.1% institutional fee. Exactly half of this (0.05%, STABILITY_FEE_BPS) is accumulated in a protected reserve called the stabilityFund.",
+      mechanismTitle: "2. The Guaranteed Appreciation Mechanism",
+      mechanismDesc: "The protocol never prints tokens out of thin air. The Net Asset Value (NAV) of GBLIN is calculated by dividing total vault assets by circulating supply. Distribution requires two inviolable conditions: Time (at least 7 days since last distribution) and Reserve (stabilityFund > 1 ETH).",
+      actionTitle: "3. The Key Action (Mathematical Revaluation)",
+      actionDesc: "If both conditions are met, excess ETH in the fund is released and absorbed into the contract's NAV. By adding real collateral (ETH) without minting new GBLIN, the mathematical and intrinsic price of every existing GBLIN automatically increases.",
+      automationTitle: "4. Automation & Efficiency (Gas-Free)",
+      automationDesc: "Users do not need to 'claim' anything or pay gas. The _autoDistributeYield() function is integrated into the protocol's core and triggers silently and automatically on every buy (mint) or sell (burn) operation. The protocol self-updates, ensuring frictionless appreciation."
+    },
     core: {
       title: "GBLIN CORE",
       subtitle: "The Universal Invariant for Humans and AI",
@@ -506,6 +518,18 @@ export const translations = {
       success: "Arbitraggio eseguito con successo!",
       connected: "Wallet Connesso"
     },
+    yield: {
+      title: "Meccanismo di Yield",
+      subtitle: "Apprezzamento Matematico Garantito",
+      accumulationTitle: "1. Accumulo (La Tassa di Stabilità)",
+      accumulationDesc: "Ogni volta che un utente acquista GBLIN, il protocollo applica una fee istituzionale dello 0.1%. Di questa percentuale, la metà esatta (0.05%, STABILITY_FEE_BPS) viene accumulata in una riserva protetta chiamata stabilityFund.",
+      mechanismTitle: "2. Il Meccanismo ad Apprezzamento Garantito",
+      mechanismDesc: "Il protocollo non stampa mai token dal nulla. Il valore di GBLIN (NAV) è calcolato dividendo il totale degli asset in cassaforte per la fornitura circolante. La funzione di distribuzione controlla due parametri inviolabili: Tempo (almeno 7 giorni dall'ultima distribuzione) e Riserva (stabilityFund > 1 ETH).",
+      actionTitle: "3. L'Azione Chiave (Rivalutazione Matematica)",
+      actionDesc: "Se entrambe le condizioni sono soddisfatte, l'eccesso di ETH nel fondo viene rilasciato e inglobato nel Net Asset Value (NAV) del contratto. Poiché viene aggiunto collaterale reale (ETH) senza che venga emesso alcun nuovo token GBLIN, il prezzo matematico e intrinseco di ogni singolo GBLIN esistente in circolazione aumenta automaticamente.",
+      automationTitle: "4. Automazione ed Efficienza (Gas-Free)",
+      automationDesc: "Gli utenti non devono 'reclamare' (claim) nulla pagando gas. La funzione _autoDistributeYield() è integrata nel cuore del protocollo e viene attivata silenziosamente e automaticamente ad ogni operazione di acquisto o vendita. Il protocollo si auto-aggiorna, garantendo che l'apprezzamento venga distribuito senza attriti."
+    },
     core: {
       title: "GBLIN CORE",
       subtitle: "L'Invariante Universale per Umani e IA",
@@ -703,6 +727,18 @@ export const translations = {
       success: "¡Arbitraje ejecutado con éxito!",
       connected: "Billetera Conectada",
       loading: "Cargando Estadísticas del Protocolo..."
+    },
+    yield: {
+      title: "Mecanismo de Rendimiento",
+      subtitle: "Apreciación Matemática Garantizada",
+      accumulationTitle: "1. Acumulación (Tarifa de Estabilidad)",
+      accumulationDesc: "Cada vez que un usuario compra GBLIN, el protocolo aplica una tarifa institucional del 0.1%. Exactamente la mitad de esto (0.05%, STABILITY_FEE_BPS) se acumula en una reserva protegida llamada stabilityFund.",
+      mechanismTitle: "2. El Mecanismo de Apreciación Garantizada",
+      mechanismDesc: "El protocolo nunca imprime tokens de la nada. El Valor Liquidativo (NAV) de GBLIN se calcula dividiendo los activos totales de la bóveda por el suministro circulante. La distribución requiere dos condiciones inviolables: Tiempo (al menos 7 días desde la última distribución) y Reserva (stabilityFund > 1 ETH).",
+      actionTitle: "3. La Acción Clave (Revaluación Matemática)",
+      actionDesc: "Si se cumplen ambas condiciones, el exceso de ETH en el fondo se libera y se absorbe en el NAV del contrato. Al agregar garantía real (ETH) sin acuñar nuevos GBLIN, el precio matemático e intrínseco de cada GBLIN existente aumenta automáticamente.",
+      automationTitle: "4. Automatización y Eficiencia (Sin Gas)",
+      automationDesc: "Los usuarios no necesitan 'reclamar' nada ni pagar gas. La función _autoDistributeYield() está integrada en el núcleo del protocolo y se activa de forma silenciosa y automática en cada operación de compra o venta. El protocolo se actualiza a sí mismo, asegurando una apreciación sin fricciones."
     },
     core: {
       title: "GBLIN CORE",
@@ -905,6 +941,18 @@ export const translations = {
       connected: "钱包已连接",
       loading: "正在加载协议统计数据..."
     },
+    yield: {
+      title: "收益机制",
+      subtitle: "保证的数学增值",
+      accumulationTitle: "1. 积累 (稳定费)",
+      accumulationDesc: "每次用户购买 GBLIN 时，协议都会收取 0.1% 的机构费用。其中正好一半 (0.05%, STABILITY_FEE_BPS) 积累在名为 stabilityFund 的受保护储备中。",
+      mechanismTitle: "2. 保证增值机制",
+      mechanismDesc: "协议从不凭空印制代币。GBLIN 的资产净值 (NAV) 是通过将金库总资产除以流通供应量来计算的。分配需要两个不可侵犯的条件：时间（距上次分配至少 7 天）和储备（stabilityFund > 1 ETH）。",
+      actionTitle: "3. 关键行动 (数学重估)",
+      actionDesc: "如果满足这两个条件，基金中多余的 ETH 将被释放并吸收到合约的 NAV 中。通过添加真实的抵押品 (ETH) 而不铸造新的 GBLIN，每个现有 GBLIN 的数学和内在价格都会自动增加。",
+      automationTitle: "4. 自动化与效率 (免 Gas)",
+      automationDesc: "用户不需要“认领”任何东西或支付 gas 费。_autoDistributeYield() 函数集成在协议的核心中，并在每次买入或卖出操作时静默自动触发。协议自我更新，确保无摩擦的增值。"
+    },
     core: {
       title: "GBLIN CORE",
       subtitle: "人类与AI的通用不变量",
@@ -1105,6 +1153,18 @@ export const translations = {
       success: "裁定取引が正常に実行されました！",
       connected: "ウォレット接続済み",
       loading: "プロトコル統計を読み込み中..."
+    },
+    yield: {
+      title: "利回りメカニズム",
+      subtitle: "保証された数学的価値上昇",
+      accumulationTitle: "1. 蓄積 (安定化手数料)",
+      accumulationDesc: "ユーザーがGBLINを購入するたびに、プロトコルは0.1%の機関手数料を適用します。この正確に半分(0.05%、STABILITY_FEE_BPS)は、stabilityFundと呼ばれる保護された準備金に蓄積されます。",
+      mechanismTitle: "2. 保証された価値上昇メカニズム",
+      mechanismDesc: "プロトコルは無からトークンを印刷することは決してありません。GBLINの純資産価値(NAV)は、保管庫の総資産を循環供給量で割ることによって計算されます。分配には2つの不可侵の条件が必要です：時間（前回の分配から少なくとも7日）と準備金（stabilityFund > 1 ETH）。",
+      actionTitle: "3. 重要なアクション (数学的再評価)",
+      actionDesc: "両方の条件が満たされると、ファンド内の余剰ETHが解放され、コントラクトのNAVに吸収されます。新しいGBLINを鋳造することなく実際の担保(ETH)を追加することにより、既存のすべてのGBLINの数学的および本質的な価格が自動的に上昇します。",
+      automationTitle: "4. 自動化と効率 (ガスフリー)",
+      automationDesc: "ユーザーは何も「請求」したりガスを支払ったりする必要はありません。_autoDistributeYield()関数はプロトコルのコアに統合されており、すべての購入または売却操作で静かに自動的にトリガーされます。プロトコルは自己更新し、摩擦のない価値上昇を保証します。"
     },
     core: {
       title: "GBLIN CORE",
@@ -1307,6 +1367,18 @@ export const translations = {
       connected: "Portefeuille connecté",
       loading: "Chargement des statistiques du protocole..."
     },
+    yield: {
+      title: "Mécanisme de Rendement",
+      subtitle: "Appréciation Mathématique Garantie",
+      accumulationTitle: "1. Accumulation (Frais de Stabilité)",
+      accumulationDesc: "Chaque fois qu'un utilisateur achète du GBLIN, le protocole applique des frais institutionnels de 0,1 %. Exactement la moitié de cette somme (0,05 %, STABILITY_FEE_BPS) est accumulée dans une réserve protégée appelée stabilityFund.",
+      mechanismTitle: "2. Le Mécanisme d'Appréciation Garantie",
+      mechanismDesc: "Le protocole n'imprime jamais de jetons à partir de rien. La Valeur Nette d'Inventaire (NAV) du GBLIN est calculée en divisant le total des actifs du coffre-fort par l'offre en circulation. La distribution nécessite deux conditions inviolables : Le temps (au moins 7 jours depuis la dernière distribution) et la Réserve (stabilityFund > 1 ETH).",
+      actionTitle: "3. L'Action Clé (Réévaluation Mathématique)",
+      actionDesc: "Si les deux conditions sont remplies, l'excès d'ETH dans le fonds est libéré et absorbé dans la NAV du contrat. En ajoutant une garantie réelle (ETH) sans frapper de nouveaux GBLIN, le prix mathématique et intrinsèque de chaque GBLIN existant augmente automatiquement.",
+      automationTitle: "4. Automatisation et Efficacité (Sans Gas)",
+      automationDesc: "Les utilisateurs n'ont pas besoin de 'réclamer' quoi que ce soit ou de payer du gas. La fonction _autoDistributeYield() est intégrée au cœur du protocole et se déclenche silencieusement et automatiquement à chaque opération d'achat ou de vente. Le protocole se met à jour de lui-même, garantissant une appréciation sans friction."
+    },
     core: {
       title: "GBLIN CORE",
       subtitle: "L'Invariant Universel pour les Humains et l'IA",
@@ -1507,6 +1579,18 @@ export const translations = {
       success: "Arbitrage erfolgreich ausgeführt!",
       connected: "Wallet verbunden",
       loading: "Protokollstatistiken werden geladen..."
+    },
+    yield: {
+      title: "Renditemechanismus",
+      subtitle: "Garantierte mathematische Wertsteigerung",
+      accumulationTitle: "1. Akkumulation (Stabilitätsgebühr)",
+      accumulationDesc: "Jedes Mal, wenn ein Benutzer GBLIN kauft, wendet das Protokoll eine institutionelle Gebühr von 0,1 % an. Genau die Hälfte davon (0,05 %, STABILITY_FEE_BPS) wird in einer geschützten Reserve namens stabilityFund angesammelt.",
+      mechanismTitle: "2. Der garantierte Wertsteigerungsmechanismus",
+      mechanismDesc: "Das Protokoll druckt niemals Token aus dem Nichts. Der Nettoinventarwert (NAV) von GBLIN wird berechnet, indem die gesamten Tresorwerte durch das zirkulierende Angebot geteilt werden. Die Verteilung erfordert zwei unantastbare Bedingungen: Zeit (mindestens 7 Tage seit der letzten Verteilung) und Reserve (stabilityFund > 1 ETH).",
+      actionTitle: "3. Die Schlüsselaktion (Mathematische Aufwertung)",
+      actionDesc: "Wenn beide Bedingungen erfüllt sind, wird überschüssige ETH im Fonds freigegeben und in den NAV des Vertrags absorbiert. Durch das Hinzufügen echter Sicherheiten (ETH) ohne das Prägen neuer GBLIN steigt der mathematische und intrinsische Preis jedes existierenden GBLIN automatisch.",
+      automationTitle: "4. Automatisierung & Effizienz (Gas-Free)",
+      automationDesc: "Benutzer müssen nichts 'beanspruchen' oder Gas bezahlen. Die Funktion _autoDistributeYield() ist in den Kern des Protokolls integriert und wird bei jedem Kauf- oder Verkaufsvorgang stillschweigend und automatisch ausgelöst. Das Protokoll aktualisiert sich selbst und gewährleistet eine reibungslose Wertsteigerung."
     },
     core: {
       title: "GBLIN CORE",
