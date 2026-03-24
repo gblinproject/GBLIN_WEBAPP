@@ -210,6 +210,7 @@ export class App implements OnInit, OnDestroy {
 
   async fetchData() {
     this.isRefreshing.set(true);
+    this.isLoadingStats.set(true);
     try {
       const [totalSupply, stabFund] = await Promise.all([
         this.contract['totalSupply']().catch(() => 0n),
@@ -285,20 +286,32 @@ export class App implements OnInit, OnDestroy {
         tvlUsd: tvlUsd,
         fundEth: parseFloat(this.stabilityFund()) || 0,
         weights: [
-          { symbol: 'WETH', actual: wethWeight, dynamic: 50, base: 50 },
-          { symbol: 'cbBTC', actual: cbbtcWeight, dynamic: 30, base: 30 },
-          { symbol: 'USDC', actual: usdcWeight, dynamic: 20, base: 20 }
+          { symbol: 'WETH', actual: wethWeight, dynamic: 45, base: 45 },
+          { symbol: 'cbBTC', actual: cbbtcWeight, dynamic: 45, base: 45 },
+          { symbol: 'USDC', actual: usdcWeight, dynamic: 10, base: 10 }
         ],
         recentLogs: recentLogs,
         rebalanceLogs: recentLogs.filter(log => log.type === 'dashboard.txTypes.rebalance')
       });
     } catch (e) {
       console.error("Error fetching dashboard data", e);
+      // Set default stats on error to avoid infinite loading
+      this.stats.set({
+        tvlUsd: 0,
+        fundEth: 0,
+        weights: [
+          { symbol: 'WETH', actual: 0, dynamic: 45, base: 45 },
+          { symbol: 'cbBTC', actual: 0, dynamic: 45, base: 45 },
+          { symbol: 'USDC', actual: 0, dynamic: 10, base: 10 }
+        ],
+        recentLogs: [],
+        rebalanceLogs: []
+      });
+    } finally {
+      this.isLoadingStats.set(false);
+      this.lastUpdate.set(new Date().toLocaleTimeString(this.language()));
+      this.isRefreshing.set(false);
     }
-
-    this.isLoadingStats.set(false);
-    this.lastUpdate.set(new Date().toLocaleTimeString(this.language()));
-    this.isRefreshing.set(false);
   }
 
   async fetchTransactions() {
