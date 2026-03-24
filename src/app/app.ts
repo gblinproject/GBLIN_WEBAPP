@@ -107,6 +107,8 @@ export class App implements OnInit, OnDestroy {
   mode = signal<'buy' | 'sell'>('buy');
   amount = signal('');
   selectedToken = signal('ETH');
+  redeemOption = signal<'pro-rata' | 'zap-out'>('pro-rata');
+  outputAsset = signal('WETH');
   isTokenModalOpen = signal(false);
   isWalletModalOpen = signal(false);
   isConnecting = signal(false);
@@ -149,6 +151,26 @@ export class App implements OnInit, OnDestroy {
   gblinBalance = signal('0.0000');
 
   tokens = ['ETH', 'USDC', 'cbBTC', 'DEGEN', 'AERO', 'BRETT'];
+
+  updateInputAsset(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedToken.set(target.value);
+    // Trigger quote update if amount is set
+    if (this.amount()) {
+        const e = { target: { value: this.amount() } } as unknown as Event;
+        this.updateAmount(e);
+    }
+  }
+
+  updateOutputAsset(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.outputAsset.set(target.value);
+    // Trigger quote update if amount is set
+    if (this.amount()) {
+        const e = { target: { value: this.amount() } } as unknown as Event;
+        this.updateAmount(e);
+    }
+  }
 
   // Rebalance Action State
   stats = signal<{

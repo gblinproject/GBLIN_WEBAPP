@@ -188,7 +188,7 @@
                 [class.hover:text-zinc-300]="mode() !== 'buy'"
                 [class.hover:bg-white/5]="mode() !== 'buy'"
               >
-                {{ t()('trade.buyBtn') }}
+                Mint (Zap-In)
               </button>
               <button 
                 (click)="setMode('sell')"
@@ -201,89 +201,97 @@
                 [class.hover:text-zinc-300]="mode() !== 'sell'"
                 [class.hover:bg-white/5]="mode() !== 'sell'"
               >
-                {{ t()('trade.sellBtn') }}
+                Redeem (Zap-Out)
               </button>
             </div>
 
             <div class="p-6 space-y-6 relative z-10">
-              <!-- Input Section -->
-              <div class="space-y-2">
-                <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
-                  <span>{{ t()('trade.pay') }}</span>
-                  @if (userAccount()) {
-                    <button 
-                      (click)="setMaxAmount()"
-                      class="hover:text-amber-500 transition-colors flex items-center gap-1"
+              <!-- Mint Section -->
+              @if (mode() === 'buy') {
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                      <span>Input Asset</span>
+                    </div>
+                    <select 
+                      (change)="updateInputAsset($event)"
+                      class="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-amber-500/50 transition-all"
                     >
-                      <span class="opacity-50">{{ t()('trade.balance') }}:</span>
-                      <span>{{ mode() === 'buy' ? ethBalance() : gblinBalance() }} {{ mode() === 'buy' ? selectedToken() : 'GBLIN' }}</span>
-                      <span class="text-[9px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-amber-500">MAX</span>
-                    </button>
-                  }
+                      @for (token of tokens; track token) {
+                        <option [value]="token">{{ token }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                      <span>Amount</span>
+                    </div>
+                    <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all">
+                      <input 
+                        type="number"
+                        [value]="amount()"
+                        (input)="updateAmount($event)"
+                        placeholder="0.0"
+                        class="bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700"
+                      />
+                    </div>
+                  </div>
+                  <p class="text-[10px] text-zinc-500 italic">Il protocollo converte automaticamente qualsiasi token ERC20 nel paniere di riserva tramite Uniswap V3.</p>
                 </div>
-                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all relative">
-                  <input 
-                    type="number"
-                    [value]="amount()"
-                    (input)="updateAmount($event)"
-                    placeholder="0.0"
-                    class="bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700"
-                  />
-                  
-                  @if (mode() === 'buy') {
-                    <div class="relative shrink-0">
-                      <button 
-                        (click)="openTokenModal()"
-                        class="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl border border-white/10 transition-colors"
+              } @else {
+                <!-- Redeem Section -->
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10 cursor-pointer" 
+                         (click)="redeemOption.set('pro-rata')" 
+                         (keydown.enter)="redeemOption.set('pro-rata')"
+                         tabindex="0"
+                         role="radio"
+                         [attr.aria-checked]="redeemOption() === 'pro-rata'">
+                      <input type="radio" name="redeem" [checked]="redeemOption() === 'pro-rata'" class="accent-amber-500">
+                      <span class="text-sm font-bold">Rimborso Frazionario (Pro-Rata)</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10 cursor-pointer" 
+                         (click)="redeemOption.set('zap-out')" 
+                         (keydown.enter)="redeemOption.set('zap-out')"
+                         tabindex="0"
+                         role="radio"
+                         [attr.aria-checked]="redeemOption() === 'zap-out'">
+                      <input type="radio" name="redeem" [checked]="redeemOption() === 'zap-out'" class="accent-amber-500">
+                      <span class="text-sm font-bold">Uscita Singola (Zap-Out)</span>
+                    </div>
+                  </div>
+                  @if (redeemOption() === 'zap-out') {
+                    <div class="space-y-2">
+                      <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                        <span>Output Asset</span>
+                      </div>
+                      <select 
+                        (change)="updateOutputAsset($event)"
+                        class="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-amber-500/50 transition-all"
                       >
-                        <span class="font-bold text-sm">{{ selectedToken() }}</span>
-                        <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">expand_more</mat-icon>
-                      </button>
-                    </div>
-                  } @else {
-                    <div class="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 shrink-0">
-                      <span class="font-bold text-sm">GBLIN</span>
+                        @for (token of ['WETH', 'cbBTC', 'USDC']; track token) {
+                          <option [value]="token">{{ token }}</option>
+                        }
+                      </select>
                     </div>
                   }
-                </div>
-              </div>
-
-              <div class="flex justify-center -my-3 relative z-20">
-                <div class="w-10 h-10 bg-[#050505] border border-white/10 rounded-full flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/30 transition-colors cursor-pointer">
-                  <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px]">swap_vert</mat-icon>
-                </div>
-              </div>
-
-              <!-- Output Section -->
-              <div class="space-y-2">
-                <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
-                  <span>{{ t()('trade.receive') }}</span>
-                </div>
-                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between opacity-70">
-                  <div class="text-4xl font-serif text-white flex items-center gap-3">
-                    @if (isLoadingQuote()) {
-                      <mat-icon class="animate-spin text-amber-500">autorenew</mat-icon>
-                    } @else {
-                      {{ displayQuote() }}
-                    }
-                  </div>
-                  <div class="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10 shrink-0">
-                    <span class="font-bold text-sm">{{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
-                  </div>
-                </div>
-                @if (hasQuote()) {
-                  <div class="space-y-1 px-3 pt-2">
-                    <div class="flex justify-between text-[10px] font-mono text-zinc-500">
-                      <span>{{ t()('trade.feesEst') }}</span>
-                      <span class="text-white/80">{{ feeDisplay() }} {{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
+                  <div class="space-y-2">
+                    <div class="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
+                      <span>Amount GBLIN</span>
                     </div>
-                    <div class="flex justify-between text-[10px] font-mono text-zinc-500">
-                      <span>{{ t()('trade.minReceived') }} {{ slippage() }}%):</span>
-                      <span class="text-white/80">{{ minOutDisplay() }} {{ mode() === 'buy' ? 'GBLIN' : 'ETH' }}</span>
+                    <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 flex items-center justify-between focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/50 transition-all">
+                      <input 
+                        type="number"
+                        [value]="amount()"
+                        (input)="updateAmount($event)"
+                        placeholder="0.0"
+                        class="bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700"
+                      />
                     </div>
                   </div>
-                }
-              </div>
+                </div>
+              }
 
               <!-- Slippage Settings -->
               <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-2 pt-2 border-t border-white/5">
@@ -535,19 +543,27 @@
           </div>
         </div>
         <div class="flex-1 w-full max-w-lg">
-          <div class="relative aspect-square rounded-3xl overflow-hidden border border-white/10 group">
-            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <img 
-              src="https://picsum.photos/seed/cyber-core/800/800" 
-              alt="GBLIN Core Visualization" 
-              class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
-              referrerpolicy="no-referrer"
-            />
-            <div class="absolute bottom-8 left-8 z-20">
-              <div class="px-4 py-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl">
-                <p class="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-1">{{ t()('core.status') }}</p>
-                <p class="text-sm font-bold text-white">{{ t()('core.coreOperational') }}</p>
-              </div>
+          <div class="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 space-y-6">
+            <h3 class="text-2xl font-serif italic text-white">Crash Shield & Vault Radar</h3>
+            <div class="space-y-4">
+              @for (w of stats()?.weights; track w.symbol) {
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="font-bold text-white">{{ w.symbol }}</span>
+                    <span class="font-mono text-xs text-zinc-500">{{ w.actual.toFixed(1) }}% / {{ w.base.toFixed(1) }}%</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="h-2 flex-1 bg-[#111] rounded-full overflow-hidden flex">
+                      <div class="h-full bg-amber-500 transition-all duration-1000" [style.width.%]="w.actual"></div>
+                    </div>
+                    <div class="px-2 py-1 rounded text-[10px] font-bold uppercase"
+                         [class.bg-emerald-500/10]="w.actual >= w.base" [class.text-emerald-500]="w.actual >= w.base"
+                         [class.bg-red-500/10]="w.actual < w.base" [class.text-red-400]="w.actual < w.base">
+                      {{ w.actual >= w.base ? 'INATTIVO / SAFE' : 'ATTIVO / ASSET AMPUTATO' }}
+                    </div>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -726,22 +742,30 @@
     <div class="max-w-7xl mx-auto">
       <div class="flex flex-col md:flex-row gap-12 items-center">
         <div class="flex-1 space-y-6">
-          <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{{ t()('mev.title') }}</span>
+          <span class="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">Terminale Arbitraggi (MEV)</span>
           <h2 class="font-serif text-4xl md:text-5xl tracking-tight">
-            {{ t()('mev.callTitle').split('.').slice(0, 1).join('.') + '.' }} <br />
-            <span class="italic text-amber-500">{{ t()('mev.callTitle').split('.').slice(1).join('.') }}</span>
+            Stability Fund <br />
+            <span class="italic text-amber-500">Bounty</span>
           </h2>
           <p class="text-white/60 leading-relaxed">
-            {{ t()('mev.desc') }}
+            Chiama la funzione incentivizedRebalance() dello Smart Contract. Se il paniere devia dai pesi algoritmici, ripristina l'ancoraggio e il protocollo trasferirà automaticamente il Bounty in ETH al tuo wallet.
           </p>
           <div class="flex items-center gap-4 pt-4">
-            <a 
-              href="https://basescan.org/address/{{ contractAddress }}#writeContract"
-              target="_blank"
-              class="px-6 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-colors flex items-center gap-2"
+            <button 
+              (click)="handleArbitrage()"
+              (keydown.enter)="handleArbitrage()"
+              tabindex="0"
+              [disabled]="isArbitraging()"
+              class="px-8 py-4 bg-amber-500 text-black font-bold rounded-2xl hover:bg-amber-400 transition-all flex items-center gap-3 text-lg shadow-[0_0_30px_rgba(245,158,11,0.3)] disabled:opacity-50"
             >
-              {{ t()('mev.interact') }} <mat-icon class="text-[16px] w-[16px] h-[16px] leading-[16px]">open_in_new</mat-icon>
-            </a>
+              @if (isArbitraging()) {
+                <mat-icon class="animate-spin text-[20px] w-[20px] h-[20px] leading-[20px]">autorenew</mat-icon>
+                Esecuzione...
+              } @else {
+                <mat-icon class="text-[20px] w-[20px] h-[20px] leading-[20px]">monetization_on</mat-icon>
+                Esegui Ribilanciamento (Earn ETH)
+              }
+            </button>
           </div>
         </div>
         <div class="flex-1 w-full">
@@ -1129,30 +1153,43 @@
               </tr>
             </thead>
                 <tbody class="text-zinc-300">
-                  @for (log of stats()?.recentLogs; track log.txHash) {
-                    <tr class="border-b border-[#333]/50">
-                      <td class="py-4 font-bold" 
-                          [class.text-green-400]="log.type === 'dashboard.txTypes.buy'" 
-                          [class.text-red-400]="log.type === 'dashboard.txTypes.sell'"
-                          [class.text-blue-400]="log.type === 'dashboard.txTypes.transaction' || log.type === 'dashboard.txTypes.sendEth'"
-                          [class.text-amber-400]="log.type === 'dashboard.txTypes.rebalance'">
-                        {{ t()(log.type) }}
-                      </td>
-                      <td class="py-4 text-zinc-400">{{ log.time }}</td>
-                      <td class="py-4 text-amber-500">
-                        <a [href]="'https://basescan.org/tx/' + log.txHash" target="_blank" class="hover:underline">
-                          {{ log.txHash.slice(0, 6) + '...' + log.txHash.slice(-4) }}
-                        </a>
-                      </td>
-                      <td class="py-4">{{ log.executor.slice(0, 6) + '...' + log.executor.slice(-4) }}</td>
-                      <td class="py-4 text-zinc-500">{{ log.address ? (log.address.slice(0, 6) + '...' + log.address.slice(-4)) : '---' }}</td>
-                      <td class="py-4 text-right font-bold">{{ (+log.amount).toFixed(8) }}</td>
-                    </tr>
-                  }
-                  @if (!stats()?.recentLogs?.length) {
-                    <tr>
-                      <td colspan="6" class="py-4 text-center text-zinc-500">{{ t()('dashboard.noTx') }}</td>
-                    </tr>
+                  @if (!stats()) {
+                    @for (i of [1,2,3,4,5]; track i) {
+                      <tr class="border-b border-[#333]/50 animate-pulse">
+                        <td class="py-6"><div class="h-4 bg-zinc-800 rounded w-16"></div></td>
+                        <td class="py-6"><div class="h-4 bg-zinc-800 rounded w-24"></div></td>
+                        <td class="py-6"><div class="h-4 bg-zinc-800 rounded w-32"></div></td>
+                        <td class="py-6"><div class="h-4 bg-zinc-800 rounded w-24"></div></td>
+                        <td class="py-6"><div class="h-4 bg-zinc-800 rounded w-24"></div></td>
+                        <td class="py-6 text-right"><div class="h-4 bg-zinc-800 rounded w-16 ml-auto"></div></td>
+                      </tr>
+                    }
+                  } @else {
+                    @for (log of stats()?.recentLogs; track log.txHash) {
+                      <tr class="border-b border-[#333]/50">
+                        <td class="py-4 font-bold" 
+                            [class.text-green-400]="log.type === 'dashboard.txTypes.buy'" 
+                            [class.text-red-400]="log.type === 'dashboard.txTypes.sell'"
+                            [class.text-blue-400]="log.type === 'dashboard.txTypes.transaction' || log.type === 'dashboard.txTypes.sendEth'"
+                            [class.text-amber-400]="log.type === 'dashboard.txTypes.rebalance'">
+                          {{ t()(log.type) }}
+                        </td>
+                        <td class="py-4 text-zinc-400">{{ log.time }}</td>
+                        <td class="py-4 text-amber-500">
+                          <a [href]="'https://basescan.org/tx/' + log.txHash" target="_blank" class="hover:underline">
+                            {{ log.txHash.slice(0, 6) + '...' + log.txHash.slice(-4) }}
+                          </a>
+                        </td>
+                        <td class="py-4">{{ log.executor.slice(0, 6) + '...' + log.executor.slice(-4) }}</td>
+                        <td class="py-4 text-zinc-500">{{ log.address ? (log.address.slice(0, 6) + '...' + log.address.slice(-4)) : '---' }}</td>
+                        <td class="py-4 text-right font-bold">{{ (+log.amount).toFixed(8) }}</td>
+                      </tr>
+                    }
+                    @if (!stats()?.recentLogs?.length) {
+                      <tr>
+                        <td colspan="6" class="py-4 text-center text-zinc-500">{{ t()('dashboard.noTx') }}</td>
+                      </tr>
+                    }
                   }
                 </tbody>
           </table>
