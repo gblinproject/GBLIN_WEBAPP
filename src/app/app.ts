@@ -155,7 +155,8 @@ export class App implements OnInit, OnDestroy {
     tvlUsd: number;
     fundEth: number;
     weights: { symbol: string; actual: number; dynamic: number; base: number }[];
-    recentLogs: { txHash: string; executor: string; tokenIn: string; tokenOut: string; amount: string; time: string; type: string }[];
+    recentLogs: { txHash: string; executor: string; address: string | null; amount: string; time: string; type: string }[];
+    rebalanceLogs: { txHash: string; executor: string; address: string | null; amount: string; time: string; type: string }[];
   } | null>(null);
   isLoadingStats = signal(true);
   isArbitraging = signal(false);
@@ -210,18 +211,64 @@ export class App implements OnInit, OnDestroy {
         this.gblinBalance.set('0.00000000');
       }
 
+      // Fetch real balances of the contract
+      const erc20Abi = ["function balanceOf(address) view returns (uint256)"];
+      const [wethBal, cbbtcBal, usdcBal] = await Promise.all([
+        new ethers.Contract('0x4200000000000000000000000000000000000006', erc20Abi, this.provider)['balanceOf'](this.contractAddress).catch(() => 0n),
+        new ethers.Contract('0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', erc20Abi, this.provider)['balanceOf'](this.contractAddress).catch(() => 0n),
+        new ethers.Contract('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', erc20Abi, this.provider)['balanceOf'](this.contractAddress).catch(() => 0n)
+      ]);
+
+      const wethNum = parseFloat(ethers.formatUnits(wethBal, 18));
+      const cbbtcNum = parseFloat(ethers.formatUnits(cbbtcBal, 8));
+      const usdcNum = parseFloat(ethers.formatUnits(usdcBal, 6));
+
+      let wethPrice = 3500;
+      let btcPrice = 70000;
+      try {
+        const res = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=ETH');
+        const data = await res.json();
+        if (data && data.data && data.data.rates && data.data.rates.USD) {
+          wethPrice = parseFloat(data.data.rates.USD);
+        }
+        const resBtc = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=BTC');
+        const dataBtc = await resBtc.json();
+        if (dataBtc && dataBtc.data && dataBtc.data.rates && dataBtc.data.rates.USD) {
+          btcPrice = parseFloat(dataBtc.data.rates.USD);
+        }
+      } catch (e) {
+        console.error("Failed to fetch prices", e);
+      }
+
+      const wethUsd = wethNum * wethPrice;
+      const cbbtcUsd = cbbtcNum * btcPrice;
+      const usdcUsd = usdcNum * 1;
+
+      const tvlUsd = wethUsd + cbbtcUsd + usdcUsd;
+
+      let wethWeight = 0;
+      let cbbtcWeight = 0;
+      let usdcWeight = 0;
+
+      if (tvlUsd > 0) {
+        wethWeight = (wethUsd / tvlUsd) * 100;
+        cbbtcWeight = (cbbtcUsd / tvlUsd) * 100;
+        usdcWeight = (usdcUsd / tvlUsd) * 100;
+      }
+
       // Fetch transactions from Blockscout
       const recentLogs = await this.fetchTransactions();
 
       this.stats.set({
-        tvlUsd: 1250000,
-        fundEth: parseFloat(this.stabilityFund()) || 45.2,
+        tvlUsd: tvlUsd,
+        fundEth: parseFloat(this.stabilityFund()) || 0,
         weights: [
-          { symbol: 'WETH', actual: 48.5, dynamic: 50, base: 50 },
-          { symbol: 'cbBTC', actual: 31.2, dynamic: 30, base: 30 },
-          { symbol: 'USDC', actual: 20.3, dynamic: 20, base: 20 }
+          { symbol: 'WETH', actual: wethWeight, dynamic: 50, base: 50 },
+          { symbol: 'cbBTC', actual: cbbtcWeight, dynamic: 30, base: 30 },
+          { symbol: 'USDC', actual: usdcWeight, dynamic: 20, base: 20 }
         ],
-        recentLogs: recentLogs
+        recentLogs: recentLogs,
+        rebalanceLogs: recentLogs.filter(log => log.type === 'dashboard.txTypes.rebalance')
       });
     } catch (e) {
       console.error("Error fetching dashboard data", e);
@@ -244,14 +291,14 @@ export class App implements OnInit, OnDestroy {
           let txTypeKey = 'dashboard.txTypes.transaction';
           
           if (tx.to?.toLowerCase() === this.contractAddress.toLowerCase()) {
-            if (tx.functionName) {
+            if (tx.input && tx.input.startsWith('0xcde3791d')) {
+              txTypeKey = 'dashboard.txTypes.rebalance';
+            } else if (tx.functionName) {
               const fnName = tx.functionName.toLowerCase();
               if (fnName.includes('buy')) {
                 txTypeKey = 'dashboard.txTypes.buy';
               } else if (fnName.includes('sell')) {
                 txTypeKey = 'dashboard.txTypes.sell';
-              } else if (fnName.includes('rebalance') || fnName.includes('sync')) {
-                txTypeKey = 'dashboard.txTypes.rebalance';
               } else {
                 txTypeKey = 'dashboard.txTypes.transaction';
               }
@@ -267,8 +314,13 @@ export class App implements OnInit, OnDestroy {
           return {
             txHash: tx.hash,
             executor: tx.from,
-            tokenIn: '---', // Blockscout txlist doesn't easily show internal swaps without more parsing
-            tokenOut: '---',
+            // If the transaction is TO the contract, the counterparty is the contract itself (or the router).
+            // If the transaction is FROM the contract, the counterparty is the receiver.
+            address: tx.to?.toLowerCase() === this.contractAddress.toLowerCase() 
+              ? this.contractAddress 
+              : (tx.to || '---'),
+            // Note: Blockscout txlist only shows native ETH transfers. 
+            // Token swaps often have 0 ETH value.
             amount: ethers.formatEther(tx.value),
             time: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString(this.language(), {
               year: 'numeric',
@@ -278,7 +330,7 @@ export class App implements OnInit, OnDestroy {
               minute: '2-digit',
               second: '2-digit'
             }),
-            type: this.t()(txTypeKey) as string
+            type: txTypeKey // Keep the key to use in HTML for color logic
           };
         });
       }

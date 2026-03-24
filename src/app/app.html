@@ -14,6 +14,7 @@
         <span class="font-serif text-3xl tracking-tighter font-bold bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text text-transparent">GBLIN</span>
       </div>
       <div class="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase opacity-60">
+        <a href="#" class="hover:opacity-100 transition-opacity">HOME</a>
         <a href="#concept" class="hover:opacity-100 transition-opacity">{{ t()('nav.manifesto') }}</a>
         <a href="#core" class="hover:opacity-100 transition-opacity">{{ t()('nav.core') }}</a>
         <a href="#agents" class="hover:opacity-100 transition-opacity">{{ t()('nav.agents') }}</a>
@@ -591,10 +592,10 @@
             </div>
           </div>
           <div class="mt-auto p-6 bg-[#0a0a0a] border-t border-white/5">
-            <button class="w-full py-4 bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-3">
+            <a href="https://github.com/gblinproject/GBLIN_WEBAPP" target="_blank" rel="noopener noreferrer" class="w-full py-4 bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-3">
               <mat-icon class="text-[18px] w-[18px] h-[18px] leading-[18px]">download</mat-icon>
               {{ t()('core.cta') }}
-            </button>
+            </a>
           </div>
         </div>
 
@@ -783,7 +784,7 @@
               </div>
               <div>
                 <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest">{{ t()('rebalance.fund') }}</p>
-                <p class="text-2xl font-serif text-white">{{ stats()?.fundEth?.toFixed(2) }} ETH</p>
+                <p class="text-2xl font-serif text-white">{{ stats()?.fundEth?.toFixed(8) }} ETH</p>
               </div>
             </div>
 
@@ -793,7 +794,7 @@
               </div>
               <div>
                 <p class="text-xs text-zinc-500 font-mono uppercase tracking-widest">{{ t()('rebalance.rebalances') }}</p>
-                <p class="text-2xl font-serif text-white">{{ stats()?.recentLogs?.length || 0 }}</p>
+                <p class="text-2xl font-serif text-white">{{ stats()?.rebalanceLogs?.length || 0 }}</p>
               </div>
             </div>
           </div>
@@ -810,7 +811,6 @@
                     <div class="flex justify-between text-sm">
                       <span class="font-bold text-white">{{ w.symbol }}</span>
                       <div class="flex gap-4 font-mono text-xs">
-                        <span class="text-amber-500" [title]="t()('rebalance.dynamic')">{{ w.dynamic }}%</span>
                         <span class="text-zinc-500" [title]="t()('rebalance.actual')">{{ w.actual.toFixed(1) }}%</span>
                       </div>
                     </div>
@@ -828,14 +828,14 @@
                 {{ t()('rebalance.recentLogs') }}
               </h3>
               <div class="space-y-4 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                @for (log of stats()?.recentLogs; track log.txHash) {
+                @for (log of stats()?.rebalanceLogs; track log.txHash) {
                   <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
                     <div class="flex items-center gap-3">
                       <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
                         <mat-icon class="text-amber-500 text-[14px] w-[14px] h-[14px] leading-[14px]">swap_horiz</mat-icon>
                       </div>
                       <div>
-                        <p class="text-xs font-bold text-white">{{ log.tokenIn }} → {{ log.tokenOut }}</p>
+                        <p class="text-xs font-bold text-white">{{ log.address ? (log.address.slice(0, 6) + '...' + log.address.slice(-4)) : '---' }}</p>
                         <p class="text-[10px] font-mono text-zinc-500">{{ log.executor.slice(0,6) + '...' + log.executor.slice(-4) }}</p>
                       </div>
                     </div>
@@ -844,7 +844,7 @@
                     </a>
                   </div>
                 }
-                @if (!stats()?.recentLogs?.length) {
+                @if (!stats()?.rebalanceLogs?.length) {
                   <p class="text-sm text-zinc-500 text-center py-4">{{ t()('rebalance.noLogs') }}</p>
                 }
               </div>
@@ -1120,11 +1120,11 @@
           <table class="w-full text-left text-xs font-mono">
             <thead class="text-zinc-500 border-b border-[#333]">
               <tr>
-                <th class="pb-4">{{ t()('dashboard.type') | uppercase }}</th>
+                <th class="pb-4">TIPO</th>
                 <th class="pb-4">{{ t()('dashboard.time') | uppercase }}</th>
                 <th class="pb-4">{{ t()('dashboard.txHash') | uppercase }}</th>
                 <th class="pb-4">{{ t()('dashboard.from') | uppercase }}</th>
-                <th class="pb-4">{{ t()('dashboard.to') | uppercase }}</th>
+                <th class="pb-4">A</th>
                 <th class="pb-4 text-right">{{ t()('dashboard.valueEth') | uppercase }}</th>
               </tr>
             </thead>
@@ -1132,11 +1132,11 @@
                   @for (log of stats()?.recentLogs; track log.txHash) {
                     <tr class="border-b border-[#333]/50">
                       <td class="py-4 font-bold" 
-                          [class.text-green-400]="log.type === t()('dashboard.txTypes.buy')" 
-                          [class.text-red-400]="log.type === t()('dashboard.txTypes.sell')"
-                          [class.text-blue-400]="log.type === t()('dashboard.txTypes.transaction') || log.type === t()('dashboard.txTypes.sendEth')"
-                          [class.text-amber-400]="log.type === t()('dashboard.txTypes.rebalance')">
-                        {{ log.type }}
+                          [class.text-green-400]="log.type === 'dashboard.txTypes.buy'" 
+                          [class.text-red-400]="log.type === 'dashboard.txTypes.sell'"
+                          [class.text-blue-400]="log.type === 'dashboard.txTypes.transaction' || log.type === 'dashboard.txTypes.sendEth'"
+                          [class.text-amber-400]="log.type === 'dashboard.txTypes.rebalance'">
+                        {{ t()(log.type) }}
                       </td>
                       <td class="py-4 text-zinc-400">{{ log.time }}</td>
                       <td class="py-4 text-amber-500">
@@ -1145,8 +1145,8 @@
                         </a>
                       </td>
                       <td class="py-4">{{ log.executor.slice(0, 6) + '...' + log.executor.slice(-4) }}</td>
-                      <td class="py-4 text-zinc-500">{{ log.tokenOut }}</td>
-                      <td class="py-4 text-right font-bold">{{ log.amount }}</td>
+                      <td class="py-4 text-zinc-500">{{ log.address ? (log.address.slice(0, 6) + '...' + log.address.slice(-4)) : '---' }}</td>
+                      <td class="py-4 text-right font-bold">{{ (+log.amount).toFixed(8) }}</td>
                     </tr>
                   }
                   @if (!stats()?.recentLogs?.length) {
