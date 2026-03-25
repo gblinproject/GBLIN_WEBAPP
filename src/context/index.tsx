@@ -15,7 +15,7 @@ const projectId = '9629f33d439505415769d9d29d7b788e';
 const metadata = {
   name: 'GBLIN Protocol',
   description: 'The Golden Vault',
-  url: 'https://gblin.vercel.app',
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://gblin.vercel.app',
   icons: ['https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png']
 };
 
