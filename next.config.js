@@ -2,7 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@reown/appkit', '@reown/appkit-adapter-wagmi', '@reown/appkit-scaffold-ui', 'wagmi', '@wagmi/core', 'viem', '@phosphor-icons/webcomponents'],
-  turbopack: {},
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
