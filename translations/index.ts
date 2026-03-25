@@ -7,7 +7,8 @@ export const translations = {
       dashboard: "Dashboard",
       manifesto: "Manifesto",
       whitepaper: "Whitepaper",
-      community: "Community"
+      community: "Community",
+      connect: "Connect Wallet"
     },
     hero: {
       title: "THE GOLDEN VAULT",
@@ -175,7 +176,8 @@ export const translations = {
       dashboard: "Dashboard",
       manifesto: "Manifesto",
       whitepaper: "Whitepaper",
-      community: "Community"
+      community: "Community",
+      connect: "Connetti Wallet"
     },
     hero: {
       title: "IL CAVEAU D'ORO",
@@ -275,7 +277,7 @@ export const translations = {
       callTitle: "Chiama la Funzione. Fatti Pagare.",
       desc: "GBLIN si affida ad attori decentralizzati per mantenere il suo ancoraggio e bilanciare il suo tesoro. Il protocollo presenta una funzione di ricalibrazione pubblica che chiunque può chiamare. Quando il paniere devia dai suoi pesi dinamici, i bot e gli arbitraggisti sono incentivati finanziariamente a innescare il ribilanciamento, guadagnando un pagamento diretto per il loro servizio alla rete.",
       interact: "Interagisci su Basescan",
-      codeComment: "// La Banca Centrale Autonome",
+      codeComment: "// La Banca Centrale Autonoma",
       codeBalanced: "Bilanciato",
       codeRebalance: "// Ribilancia WETH, cbBTC, USDC",
       codePay: "// Paga il chiamante per il servizio",
@@ -343,7 +345,8 @@ export const translations = {
       dashboard: "Panel",
       manifesto: "Manifiesto",
       whitepaper: "Libro Blanco",
-      community: "Comunidad"
+      community: "Comunidad",
+      connect: "Conectar Billetera"
     },
     hero: {
       title: "LA BÓVEDA DE ORO",
@@ -491,7 +494,8 @@ export const translations = {
       dashboard: "仪表板",
       manifesto: "宣言",
       whitepaper: "白皮书",
-      community: "社区"
+      community: "社区",
+      connect: "连接钱包"
     },
     hero: {
       title: "黄金金库",
@@ -639,7 +643,8 @@ export const translations = {
       dashboard: "ダッシュボード",
       manifesto: "マニフェスト",
       whitepaper: "ホワイトペーパー",
-      community: "コミュニティ"
+      community: "コミュニティ",
+      connect: "ウォレットを接続"
     },
     hero: {
       title: "黄金の金庫",
@@ -787,7 +792,8 @@ export const translations = {
       dashboard: "Tableau de bord",
       manifesto: "Manifeste",
       whitepaper: "Livre blanc",
-      community: "Communauté"
+      community: "Communauté",
+      connect: "Connecter Wallet"
     },
     hero: {
       title: "LE COFFRE-FORT D'OR",
@@ -935,7 +941,8 @@ export const translations = {
       dashboard: "Dashboard",
       manifesto: "Manifest",
       whitepaper: "Whitepaper",
-      community: "Community"
+      community: "Community",
+      connect: "Wallet verbinden"
     },
     hero: {
       title: "DER GOLDENE TRESOR",
