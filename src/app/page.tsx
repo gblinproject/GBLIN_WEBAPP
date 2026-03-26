@@ -174,27 +174,32 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
         const block = await provider.getBlock(blockNumber, true);
         
         if (block && block.transactions) {
-          for (const tx of block.transactions) {
-            // Check if transaction involves GBLIN contract
-            if (tx.to && tx.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
-              const receipt = await provider.getTransactionReceipt(tx.hash);
-              const isRebalance = receipt && receipt.logs.some(log => 
-                log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-              );
-              
-              transactions.push({
-                type: isRebalance ? 'REBALANCE' : 'BUY',
-                time: formatTimestamp(block.timestamp.toString()),
-                hash: shortenAddress(tx.hash),
-                fullHash: tx.hash,
-                from: shortenAddress(tx.from),
-                to: shortenAddress(tx.to || ''),
-                value: ethers.formatEther(tx.value),
-                isRebalance
-              });
-              
-              // Limit to 20 most recent transactions
-              if (transactions.length >= 20) break;
+          for (const txHash of block.transactions) {
+            try {
+              const tx = await provider.getTransaction(txHash);
+              if (tx && tx.to && tx.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
+                const receipt = await provider.getTransactionReceipt(tx.hash);
+                const isRebalance = receipt && receipt.logs.some(log => 
+                  log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
+                );
+                
+                transactions.push({
+                  type: isRebalance ? 'REBALANCE' : 'BUY',
+                  time: formatTimestamp(block.timestamp.toString()),
+                  hash: shortenAddress(tx.hash),
+                  fullHash: tx.hash,
+                  from: shortenAddress(tx.from),
+                  to: shortenAddress(tx.to || ''),
+                  value: ethers.formatEther(tx.value),
+                  isRebalance
+                });
+                
+                // Limit to 20 most recent transactions
+                if (transactions.length >= 20) break;
+              }
+            } catch (txError) {
+              console.log(`[v0] Error processing transaction ${txHash}:`, txError);
+              continue;
             }
           }
         }
