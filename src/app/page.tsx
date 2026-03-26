@@ -880,7 +880,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="flex-1 w-full max-w-lg">
+            <div className="flex-1 w-full max-w-lg space-y-6">
               <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 space-y-6">
                 <h3 className="text-2xl font-serif italic text-white">Crash Shield & Vault Radar</h3>
                 <div className="space-y-4">
@@ -904,6 +904,50 @@ export default function Home() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+              
+              {/* Stability Fund Bounty */}
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-8 space-y-6">
+                <span className="text-amber-500 text-[10px] font-mono uppercase tracking-[0.3em]">Terminale Arbitraggi (MEV)</span>
+                <h3 className="font-serif text-2xl tracking-tight">
+                  Stability Fund <span className="italic text-amber-500">Bounty</span>
+                </h3>
+                <p className="text-white/60 leading-relaxed text-sm">
+                  Chiama la funzione incentivizedRebalance() dello Smart Contract. Se il paniere devia dai pesi algoritmici, ripristina l&apos;ancoraggio e il protocollo trasferirà automaticamente il Bounty in ETH al tuo wallet.
+                </p>
+                <div className="flex items-center gap-4">
+                  {!isConnected ? (
+                    <button 
+                      onClick={() => open()}
+                      className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-all flex items-center gap-2 text-sm shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    >
+                      <Wallet size={16} />
+                      {t('nav.connect')}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleArbitrage}
+                      disabled={isArbitraging}
+                      className="px-6 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all flex items-center gap-2 text-sm shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50"
+                    >
+                      {isArbitraging ? (
+                        <><RefreshCw size={16} className="animate-spin" /> Esecuzione...</>
+                      ) : (
+                        <><Coins size={16} /> Esegui Ribilanciamento</>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div className="bg-[#0a0a0a] border border-white/10 p-4 rounded-xl font-mono text-xs text-zinc-400">
+                  <div className="text-emerald-500 mb-2">{t('mev.codeComment')}</div>
+                  <div className="space-y-1">
+                    <p><span className="text-blue-400">function</span> <span className="text-yellow-200">incentivizedRebalance</span>() <span className="text-blue-400">external</span> {'{'}</p>
+                    <p className="pl-4">require(needsRebalance(), <span className="text-green-400">&quot;{t('mev.codeBalanced')}&quot;</span>);</p>
+                    <p className="pl-4">_executeSwaps();</p>
+                    <p className="pl-4">_payBounty(msg.sender);</p>
+                    <p>{'}'}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1226,58 +1270,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Rebalancing Section */}
-      <section className="py-20 px-6 bg-amber-500/5 border-t border-amber-500/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-12 items-center">
-            <div className="flex-1 space-y-6">
-              <span className="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">Terminale Arbitraggi (MEV)</span>
-              <h2 className="font-serif text-4xl md:text-5xl tracking-tight">
-                Stability Fund <br />
-                <span className="italic text-amber-500">Bounty</span>
-              </h2>
-              <p className="text-white/60 leading-relaxed">
-                Chiama la funzione incentivizedRebalance() dello Smart Contract. Se il paniere devia dai pesi algoritmici, ripristina l&apos;ancoraggio e il protocollo trasferirà automaticamente il Bounty in ETH al tuo wallet.
-              </p>
-              <div className="flex items-center gap-4 pt-4">
-                {!isConnected ? (
-                  <button 
-                    onClick={() => open()}
-                    className="px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition-all flex items-center gap-3 text-lg shadow-[0_0_30px_rgba(255,255,255,0.1)]"
-                  >
-                    <Wallet size={20} />
-                    {t('nav.connect')}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={handleArbitrage}
-                    disabled={isArbitraging}
-                    className="px-8 py-4 bg-amber-500 text-black font-bold rounded-2xl hover:bg-amber-400 transition-all flex items-center gap-3 text-lg shadow-[0_0_30px_rgba(245,158,11,0.3)] disabled:opacity-50"
-                  >
-                    {isArbitraging ? (
-                      <><RefreshCw size={20} className="animate-spin" /> Esecuzione...</>
-                    ) : (
-                      <><Coins size={20} /> Esegui Ribilanciamento (Earn ETH)</>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex-1 w-full">
-              <div className="bg-[#0a0a0a] border border-[#333] p-8 rounded-2xl relative overflow-hidden font-mono text-sm text-zinc-400">
-                <div className="text-emerald-500 mb-4">{t('mev.codeComment')}</div>
-                <div className="space-y-2">
-                  <p><span className="text-blue-400">function</span> <span className="text-yellow-200">incentivizedRebalance</span>() <span className="text-blue-400">external</span> {'{'}</p>
-                  <p className="pl-4">require(needsRebalance(), <span className="text-green-400">&quot;{t('mev.codeBalanced')}&quot;</span>);</p>
-                  <p className="pl-4">_executeSwaps();</p>
-                  <p className="pl-4">_payBounty(msg.sender);</p>
-                  <p>{'}'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* Footer Section */}
       <footer className="py-12 px-6 bg-[#020202] border-t border-white/10">
