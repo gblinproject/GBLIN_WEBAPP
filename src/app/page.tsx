@@ -10,6 +10,41 @@ import {
   Landmark, Lock, TrendingUp, Network, Brain, Cpu, Download, Coins
 } from 'lucide-react';
 import { useAppKit, useAppKitAccount, useDisconnect } from '@reown/appkit/react';
+import { useQuery } from '@tanstack/react-query';
+
+// Types for API responses
+interface DexScreenerPair {
+  priceUsd: string;
+  volume: { h24: number };
+}
+
+interface BaseScanTransaction {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  timeStamp: string;
+}
+
+interface DashboardData {
+  priceUsd: string;
+  volume24h: number;
+  totalSupply: string;
+  nav: string;
+  discount: number;
+}
+
+// Constants
+const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
+
+// Utility functions
+const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+const formatCurrency = (value: number, decimals = 2) => 
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+const formatTimestamp = (timestamp: string) => {
+  const date = new Date(parseInt(timestamp) * 1000);
+  return date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+};
 
 const RPC_URL = "https://mainnet.base.org";
 const CONTRACT_ADDRESS = "0xc475851f9101A2AC48a84EcF869766A94D301FaA";
@@ -65,18 +100,78 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   'SHIB': '0x45cfe390b83a0552f1469797070107297e632837' // SHIB on Base
 };
 
-const MOCK_TRANSACTIONS = [
-  { type: 'TRANSAZIONE', time: '24/03/2026, 22:08:05', hash: '0x13a2...d094', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '22/03/2026, 16:15:45', hash: '0x3975...8c03', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '21/03/2026, 10:57:43', hash: '0xb094...564a', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '21/03/2026, 10:54:05', hash: '0x0c02...9047', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00120000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '21/03/2026, 00:05:53', hash: '0x40e6...5368', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '21/03/2026, 00:05:37', hash: '0x58c6...f2c9', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'REBALANCE', time: '19/03/2026, 20:52:41', hash: '0xcd56...deca', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: true },
-  { type: 'TRANSAZIONE', time: '19/03/2026, 20:45:29', hash: '0xbd3f...f3fd', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
-  { type: 'TRANSAZIONE', time: '18/03/2026, 14:22:11', hash: '0x1a2b...3c4d', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00500000', isRebalance: false },
-  { type: 'REBALANCE', time: '17/03/2026, 09:11:02', hash: '0x5e6f...7g8h', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: true },
-];
+// API fetch functions
+const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number }> => {
+  const res = await fetch(`https://api.dexscreener.com/latest/dex/pairs/base/${AERODROME_POOL}`);
+  const data = await res.json();
+  const pair = data.pair as DexScreenerPair;
+  return {
+    priceUsd: parseFloat(pair.priceUsd),
+    volume24h: pair.volume.h24
+  };
+};
+
+const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; from: string; to: string; value: string; isRebalance: boolean }>> => {
+  const res = await fetch(`https://api.basescan.org/api?module=account&action=tokentx&contractaddress=0xc475851f9101A2AC48a84EcF869766A94D301FaA&page=1&offset=10&sort=desc`);
+  const data = await res.json();
+  if (data.status !== "1" || !data.result) return [];
+  
+  return data.result.map((tx: BaseScanTransaction) => {
+    const isSwap = tx.from.toLowerCase() === AERODROME_POOL.toLowerCase() || tx.to.toLowerCase() === AERODROME_POOL.toLowerCase();
+    return {
+      type: isSwap ? 'SWAP' : 'TRANSFER',
+      time: formatTimestamp(tx.timeStamp),
+      hash: shortenAddress(tx.hash),
+      fullHash: tx.hash,
+      from: shortenAddress(tx.from),
+      to: shortenAddress(tx.to),
+      value: (parseFloat(tx.value) / 1e18).toFixed(8),
+      isRebalance: isSwap
+    };
+  });
+};
+
+const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; tvl: number; supplyNum: number }> => {
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+  
+  const totalSupply = await contract.totalSupply().catch(() => 0n);
+  const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
+  
+  // Calculate TVL from basket assets
+  let tvl = 0;
+  for (let i = 0; i < 7; i++) {
+    try {
+      const basketItem = await contract.basket(i);
+      const tokenAddress = basketItem[0];
+      const oracleAddress = basketItem[1];
+      
+      const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+      const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
+      
+      const [balance, decimals, latestRound] = await Promise.all([
+        tokenContract.balanceOf(CONTRACT_ADDRESS),
+        tokenContract.decimals(),
+        oracleContract.latestRoundData()
+      ]);
+      
+      const price = Number(latestRound[1]) / 1e8;
+      const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
+      tvl += balanceFormatted * price;
+    } catch {
+      continue;
+    }
+  }
+  
+  const nav = supplyFormatted > 0 ? tvl / supplyFormatted : 0;
+  
+  return {
+    totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+    nav: formatCurrency(nav),
+    tvl,
+    supplyNum: supplyFormatted
+  };
+};
 
 export default function Home() {
   const { open } = useAppKit();
@@ -117,6 +212,36 @@ export default function Home() {
 
   const [stats, setStats] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
+
+  // React Query hooks for dashboard data
+  const { data: marketData, isPending: isMarketLoading } = useQuery({
+    queryKey: ['marketData'],
+    queryFn: fetchMarketData,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  const { data: transactions, isPending: isTransactionsLoading } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  const { data: onChainData, isPending: isOnChainLoading } = useQuery({
+    queryKey: ['onChainData'],
+    queryFn: fetchOnChainData,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  // Calculate discount percentage
+  const discountPercentage = useMemo(() => {
+    if (!marketData?.priceUsd || !onChainData?.nav) return 0;
+    const navNum = parseFloat(onChainData.nav.replace(/[$,]/g, ''));
+    if (navNum === 0) return 0;
+    return ((navNum - marketData.priceUsd) / navNum * 100);
+  }, [marketData, onChainData]);
 
   useEffect(() => {
     setCurrentTime(new Date().toLocaleTimeString('it-IT'));
@@ -1160,31 +1285,47 @@ export default function Home() {
 
             {/* Middle row: Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-8">
-              {/* Stat 1 */}
+              {/* Stat 1 - PREZZO GBLIN POOL */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">PREZZO GBLIN POOL</p>
-                <p className="text-3xl font-serif text-white mb-2">$2,616.25</p>
+                {isMarketLoading ? (
+                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
+                ) : (
+                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.priceUsd || 0)}</p>
+                )}
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
               </div>
               
-              {/* Stat 2 */}
+              {/* Stat 2 - NAV CONTRATTO */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">NAV CONTRATTO GBLIN</p>
-                <p className="text-3xl font-serif text-emerald-400 mb-2">$5,506.01</p>
+                {isOnChainLoading ? (
+                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
+                ) : (
+                  <p className="text-3xl font-serif text-emerald-400 mb-2">{onChainData?.nav || '---'}</p>
+                )}
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GARANZIA ASSET REALI</p>
               </div>
 
-              {/* Stat 3 */}
+              {/* Stat 3 - VOLUME 24H */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">VOLUME 24H</p>
-                <p className="text-3xl font-serif text-white mb-2">$14.85</p>
+                {isMarketLoading ? (
+                  <div className="h-9 w-24 bg-white/5 rounded animate-pulse mb-2"></div>
+                ) : (
+                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.volume24h || 0)}</p>
+                )}
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
               </div>
 
-              {/* Stat 4 */}
+              {/* Stat 4 - OFFERTA TOTALE */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">OFFERTA TOTALE</p>
-                <p className="text-3xl font-serif text-white mb-2">{supply}</p>
+                {isOnChainLoading ? (
+                  <div className="h-9 w-20 bg-white/5 rounded animate-pulse mb-2"></div>
+                ) : (
+                  <p className="text-3xl font-serif text-white mb-2">{onChainData?.totalSupply || '---'}</p>
+                )}
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GBLIN IN CIRCOLAZIONE</p>
               </div>
             </div>
@@ -1202,9 +1343,13 @@ export default function Home() {
               </div>
               <div className="text-right shrink-0 flex flex-col items-end">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">STATO ATTUALE</p>
-                <p className="text-2xl font-bold text-emerald-400">
-                  SOTTOVALUTATO <span className="text-sm font-normal opacity-80">(52.48% Sconto)</span>
-                </p>
+                {isMarketLoading || isOnChainLoading ? (
+                  <div className="h-8 w-48 bg-white/5 rounded animate-pulse"></div>
+                ) : (
+                  <p className={`text-2xl font-bold ${discountPercentage > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {discountPercentage > 0 ? 'SOTTOVALUTATO' : 'SOPRAVVALUTATO'} <span className="text-sm font-normal opacity-80">({Math.abs(discountPercentage).toFixed(2)}% {discountPercentage > 0 ? 'Sconto' : 'Premio'})</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1242,26 +1387,46 @@ export default function Home() {
                       <th className="p-4 md:p-6 font-normal">HASH TX</th>
                       <th className="p-4 md:p-6 font-normal">DA</th>
                       <th className="p-4 md:p-6 font-normal">A</th>
-                      <th className="p-4 md:p-6 font-normal text-right">DASHBOARD.VALUEETH</th>
+                      <th className="p-4 md:p-6 font-normal text-right">VALORE GBLIN</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs font-mono">
-                    {MOCK_TRANSACTIONS.map((tx, idx) => (
-                      <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                        <td className={`p-4 md:p-6 font-bold uppercase tracking-widest ${tx.isRebalance ? 'text-amber-500' : 'text-blue-400'}`}>
-                          {tx.type}
+                    {isTransactionsLoading ? (
+                      // Skeleton loading rows
+                      Array.from({ length: 5 }).map((_, idx) => (
+                        <tr key={idx} className="border-b border-white/5">
+                          <td className="p-4 md:p-6"><div className="h-4 w-16 bg-white/5 rounded animate-pulse"></div></td>
+                          <td className="p-4 md:p-6"><div className="h-4 w-32 bg-white/5 rounded animate-pulse"></div></td>
+                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
+                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
+                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
+                          <td className="p-4 md:p-6 text-right"><div className="h-4 w-20 bg-white/5 rounded animate-pulse ml-auto"></div></td>
+                        </tr>
+                      ))
+                    ) : transactions && transactions.length > 0 ? (
+                      transactions.map((tx: any, idx: number) => (
+                        <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                          <td className={`p-4 md:p-6 font-bold uppercase tracking-widest ${tx.isRebalance ? 'text-amber-500' : 'text-blue-400'}`}>
+                            {tx.type}
+                          </td>
+                          <td className="p-4 md:p-6 text-zinc-400">{tx.time}</td>
+                          <td className="p-4 md:p-6">
+                            <a href={`https://basescan.org/tx/${tx.fullHash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
+                              {tx.hash}
+                            </a>
+                          </td>
+                          <td className="p-4 md:p-6 text-zinc-400">{tx.from}</td>
+                          <td className="p-4 md:p-6 text-zinc-400">{tx.to}</td>
+                          <td className="p-4 md:p-6 text-right text-white font-bold">{tx.value}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-zinc-500 italic">
+                          Nessuna transazione trovata
                         </td>
-                        <td className="p-4 md:p-6 text-zinc-400">{tx.time}</td>
-                        <td className="p-4 md:p-6">
-                          <a href={`https://basescan.org/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
-                            {tx.hash}
-                          </a>
-                        </td>
-                        <td className="p-4 md:p-6 text-zinc-400">{tx.from}</td>
-                        <td className="p-4 md:p-6 text-zinc-400">{tx.to}</td>
-                        <td className="p-4 md:p-6 text-right text-white font-bold">{tx.value}</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
