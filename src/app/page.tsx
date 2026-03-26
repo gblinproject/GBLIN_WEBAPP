@@ -53,7 +53,17 @@ const LANGUAGES = [
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
 ];
 
-const TOKENS = ['ETH', 'USDC', 'cbBTC', 'DEGEN', 'AERO', 'BRETT'];
+const TOKENS = ['ETH', 'USDC', 'cbBTC', 'DEGEN', 'AERO', 'BRETT', 'SHIB'];
+
+const TOKEN_ADDRESSES: Record<string, string> = {
+  'ETH': '0x4200000000000000000000000000000000000006',
+  'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  'cbBTC': '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+  'DEGEN': '0x4ed4e862860bed51a9570b96d89af5e1b0efefed',
+  'AERO': '0x940181a94a35a4563e89545161c888d3d9804b08',
+  'BRETT': '0x532f27101965dd1a44836f731139783f98018e69',
+  'SHIB': '0x45cfe390b83a0552f1469797070107297e632837' // SHIB on Base
+};
 
 const MOCK_TRANSACTIONS = [
   { type: 'TRANSAZIONE', time: '24/03/2026, 22:08:05', hash: '0x13a2...d094', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
@@ -81,6 +91,7 @@ export default function Home() {
   const [supply, setSupply] = useState('---');
   const [stabilityFund, setStabilityFund] = useState('---');
   const [ethBalance, setEthBalance] = useState('0.0000');
+  const [tokenBalance, setTokenBalance] = useState('0.0000');
   const [gblinBalance, setGblinBalance] = useState('0.0000');
 
   // Trade state
@@ -164,9 +175,22 @@ export default function Home() {
         ]);
         setEthBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(8));
         setGblinBalance(parseFloat(ethers.formatEther(gblinBal)).toFixed(8));
+
+        // Fetch selected token balance
+        if (selectedToken === 'ETH') {
+          setTokenBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(8));
+        } else {
+          const tokenContract = new ethers.Contract(TOKEN_ADDRESSES[selectedToken], ERC20_ABI, provider);
+          const [bal, decimals] = await Promise.all([
+            tokenContract.balanceOf(address).catch(() => 0n),
+            tokenContract.decimals().catch(() => 18)
+          ]);
+          setTokenBalance(parseFloat(ethers.formatUnits(bal, decimals)).toFixed(8));
+        }
       } else {
         setEthBalance('0.00000000');
         setGblinBalance('0.00000000');
+        setTokenBalance('0.00000000');
       }
 
       // Fetch basket details
@@ -225,7 +249,7 @@ export default function Home() {
     } catch (e) {
       console.error("Error fetching data", e);
     }
-  }, [address]);
+  }, [address, selectedToken]);
 
   useEffect(() => {
     fetchData();
@@ -559,6 +583,7 @@ export default function Home() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-500 px-1">
                           <span>Input Asset</span>
+                          <span>Balance: {tokenBalance} {selectedToken}</span>
                         </div>
                         <select 
                           value={selectedToken}
