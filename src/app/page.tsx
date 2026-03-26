@@ -34,8 +34,11 @@ interface DashboardData {
   discount: number;
 }
 
-// Constants
+// Constants - MUST be defined before fetch functions
+const RPC_URL = "https://mainnet.base.org";
+const CONTRACT_ADDRESS = "0xc475851f9101A2AC48a84EcF869766A94D301FaA";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
+const BASESCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3";
 
 // Utility functions
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -45,9 +48,6 @@ const formatTimestamp = (timestamp: string) => {
   const date = new Date(parseInt(timestamp) * 1000);
   return date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
-
-const RPC_URL = "https://mainnet.base.org";
-const CONTRACT_ADDRESS = "0xc475851f9101A2AC48a84EcF869766A94D301FaA";
 const GBLIN_ABI = [
   "function totalSupply() view returns (uint256)",
   "function stabilityFund() view returns (uint256)",
@@ -103,24 +103,24 @@ const TOKEN_ADDRESSES: Record<string, string> = {
 // API fetch functions
 const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number }> => {
   try {
-    // Use token address search endpoint instead of pair address
-    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CONTRACT_ADDRESS}`);
+    // Search for GBLIN pairs on Base chain
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=GBLIN`);
     const data = await res.json();
-    console.log("[v0] DexScreener token response:", data);
+    console.log("[v0] DexScreener search response:", data);
     
-    // Find the Aerodrome pair or use the first available pair
+    // Find the Base chain pair (Aerodrome)
     const pairs = data.pairs || [];
-    const aerodromePair = pairs.find((p: any) => p.dexId === 'aerodrome') || pairs[0];
+    const basePair = pairs.find((p: any) => p.chainId === 'base') || pairs[0];
     
-    if (!aerodromePair) {
-      console.log("[v0] No pairs found for token");
+    if (!basePair) {
+      console.log("[v0] No GBLIN pairs found on Base");
       return { priceUsd: 0, volume24h: 0 };
     }
     
-    console.log("[v0] Found pair:", aerodromePair.pairAddress, "price:", aerodromePair.priceUsd);
+    console.log("[v0] Found GBLIN pair:", basePair.pairAddress, "price:", basePair.priceUsd);
     return {
-      priceUsd: parseFloat(aerodromePair.priceUsd) || 0,
-      volume24h: aerodromePair.volume?.h24 || 0
+      priceUsd: parseFloat(basePair.priceUsd) || 0,
+      volume24h: basePair.volume?.h24 || 0
     };
   } catch (error) {
     console.log("[v0] Error fetching market data:", error);
@@ -130,13 +130,16 @@ const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number 
 
 const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; fullHash: string; from: string; to: string; value: string; isRebalance: boolean }>> => {
   try {
-    // Use V2 API endpoint for Base chain (chainid=8453)
-    const res = await fetch(`https://api.etherscan.io/v2/api?chainid=8453&module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=10&sort=desc`);
+    // Use BaseScan V2 API with API key
+    const url = `https://api.basescan.org/api?module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=10&sort=desc&apikey=${BASESCAN_API_KEY}`;
+    console.log("[v0] Fetching transactions from BaseScan...");
+    
+    const res = await fetch(url);
     const data = await res.json();
-    console.log("[v0] BaseScan V2 response:", data);
+    console.log("[v0] BaseScan response:", data);
     
     if (data.status !== "1" || !data.result || !Array.isArray(data.result)) {
-      console.log("[v0] BaseScan returned no results or error:", data.message);
+      console.log("[v0] BaseScan returned no results:", data.message);
       return [];
     }
     
