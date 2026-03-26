@@ -23,7 +23,15 @@ const GBLIN_ABI = [
   "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external",
   "function quoteBuyGBLIN(uint256 ethAmount) view returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)",
   "function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)",
-  "function balanceOf(address account) view returns (uint256)"
+  "function balanceOf(address account) view returns (uint256)",
+  "error SequencerDown()",
+  "error StaleOracle(address oracle)",
+  "error DepositTooSmall()",
+  "error SlippageExceeded()",
+  "error Unauthorized()",
+  "error CooldownActive()",
+  "error RebalanceNotNeeded()",
+  "error OracleDead()"
 ];
 
 const ERC20_ABI = [
@@ -297,6 +305,7 @@ export default function Home() {
       let tx;
       if (mode === 'buy') {
         const parsedAmount = ethers.parseEther(amount);
+        console.log("Buying GBLIN:", { minOut: minOut.toString(), value: parsedAmount.toString() });
         tx = await contract.buyGBLIN(minOut, { value: parsedAmount });
       } else {
         const parsedAmount = ethers.parseEther(amount);
