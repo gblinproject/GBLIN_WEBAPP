@@ -177,7 +177,7 @@ export const translations = {
       manifesto: "Manifesto",
       whitepaper: "Whitepaper",
       community: "Community",
-      connect: "Connetti Wallet"
+      connect: "Connetti Portafoglio"
     },
     hero: {
       title: "IL CAVEAU D'ORO",
