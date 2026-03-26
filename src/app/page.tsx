@@ -164,22 +164,13 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
 
 const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; tvl: number; supplyNum: number }> => {
   try {
-    console.log("[v0] Fetching on-chain data from RPC:", RPC_URL);
-    console.log("[v0] Contract address:", CONTRACT_ADDRESS);
-    
+    console.log("[v0] Fetching on-chain data...");
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
     
-    // Test RPC connection first
-    const blockNumber = await provider.getBlockNumber();
-    console.log("[v0] RPC connected, current block:", blockNumber);
-    
-    const totalSupply = await contract.totalSupply().catch((err: Error) => {
-      console.log("[v0] Error getting totalSupply:", err.message);
-      return 0n;
-    });
+    const totalSupply = await contract.totalSupply().catch(() => 0n);
     const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
-    console.log("[v0] Total supply raw:", totalSupply.toString(), "formatted:", supplyFormatted);
+    console.log("[v0] Total supply:", supplyFormatted);
     
     // Calculate TVL from basket assets
     let tvl = 0;
@@ -188,7 +179,6 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
         const basketItem = await contract.basket(i);
         const tokenAddress = basketItem[0];
         const oracleAddress = basketItem[1];
-        console.log(`[v0] Basket ${i}: token=${tokenAddress}, oracle=${oracleAddress}`);
         
         const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
         const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
@@ -202,9 +192,8 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
         const price = Number(latestRound[1]) / 1e8;
         const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
         tvl += balanceFormatted * price;
-        console.log(`[v0] Basket ${i}: balance=${balanceFormatted}, price=${price}, tvl_so_far=${tvl}`);
-      } catch (err) {
-        console.log(`[v0] Basket ${i} error:`, err);
+        console.log(`[v0] Basket ${i}: balance=${balanceFormatted}, price=${price}`);
+      } catch {
         continue;
       }
     }
