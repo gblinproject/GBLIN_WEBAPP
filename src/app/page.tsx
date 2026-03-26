@@ -102,6 +102,7 @@ export default function Home() {
   const [outputAsset, setOutputAsset] = useState('WETH');
   const [slippage, setSlippage] = useState(1);
   const [quote, setQuote] = useState('0');
+  const [usdValue, setUsdValue] = useState('0.00');
   const [rawQuote, setRawQuote] = useState<bigint>(BigInt(0));
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [isTransacting, setIsTransacting] = useState(false);
@@ -286,6 +287,13 @@ export default function Home() {
         
         setRawQuote(netGblinOut);
         setQuote(ethers.formatEther(netGblinOut));
+
+        // Calculate USD value
+        if (stats && stats.tvlUsd && supply !== '---') {
+            const supplyNum = parseFloat(supply.replace(/,/g, ''));
+            const pricePerGblin = stats.tvlUsd / supplyNum;
+            setUsdValue((Number(val) * pricePerGblin).toFixed(2));
+        }
       } else {
         const parsedAmount = ethers.parseEther(val);
         const ethOut = await contract.quoteSellGBLIN(parsedAmount);
@@ -607,6 +615,7 @@ export default function Home() {
                             placeholder="0.0"
                             className="bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700"
                           />
+                          <span className="text-sm text-zinc-500 font-mono">≈ ${usdValue}</span>
                         </div>
                       </div>
                     </div>
