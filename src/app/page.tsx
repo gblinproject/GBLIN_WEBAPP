@@ -305,8 +305,13 @@ export default function Home() {
       let tx;
       if (mode === 'buy') {
         const parsedAmount = ethers.parseEther(amount);
-        console.log("Buying GBLIN:", { minOut: minOut.toString(), value: parsedAmount.toString() });
-        tx = await contract.buyGBLIN(minOut, { value: parsedAmount });
+        const data = contract.interface.encodeFunctionData("buyGBLIN", [minOut]);
+        console.log("Buying GBLIN:", { minOut: minOut.toString(), value: parsedAmount.toString(), data });
+        tx = await signer.sendTransaction({
+          to: CONTRACT_ADDRESS,
+          data: data,
+          value: parsedAmount
+        });
       } else {
         const parsedAmount = ethers.parseEther(amount);
         tx = await contract.sellGBLINForEth(parsedAmount, minOut);
