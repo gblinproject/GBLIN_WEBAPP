@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ethers } from 'ethers';
 import { translations, Language } from '@/translations';
 import { 
@@ -66,50 +65,18 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   'SHIB': '0x45cfe390b83a0552f1469797070107297e632837' // SHIB on Base
 };
 
-const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
-
-// Helper functions for API fetching
-const fetchDexScreenerData = async () => {
-  const res = await fetch(`https://api.dexscreener.com/latest/dex/pairs/base/${AERODROME_POOL}`);
-  if (!res.ok) throw new Error('DexScreener API error');
-  const data = await res.json();
-  return {
-    priceUsd: data.pair?.priceUsd ? parseFloat(data.pair.priceUsd) : 0,
-    volume24h: data.pair?.volume?.h24 ? parseFloat(data.pair.volume.h24) : 0
-  };
-};
-
-const fetchTransactions = async () => {
-  const res = await fetch(
-    `https://api.basescan.org/api?module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=10&sort=desc`
-  );
-  if (!res.ok) throw new Error('BaseScan API error');
-  const data = await res.json();
-  
-  if (data.status !== '1' || !data.result) return [];
-  
-  return data.result.map((tx: any) => {
-    const timestamp = new Date(parseInt(tx.timeStamp) * 1000);
-    const formattedTime = timestamp.toLocaleString('it-IT');
-    const shortHash = `${tx.hash.slice(0, 6)}...${tx.hash.slice(-4)}`;
-    const shortFrom = `${tx.from.slice(0, 6)}...${tx.from.slice(-4)}`;
-    const shortTo = `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}`;
-    const value = parseFloat(tx.value) / 1e18;
-    const isSwap = tx.from.toLowerCase() === AERODROME_POOL.toLowerCase() || 
-                   tx.to.toLowerCase() === AERODROME_POOL.toLowerCase();
-    
-    return {
-      type: isSwap ? 'SWAP' : 'TRANSFER',
-      time: formattedTime,
-      hash: tx.hash,
-      shortHash,
-      from: shortFrom,
-      to: shortTo,
-      value: value.toFixed(8),
-      isSwap
-    };
-  });
-};
+const MOCK_TRANSACTIONS = [
+  { type: 'TRANSAZIONE', time: '24/03/2026, 22:08:05', hash: '0x13a2...d094', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '22/03/2026, 16:15:45', hash: '0x3975...8c03', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '21/03/2026, 10:57:43', hash: '0xb094...564a', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '21/03/2026, 10:54:05', hash: '0x0c02...9047', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00120000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '21/03/2026, 00:05:53', hash: '0x40e6...5368', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '21/03/2026, 00:05:37', hash: '0x58c6...f2c9', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'REBALANCE', time: '19/03/2026, 20:52:41', hash: '0xcd56...deca', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: true },
+  { type: 'TRANSAZIONE', time: '19/03/2026, 20:45:29', hash: '0xbd3f...f3fd', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: false },
+  { type: 'TRANSAZIONE', time: '18/03/2026, 14:22:11', hash: '0x1a2b...3c4d', from: '0x9ffa...a9ee', to: '0xc475...1FaA', value: '0.00500000', isRebalance: false },
+  { type: 'REBALANCE', time: '17/03/2026, 09:11:02', hash: '0x5e6f...7g8h', from: '0x14d4...83a1', to: '0xc475...1FaA', value: '0.00000000', isRebalance: true },
+];
 
 export default function Home() {
   const { open } = useAppKit();
@@ -150,29 +117,6 @@ export default function Home() {
 
   const [stats, setStats] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
-
-  // React Query hooks for real-time data
-  const { data: marketData, isLoading: isLoadingMarket } = useQuery({
-    queryKey: ['dexscreener'],
-    queryFn: fetchDexScreenerData,
-    refetchInterval: 60000,
-    staleTime: 30000,
-  });
-
-  const { data: transactions, isLoading: isLoadingTx } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: fetchTransactions,
-    refetchInterval: 60000,
-    staleTime: 30000,
-  });
-
-  // Calculate NAV (TVL / Total Supply)
-  const navPerToken = useMemo(() => {
-    if (!stats?.tvlUsd || supply === '---') return null;
-    const supplyNum = parseFloat(supply.replace(/,/g, ''));
-    if (supplyNum === 0) return null;
-    return stats.tvlUsd / supplyNum;
-  }, [stats?.tvlUsd, supply]);
 
   useEffect(() => {
     setCurrentTime(new Date().toLocaleTimeString('it-IT'));
@@ -1216,89 +1160,53 @@ export default function Home() {
 
             {/* Middle row: Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-8">
-              {/* Stat 1 - Prezzo Pool */}
+              {/* Stat 1 */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">PREZZO GBLIN POOL</p>
-                {isLoadingMarket ? (
-                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">
-                    ${marketData?.priceUsd?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '---'}
-                  </p>
-                )}
+                <p className="text-3xl font-serif text-white mb-2">$2,616.25</p>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
               </div>
               
-              {/* Stat 2 - NAV */}
+              {/* Stat 2 */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">NAV CONTRATTO GBLIN</p>
-                {!navPerToken ? (
-                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-emerald-400 mb-2">
-                    ${navPerToken.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                )}
+                <p className="text-3xl font-serif text-emerald-400 mb-2">$5,506.01</p>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GARANZIA ASSET REALI</p>
               </div>
 
-              {/* Stat 3 - Volume 24H */}
+              {/* Stat 3 */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">VOLUME 24H</p>
-                {isLoadingMarket ? (
-                  <div className="h-9 w-24 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">
-                    ${marketData?.volume24h?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '---'}
-                  </p>
-                )}
+                <p className="text-3xl font-serif text-white mb-2">$14.85</p>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
               </div>
 
-              {/* Stat 4 - Total Supply */}
+              {/* Stat 4 */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">OFFERTA TOTALE</p>
-                {supply === '---' ? (
-                  <div className="h-9 w-20 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">{supply}</p>
-                )}
+                <p className="text-3xl font-serif text-white mb-2">{supply}</p>
                 <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GBLIN IN CIRCOLAZIONE</p>
               </div>
             </div>
 
             {/* Bottom row: Arbitrage Banner */}
-            {(() => {
-              const pricePool = marketData?.priceUsd || 0;
-              const nav = navPerToken || 0;
-              const discount = nav > 0 && pricePool > 0 ? ((nav - pricePool) / nav) * 100 : 0;
-              const isUndervalued = discount > 0;
-              const isLoading = isLoadingMarket || !navPerToken;
-              
-              return (
-                <div className="bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp size={16} className="text-amber-500" />
-                      <h4 className="text-amber-500 font-bold uppercase tracking-widest text-sm">OPPORTUNITA DI ARBITRAGGIO</h4>
-                    </div>
-                    <p className="text-sm text-white/60 leading-relaxed">
-                      Quando il Valore Intrinseco (NAV) e superiore al Prezzo di Mercato, il token e tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 flex flex-col items-end">
-                    <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">STATO ATTUALE</p>
-                    {isLoading ? (
-                      <div className="h-8 w-48 bg-white/5 rounded animate-pulse"></div>
-                    ) : (
-                      <p className={`text-2xl font-bold ${isUndervalued ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isUndervalued ? 'SOTTOVALUTATO' : 'SOPRAVVALUTATO'} <span className="text-sm font-normal opacity-80">({Math.abs(discount).toFixed(2)}% {isUndervalued ? 'Sconto' : 'Premio'})</span>
-                      </p>
-                    )}
-                  </div>
+            <div className="bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp size={16} className="text-amber-500" />
+                  <h4 className="text-amber-500 font-bold uppercase tracking-widest text-sm">OPPORTUNITÀ DI ARBITRAGGIO</h4>
                 </div>
-              );
-            })()}
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
+                </p>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end">
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">STATO ATTUALE</p>
+                <p className="text-2xl font-bold text-emerald-400">
+                  SOTTOVALUTATO <span className="text-sm font-normal opacity-80">(52.48% Sconto)</span>
+                </p>
+              </div>
+            </div>
 
             {/* Telemetry Section */}
             <div className="bg-[#050505] border border-white/10 rounded-2xl overflow-hidden">
@@ -1334,46 +1242,26 @@ export default function Home() {
                       <th className="p-4 md:p-6 font-normal">HASH TX</th>
                       <th className="p-4 md:p-6 font-normal">DA</th>
                       <th className="p-4 md:p-6 font-normal">A</th>
-                      <th className="p-4 md:p-6 font-normal text-right">VALORE (GBLIN)</th>
+                      <th className="p-4 md:p-6 font-normal text-right">DASHBOARD.VALUEETH</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs font-mono">
-                    {isLoadingTx ? (
-                      // Skeleton loading rows
-                      Array.from({ length: 5 }).map((_, idx) => (
-                        <tr key={idx} className="border-b border-white/5">
-                          <td className="p-4 md:p-6"><div className="h-4 w-16 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-32 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6 text-right"><div className="h-4 w-20 bg-white/5 rounded animate-pulse ml-auto"></div></td>
-                        </tr>
-                      ))
-                    ) : transactions && transactions.length > 0 ? (
-                      transactions.map((tx: any, idx: number) => (
-                        <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className={`p-4 md:p-6 font-bold uppercase tracking-widest ${tx.isSwap ? 'text-amber-500' : 'text-blue-400'}`}>
-                            {tx.type}
-                          </td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.time}</td>
-                          <td className="p-4 md:p-6">
-                            <a href={`https://basescan.org/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
-                              {tx.shortHash}
-                            </a>
-                          </td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.from}</td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.to}</td>
-                          <td className="p-4 md:p-6 text-right text-white font-bold">{tx.value}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-zinc-500 italic">
-                          Nessuna transazione trovata
+                    {MOCK_TRANSACTIONS.map((tx, idx) => (
+                      <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td className={`p-4 md:p-6 font-bold uppercase tracking-widest ${tx.isRebalance ? 'text-amber-500' : 'text-blue-400'}`}>
+                          {tx.type}
                         </td>
+                        <td className="p-4 md:p-6 text-zinc-400">{tx.time}</td>
+                        <td className="p-4 md:p-6">
+                          <a href={`https://basescan.org/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
+                            {tx.hash}
+                          </a>
+                        </td>
+                        <td className="p-4 md:p-6 text-zinc-400">{tx.from}</td>
+                        <td className="p-4 md:p-6 text-zinc-400">{tx.to}</td>
+                        <td className="p-4 md:p-6 text-right text-white font-bold">{tx.value}</td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
