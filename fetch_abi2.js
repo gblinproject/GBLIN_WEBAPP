@@ -15,13 +15,18 @@ https.get(options, (res) => {
     data += chunk;
   });
   res.on('end', () => {
-    const json = JSON.parse(data);
-    if (json.status === '1') {
-      const abi = JSON.parse(json.result);
-      const readFuncs = abi.filter(i => i.type === 'function' && (i.stateMutability === 'view' || i.stateMutability === 'pure'));
-      console.log(readFuncs.map(f => f.name).join(', '));
-    } else {
-      console.log('Error:', json.message);
+    console.log('Raw response data:', data);
+    try {
+      const json = JSON.parse(data);
+      if (json.status === '1') {
+        const abi = JSON.parse(json.result);
+        const readFuncs = abi.filter(i => i.type === 'function' && (i.stateMutability === 'view' || i.stateMutability === 'pure'));
+        console.log(readFuncs.map(f => f.name).join(', '));
+      } else {
+        console.log('Error:', json.message);
+      }
+    } catch (e) {
+      console.error('JSON parsing error. Response received was not JSON:', data);
     }
   });
 });

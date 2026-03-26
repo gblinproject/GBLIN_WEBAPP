@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #050505;
+  --ink: #FFFFFF;
+  --accent: #F27D26;
+  --line: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, #FFFFFF, #F27D26);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}

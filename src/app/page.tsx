@@ -1230,6 +1230,39 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Footer Section */}
+      <footer className="py-12 px-6 bg-[#020202] border-t border-white/10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-4">
+            <div className="relative w-10 h-10 rounded-full overflow-hidden">
+              <img 
+                src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png"
+                alt="GBLIN Logo"
+                className="object-cover w-full h-full"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div>
+              <h3 className="font-serif text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text text-transparent">GBLIN Protocol</h3>
+              <p className="text-xs text-zinc-500">The Golden Vault</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-zinc-400">
+            <a href="https://gblin.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Sito Ufficiale</a>
+            <a href="mailto:gblin.protocol@proton.me" className="hover:text-amber-500 transition-colors">Email</a>
+            <a href="https://x.com/GBLIN_Protocol" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">X (Twitter)</a>
+            <a href="https://warpcast.com/gblin" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Warpcast</a>
+            <a href="https://github.com/gblinproject/gblin-dapp" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">GitHub</a>
+          </div>
+          
+          <div className="flex flex-col items-end gap-2 text-xs text-zinc-600">
+            <a href="https://aerodrome.finance/slipstream/0xdaecc15bf028bc4d135260d044b87001dafb3c22" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Pool Produzione (Aerodrome)</a>
+            <a href="https://aerodrome.finance/slipstream/0x2372c88219a821b54c765aa52e47614248659e28" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Pool V1 (Aerodrome)</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
