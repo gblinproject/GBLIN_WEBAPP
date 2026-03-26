@@ -102,75 +102,112 @@ const TOKEN_ADDRESSES: Record<string, string> = {
 
 // API fetch functions
 const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number }> => {
-  const res = await fetch(`https://api.dexscreener.com/latest/dex/pairs/base/${AERODROME_POOL}`);
-  const data = await res.json();
-  const pair = data.pair as DexScreenerPair;
-  return {
-    priceUsd: parseFloat(pair.priceUsd),
-    volume24h: pair.volume.h24
-  };
+  try {
+    // Use token address search endpoint instead of pair address
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CONTRACT_ADDRESS}`);
+    const data = await res.json();
+    console.log("[v0] DexScreener token response:", data);
+    
+    // Find the Aerodrome pair or use the first available pair
+    const pairs = data.pairs || [];
+    const aerodromePair = pairs.find((p: any) => p.dexId === 'aerodrome') || pairs[0];
+    
+    if (!aerodromePair) {
+      console.log("[v0] No pairs found for token");
+      return { priceUsd: 0, volume24h: 0 };
+    }
+    
+    console.log("[v0] Found pair:", aerodromePair.pairAddress, "price:", aerodromePair.priceUsd);
+    return {
+      priceUsd: parseFloat(aerodromePair.priceUsd) || 0,
+      volume24h: aerodromePair.volume?.h24 || 0
+    };
+  } catch (error) {
+    console.log("[v0] Error fetching market data:", error);
+    return { priceUsd: 0, volume24h: 0 };
+  }
 };
 
-const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; from: string; to: string; value: string; isRebalance: boolean }>> => {
-  const res = await fetch(`https://api.basescan.org/api?module=account&action=tokentx&contractaddress=0xc475851f9101A2AC48a84EcF869766A94D301FaA&page=1&offset=10&sort=desc`);
-  const data = await res.json();
-  if (data.status !== "1" || !data.result) return [];
-  
-  return data.result.map((tx: BaseScanTransaction) => {
-    const isSwap = tx.from.toLowerCase() === AERODROME_POOL.toLowerCase() || tx.to.toLowerCase() === AERODROME_POOL.toLowerCase();
-    return {
-      type: isSwap ? 'SWAP' : 'TRANSFER',
-      time: formatTimestamp(tx.timeStamp),
-      hash: shortenAddress(tx.hash),
-      fullHash: tx.hash,
-      from: shortenAddress(tx.from),
-      to: shortenAddress(tx.to),
-      value: (parseFloat(tx.value) / 1e18).toFixed(8),
-      isRebalance: isSwap
-    };
-  });
+const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; fullHash: string; from: string; to: string; value: string; isRebalance: boolean }>> => {
+  try {
+    // Use V2 API endpoint for Base chain (chainid=8453)
+    const res = await fetch(`https://api.etherscan.io/v2/api?chainid=8453&module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&page=1&offset=10&sort=desc`);
+    const data = await res.json();
+    console.log("[v0] BaseScan V2 response:", data);
+    
+    if (data.status !== "1" || !data.result || !Array.isArray(data.result)) {
+      console.log("[v0] BaseScan returned no results or error:", data.message);
+      return [];
+    }
+    
+    return data.result.map((tx: BaseScanTransaction) => {
+      const isSwap = tx.from.toLowerCase() === AERODROME_POOL.toLowerCase() || tx.to.toLowerCase() === AERODROME_POOL.toLowerCase();
+      return {
+        type: isSwap ? 'SWAP' : 'TRANSFER',
+        time: formatTimestamp(tx.timeStamp),
+        hash: shortenAddress(tx.hash),
+        fullHash: tx.hash,
+        from: shortenAddress(tx.from),
+        to: shortenAddress(tx.to),
+        value: (parseFloat(tx.value) / 1e18).toFixed(8),
+        isRebalance: isSwap
+      };
+    });
+  } catch (error) {
+    console.log("[v0] Error fetching transactions:", error);
+    return [];
+  }
 };
 
 const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; tvl: number; supplyNum: number }> => {
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-  
-  const totalSupply = await contract.totalSupply().catch(() => 0n);
-  const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
-  
-  // Calculate TVL from basket assets
-  let tvl = 0;
-  for (let i = 0; i < 7; i++) {
-    try {
-      const basketItem = await contract.basket(i);
-      const tokenAddress = basketItem[0];
-      const oracleAddress = basketItem[1];
-      
-      const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-      const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
-      
-      const [balance, decimals, latestRound] = await Promise.all([
-        tokenContract.balanceOf(CONTRACT_ADDRESS),
-        tokenContract.decimals(),
-        oracleContract.latestRoundData()
-      ]);
-      
-      const price = Number(latestRound[1]) / 1e8;
-      const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
-      tvl += balanceFormatted * price;
-    } catch {
-      continue;
+  try {
+    console.log("[v0] Fetching on-chain data...");
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    
+    const totalSupply = await contract.totalSupply().catch(() => 0n);
+    const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
+    console.log("[v0] Total supply:", supplyFormatted);
+    
+    // Calculate TVL from basket assets
+    let tvl = 0;
+    for (let i = 0; i < 7; i++) {
+      try {
+        const basketItem = await contract.basket(i);
+        const tokenAddress = basketItem[0];
+        const oracleAddress = basketItem[1];
+        
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+        const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
+        
+        const [balance, decimals, latestRound] = await Promise.all([
+          tokenContract.balanceOf(CONTRACT_ADDRESS),
+          tokenContract.decimals(),
+          oracleContract.latestRoundData()
+        ]);
+        
+        const price = Number(latestRound[1]) / 1e8;
+        const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
+        tvl += balanceFormatted * price;
+        console.log(`[v0] Basket ${i}: balance=${balanceFormatted}, price=${price}`);
+      } catch {
+        continue;
+      }
     }
+    
+    const nav = supplyFormatted > 0 ? tvl / supplyFormatted : 0;
+    console.log("[v0] TVL:", tvl, "NAV:", nav);
+    
+    return {
+      totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+      nav: formatCurrency(nav),
+      tvl,
+      supplyNum: supplyFormatted
+    };
+  } catch (error) {
+    console.log("[v0] Error fetching on-chain data:", error);
+    return { totalSupply: '0', nav: '$0.00', tvl: 0, supplyNum: 0 };
   }
-  
-  const nav = supplyFormatted > 0 ? tvl / supplyFormatted : 0;
-  
-  return {
-    totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
-    nav: formatCurrency(nav),
-    tvl,
-    supplyNum: supplyFormatted
-  };
 };
 
 export default function Home() {
