@@ -10,6 +10,12 @@
 /out-tsc
 /bazel-out
 
+# Build artifacts
+.next/
+out/
+build/
+
+
 # Node
 node_modules/
 npm-debug.log
