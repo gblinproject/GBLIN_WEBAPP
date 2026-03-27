@@ -908,8 +908,8 @@ export default function Home() {
       setArbTxHash(txHash);
       
       // Create a dummy transaction object for waiting
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      const tx = await provider.getTransaction(txHash);
+      const browserProvider = new ethers.BrowserProvider(window.ethereum as any);
+      const tx = await browserProvider.getTransaction(txHash);
       if (tx) {
         await tx.wait();
       } else {
