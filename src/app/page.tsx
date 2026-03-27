@@ -179,9 +179,9 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
               const tx = await provider.getTransaction(txHash);
               if (tx && tx.to && tx.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
                 const receipt = await provider.getTransactionReceipt(tx.hash);
-                const isRebalance = receipt && receipt.logs.some(log => 
+                const isRebalance = receipt ? receipt.logs.some(log => 
                   log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-                );
+                ) : false;
                 
                 transactions.push({
                   type: isRebalance ? 'REBALANCE' : 'BUY',
