@@ -1,0 +1,15 @@
+# Build artifacts
+.next/
+out/
+build/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
