@@ -34,7 +34,7 @@ interface DashboardData {
   discount: number;
 }
 
-// Constants - MUST be defined before fetch functions
+// Constants - MUST be defined before fetch functions - Updated for deploy fix
 const RPC_URL = "https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt";
 const CONTRACT_ADDRESS = "0x991C7E069f0187B29c60d0AcAB7BeE5c10922bd7";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
@@ -179,9 +179,9 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
               const tx = await provider.getTransaction(txHash);
               if (tx && tx.to && tx.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
                 const receipt = await provider.getTransactionReceipt(tx.hash);
-                const isRebalance = receipt && receipt.logs.some(log => 
+                const isRebalance = receipt ? receipt.logs.some(log => 
                   log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-                );
+                ) : false;
                 
                 transactions.push({
                   type: isRebalance ? 'REBALANCE' : 'BUY',
