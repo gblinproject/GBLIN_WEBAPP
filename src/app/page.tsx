@@ -323,7 +323,7 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
     }
     
     return {
-      totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+      totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       nav: formatCurrency(nav),
       tvl,
       supplyNum: supplyFormatted,
@@ -460,7 +460,7 @@ export default function Home() {
         contract.stabilityFund().catch(() => 0n)
       ]);
       
-      setSupply(parseFloat(ethers.formatEther(totalSupply)).toLocaleString(undefined, {maximumFractionDigits: 2}));
+      setSupply(parseFloat(ethers.formatEther(totalSupply)).toLocaleString(undefined, {maximumFractionDigits: 4}));
       setStabilityFund(parseFloat(ethers.formatEther(stabFund)).toFixed(8));
 
       if (address) {
@@ -1562,25 +1562,14 @@ export default function Home() {
                   target="_blank"
                   className="px-4 py-2 bg-amber-500 text-black text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-amber-400 transition-all"
                 >
-                  VERIFICA SU ETHERSCAN
+                  VERIFICA SU BASESCAN
                 </a>
               </div>
             </div>
 
             {/* Middle row: Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-8">
-              {/* Stat 1 - PREZZO GBLIN POOL */}
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">PREZZO GBLIN POOL</p>
-                {isMarketLoading ? (
-                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.priceUsd || 0)}</p>
-                )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
-              </div>
-              
-              {/* Stat 2 - NAV CONTRATTO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 py-8">
+              {/* Stat 1 - NAV CONTRATTO */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">NAV CONTRATTO GBLIN</p>
                 {isOnChainLoading ? (
