@@ -935,7 +935,8 @@ export default function Home() {
       console.error("[v0] ❌ Complete rebalancing failed:", error);
       
       // Show the error to the user (including "no rebalance needed" messages)
-      setArbError(error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setArbError(errorMessage);
     } finally {
       setIsArbitraging(false);
     }
