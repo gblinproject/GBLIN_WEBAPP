@@ -548,8 +548,6 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
   }, [fetchData]);
 
   const updateAmount = async (val: string) => {
@@ -1586,9 +1584,9 @@ export default function Home() {
                 {isMarketLoading ? (
                   <div className="h-9 w-24 bg-white/5 rounded animate-pulse mb-2"></div>
                 ) : (
-                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.volume24h || 0)}</p>
+                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.volume24h || 0, 4)}</p>
                 )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">AERODROME SLIPSTREAM (1%)</p>
+                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">VOLUME 24H CONTRATTO</p>
               </div>
 
               {/* Stat 4 - APY ETHERSCAN */}
@@ -1656,14 +1654,6 @@ export default function Home() {
                   <h4 className="text-white font-bold uppercase tracking-widest text-sm md:text-base">TELEMETRIA DI RETE LIVE</h4>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <a 
-                    href="https://aerodrome.finance/slipstream" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-amber-500/20 transition-all text-center"
-                  >
-                    FAI TRADING SU SLIPSTREAM (1%)
-                  </a>
                   <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-mono uppercase tracking-widest justify-end">
                     <span>ULTIMO AGGIORNAMENTO: {currentTime || '--:--:--'}</span>
                     <button 
