@@ -54,7 +54,7 @@ const GBLIN_ABI = [
   "function totalSupply() view returns (uint256)",
   "function stabilityFund() view returns (uint256)",
   "function basket(uint256) view returns (address token, address oracle, uint24 poolFee, bool isStable, uint256 baseWeight, uint256 dynamicWeight, uint256 peakPrice, uint256 lastPeakUpdate)",
-  "function incentivizedRebalance() external",
+  "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap) external",
   "function buyGBLIN(uint256 minGblinOut) external payable",
   "function buyGBLINWithToken(bytes calldata path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut) external",
   "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external",
@@ -759,9 +759,163 @@ export default function Home() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, signer);
 
-      const tx = await contract.incentivizedRebalance({ gasLimit: 1000000 });
-      setArbTxHash(tx.hash);
-      await tx.wait();
+      // Funzione automatica intelligente per incentivizedRebalance - Ribilancia TUTTI gli asset
+      const autoRebalance = async () => {
+        try {
+          console.log("[v0] 🔄 Starting complete basket rebalancing...");
+          
+          // Get current basket data
+          const basketData = [];
+          let totalEthValue = 0;
+          
+          for (let i = 0; i < 3; i++) {
+            const basketItem = await contract.basket(i);
+            const tokenAddress = basketItem[0];
+            const oracleAddress = basketItem[1];
+            const dynamicWeight = Number(basketItem[5]);
+            
+            // Get current balance and price
+            const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+            const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
+            
+            const [balance, decimals, priceData] = await Promise.all([
+              tokenContract.balanceOf(CONTRACT_ADDRESS),
+              tokenContract.decimals(),
+              oracleContract.latestRoundData()
+            ]);
+            
+            const price = Number(priceData[1]) / 1e8;
+            const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
+            const currentEthValue = balanceFormatted * price;
+            totalEthValue += currentEthValue;
+            
+            basketData.push({
+              index: i,
+              token: tokenAddress,
+              tokenName: i === 0 ? 'cbBTC' : i === 1 ? 'WETH' : 'USDC',
+              dynamicWeight,
+              currentEthValue,
+              targetEthValue: 0 // Will calculate below
+            });
+          }
+          
+          // Calculate target values and find rebalancing opportunities
+          const opportunities = [];
+          
+          console.log(`[v0] 📊 Total portfolio value: ${totalEthValue.toFixed(4)} ETH`);
+          
+          for (const item of basketData) {
+            item.targetEthValue = (totalEthValue * item.dynamicWeight) / 10000;
+            const deviation = Math.abs(item.currentEthValue - item.targetEthValue) / item.targetEthValue;
+            
+            console.log(`[v0] ${item.tokenName}: Current=${item.currentEthValue.toFixed(4)} ETH (${((item.currentEthValue/totalEthValue)*100).toFixed(1)}%), Target=${item.targetEthValue.toFixed(4)} ETH (${(item.dynamicWeight/100).toFixed(1)}%), Deviation=${(deviation * 100).toFixed(2)}%`);
+            
+            // Include assets with deviation > 2%
+            if (deviation > 0.02) {
+              opportunities.push({
+                ...item,
+                deviation,
+                isOverweight: item.currentEthValue > item.targetEthValue
+              });
+            }
+          }
+          
+          if (opportunities.length === 0) {
+            throw new Error("Nessun rebalancing necessario. Il paniere è già bilanciato (deviazione < 2%).");
+          }
+          
+          console.log(`[v0] 🎯 Found ${opportunities.length} assets needing rebalance:`);
+          opportunities.forEach(opp => {
+            console.log(`[v0]   - ${opp.tokenName}: ${opp.isOverweight ? 'OVERWEIGHT' : 'UNDERWEIGHT'} (${(opp.deviation * 100).toFixed(2)}% deviation)`);
+          });
+          
+          // Check minimum requirements from contract
+          const wethBalance = await contract.basket(1).then(async (b: any) => {
+            const wethContract = new ethers.Contract("0x4200000000000000000000000000000000000006", ERC20_ABI, provider);
+            const bal = await wethContract.balanceOf(CONTRACT_ADDRESS);
+            return Number(ethers.formatEther(bal));
+          });
+          
+          const minSwapRequired = Math.max(wethBalance / 100, 0.01); // 1% of WETH balance or 0.01 ETH minimum
+          console.log(`[v0] ⚠️  Minimum swap requirement: ${minSwapRequired.toFixed(6)} ETH`);
+          
+          // Execute rebalancing for ALL opportunities
+          const transactions = [];
+          
+          for (const opportunity of opportunities) {
+            if (opportunity.token === "0x4200000000000000000000000000000000000006") {
+              console.log(`[v0] ⏭️  Skipping WETH - base asset`);
+              continue;
+            }
+            
+            // Determine swap direction and amount
+            const isWethToAsset = !opportunity.isOverweight; // If overweight, sell asset → WETH
+            
+            // Calculate optimal swap amount - conservative approach
+            const deviationAmount = Math.abs(opportunity.currentEthValue - opportunity.targetEthValue);
+            const amountToSwapEth = Math.min(deviationAmount * 0.20, totalEthValue * 0.015); // Max 1.5% of total value
+            const amountToSwapWei = ethers.parseEther(amountToSwapEth.toString());
+            
+            console.log(`[v0] 🔄 Rebalancing ${opportunity.tokenName}:`);
+            console.log(`[v0]   Direction: ${isWethToAsset ? 'WETH→' + opportunity.tokenName : opportunity.tokenName + '→WETH'}`);
+            console.log(`[v0]   Amount: ${amountToSwapEth.toFixed(6)} ETH (deviation: ${(opportunity.deviation * 100).toFixed(2)}%)`);
+            
+            if (amountToSwapEth < minSwapRequired) {
+              console.log(`[v0] ⚠️  Skipping ${opportunity.tokenName}: amount too small (${amountToSwapEth.toFixed(6)} < ${minSwapRequired.toFixed(6)} ETH)`);
+              continue;
+            }
+            
+            try {
+              // Execute incentivizedRebalance for this asset
+              const tx = await contract.incentivizedRebalance(
+                opportunity.index,
+                isWethToAsset,
+                amountToSwapWei,
+                { gasLimit: 1000000 }
+              );
+              
+              console.log(`[v0] ✅ ${opportunity.tokenName} rebalance submitted: ${tx.hash}`);
+              transactions.push({ asset: opportunity.tokenName, txHash: tx.hash, amount: amountToSwapEth });
+              
+              // Wait a bit between transactions to avoid nonce conflicts
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+            } catch (error) {
+              console.error(`[v0] ❌ ${opportunity.tokenName} rebalance failed:`, error);
+              // Continue with other assets even if one fails
+            }
+          }
+          
+          if (transactions.length === 0) {
+            throw new Error("Nessun rebalance eseguito. Tutti gli importi erano troppo piccoli.");
+          }
+          
+          console.log(`[v0] 🎉 Complete rebalancing finished! ${transactions.length} assets processed:`);
+          transactions.forEach(t => {
+            console.log(`[v0]   - ${t.asset}: ${t.amount.toFixed(6)} ETH (${t.txHash})`);
+          });
+          
+          // Return the first transaction for UI purposes
+          return transactions[0].txHash;
+          
+        } catch (error) {
+          console.error("[v0] ❌ Complete rebalancing failed:", error);
+          throw error;
+        }
+      };
+
+      const txHash = await autoRebalance();
+      setArbTxHash(txHash);
+      
+      // Create a dummy transaction object for waiting
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const tx = await provider.getTransaction(txHash);
+      if (tx) {
+        await tx.wait();
+      } else {
+        // If we can't get the transaction, just wait a bit
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
       
       // Refresh all data after arbitrage
       console.log("[v0] Arbitrage completed, refreshing all data...");
@@ -1321,7 +1475,7 @@ export default function Home() {
                   Stability Fund <span className="italic text-amber-500">Bounty</span>
                 </h3>
                 <p className="text-white/60 leading-relaxed text-sm">
-                  Chiama la funzione incentivizedRebalance() dello Smart Contract. Se il paniere devia dai pesi algoritmici, ripristina l&apos;ancoraggio e il protocollo trasferirà automaticamente il Bounty in ETH al tuo wallet.
+                  Sistema automatico completo che analizza l'intero paniere e ribilancia tutti gli asset necessari. Esegue multiple transazioni per ripristinare i pesi target di ogni componente (45% cbBTC, 45% WETH, 10% USDC).
                 </p>
                 <div className="flex items-center gap-4">
                   {!isConnected ? (
@@ -1349,10 +1503,12 @@ export default function Home() {
                 <div className="bg-[#0a0a0a] border border-white/10 p-4 rounded-xl font-mono text-xs text-zinc-400">
                   <div className="text-emerald-500 mb-2">{t('mev.codeComment')}</div>
                   <div className="space-y-1">
-                    <p><span className="text-blue-400">function</span> <span className="text-yellow-200">incentivizedRebalance</span>() <span className="text-blue-400">external</span> {'{'}</p>
-                    <p className="pl-4">require(needsRebalance(), <span className="text-green-400">&quot;{t('mev.codeBalanced')}&quot;</span>);</p>
-                    <p className="pl-4">_executeSwaps();</p>
-                    <p className="pl-4">_payBounty(msg.sender);</p>
+                    <p><span className="text-blue-400">function</span> <span className="text-yellow-200">completeRebalance</span>() <span className="text-blue-400">external</span> {'{'}</p>
+                    <p className="pl-4"><span className="text-green-400">// Analizza tutti gli asset del paniere</span></p>
+                    <p className="pl-4">opportunities = <span className="text-yellow-200">analyzeBasket</span>(basket);</p>
+                    <p className="pl-4"><span className="text-blue-400">for each</span> opportunity {'{'}</p>
+                    <p className="pl-8"><span className="text-yellow-200">incentivizedRebalance</span>(asset, direction, amount);</p>
+                    <p className="pl-4">{'}'}</p>
                     <p>{'}'}</p>
                   </div>
                 </div>
