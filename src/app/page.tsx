@@ -36,7 +36,7 @@ interface DashboardData {
 
 // Constants - MUST be defined before fetch functions - Updated for deploy fix
 const RPC_URL = "https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt";
-const CONTRACT_ADDRESS = "0x991C7E069f0187B29c60d0AcAB7BeE5c10922bd7";
+const CONTRACT_ADDRESS = "0x1d913Fb86c1Dd0C43DF80668c3913540D48868f0";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
 const BASESCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3";
 const ETHERSCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3"; // Same API key for Etherscan
