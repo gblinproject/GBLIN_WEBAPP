@@ -810,8 +810,8 @@ export default function Home() {
             
             console.log(`[v0] ${item.tokenName}: Current=${item.currentEthValue.toFixed(4)} ETH (${((item.currentEthValue/totalEthValue)*100).toFixed(1)}%), Target=${item.targetEthValue.toFixed(4)} ETH (${(item.dynamicWeight/100).toFixed(1)}%), Deviation=${(deviation * 100).toFixed(2)}%`);
             
-            // Include assets with deviation > 2%
-            if (deviation > 0.02) {
+            // Include assets with deviation > 1%
+            if (deviation > 0.01) {
               opportunities.push({
                 ...item,
                 deviation,
@@ -821,7 +821,7 @@ export default function Home() {
           }
           
           if (opportunities.length === 0) {
-            throw new Error("Nessun rebalancing necessario. Il paniere è già bilanciato (deviazione < 2%).");
+            throw new Error("Nessun rebalancing necessario. Il paniere è già bilanciato (deviazione < 1%).");
           }
           
           console.log(`[v0] 🎯 Found ${opportunities.length} assets needing rebalance:`);
@@ -930,9 +930,12 @@ export default function Home() {
         fetchData();
         refreshAllData();
       }, 3000);
-    } catch (err: any) {
-      console.error(err);
-      setArbError(err.message || t('trade.errors.txError'));
+      
+    } catch (error) {
+      console.error("[v0] ❌ Complete rebalancing failed:", error);
+      
+      // Show the error to the user (including "no rebalance needed" messages)
+      setArbError(error.message);
     } finally {
       setIsArbitraging(false);
     }
