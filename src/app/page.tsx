@@ -1504,6 +1504,26 @@ export default function Home() {
                     </button>
                   )}
                 </div>
+                
+                {/* Error Display */}
+                {arbError && (
+                  <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                    <p className="text-red-400 text-sm font-mono">{arbError}</p>
+                  </div>
+                )}
+                
+                {/* Success Display */}
+                {arbTxHash && !arbError && (
+                  <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                    <p className="text-emerald-400 text-sm font-mono mb-2">✅ Ribilanciamento completato!</p>
+                    <p className="text-zinc-400 text-xs font-mono">
+                      Transaction: <a href={`https://basescan.org/tx/${arbTxHash}`} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300">
+                        {arbTxHash.slice(0, 10)}...{arbTxHash.slice(-8)}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                
                 <div className="bg-[#0a0a0a] border border-white/10 p-4 rounded-xl font-mono text-xs text-zinc-400">
                   <div className="text-emerald-500 mb-2">{t('mev.codeComment')}</div>
                   <div className="space-y-1">
