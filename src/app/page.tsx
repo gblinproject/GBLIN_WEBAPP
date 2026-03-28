@@ -556,6 +556,7 @@ export default function Home() {
       setAmount(val);
       
       if (!val || val === '' || val === '.' || isNaN(Number(val))) {
+                throw error;
         setQuote('0');
         setUsdValue('0.00');
         setTradeError(null);
@@ -738,7 +739,32 @@ export default function Home() {
       setTradeError(null);
     } catch (err: any) {
       console.error(err);
-      setTradeError(err.message || t('trade.errors.txError'));
+      
+      // Convert error to string and check for MetaMask rejection patterns
+      const errorString = String(err);
+      const errorAsAny = err as any;
+      
+      // Check for MetaMask rejection errors - comprehensive check
+      if (
+        // Direct error properties
+        (errorAsAny?.code === 4001) ||
+        (errorAsAny?.code === 'ACTION_REJECTED') ||
+        (errorAsAny?.reason === 'rejected') ||
+        // Nested error structure
+        (errorAsAny?.info?.error?.code === 4001) ||
+        (errorAsAny?.info?.error?.message?.includes('User denied transaction signature')) ||
+        // String-based checks
+        (errorString.includes('user rejected')) ||
+        (errorString.includes('User denied')) ||
+        (errorString.includes('transaction rejected')) ||
+        (errorString.includes('MetaMask Tx Signature')) ||
+        (errorString.includes('ACTION_REJECTED')) ||
+        (errorString.includes('reason="rejected"'))
+      ) {
+        setTradeError("Transazione rifiutata da MetaMask");
+      } else {
+        setTradeError(err.message || t('trade.errors.txError'));
+      }
     } finally {
       setIsTransacting(false);
     }
@@ -831,7 +857,7 @@ export default function Home() {
           
           // Check minimum requirements from contract
           const wethBalance = await contract.basket(1).then(async (b: any) => {
-            const wethContract = new ethers.Contract("0x4200000000000000000000000000000000000006", ERC20_ABI, provider);
+            const wethContract = new ethers.Contract("0x4200000000000000000000000000000000006", ERC20_ABI, provider);
             const bal = await wethContract.balanceOf(CONTRACT_ADDRESS);
             return Number(ethers.formatEther(bal));
           });
@@ -925,7 +951,7 @@ export default function Home() {
           
         } catch (error) {
           console.error("[v0] ❌ Complete rebalancing failed:", error);
-          throw error;
+          throw error; // Re-throw to be caught by outer catch
         }
       };
 
