@@ -880,8 +880,21 @@ export default function Home() {
               // Wait a bit between transactions to avoid nonce conflicts
               await new Promise(resolve => setTimeout(resolve, 2000));
               
-            } catch (error) {
-              console.error(`[v0] ❌ ${opportunity.tokenName} rebalance failed:`, error);
+            } catch (txError) {
+              console.error(`[v0] ❌ ${opportunity.tokenName} rebalance failed:`, txError);
+              
+              // Check if this is a MetaMask rejection and throw it to stop the process
+              if (txError instanceof Error) {
+                const errorWithCode = txError as any;
+                if (errorWithCode.code === 4001 || 
+                    txError.message.includes('user rejected') || 
+                    txError.message.includes('User denied') ||
+                    txError.message.includes('transaction rejected') ||
+                    txError.message.includes('MetaMask Tx Signature')) {
+                  throw new Error("Transazione rifiutata da MetaMask");
+                }
+              }
+              
               // Continue with other assets even if one fails
             }
           }
