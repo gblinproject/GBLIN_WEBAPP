@@ -883,25 +883,28 @@ export default function Home() {
             } catch (txError) {
               console.error(`[v0] ❌ ${opportunity.tokenName} rebalance failed:`, txError);
               
-              // Check if this is a MetaMask rejection and throw it to stop the process
-              if (txError instanceof Error) {
-                const errorWithCode = txError as any;
-                
-                // Check direct error properties
-                if (errorWithCode.code === 4001 || 
-                    errorWithCode.code === 'ACTION_REJECTED' ||
-                    txError.message.includes('user rejected') || 
-                    txError.message.includes('User denied') ||
-                    txError.message.includes('transaction rejected') ||
-                    txError.message.includes('MetaMask Tx Signature')) {
-                  throw new Error("Transazione rifiutata da MetaMask");
-                }
-                // Check nested error structure (MetaMask v6.16.0+)
-                else if (errorWithCode.info?.error?.code === 4001 ||
-                         errorWithCode.info?.error?.message?.includes('User denied transaction signature') ||
-                         errorWithCode.reason === 'rejected') {
-                  throw new Error("Transazione rifiutata da MetaMask");
-                }
+              // Convert error to string and check for MetaMask rejection patterns
+              const errorString = String(txError);
+              const errorAsAny = txError as any;
+              
+              // Check for MetaMask rejection errors - comprehensive check
+              if (
+                // Direct error properties
+                (errorAsAny?.code === 4001) ||
+                (errorAsAny?.code === 'ACTION_REJECTED') ||
+                (errorAsAny?.reason === 'rejected') ||
+                // Nested error structure
+                (errorAsAny?.info?.error?.code === 4001) ||
+                (errorAsAny?.info?.error?.message?.includes('User denied transaction signature')) ||
+                // String-based checks
+                (errorString.includes('user rejected')) ||
+                (errorString.includes('User denied')) ||
+                (errorString.includes('transaction rejected')) ||
+                (errorString.includes('MetaMask Tx Signature')) ||
+                (errorString.includes('ACTION_REJECTED')) ||
+                (errorString.includes('reason="rejected"'))
+              ) {
+                throw new Error("Transazione rifiutata da MetaMask");
               }
               
               // Continue with other assets even if one fails
@@ -959,27 +962,30 @@ export default function Home() {
       // Show the error to the user (including "no rebalance needed" messages)
       let errorMessage = String(error);
       
-      // Check for MetaMask rejection errors - handle nested structure
-      if (error instanceof Error) {
-        const errorWithCode = error as any;
-        
-        // Check direct error properties
-        if (errorWithCode.code === 4001 || 
-            errorWithCode.code === 'ACTION_REJECTED' ||
-            error.message.includes('user rejected') || 
-            error.message.includes('User denied') ||
-            error.message.includes('transaction rejected') ||
-            error.message.includes('MetaMask Tx Signature')) {
-          errorMessage = "Transazione rifiutata da MetaMask";
-        } 
-        // Check nested error structure (MetaMask v6.16.0+)
-        else if (errorWithCode.info?.error?.code === 4001 ||
-                 errorWithCode.info?.error?.message?.includes('User denied transaction signature') ||
-                 errorWithCode.reason === 'rejected') {
-          errorMessage = "Transazione rifiutata da MetaMask";
-        } else {
-          errorMessage = error.message;
-        }
+      // Convert error to string and check for MetaMask rejection patterns
+      const errorString = String(error);
+      const errorAsAny = error as any;
+      
+      // Check for MetaMask rejection errors - comprehensive check
+      if (
+        // Direct error properties
+        (errorAsAny?.code === 4001) ||
+        (errorAsAny?.code === 'ACTION_REJECTED') ||
+        (errorAsAny?.reason === 'rejected') ||
+        // Nested error structure
+        (errorAsAny?.info?.error?.code === 4001) ||
+        (errorAsAny?.info?.error?.message?.includes('User denied transaction signature')) ||
+        // String-based checks
+        (errorString.includes('user rejected')) ||
+        (errorString.includes('User denied')) ||
+        (errorString.includes('transaction rejected')) ||
+        (errorString.includes('MetaMask Tx Signature')) ||
+        (errorString.includes('ACTION_REJECTED')) ||
+        (errorString.includes('reason="rejected"'))
+      ) {
+        errorMessage = "Transazione rifiutata da MetaMask";
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
       
       setArbError(errorMessage);
