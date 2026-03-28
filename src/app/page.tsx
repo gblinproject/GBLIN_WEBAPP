@@ -935,7 +935,21 @@ export default function Home() {
       console.error("[v0] ❌ Complete rebalancing failed:", error);
       
       // Show the error to the user (including "no rebalance needed" messages)
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      let errorMessage = String(error);
+      
+      // Check for MetaMask rejection errors
+      if (error instanceof Error) {
+        if (error.code === 4001 || 
+            error.message.includes('user rejected') || 
+            error.message.includes('User denied') ||
+            error.message.includes('transaction rejected') ||
+            error.message.includes('MetaMask Tx Signature')) {
+          errorMessage = "Transazione rifiutata da MetaMask";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setArbError(errorMessage);
     } finally {
       setIsArbitraging(false);
