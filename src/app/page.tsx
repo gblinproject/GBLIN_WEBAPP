@@ -556,7 +556,6 @@ export default function Home() {
       setAmount(val);
       
       if (!val || val === '' || val === '.' || isNaN(Number(val))) {
-                throw error;
         setQuote('0');
         setUsdValue('0.00');
         setTradeError(null);
