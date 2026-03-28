@@ -939,7 +939,8 @@ export default function Home() {
       
       // Check for MetaMask rejection errors
       if (error instanceof Error) {
-        if (error.code === 4001 || 
+        const errorWithCode = error as any;
+        if (errorWithCode.code === 4001 || 
             error.message.includes('user rejected') || 
             error.message.includes('User denied') ||
             error.message.includes('transaction rejected') ||
