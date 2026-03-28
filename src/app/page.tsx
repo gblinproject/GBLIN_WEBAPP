@@ -2015,8 +2015,7 @@ export default function Home() {
           </div>
           
           <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-zinc-400">
-            <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V2.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
-            <a href="https://gblin.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Sito Ufficiale</a>
+            <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
             <a href="mailto:gblin.protocol@proton.me" className="hover:text-amber-500 transition-colors">Email</a>
             <a href="https://x.com/GBLIN_Protocol" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">X (Twitter)</a>
             <a href="https://warpcast.com/gblin" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Warpcast</a>
@@ -2024,8 +2023,6 @@ export default function Home() {
           </div>
           
           <div className="flex flex-col items-end gap-2 text-xs text-zinc-600">
-            <a href="https://aerodrome.finance/slipstream/0xdaecc15bf028bc4d135260d044b87001dafb3c22" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Pool Produzione (Aerodrome)</a>
-            <a href="https://aerodrome.finance/slipstream/0x2372c88219a821b54c765aa52e47614248659e28" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Pool V1 (Aerodrome)</a>
           </div>
         </div>
       </footer>
