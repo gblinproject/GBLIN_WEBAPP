@@ -1225,10 +1225,10 @@ export default function Home() {
         <div className="max-w-5xl mx-auto">
           <div className="mb-10">
             <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight leading-tight mb-4">
-              Dashboard <span className="italic text-amber-500">Protocollo</span>
+              Dashboard <span className="italic text-amber-500">Protocol</span>
             </h2>
             <p className="text-white/60 leading-relaxed text-lg max-w-2xl">
-              Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
+              When Intrinsic Value (NAV) is higher than Market Price, token is technically undervalued. Buying GBLIN now guarantees assets at a discount.
             </p>
           </div>
 
@@ -1237,7 +1237,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Prezzo GBLIN */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Prezzo GBLIN</p>
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">GBLIN Price</p>
                 {isMarketLoading ? (
                   <div className="h-8 w-24 bg-white/5 rounded animate-pulse"></div>
                 ) : (
@@ -1247,7 +1247,7 @@ export default function Home() {
 
               {/* Volume 24H */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Volume 24H</p>
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">24H Volume</p>
                 {isMarketLoading ? (
                   <div className="h-8 w-24 bg-white/5 rounded animate-pulse"></div>
                 ) : (
@@ -1257,7 +1257,7 @@ export default function Home() {
 
               {/* APY 30D */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">APY 30D</p>
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Estimated APY (30D)</p>
                 {isOnChainLoading ? (
                   <div className="h-8 w-20 bg-white/5 rounded animate-pulse"></div>
                 ) : (
@@ -1269,7 +1269,7 @@ export default function Home() {
 
               {/* Offerta Totale */}
               <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Offerta Totale</p>
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Total Supply</p>
                 {isOnChainLoading ? (
                   <div className="h-8 w-32 bg-white/5 rounded animate-pulse"></div>
                 ) : (
@@ -1282,17 +1282,17 @@ export default function Home() {
           {/* Ultime 10 Transazioni */}
           <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden">
             <div className="p-6 border-b border-white/10">
-              <h3 className="text-white font-bold uppercase tracking-widest text-lg">Ultime 10 Transazioni</h3>
+              <h3 className="text-white font-bold uppercase tracking-widest text-lg">Last 10 Transactions</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-white/10 text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
                     <th className="p-4 font-normal">HASH</th>
-                    <th className="p-4 font-normal">DA</th>
-                    <th className="p-4 font-normal">A</th>
-                    <th className="p-4 font-normal text-right">VALORE</th>
-                    <th className="p-4 font-normal">TEMPO</th>
+                    <th className="p-4 font-normal">FROM</th>
+                    <th className="p-4 font-normal">TO</th>
+                    <th className="p-4 font-normal text-right">VALUE</th>
+                    <th className="p-4 font-normal">TIME</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs font-mono">
@@ -1323,7 +1323,7 @@ export default function Home() {
                   ) : (
                     <tr>
                       <td colSpan={5} className="p-8 text-center text-zinc-500 italic">
-                        <p>Nessuna transazione trovata</p>
+                        <p>No transactions found</p>
                       </td>
                     </tr>
                   )}
