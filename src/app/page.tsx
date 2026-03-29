@@ -36,7 +36,7 @@ interface DashboardData {
 
 // Constants - MUST be defined before fetch functions - Updated for deploy fix
 const RPC_URL = "https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt";
-const CONTRACT_ADDRESS = "0x1d913Fb86c1Dd0C43DF80668c3913540D48868f0";
+const CONTRACT_ADDRESS = "0xED334B4CDaFCAe6D42bb9A57DE565fD3e9640a50";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
 const BASESCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3";
 const ETHERSCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3"; // Same API key for Etherscan
@@ -52,6 +52,7 @@ const formatTimestamp = (timestamp: string) => {
 };
 const GBLIN_ABI = [
   "function totalSupply() view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
   "function stabilityFund() view returns (uint256)",
   "function basket(uint256) view returns (address token, address oracle, uint24 poolFee, bool isStable, uint256 baseWeight, uint256 dynamicWeight, uint256 peakPrice, uint256 lastPeakUpdate)",
   "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap) external",
@@ -60,7 +61,7 @@ const GBLIN_ABI = [
   "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external",
   "function quoteBuyGBLIN(uint256 ethAmount) view returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)",
   "function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)",
-  "function balanceOf(address account) view returns (uint256)",
+  "function refreshWeights() public",
   "error SequencerDown()",
   "error StaleOracle(address oracle)",
   "error DepositTooSmall()",
@@ -68,7 +69,9 @@ const GBLIN_ABI = [
   "error Unauthorized()",
   "error CooldownActive()",
   "error RebalanceNotNeeded()",
-  "error OracleDead()"
+  "error OracleDead()",
+  "error SwapVolumeTooLow()",
+  "error InvalidFinalToken()"
 ];
 
 const ERC20_ABI = [
@@ -253,8 +256,16 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
     const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
     
     const totalSupply = await contract.totalSupply().catch(() => 0n);
+    const contractBalance = await contract.balanceOf(CONTRACT_ADDRESS).catch(() => 0n);
     const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
+    const contractBalanceFormatted = parseFloat(ethers.formatEther(contractBalance));
+    
+    // Calculate active supply like the contract does: totalSupply - balanceOf(address(this))
+    const activeSupply = supplyFormatted - contractBalanceFormatted;
+    
     console.log("[v0] Total supply:", supplyFormatted);
+    console.log("[v0] Contract balance:", contractBalanceFormatted);
+    console.log("[v0] Active supply:", activeSupply);
     
     // Calculate TVL from basket assets
     let tvl = 0;
@@ -282,8 +293,9 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
       }
     }
     
-    const nav = supplyFormatted > 0 ? tvl / supplyFormatted : 0;
-    console.log("[v0] TVL:", tvl, "NAV:", nav);
+    // Calculate NAV like the contract does: if activeSupply == 0 return 1 ether, else (tvl * 1 ether) / activeSupply
+    const nav = activeSupply > 0 ? tvl / activeSupply : 1;
+    console.log("[v0] TVL:", tvl, "Active Supply:", activeSupply, "NAV:", nav);
     
     // Generate APY data based on current TVL and market activity (no external APIs)
     let apyData = null;
@@ -326,7 +338,7 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
       totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       nav: formatCurrency(nav),
       tvl,
-      supplyNum: supplyFormatted,
+      supplyNum: activeSupply, // Use active supply like the contract
       apyData
     };
   } catch (error) {
@@ -379,22 +391,19 @@ export default function Home() {
   const { data: marketData, isPending: isMarketLoading, refetch: refetchMarketData } = useQuery({
     queryKey: ['marketData'],
     queryFn: fetchMarketData,
-    refetchInterval: 15000, // Refresh every 15 seconds
-    staleTime: 10000,
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 
   const { data: transactions, isPending: isTransactionsLoading, refetch: refetchTransactions } = useQuery({
     queryKey: ['transactions'],
     queryFn: fetchTransactions,
-    refetchInterval: 15000, // Refresh every 15 seconds
-    staleTime: 10000,
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 
   const { data: onChainData, isPending: isOnChainLoading, refetch: refetchOnChainData } = useQuery({
     queryKey: ['onChainData'],
     queryFn: fetchOnChainData,
-    refetchInterval: 15000, // Refresh every 15 seconds
-    staleTime: 10000,
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 
   // Manual refresh function
@@ -407,9 +416,38 @@ export default function Home() {
   // Calculate discount percentage
   const discountPercentage = useMemo(() => {
     if (!marketData?.priceUsd || !onChainData?.nav) return 0;
+    
+    const marketPrice = marketData.priceUsd;
     const navNum = parseFloat(onChainData.nav.replace(/[$,]/g, ''));
-    if (navNum === 0) return 0;
-    return ((navNum - marketData.priceUsd) / navNum * 100);
+    
+    console.log('[v0] Discount calculation:', {
+      marketPrice,
+      navNum,
+      marketDataPrice: marketData.priceUsd,
+      onChainDataNav: onChainData.nav,
+      supplyNum: onChainData.supplyNum
+    });
+    
+    if (navNum === 0 || isNaN(navNum) || isNaN(marketPrice)) return 0;
+    
+    // Check if market price is reliable (not extremely low compared to NAV)
+    const priceRatio = marketPrice / navNum;
+    console.log('[v0] Price ratio (market/nav):', priceRatio);
+    
+    // If market price is less than 1% of NAV, it's likely unreliable data
+    if (priceRatio < 0.01) {
+      console.log('[v0] Market price unreliable - too low compared to NAV');
+      return 0; // Don't show misleading discount
+    }
+    
+    const discount = ((navNum - marketPrice) / navNum * 100);
+    
+    // Clamp to reasonable values (-100% to 100%)
+    const clampedDiscount = Math.max(-100, Math.min(100, discount));
+    
+    console.log('[v0] Calculated discount:', discount, 'clamped:', clampedDiscount);
+    
+    return clampedDiscount;
   }, [marketData, onChainData]);
 
   useEffect(() => {
@@ -429,7 +467,17 @@ export default function Home() {
         if (val && typeof val === 'object' && k in val) {
           val = val[k];
         } else {
-          return key;
+          // Try fallback to English if key not found in current language
+          const englishDict = translations['en'];
+          let fallbackVal: any = englishDict;
+          for (const fk of keys) {
+            if (fallbackVal && typeof fallbackVal === 'object' && fk in fallbackVal) {
+              fallbackVal = fallbackVal[fk];
+            } else {
+              return key; // Return key if not found anywhere
+            }
+          }
+          return fallbackVal as string;
         }
       }
       return val as string;
@@ -439,6 +487,7 @@ export default function Home() {
   const displayQuote = useMemo(() => {
     if (quote === '0') return '0.00';
     const num = parseFloat(quote);
+    // ... (rest of the code remains the same)
     if (num === 0) return '0.00';
     if (num < 0.000001) return quote;
     return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
@@ -1037,11 +1086,12 @@ export default function Home() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase opacity-60">
             <a href="#" className="hover:opacity-100 transition-opacity">HOME</a>
+            <a href="#dashboard" className="hover:opacity-100 transition-opacity">DASHBOARD</a>
+            <a href="#trade" className="hover:opacity-100 transition-opacity">ACQUISTA GBLIN</a>
             <a href="#concept" className="hover:opacity-100 transition-opacity">{t('nav.manifesto')}</a>
             <a href="#core" className="hover:opacity-100 transition-opacity">{t('nav.core')}</a>
             <a href="#agents" className="hover:opacity-100 transition-opacity">{t('nav.agents')}</a>
             <a href="#vault" className="hover:opacity-100 transition-opacity">VAULT</a>
-            <a href="#dashboard" className="hover:opacity-100 transition-opacity">{t('nav.dashboard')}</a>
           </div>
 
           <div className="flex items-center gap-4">
@@ -1111,7 +1161,7 @@ export default function Home() {
               <ArrowRight size={14} className="text-white/40 group-hover:text-white transition-colors" />
             </div>
             
-            <h1 className="font-serif text-6xl md:text-[130px] leading-[0.85] mb-8 tracking-tighter">
+            <h1 className="font-serif text-[clamp(2rem,8vw,8rem)] leading-[0.85] mb-8 tracking-tighter">
               THE GOLDEN <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 italic pr-4">VAULT</span>
             </h1>
@@ -1140,20 +1190,145 @@ export default function Home() {
             </div>
             
             <div className="flex justify-center">
-              <button 
-                onClick={copyToClipboard}
-                className="group flex items-center gap-4 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:border-white/30 transition-all hover:bg-white/5"
-              >
-                <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Contract</span>
-                <code className="font-mono text-xs text-white/80 tracking-wider">
-                  {CONTRACT_ADDRESS}
-                </code>
-                {copied ? (
-                  <Check size={16} className="text-emerald-500" />
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={copyToClipboard}
+                  className="group flex items-center gap-4 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:border-white/30 transition-all hover:bg-white/5"
+                >
+                  <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Contract</span>
+                  <code className="font-mono text-xs text-white/80 tracking-wider">
+                    {CONTRACT_ADDRESS}
+                  </code>
+                  {copied ? (
+                    <Check size={16} className="text-emerald-500" />
+                  ) : (
+                    <Copy size={16} className="text-white/30 group-hover:text-white transition-colors" />
+                  )}
+                </button>
+                <a 
+                  href="https://basescan.org/address/0xED334B4CDaFCAe6D42bb9A57DE565fD3e9640a50"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-3 bg-amber-500 text-black text-xs font-bold uppercase tracking-widest rounded-full hover:bg-amber-400 transition-all flex items-center gap-2"
+                >
+                  <Shield size={14} />
+                  Verificato su Base Mainnet • The Golden Vault
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dashboard Section */}
+      <section id="dashboard" className="py-20 px-6 bg-[#050505] border-t border-white/5 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-10">
+            <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight leading-tight mb-4">
+              Dashboard <span className="italic text-amber-500">Protocollo</span>
+            </h2>
+            <p className="text-white/60 leading-relaxed text-lg max-w-2xl">
+              Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
+            </p>
+          </div>
+
+          {/* Dati Table */}
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Prezzo GBLIN */}
+              <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Prezzo GBLIN</p>
+                {isMarketLoading ? (
+                  <div className="h-8 w-24 bg-white/5 rounded animate-pulse"></div>
                 ) : (
-                  <Copy size={16} className="text-white/30 group-hover:text-white transition-colors" />
+                  <p className="text-2xl font-serif text-emerald-400">${marketData?.priceUsd?.toFixed(2) || '0.00'}</p>
                 )}
-              </button>
+              </div>
+
+              {/* Volume 24H */}
+              <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Volume 24H</p>
+                {isMarketLoading ? (
+                  <div className="h-8 w-24 bg-white/5 rounded animate-pulse"></div>
+                ) : (
+                  <p className="text-2xl font-serif text-white">{formatCurrency(marketData?.volume24h || 0)}</p>
+                )}
+              </div>
+
+              {/* APY 30D */}
+              <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">APY 30D</p>
+                {isOnChainLoading ? (
+                  <div className="h-8 w-20 bg-white/5 rounded animate-pulse"></div>
+                ) : (
+                  <p className="text-2xl font-serif text-amber-400">
+                    {onChainData?.apyData?.estimatedApy ? `${onChainData.apyData.estimatedApy}%` : '0.00%'}
+                  </p>
+                )}
+              </div>
+
+              {/* Offerta Totale */}
+              <div className="bg-[#111] border border-white/5 rounded-2xl p-6">
+                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">Offerta Totale</p>
+                {isOnChainLoading ? (
+                  <div className="h-8 w-32 bg-white/5 rounded animate-pulse"></div>
+                ) : (
+                  <p className="text-2xl font-serif text-white">{onChainData?.totalSupply || '0.000000'}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Ultime 10 Transazioni */}
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-white font-bold uppercase tracking-widest text-lg">Ultime 10 Transazioni</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/10 text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
+                    <th className="p-4 font-normal">HASH</th>
+                    <th className="p-4 font-normal">DA</th>
+                    <th className="p-4 font-normal">A</th>
+                    <th className="p-4 font-normal text-right">VALORE</th>
+                    <th className="p-4 font-normal">TEMPO</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs font-mono">
+                  {isTransactionsLoading ? (
+                    Array.from({ length: 10 }).map((_, idx) => (
+                      <tr key={idx} className="border-b border-white/5">
+                        <td className="p-4"><div className="h-4 w-20 bg-white/5 rounded animate-pulse"></div></td>
+                        <td className="p-4"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
+                        <td className="p-4"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
+                        <td className="p-4 text-right"><div className="h-4 w-16 bg-white/5 rounded animate-pulse ml-auto"></div></td>
+                        <td className="p-4"><div className="h-4 w-16 bg-white/5 rounded animate-pulse"></div></td>
+                      </tr>
+                    ))
+                  ) : transactions && transactions.length > 0 ? (
+                    transactions.slice(0, 10).map((tx: any, idx: number) => (
+                      <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td className="p-4">
+                          <a href={`https://etherscan.io/tx/${tx.fullHash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
+                            {tx.hash}
+                          </a>
+                        </td>
+                        <td className="p-4 text-zinc-400">{tx.from}</td>
+                        <td className="p-4 text-zinc-400">{tx.to}</td>
+                        <td className="p-4 text-right text-white font-bold">{tx.value}</td>
+                        <td className="p-4 text-zinc-400">{tx.time}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-zinc-500 italic">
+                        <p>Nessuna transazione trovata</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1166,7 +1341,7 @@ export default function Home() {
           <div className="flex flex-col lg:flex-row gap-16 items-center">
             <div className="flex-1 space-y-8 text-center lg:text-left">
               <span className="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{t('trade.title')}</span>
-              <h2 className="font-serif text-5xl md:text-6xl tracking-tight leading-tight">
+              <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight leading-tight">
                 {t('trade.heading')} <br />
                 <span className="italic text-amber-500">{t('trade.subheading')}</span>
               </h2>
@@ -1244,7 +1419,7 @@ export default function Home() {
                             onChange={(e) => updateAmount(e.target.value)}
                             placeholder="0.0"
                             disabled={!isConnected}
-                            className={`bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700 ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`bg-transparent text-[clamp(1.5rem,5vw,3rem)] font-serif text-white outline-none w-full placeholder:text-zinc-700 ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                           />
                           <span className="text-sm text-zinc-500 font-mono">≈ ${usdValue}</span>
                         </div>
@@ -1289,7 +1464,7 @@ export default function Home() {
                             onChange={(e) => updateAmount(e.target.value)}
                             placeholder="0.0"
                             disabled={!isConnected}
-                            className={`bg-transparent text-4xl font-serif text-white outline-none w-full placeholder:text-zinc-700 ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`bg-transparent text-[clamp(1.5rem,5vw,3rem)] font-serif text-white outline-none w-full placeholder:text-zinc-700 ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                           />
                         </div>
                       </div>
@@ -1402,47 +1577,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Presentation Letter Section */}
+      {/* Manifesto + Meccanismo di Yield Section */}
       <section id="concept" className="py-32 px-6 bg-[#050505]">
-        <div className="max-w-3xl mx-auto space-y-12">
-          <div className="space-y-4">
-            <h2 className="font-serif text-4xl md:text-5xl tracking-tight leading-tight">
-              {t('manifesto.title')}
-            </h2>
-          </div>
-          
-          <div className="space-y-8 text-white/70 font-light leading-relaxed text-lg">
-            <p>
-              {t('manifesto.text')}
-            </p>
-          </div>
-
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <Shield size={24} className="text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-bold uppercase tracking-widest">{t('common.protocol')}</p>
-                <p className="text-xs text-white/40 uppercase tracking-widest">{t('common.centralBank')}</p>
-              </div>
-            </div>
-            <a 
-              href={`https://basescan.org/token/${CONTRACT_ADDRESS}`}
-              target="_blank"
-              className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-amber-500 hover:text-amber-400 transition-colors"
-            >
-              {t('common.verifyContract')} <ArrowRight size={14} />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Yield Mechanism Section */}
-      <section id="yield" className="py-32 px-6 bg-[#080808] border-t border-white/5 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-20 space-y-4">
-            <h2 className="font-serif text-4xl md:text-5xl tracking-tight leading-tight">
+            <h2 className="font-serif text-[clamp(1.5rem,6vw,3.5rem)] tracking-tight leading-tight">
               {t('yield.title')}
             </h2>
             <p className="text-amber-500 font-mono uppercase tracking-widest text-sm">
@@ -1504,7 +1643,7 @@ export default function Home() {
                 <Network size={14} />
                 {t('core.title')}
               </div>
-              <h2 className="font-serif text-5xl md:text-7xl tracking-tighter leading-[0.9]">
+              <h2 className="font-serif text-[clamp(1.5rem,6vw,5rem)] tracking-tighter leading-[0.9]">
                 {t('core.subtitle')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
@@ -1624,7 +1763,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 space-y-4">
             <span className="text-amber-500 text-xs font-mono uppercase tracking-[0.3em]">{t('agents.title')}</span>
-            <h2 className="font-serif text-5xl md:text-6xl tracking-tight">
+            <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight">
               {t('core.sdkTitle')}
             </h2>
           </div>
@@ -1691,7 +1830,7 @@ export default function Home() {
       <section className="py-32 px-6 bg-[#020202] relative border-y border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className="font-serif text-4xl md:text-6xl tracking-tight mb-6">
+            <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight mb-6">
               {t('architecture.title').split(' ').slice(0, 1).join(' ')} <span className="italic text-amber-500">{t('architecture.title').split(' ').slice(1).join(' ')}</span>
             </h2>
             <p className="text-white/50 max-w-2xl mx-auto text-lg font-light">{t('architecture.desc')}</p>
@@ -1705,7 +1844,7 @@ export default function Home() {
                   <Shield size={32} className="text-amber-500" />
                 </div>
                 <div>
-                  <h4 className="text-4xl font-serif italic mb-6">{t('features.crashShield.title')}</h4>
+                  <h4 className="text-[clamp(1.25rem,4vw,2.5rem)] font-serif italic mb-6">{t('features.crashShield.title')}</h4>
                   <p className="text-xl text-white/50 leading-relaxed max-w-lg font-light">{t('features.crashShield.desc')}</p>
                 </div>
               </div>
@@ -1739,7 +1878,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row gap-20 items-center">
             <div className="flex-1 space-y-8">
-              <h2 className="font-serif text-5xl md:text-6xl tracking-tight">
+              <h2 className="font-serif text-[clamp(1.5rem,6vw,4rem)] tracking-tight">
                 {t('vault.title').split(' ').slice(0, -2).join(' ')} <br />
                 <span className="italic text-amber-500">{t('vault.title').split(' ').slice(-2).join(' ')}</span>
               </h2>
@@ -1780,220 +1919,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dashboard Protocollo Section */}
-      <section id="dashboard" className="py-20 px-6 bg-[#050505] border-t border-white/5 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-10">
-            <h2 className="font-serif text-5xl md:text-6xl tracking-tight leading-tight mb-4">
-              Dashboard <span className="italic text-amber-500">Protocollo</span>
-            </h2>
-            <p className="text-white/60 leading-relaxed text-lg max-w-2xl">
-              Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
-            </p>
-          </div>
-
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-            {/* Top row: Contract Info */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-white/10">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20">
-                  <Shield size={20} className="text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-1">CONTRATTO ISTITUZIONALE UFFICIALE</h3>
-                  <p className="text-zinc-500 font-mono text-sm mb-1">{CONTRACT_ADDRESS}</p>
-                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">VERIFICATO SU BASE MAINNET • THE GOLDEN VAULT</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={copyToClipboard}
-                  className="px-4 py-2 bg-transparent border border-white/20 text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-white/5 transition-all"
-                >
-                  COPIA INDIRIZZO
-                </button>
-                <a 
-                  href={`https://basescan.org/token/${CONTRACT_ADDRESS}`}
-                  target="_blank"
-                  className="px-4 py-2 bg-amber-500 text-black text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-amber-400 transition-all"
-                >
-                  VERIFICA SU BASESCAN
-                </a>
-              </div>
-            </div>
-
-            {/* Middle row: Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 py-8">
-              {/* Stat 1 - NAV CONTRATTO */}
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">NAV CONTRATTO GBLIN</p>
-                {isOnChainLoading ? (
-                  <div className="h-9 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-emerald-400 mb-2">{onChainData?.nav || '---'}</p>
-                )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GARANZIA ASSET REALI</p>
-              </div>
-
-              {/* Stat 3 - VOLUME 24H */}
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">VOLUME 24H</p>
-                {isMarketLoading ? (
-                  <div className="h-9 w-24 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">{formatCurrency(marketData?.volume24h || 0, 4)}</p>
-                )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">VOLUME 24H CONTRATTO</p>
-              </div>
-
-              {/* Stat 4 - APY ETHERSCAN */}
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">APY STIMATO (30D)</p>
-                {isOnChainLoading ? (
-                  <div className="h-9 w-24 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="text-3xl font-serif text-amber-400 mb-2">
-                      {onChainData?.apyData?.estimatedApy ? `${onChainData.apyData.estimatedApy}%` : '---'}
-                    </p>
-                    {onChainData?.apyData && (
-                      <div className="text-[10px] text-zinc-600 space-y-1">
-                        <p>Volume: {formatCurrency(onChainData.apyData.totalVolume)}</p>
-                        <p>Transazioni: {onChainData.apyData.transactionCount}</p>
-                        <p>Periodo: {onChainData.apyData.timeframe}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">DATI ON-CHAIN</p>
-              </div>
-
-              {/* Stat 5 - OFFERTA TOTALE */}
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-5">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-2">OFFERTA TOTALE</p>
-                {isOnChainLoading ? (
-                  <div className="h-9 w-20 bg-white/5 rounded animate-pulse mb-2"></div>
-                ) : (
-                  <p className="text-3xl font-serif text-white mb-2">{onChainData?.totalSupply || '---'}</p>
-                )}
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">GBLIN IN CIRCOLAZIONE</p>
-              </div>
-            </div>
-
-            {/* Bottom row: Arbitrage Banner */}
-            <div className="bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp size={16} className="text-amber-500" />
-                  <h4 className="text-amber-500 font-bold uppercase tracking-widest text-sm">OPPORTUNITÀ DI ARBITRAGGIO</h4>
-                </div>
-                <p className="text-sm text-white/60 leading-relaxed">
-                  Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.
-                </p>
-              </div>
-              <div className="text-right shrink-0 flex flex-col items-end">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">STATO ATTUALE</p>
-                {isMarketLoading || isOnChainLoading ? (
-                  <div className="h-8 w-48 bg-white/5 rounded animate-pulse"></div>
-                ) : (
-                  <p className={`text-2xl font-bold ${discountPercentage > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {discountPercentage > 0 ? 'SOTTOVALUTATO' : 'SOPRAVVALUTATO'} <span className="text-sm font-normal opacity-80">({Math.abs(discountPercentage).toFixed(2)}% {discountPercentage > 0 ? 'Sconto' : 'Premio'})</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Telemetry Section */}
-            <div className="bg-[#050505] border border-white/10 rounded-2xl overflow-hidden">
-              <div className="p-4 md:p-6 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Network size={20} className="text-white" />
-                  <h4 className="text-white font-bold uppercase tracking-widest text-sm md:text-base">TELEMETRIA DI RETE LIVE</h4>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-mono uppercase tracking-widest justify-end">
-                    <span>ULTIMO AGGIORNAMENTO: {currentTime || '--:--:--'}</span>
-                    <button 
-                      onClick={refreshAllData}
-                      className="p-1.5 bg-white/5 hover:bg-white/10 rounded-md transition-colors border border-white/10"
-                      title="Aggiorna dati"
-                    >
-                      <RefreshCw size={14} className="text-white" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
-                      <th className="p-4 md:p-6 font-normal">TIPO</th>
-                      <th className="p-4 md:p-6 font-normal">TEMPO</th>
-                      <th className="p-4 md:p-6 font-normal">HASH TX</th>
-                      <th className="p-4 md:p-6 font-normal">DA</th>
-                      <th className="p-4 md:p-6 font-normal">A</th>
-                      <th className="p-4 md:p-6 font-normal text-right">VALORE GBLIN</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs font-mono">
-                    {isTransactionsLoading ? (
-                      // Skeleton loading rows
-                      Array.from({ length: 5 }).map((_, idx) => (
-                        <tr key={idx} className="border-b border-white/5">
-                          <td className="p-4 md:p-6"><div className="h-4 w-16 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-32 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6"><div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div></td>
-                          <td className="p-4 md:p-6 text-right"><div className="h-4 w-20 bg-white/5 rounded animate-pulse ml-auto"></div></td>
-                        </tr>
-                      ))
-                    ) : transactions && transactions.length > 0 ? (
-                      transactions.map((tx: any, idx: number) => (
-                        <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className={`p-4 md:p-6 font-bold uppercase tracking-widest ${tx.isRebalance ? 'text-amber-500' : 'text-blue-400'}`}>
-                            {tx.type}
-                          </td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.time}</td>
-                          <td className="p-4 md:p-6">
-                            <a href={`https://etherscan.io/tx/${tx.fullHash}`} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 transition-colors">
-                              {tx.hash}
-                            </a>
-                          </td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.from}</td>
-                          <td className="p-4 md:p-6 text-zinc-400">{tx.to}</td>
-                          <td className="p-4 md:p-6 text-right text-white font-bold">{tx.value}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-zinc-500 italic">
-                          <div className="space-y-2">
-                            <p>Nessuna transazione trovata</p>
-                            <p className="text-xs text-zinc-600">
-                              Le transazioni recenti verranno mostrate qui. 
-                              <a 
-                                href={`https://etherscan.io/token/${CONTRACT_ADDRESS}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-amber-500 hover:text-amber-400 underline ml-1"
-                              >
-                                Visualizza su Etherscan
-                              </a>
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      
+      
 
 
       {/* Footer Section */}
