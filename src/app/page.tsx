@@ -352,7 +352,7 @@ export default function Home() {
   const { address, isConnected } = useAppKitAccount();
   const { disconnect } = useDisconnect();
 
-  const [language, setLanguage] = useState<Language>('it');
+  const [language, setLanguage] = useState<Language>('en');
   const [showLangSelector, setShowLangSelector] = useState(false);
   const [copied, setCopied] = useState(false);
 
