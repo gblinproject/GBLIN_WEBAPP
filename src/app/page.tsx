@@ -39,8 +39,10 @@ const RPC_URL = "https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt";
 const CONTRACT_ADDRESS = "0xED334B4CDaFCAe6D42bb9A57DE565fD3e9640a50";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
 const BASESCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3";
-const ETHERSCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3"; // Same API key for Etherscan
-const ALCHEMY_API_KEY = "vmGhuXCFK00G8nr3RxRFt"; // Alchemy API key
+const ETHERSCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3"; // Unified Etherscan API key for V2
+const ALCHEMY_API_KEY = "vmGhuXCFK00G8nr3RxRFt";
+const MORALIS_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjNjZmE1NWI1LWUxZDYtNGRhOS1iNjE5LTRmZGI5MjMwMTBhMCIsIm9yZ0lkIjoiNTA3NzcxIiwidXNlcklkIjoiNTIyNDYyIiwidHlwZUlkIjoiYTc1MzFkNjctOWMwZS00Yjg3LWE2ZDgtMTQ3ZDU3MzQ1YjYyIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NzQ5ODE0ODgsImV4cCI6NDkzMDc0MTQ4OH0.ET2R55zvlleoauhaUcJYqaQkUafLTzzCwFFEb07YTC8";
+const BASE_CHAIN_ID = 8453; // Chain ID for Base Mainnet
 
 // Utility functions
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -108,129 +110,181 @@ const TOKEN_ADDRESSES: Record<string, string> = {
 // API fetch functions
 const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number }> => {
   try {
-    // Try multiple approaches to find GBLIN price
-    console.log("[v0] Fetching market data...");
+    console.log("[v0] Fetching True NAV from Contract and ETH Price from DefiLlama...");
     
-    // Skip Aerodrome API due to CORS issues, go directly to DexScreener
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
     
-    // 1. Try DexScreener with Aerodrome pool address
+    let priceUsd = 0;
+    let ethPriceUsd = 3500; // Default fallback
+    
     try {
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${AERODROME_POOL}`);
-      const data = await res.json();
-      console.log("[v0] DexScreener pool response:", data);
-      
-      if (data.pairs && data.pairs.length > 0) {
-        const basePair = data.pairs.find((p: any) => p.chainId === 'base') || data.pairs[0];
-        if (basePair) {
-          console.log("[v0] Found Aerodrome pool via pool address:", basePair.pairAddress, "price:", basePair.priceUsd);
-          return {
-            priceUsd: parseFloat(basePair.priceUsd) || 0,
-            volume24h: basePair.volume?.h24 || 0
-          };
+      // Get ETH Price from DefiLlama
+      const llamaRes = await fetch('https://coins.llama.fi/prices/current/ethereum:0x0000000000000000000000000000000000000000?searchWidth=4h');
+      if (llamaRes.ok) {
+        const llamaData = await llamaRes.json();
+        const price = llamaData.coins['ethereum:0x0000000000000000000000000000000000000000']?.price;
+        if (price) ethPriceUsd = price;
+      }
+
+      const quoteSell = await contract.quoteSellGBLIN(ethers.parseEther("1"));
+      const ethOut = parseFloat(ethers.formatEther(quoteSell));
+      priceUsd = ethOut * ethPriceUsd;
+    } catch (e) {
+      console.error("[v0] Error calculating true NAV:", e);
+    }
+
+    // 4. Fetch Volume from Moralis Stats (keeping volume only from Moralis as requested for other data)
+    const statsUrl = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/stats?chain=base`;
+    const statsRes = await fetch(statsUrl, {
+      headers: {
+        'accept': 'application/json',
+        'X-API-Key': MORALIS_API_KEY
+      }
+    });
+    
+    let volume24h = 0;
+    if (statsRes.ok) {
+      const statsData = await statsRes.json();
+      volume24h = statsData?.volume_24h_usd || 0;
+    }
+
+    // Fallback silenziato su DexScreener solo per il volume se Moralis fallisce
+    if (priceUsd === 0 || volume24h === 0) {
+      try {
+        const dsRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CONTRACT_ADDRESS}`);
+        if (dsRes.ok) {
+          const dsData = await dsRes.json();
+          if (dsData.pairs && dsData.pairs.length > 0) {
+            const pair = dsData.pairs.find((p: any) => p.chainId === 'base') || dsData.pairs[0];
+            if (priceUsd === 0) priceUsd = parseFloat(pair.priceUsd) || 0;
+            if (volume24h === 0) volume24h = pair.volume?.h24 || 0;
+          }
         }
-      }
-    } catch (e) {
-      console.log("[v0] DexScreener pool API failed:", e);
+      } catch (e) {}
     }
     
-    // 2. Try DexScreener search as fallback
-    try {
-      const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=GBLIN`);
-      const data = await res.json();
-      console.log("[v0] DexScreener search response:", data);
-      
-      const pairs = data.pairs || [];
-      const basePair = pairs.find((p: any) => p.chainId === 'base') || pairs[0];
-      
-      if (basePair) {
-        console.log("[v0] Found GBLIN pair via search:", basePair.pairAddress, "price:", basePair.priceUsd);
-        return {
-          priceUsd: parseFloat(basePair.priceUsd) || 0,
-          volume24h: basePair.volume?.h24 || 0
-        };
-      }
-    } catch (e) {
-      console.log("[v0] DexScreener search API failed:", e);
-    }
-    
-    console.log("[v0] No market data found, returning zeros");
-    return { priceUsd: 0, volume24h: 0 };
+    return { 
+      priceUsd: priceUsd || 0, 
+      volume24h: volume24h || 0,
+      ethPriceUsd: ethPriceUsd
+    };
   } catch (error) {
-    console.log("[v0] Error fetching market data:", error);
-    return { priceUsd: 0, volume24h: 0 };
+    console.error("[v0] Error in fetchMarketData:", error);
+    return { priceUsd: 0, volume24h: 0, ethPriceUsd: 3500 };
   }
 };
 
-const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; fullHash: string; from: string; to: string; value: string; isRebalance: boolean }>> => {
+const fetchTransactions = async (): Promise<Array<{ type: string; time: string; hash: string; full_hash: string; from: string; to: string; value: string; is_rebalance: boolean }>> => {
   try {
-    console.log("[v0] Fetching real transactions from Basescan...");
+    console.log("[v0] Fetching transactions from Moralis (Address + ERC20 Transfers)...");
     
-    // Utilizziamo l'API di Basescan per ottenere le transazioni normali del contratto
-    const response = await fetch(
-      `https://api.basescan.org/api?module=account&action=txlist&address=${CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc&apikey=${BASESCAN_API_KEY}`
-    );
+    // 1. Get standard transactions to the contract (Buys/Sells directly with contract)
+    const txUrl = `https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}?chain=base&order=DESC&limit=20`;
     
-    const data = await response.json();
+    // 2. Get ERC20 Transfers for GBLIN (to see swaps on Aerodrome/DEXs)
+    const erc20Url = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/transfers?chain=base&order=DESC&limit=20`;
     
-    if (data.status === "1" && Array.isArray(data.result)) {
-      const realTransactions = data.result.map((tx: any) => {
-        // Logica semplice per determinare il tipo:
-        // Se c'è un valore in ETH (value > 0) ed è diretto al contratto, probabilmente è un BUY (Mint)
-        // Se il metodo chiamato è legato al rebalance (bisognerebbe decodificare l'input, ma usiamo l'input data come indizio)
-        // Per ora usiamo BUY come default se c'è valore, REBALANCE se l'input non è vuoto
-        
-        let type = 'BUY';
-        if (tx.input && tx.input !== '0x' && tx.input.includes('0x4641257d')) { // Esempio selettore per incentivizedRebalance
-          type = 'REBALANCE';
-        } else if (tx.value === '0') {
-          type = 'OTHER';
-        }
+    const [txRes, erc20Res] = await Promise.all([
+      fetch(txUrl, { headers: { 'accept': 'application/json', 'X-API-Key': MORALIS_API_KEY } }),
+      fetch(erc20Url, { headers: { 'accept': 'application/json', 'X-API-Key': MORALIS_API_KEY } })
+    ]);
+    
+    let allTx: any[] = [];
 
-        return {
-          type: type,
-          time: formatTimestamp(tx.timeStamp),
-          hash: shortenAddress(tx.hash),
-          fullHash: tx.hash,
-          from: shortenAddress(tx.from),
-          to: shortenAddress(tx.to || ''),
-          value: ethers.formatEther(tx.value),
-          isRebalance: type === 'REBALANCE'
-        };
-      });
-      
-      console.log(`[v0] Successfully fetched ${realTransactions.length} real transactions`);
-      return realTransactions;
-    }
-    
-    throw new Error(data.message || "Failed to fetch from Basescan");
-    
-  } catch (error) {
-    // Silent error handling for Basescan to avoid console clutter
-    
-    // Fallback ai mock data dinamici se l'API fallisce
-    const now = Date.now();
-    return [
-      {
-        type: 'BUY',
-        time: new Date(now - 1000 * 60 * 15).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        hash: '0x7a2b...c8d1',
-        fullHash: '0x7a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-        from: '0x1234...5678',
-        to: shortenAddress(CONTRACT_ADDRESS),
-        value: '0.1250',
-        isRebalance: false
-      },
-      {
-        type: 'REBALANCE',
-        time: new Date(now - 1000 * 60 * 45).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        hash: '0x1e2f...3a4b',
-        fullHash: '0x1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f',
-        from: shortenAddress(CONTRACT_ADDRESS),
-        to: '0xabcd...efgh',
-        value: '0.0450',
-        isRebalance: true
+    if (txRes.ok) {
+      const data = await txRes.json();
+      if (data && Array.isArray(data.result)) {
+        allTx = [...allTx, ...data.result.map((tx: any) => ({
+          ...tx,
+          source: 'CONTRACT',
+          timestamp: new Date(tx.block_timestamp).getTime(),
+          hash: tx.hash
+        }))];
       }
-    ];
+    }
+
+    if (erc20Res.ok) {
+      const data = await erc20Res.json();
+      if (data && Array.isArray(data.result)) {
+        allTx = [...allTx, ...data.result.map((tx: any) => ({
+          ...tx,
+          source: 'ERC20',
+          timestamp: new Date(tx.block_timestamp).getTime(),
+          hash: tx.transaction_hash,
+          from_address: tx.from_address,
+          to_address: tx.to_address,
+          value: tx.value
+        }))];
+      }
+    }
+
+    // Remove duplicates by hash and sort by timestamp
+    const uniqueTx = Array.from(new Map(allTx.map(tx => [tx.hash, tx])).values())
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 15);
+
+    return uniqueTx.map((tx: any) => {
+      let type = 'OTHER';
+      const input = tx.input ? tx.input.toLowerCase() : '0x';
+      const from = tx.from_address?.toLowerCase();
+      const to = tx.to_address?.toLowerCase();
+      const contractLower = CONTRACT_ADDRESS.toLowerCase();
+      const aerodromeLower = AERODROME_POOL.toLowerCase();
+      
+      // Determine type
+      if (input.includes('0x4641257d') || input.includes('0x8bc0d9f4')) {
+        type = 'REBALANCE';
+      } else if (tx.source === 'ERC20') {
+        if (from === aerodromeLower) {
+          type = 'BUY'; // Swap on Aerodrome: GBLIN coming FROM pool
+        } else if (to === aerodromeLower) {
+          type = 'SELL'; // Swap on Aerodrome: GBLIN going TO pool
+        } else if (to === contractLower) {
+          type = 'BUY'; // Direct buy
+        } else if (from === contractLower) {
+          if (to === '0x0000000000000000000000000000000000000000') {
+            type = 'SELL'; // Burn (part of sell)
+          } else {
+            type = 'SELL'; // Direct sell/rebalance output
+          }
+        } else if (from === '0x0000000000000000000000000000000000000000') {
+          type = 'BUY'; // Mint (part of buy)
+        }
+      } else {
+        // Direct calls to contract
+        if (input.includes('0xefef39a1') || input.includes('0x16938992')) {
+          type = 'BUY';
+        } else if (input.includes('0x49999999')) {
+          type = 'SELL';
+        } else if (tx.value !== '0' && to === contractLower) {
+          type = 'BUY';
+        } else if (from === contractLower) {
+          type = 'SELL';
+        }
+      }
+
+      return {
+        type: type,
+        time: new Date(tx.timestamp).toLocaleString('it-IT', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }),
+        hash: shortenAddress(tx.hash),
+        fullHash: tx.hash, // Corrected field name
+        from: shortenAddress(tx.from_address || ''),
+        to: shortenAddress(tx.to_address || ''),
+        value: parseFloat(ethers.formatEther(tx.value || '0')).toFixed(4),
+        is_rebalance: type === 'REBALANCE'
+      };
+    });
+  } catch (error) {
+    console.error("[v0] Error in fetchTransactions:", error);
+    return [];
   }
 };
 
@@ -247,10 +301,6 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
     
     // Calculate active supply like the contract does: totalSupply - balanceOf(address(this))
     const activeSupply = supplyFormatted - contractBalanceFormatted;
-    
-    console.log("[v0] Total supply:", supplyFormatted);
-    console.log("[v0] Contract balance:", contractBalanceFormatted);
-    console.log("[v0] Active supply:", activeSupply);
     
     // Calculate TVL from basket assets
     let tvl = 0;
@@ -272,7 +322,6 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
         const price = Number(latestRound[1]) / 1e8;
         const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
         tvl += balanceFormatted * price;
-        console.log(`[v0] Basket ${i}: balance=${balanceFormatted}, price=${price}`);
       } catch {
         continue;
       }
@@ -280,13 +329,10 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
     
     // Calculate NAV like the contract does: if activeSupply == 0 return 1 ether, else (tvl * 1 ether) / activeSupply
     const nav = activeSupply > 0 ? tvl / activeSupply : 1;
-    console.log("[v0] TVL:", tvl, "Active Supply:", activeSupply, "NAV:", nav);
     
     // Generate APY data based on current TVL and market activity (no external APIs)
     let apyData = null;
     try {
-      console.log("[v0] Calculating APY data from on-chain metrics...");
-      
       // Calculate APY based on TVL and realistic yield farming returns
       // Base chain yield farming typically ranges 5-25% APY
       const baseApy = 8.5; // Base APY percentage
@@ -305,10 +351,7 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
         estimatedApy,
         timeframe: '30 days'
       };
-      
-      console.log("[v0] APY data calculated from on-chain metrics:", apyData);
     } catch (apyError) {
-      console.log("[v0] Error calculating APY data:", apyError);
       // Fallback to conservative default
       apyData = {
         totalVolume: tvl * 0.8,
@@ -316,7 +359,6 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
         estimatedApy: "7.5",
         timeframe: '30 days'
       };
-      console.log("[v0] Using fallback APY data:", apyData);
     }
     
     return {
@@ -347,6 +389,9 @@ export default function Home() {
   const [ethBalance, setEthBalance] = useState('0.0000');
   const [tokenBalance, setTokenBalance] = useState('0.0000');
   const [gblinBalance, setGblinBalance] = useState('0.0000');
+
+  // Optimization: Use a ref to track if data is being fetched to avoid overlapping calls
+  const isFetchingRef = React.useRef(false);
 
   // Trade state
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
@@ -380,7 +425,7 @@ export default function Home() {
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
 
   // Manual refresh functions
-  const refreshMarketData = async () => {
+  const refreshMarketData = useCallback(async () => {
     setIsMarketLoading(true);
     try {
       const data = await fetchMarketData();
@@ -390,9 +435,9 @@ export default function Home() {
     } finally {
       setIsMarketLoading(false);
     }
-  };
+  }, []);
 
-  const refreshOnChainData = async () => {
+  const refreshOnChainData = useCallback(async () => {
     setIsOnChainLoading(true);
     try {
       const data = await fetchOnChainData();
@@ -402,9 +447,9 @@ export default function Home() {
     } finally {
       setIsOnChainLoading(false);
     }
-  };
+  }, []);
 
-  const refreshTransactions = async () => {
+  const refreshTransactions = useCallback(async () => {
     setIsTransactionsLoading(true);
     try {
       const data = await fetchTransactions();
@@ -414,20 +459,27 @@ export default function Home() {
     } finally {
       setIsTransactionsLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch all data once on mount
+  // Fetch all data once on mount with safety check
   useEffect(() => {
+    if (isFetchingRef.current) return;
+    
     const loadAllData = async () => {
-      await Promise.all([
-        refreshMarketData(),
-        refreshOnChainData(),
-        refreshTransactions()
-      ]);
+      isFetchingRef.current = true;
+      try {
+        await Promise.all([
+          refreshMarketData(),
+          refreshOnChainData(),
+          refreshTransactions()
+        ]);
+      } finally {
+        isFetchingRef.current = false;
+      }
     };
 
     loadAllData();
-  }, []);
+  }, [refreshMarketData, refreshOnChainData, refreshTransactions]);
 
   // Manual refresh function
   const refreshAllData = () => {
@@ -620,16 +672,10 @@ export default function Home() {
         // Skip contract call due to CALL_EXCEPTION error - use estimation only
         const inputAmount = Number(val);
         
-        // Use realistic ETH price even if wallet not connected
-        let ethPriceUsd = 3500;
+        // Use realistic ETH price from marketData or fallback to 3500
+        let ethPriceUsd = marketData?.ethPriceUsd || 3500;
         
-        // Try to get better price estimate if market data is available
-        if (marketData && marketData.priceUsd > 0) {
-          ethPriceUsd = Math.max(3500, marketData.priceUsd * 1000);
-          console.log("[v0] Market data available, using enhanced ETH price:", ethPriceUsd);
-        } else {
-          console.log("[v0] No market data, using default ETH price:", ethPriceUsd);
-        }
+        // Estimate GBLIN output - handle case where wallet is not connected
         
         // Estimate GBLIN output - handle case where wallet is not connected
         let pricePerGblin = 1.0; // Default fallback
@@ -664,15 +710,10 @@ export default function Home() {
         // Skip contract call for sell as well - use estimation only
         const inputAmount = Number(val);
         
-        // Use realistic ETH price even if wallet not connected
-        let ethPriceUsd = 3500;
+        // Use realistic ETH price
+        const ethPriceUsd = marketData?.ethPriceUsd || 3500;
         
-        if (marketData && marketData.priceUsd > 0) {
-          ethPriceUsd = Math.max(3500, marketData.priceUsd * 1000);
-          console.log("[v0] Market data available for sell, using enhanced ETH price:", ethPriceUsd);
-        } else {
-          console.log("[v0] No market data for sell, using default ETH price:", ethPriceUsd);
-        }
+        // Estimate ETH output - handle case where wallet is not connected
         
         // Estimate ETH output - handle case where wallet is not connected
         let pricePerGblin = 1.0; // Default fallback
@@ -712,10 +753,7 @@ export default function Home() {
       
       // Use realistic ETH price even in error case
       const inputAmount = Number(val);
-      let ethPriceUsd = 3500;
-      if (marketData && marketData.priceUsd > 0) {
-        ethPriceUsd = Math.max(3500, marketData.priceUsd * 1000);
-      }
+      const ethPriceUsd = marketData?.ethPriceUsd || 3500;
       
       setUsdValue(inputAmount > 0 ? (inputAmount * ethPriceUsd).toFixed(2) : '0.00');
       setTradeError("Errore nell'aggiornamento. Riprova.");
@@ -847,15 +885,31 @@ export default function Home() {
             const oracleAddress = basketItem[1];
             const dynamicWeight = Number(basketItem[5]);
             
+            // Log for debugging
+            console.log(`[v0] Basket ${i}: Token=${tokenAddress}, Oracle=${oracleAddress}, Weight=${dynamicWeight}`);
+            
             // Get current balance and price
             const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-            const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
             
-            const [balance, decimals, priceData] = await Promise.all([
-              tokenContract.balanceOf(CONTRACT_ADDRESS),
-              tokenContract.decimals(),
-              oracleContract.latestRoundData()
-            ]);
+            let balance, decimals, priceData;
+            try {
+              [balance, decimals] = await Promise.all([
+                tokenContract.balanceOf(CONTRACT_ADDRESS),
+                tokenContract.decimals()
+              ]);
+            } catch (err) {
+              console.error(`[v0] Error fetching token data for ${tokenAddress}:`, err);
+              continue;
+            }
+
+            try {
+              const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
+              priceData = await oracleContract.latestRoundData();
+            } catch (err) {
+              console.error(`[v0] Error fetching oracle data for ${oracleAddress}:`, err);
+              // Fallback for price if oracle fails (very crude, but prevents crash)
+              priceData = [0, i === 0 ? 60000e8 : i === 1 ? 3500e8 : 1e8]; 
+            }
             
             const price = Number(priceData[1]) / 1e8;
             const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
@@ -904,7 +958,7 @@ export default function Home() {
           
           // Check minimum requirements from contract
           const wethBalance = await contract.basket(1).then(async (b: any) => {
-            const wethContract = new ethers.Contract("0x4200000000000000000000000000000000006", ERC20_ABI, provider);
+            const wethContract = new ethers.Contract("0x4200000000000000000000000000000000000006", ERC20_ABI, provider);
             const bal = await wethContract.balanceOf(CONTRACT_ADDRESS);
             return Number(ethers.formatEther(bal));
           });
@@ -1692,7 +1746,17 @@ export default function Home() {
             </div>
             <div className="flex-1 w-full max-w-lg space-y-6">
               <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 space-y-6">
-                <h3 className="text-2xl font-serif italic text-white">Crash Shield & Vault Radar</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="text-2xl font-serif italic text-white">Crash Shield & Vault Radar</h3>
+                  <a 
+                    href="https://defillama.com/protocol/global-balanced-liquidity-index" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1a1a] border border-white/5 rounded-full hover:bg-white/5 transition-all group"
+                  >
+                    <span className="text-[10px] font-medium text-zinc-400 group-hover:text-white transition-colors">Verified by DefiLlama 🦙</span>
+                  </a>
+                </div>
                 <div className="space-y-4">
                   {!stats ? (
                     <div className="text-zinc-500 text-sm italic py-4 animate-pulse">Caricamento dati in corso...</div>
@@ -1724,7 +1788,7 @@ export default function Home() {
                   Stability Fund <span className="italic text-amber-500">Bounty</span>
                 </h3>
                 <p className="text-white/60 leading-relaxed text-sm">
-                  Sistema automatico completo che analizza l'intero paniere e ribilancia tutti gli asset necessari. Esegue multiple transazioni per ripristinare i pesi target di ogni componente (45% cbBTC, 45% WETH, 10% USDC).
+                  Partecipa al mantenimento del peg algoritmico del paniere. Questa funzione analizza le deviazioni dei pesi degli asset (cbBTC, WETH, USDC) rispetto ai target e permette a chiunque di eseguire il ribilanciamento incentivato, ricevendo in cambio una ricompensa (bounty) dal fondo di stabilità per coprire i costi del gas e generare profitto MEV.
                 </p>
                 <div className="flex items-center gap-4">
                   {!isConnected ? (
@@ -1971,11 +2035,23 @@ export default function Home() {
           </div>
           
           <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-zinc-400">
-            <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
-            <a href="mailto:gblin.protocol@proton.me" className="hover:text-amber-500 transition-colors">Email</a>
-            <a href="https://x.com/GBLIN_Protocol" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">X (Twitter)</a>
-            <a href="https://warpcast.com/gblin" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Warpcast</a>
-            <a href="https://github.com/gblinproject/gblin-dapp" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">GitHub</a>
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-1">Resources</span>
+              <div className="flex flex-wrap gap-6">
+                <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
+                <a href="https://github.com/gblinproject/gblin-dapp" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">GitHub</a>
+                <a href="mailto:gblin.protocol@proton.me" className="hover:text-amber-500 transition-colors">Email</a>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-1">Transparency</span>
+              <div className="flex flex-wrap gap-6">
+                <a href="https://github.com/gblinproject/DefiLlama-Adapters" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">DefiLlama TVL Adapter</a>
+                <a href="https://x.com/GBLIN_Protocol" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">X (Twitter)</a>
+                <a href="https://warpcast.com/gblin" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Warpcast</a>
+              </div>
+            </div>
           </div>
           
           <div className="flex flex-col items-end gap-2 text-xs text-zinc-600">
