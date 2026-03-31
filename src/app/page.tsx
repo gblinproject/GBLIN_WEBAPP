@@ -275,7 +275,7 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
           second: '2-digit' 
         }),
         hash: shortenAddress(tx.hash),
-        fullHash: tx.hash, // Corrected field name
+        full_hash: tx.hash,
         from: shortenAddress(tx.from_address || ''),
         to: shortenAddress(tx.to_address || ''),
         value: parseFloat(ethers.formatEther(tx.value || '0')).toFixed(4),
