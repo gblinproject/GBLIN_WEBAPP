@@ -108,7 +108,7 @@ const TOKEN_ADDRESSES: Record<string, string> = {
 };
 
 // API fetch functions
-const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number }> => {
+const fetchMarketData = async (): Promise<{ priceUsd: number; volume24h: number; ethPriceUsd: number }> => {
   try {
     console.log("[v0] Fetching True NAV from Contract and ETH Price from DefiLlama...");
     
