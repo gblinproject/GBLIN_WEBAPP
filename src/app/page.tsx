@@ -290,7 +290,17 @@ const fetchTransactions = async (): Promise<Array<{ type: string; time: string; 
   }
 };
 
-const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; tvl: number; supplyNum: number; apyData?: any }> => {
+const fetchOnChainData = async (): Promise<{ 
+  totalSupply: string; 
+  nav: string; 
+  tvl: number; 
+  supplyNum: number; 
+  lastYield: number;
+  stabilityFund: string;
+  dynamicReserve: string;
+  basketData: any[];
+  apyData?: any 
+}> => {
   try {
     console.log("[v0] Fetching on-chain data...");
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -392,7 +402,16 @@ const fetchOnChainData = async (): Promise<{ totalSupply: string; nav: string; t
     };
   } catch (error) {
     console.log("[v0] Error fetching on-chain data:", error);
-    return { totalSupply: '0', nav: '$0.00', tvl: 0, supplyNum: 0 };
+    return { 
+      totalSupply: '0', 
+      nav: '$0.00', 
+      tvl: 0, 
+      supplyNum: 0,
+      lastYield: 0,
+      stabilityFund: '0',
+      dynamicReserve: '0',
+      basketData: []
+    };
   }
 };
 
