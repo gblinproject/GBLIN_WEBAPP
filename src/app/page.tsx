@@ -348,11 +348,19 @@ const fetchOnChainData = async (): Promise<{
           tvl: assetTvl,
           peakPrice: Number(basketItem[6]) / 1e8,
           baseWeight: Number(basketItem[4]),
-          dynamicWeight: Number(basketItem[5])
+          dynamicWeight: Number(basketItem[5]),
+          realWeight: 0 // Will be calculated after loop
         });
       } catch {
         continue;
       }
+    }
+
+    // Calculate real-time weights based on actual TVL in the vault
+    if (tvl > 0) {
+      basketItems.forEach(item => {
+        item.realWeight = (item.tvl / tvl) * 100;
+      });
     }
     
     // Calculate NAV like the contract does: if activeSupply == 0 return 1 ether, else (tvl * 1 ether) / activeSupply
@@ -481,7 +489,7 @@ export default function Home() {
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [isTransacting, setIsTransacting] = useState(false);
   const [tradeTxHash, setTradeTxHash] = useState<string | null>(null);
-  const [tradeTxError, setTradeTxError] = useState<string | null>(null);
+  const [tradeError, setTradeError] = useState<string | null>(null);
   const [showForceOption, setShowForceOption] = useState(false);
 
   // Arbitrage state
@@ -923,13 +931,13 @@ export default function Home() {
                       <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest">
                         <span className="text-zinc-400">{asset.name}</span>
                         <span className={isSlashed ? 'text-rose-500' : 'text-emerald-500'}>
-                          {isSlashed ? 'CRASH SHIELD ACTIVE' : 'OPTIMAL'} ({((asset.dynamicWeight / 10000) * 100).toFixed(0)}%)
+                          {isSlashed ? 'CRASH SHIELD ACTIVE' : 'OPTIMAL'} ({asset.realWeight.toFixed(1)}%)
                         </span>
                       </div>
                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div 
                           className={`h-full transition-all duration-1000 ${isSlashed ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`}
-                          style={{ width: `${Math.max(5, (asset.dynamicWeight / asset.baseWeight) * 100)}%` }}
+                          style={{ width: `${asset.realWeight}%` }}
                         ></div>
                       </div>
                     </div>
@@ -1009,7 +1017,7 @@ export default function Home() {
                 {basketData.map((asset) => (
                   <div key={asset.name} className="flex justify-between items-end border-b border-white/5 pb-2">
                     <span className="text-[10px] font-mono text-zinc-500 uppercase">{asset.name} Reserve</span>
-                    <span className="text-lg font-serif italic text-zinc-300">{((asset.dynamicWeight / 10000) * 100).toFixed(0)}%</span>
+                    <span className="text-lg font-serif italic text-zinc-300">{asset.realWeight.toFixed(1)}%</span>
                   </div>
                 ))}
                 {lastYieldDistribution > 0 && (
