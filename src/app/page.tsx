@@ -435,6 +435,15 @@ export default function Home() {
   const [logs, setLogs] = useState<string[]>([]);
   const [language, setLanguage] = useState<Language>('en');
 
+  // Detect browser language on mount
+  useEffect(() => {
+    const browserLang = navigator.language.split('-')[0] as Language;
+    const supportedLangs: Language[] = ['en', 'it', 'es', 'zh', 'ja', 'fr', 'de'];
+    if (supportedLangs.includes(browserLang)) {
+      setLanguage(browserLang);
+    }
+  }, []);
+
   const addLog = useCallback((msg: string) => {
     setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10));
   }, []);
