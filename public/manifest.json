@@ -1,0 +1,22 @@
+{
+  "name": "GBLIN Protocol",
+  "short_name": "GBLIN",
+  "description": "Wealth preservation protocol. Every token is backed by a real treasury (WETH, cbBTC, USDC).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/LOGO_GBLIN.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/LOGO_GBLIN.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

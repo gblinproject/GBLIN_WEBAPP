@@ -8,6 +8,12 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "GBLIN (The Golden Vault)",
   description: "Protocollo di preservazione della ricchezza su Base Network.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GBLIN Protocol",
+  },
 };
 
 export default function RootLayout({
@@ -16,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="it">
+    <html lang="en">
       <body className={inter.className}>
         <ClientContextProvider>{children}</ClientContextProvider>
       </body>
