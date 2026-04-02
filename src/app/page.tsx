@@ -11,6 +11,8 @@ import {
   Landmark, Lock, TrendingUp, Network, Brain, Cpu, Download, Coins
 } from 'lucide-react';
 import { useAppKit, useAppKitAccount, useDisconnect } from '@reown/appkit/react';
+import { useWriteContract } from 'wagmi';
+import { parseAbi } from 'viem';
 
 // Types for API responses
 interface DexScreenerPair {
@@ -50,6 +52,11 @@ const formatTimestamp = (timestamp: string) => {
   const date = new Date(parseInt(timestamp) * 1000);
   return date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
+const formatTokenAmount = (value: number, maxFractionDigits: number) => {
+  if (!Number.isFinite(value) || value <= 0) return '0';
+  const formatted = value.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: maxFractionDigits });
+  return formatted.includes('.') ? formatted.replace(/\.?0+$/, '') : formatted;
+};
 const GBLIN_ABI = [
   "function totalSupply() view returns (uint256)",
   "function balanceOf(address) view returns (uint256)",
@@ -75,6 +82,22 @@ const GBLIN_ABI = [
   "error SwapVolumeTooLow()",
   "error InvalidFinalToken()"
 ];
+
+const TRADE_ABI = parseAbi([
+  "function buyGBLIN(uint256 minGblinOut) payable",
+  "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)"
+]);
+
+const REBALANCE_ABI = parseAbi([
+  "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)"
+]);
+
+const REBALANCE_ASSET_OPTIONS = [
+  { name: 'cbBTC', basketIndex: 0, decimals: 8 },
+  { name: 'USDC', basketIndex: 2, decimals: 6 }
+] as const;
+
+type RebalanceDirection = 'weth-to-asset' | 'asset-to-weth';
 
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -423,10 +446,28 @@ const fetchOnChainData = async (): Promise<{
   }
 };
 
+const LiveClock = React.memo(function LiveClock() {
+  const [currentTime, setCurrentTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString('it-IT'));
+    };
+
+    updateTime();
+    const interval = window.setInterval(updateTime, 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return <div className="text-sm font-medium tabular-nums">{currentTime}</div>;
+});
+
 export default function Home() {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
   const { disconnect } = useDisconnect();
+  const { writeContractAsync } = useWriteContract();
 
   const [isReady, setIsReady] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
@@ -507,7 +548,6 @@ export default function Home() {
   const [arbError, setArbError] = useState<string | null>(null);
 
   const [stats, setStats] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState<string>('');
 
   const [marketData, setMarketData] = useState<DashboardData | null>(null);
   const [onChainData, setOnChainData] = useState<any>(null);
@@ -515,6 +555,110 @@ export default function Home() {
   const [isOnChainLoading, setIsOnChainLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+
+  const rebalanceAssetStats = useMemo(() => {
+    const totalTvlUsd = basketData.reduce((sum, asset) => sum + (Number(asset.tvl) || 0), 0);
+    const wethAsset = basketData.find((asset) => asset.name === 'WETH') ?? null;
+    const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
+    const wethBalance = wethAsset ? Number(wethAsset.balance) : 0;
+    const availableWeth = wethBalance;
+    const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+
+    return REBALANCE_ASSET_OPTIONS.map((option) => {
+      const metrics = basketData.find((asset) => asset.name === option.name) ?? null;
+      const actualWeight = metrics ? Number(metrics.realWeight) : null;
+      const dynamicWeight = metrics ? Number(metrics.dynamicWeight) / 100 : null;
+      const baseWeight = metrics ? Number(metrics.baseWeight) / 100 : null;
+      const assetPrice = metrics ? Number(metrics.price) : 0;
+      const assetBalance = metrics ? Number(metrics.balance) : 0;
+      const currentUsdValue = metrics ? Number(metrics.tvl) : 0;
+      const targetUsdValue = metrics ? (totalTvlUsd * Number(metrics.dynamicWeight)) / 10000 : 0;
+      const deltaUsd = metrics ? targetUsdValue - currentUsdValue : 0;
+      const weightGap = actualWeight !== null && dynamicWeight !== null ? dynamicWeight - actualWeight : null;
+
+      let recommendation: RebalanceDirection | 'balanced' | 'unknown' = 'unknown';
+      if (weightGap !== null) {
+        if (weightGap > 0.01) recommendation = 'weth-to-asset';
+        else if (weightGap < -0.01) recommendation = 'asset-to-weth';
+        else recommendation = 'balanced';
+      }
+
+      const rawInputAmount =
+        recommendation === 'weth-to-asset'
+          ? wethPrice > 0 ? Math.max(deltaUsd, 0) / wethPrice : 0
+          : recommendation === 'asset-to-weth'
+            ? assetPrice > 0 ? Math.abs(Math.min(deltaUsd, 0)) / assetPrice : 0
+            : 0;
+
+      const executableInputAmount =
+        recommendation === 'weth-to-asset'
+          ? Math.min(rawInputAmount, availableWeth)
+          : recommendation === 'asset-to-weth'
+            ? Math.min(rawInputAmount, assetBalance)
+            : 0;
+
+      const executableEthAmount =
+        recommendation === 'weth-to-asset'
+          ? executableInputAmount
+          : recommendation === 'asset-to-weth' && assetPrice > 0 && wethPrice > 0
+            ? (executableInputAmount * assetPrice) / wethPrice
+            : 0;
+
+      const inputSymbol = recommendation === 'weth-to-asset' ? 'WETH' : option.name;
+      const inputDecimals = recommendation === 'weth-to-asset' ? 18 : option.decimals;
+      const inputPrecision = recommendation === 'weth-to-asset' ? 8 : option.decimals;
+      const inputAmountText = formatTokenAmount(executableInputAmount, inputPrecision);
+
+      let amountToSwap = 0n;
+      try {
+        if (inputAmountText !== '0') {
+          amountToSwap = ethers.parseUnits(inputAmountText, inputDecimals);
+        }
+      } catch {
+        amountToSwap = 0n;
+      }
+
+      const eligible =
+        recommendation !== 'unknown' &&
+        recommendation !== 'balanced' &&
+        executableEthAmount >= minSwapRequiredEth &&
+        amountToSwap > 0n;
+
+      return {
+        ...option,
+        actualWeight,
+        dynamicWeight,
+        baseWeight,
+        recommendation,
+        inputSymbol,
+        inputAmountText,
+        amountToSwap,
+        executableEthAmount,
+        eligible,
+        minSwapRequiredEth
+      };
+    });
+  }, [basketData]);
+
+  const autoRebalanceOpportunity = useMemo(() => {
+    const ranked = [...rebalanceAssetStats]
+      .filter((asset) => asset.recommendation !== 'unknown')
+      .sort((a, b) => b.executableEthAmount - a.executableEthAmount);
+
+    return ranked.find((asset) => asset.eligible) ?? ranked[0] ?? null;
+  }, [rebalanceAssetStats]);
+
+  const rebalanceMinSwapRequiredEth = autoRebalanceOpportunity?.minSwapRequiredEth ?? 0.01;
+  const rebalanceBountyActive = (onChainData?.stabilityFund ? parseFloat(onChainData.stabilityFund) : 0) >= 0.0001;
+
+  useEffect(() => {
+    setArbError(null);
+  }, [
+    autoRebalanceOpportunity?.name,
+    autoRebalanceOpportunity?.recommendation,
+    autoRebalanceOpportunity?.inputAmountText,
+    autoRebalanceOpportunity?.eligible
+  ]);
 
   // Manual refresh functions
   const refreshMarketData = useCallback(async () => {
@@ -565,6 +709,104 @@ export default function Home() {
   }, [isConnected, address, addLog]);
 
   useEffect(() => {
+    if (!isConnected || !address) {
+      setEthBalance('0.0000');
+      setGblinBalance('0.0000');
+      setTokenBalance('0.0000');
+      return;
+    }
+    const fetchWalletBalances = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const [ethBal, gblinBal] = await Promise.all([
+          provider.getBalance(address),
+          new ethers.Contract(CONTRACT_ADDRESS, ['function balanceOf(address) view returns (uint256)'], provider).balanceOf(address)
+        ]);
+        setEthBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(4));
+        setGblinBalance(parseFloat(ethers.formatEther(gblinBal)).toFixed(4));
+        if (selectedToken !== 'ETH' && TOKEN_ADDRESSES[selectedToken]) {
+          const tokenContract = new ethers.Contract(TOKEN_ADDRESSES[selectedToken], ERC20_ABI, provider);
+          const [tokenBal, decimals] = await Promise.all([
+            tokenContract.balanceOf(address),
+            tokenContract.decimals()
+          ]);
+          setTokenBalance((Number(tokenBal) / Math.pow(10, Number(decimals))).toFixed(4));
+        }
+      } catch (e) {
+        console.error('[balance] fetch error:', e);
+      }
+    };
+    fetchWalletBalances();
+  }, [isConnected, address, selectedToken]);
+
+  useEffect(() => {
+    if (!amount || parseFloat(amount) <= 0) {
+      setQuote('0');
+      setRawQuote(BigInt(0));
+      setUsdValue('$0.00');
+      return;
+    }
+    const fetchQuote = async () => {
+      setIsLoadingQuote(true);
+      try {
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+        if (mode === 'buy' && selectedToken === 'ETH') {
+          const ethAmount = ethers.parseEther(amount);
+          const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
+            contract.quoteBuyGBLIN(ethAmount),
+            contract.totalSupply(),
+            contract.balanceOf(CONTRACT_ADDRESS)
+          ]);
+          const quotedGblinOut: bigint = result[0];
+          const founderFee: bigint = result[1];
+          const stabFee: bigint = result[2];
+          const totalSupply = BigInt(totalSupplyRaw.toString());
+          const contractBalance = BigInt(contractBalanceRaw.toString());
+          const activeSupply: bigint = totalSupply - contractBalance;
+          const netEth: bigint = ethAmount - founderFee - stabFee;
+
+          let effectiveGblinOut = quotedGblinOut;
+
+          if (activeSupply > 0n && quotedGblinOut > 0n) {
+            const navBefore = (netEth * ethers.WeiPerEther) / quotedGblinOut;
+            const tvlBefore = (activeSupply * navBefore) / ethers.WeiPerEther;
+            effectiveGblinOut = tvlBefore > 0n
+              ? (netEth * activeSupply) / (tvlBefore + ethAmount)
+              : quotedGblinOut;
+          } else if (quotedGblinOut > 1000n) {
+            effectiveGblinOut = quotedGblinOut - 1000n;
+          }
+
+          setRawQuote(effectiveGblinOut);
+          setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
+          const ethPrice = marketData?.ethPriceUsd || 3500;
+          setUsdValue(formatCurrency(parseFloat(amount) * ethPrice));
+        } else if (mode === 'sell') {
+          const gblinAmount = ethers.parseEther(amount);
+          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount);
+          setRawQuote(ethOut);
+          setQuote(parseFloat(ethers.formatEther(ethOut)).toFixed(6));
+          const ethPrice = marketData?.ethPriceUsd || 3500;
+          setUsdValue(formatCurrency(parseFloat(ethers.formatEther(ethOut)) * ethPrice));
+        } else {
+          setQuote('—');
+          setRawQuote(BigInt(0));
+          setUsdValue('$0.00');
+        }
+      } catch (e) {
+        console.error('[quote] fetch error:', e);
+        setQuote('Err');
+        setRawQuote(BigInt(0));
+      } finally {
+        setIsLoadingQuote(false);
+      }
+    };
+    const timer = setTimeout(fetchQuote, 600);
+    return () => clearTimeout(timer);
+  }, [amount, mode, selectedToken, marketData]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -607,14 +849,6 @@ export default function Home() {
     
     return Math.max(-100, Math.min(100, discount));
   }, [marketData, onChainData]);
-
-  useEffect(() => {
-    setCurrentTime(new Date().toLocaleTimeString('it-IT'));
-    const interval = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('it-IT'));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const t = useCallback((key: string) => {
     try {
@@ -661,6 +895,209 @@ export default function Home() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const executeTrade = useCallback(async () => {
+    if (!isConnected || !address) {
+      open();
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      setTradeError('Enter a valid amount.');
+      return;
+    }
+
+    if (mode === 'buy' && selectedToken !== 'ETH') {
+      setTradeError('Zap-in is currently enabled only for ETH.');
+      return;
+    }
+
+    if (rawQuote <= 0n) {
+      setTradeError('Quote not ready. Wait a moment and retry.');
+      return;
+    }
+
+    const slippageBps = BigInt(Math.round(slippage * 100));
+    const minAmountOut = (rawQuote * (10000n - slippageBps)) / 10000n;
+
+    setIsTransacting(true);
+    setTradeError(null);
+    setTradeTxHash(null);
+    setShowForceOption(false);
+
+    try {
+      let hash: `0x${string}`;
+
+      if (mode === 'buy') {
+        const ethAmount = ethers.parseEther(amount);
+        hash = await writeContractAsync({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: TRADE_ABI,
+          functionName: 'buyGBLIN',
+          args: [minAmountOut],
+          value: ethAmount,
+          chainId: BASE_CHAIN_ID
+        });
+      } else {
+        const gblinAmount = ethers.parseEther(amount);
+        hash = await writeContractAsync({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: TRADE_ABI,
+          functionName: 'sellGBLINForEth',
+          args: [gblinAmount, minAmountOut],
+          chainId: BASE_CHAIN_ID
+        });
+      }
+
+      setTradeTxHash(hash);
+      addLog(`Transaction sent: ${shortenAddress(hash)}`);
+
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      await provider.waitForTransaction(hash, 1, 120000);
+
+      const [ethBal, gblinBal] = await Promise.all([
+        provider.getBalance(address),
+        new ethers.Contract(CONTRACT_ADDRESS, ['function balanceOf(address) view returns (uint256)'], provider).balanceOf(address)
+      ]);
+
+      setEthBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(4));
+      setGblinBalance(parseFloat(ethers.formatEther(gblinBal)).toFixed(4));
+
+      if (selectedToken !== 'ETH' && TOKEN_ADDRESSES[selectedToken]) {
+        const tokenContract = new ethers.Contract(TOKEN_ADDRESSES[selectedToken], ERC20_ABI, provider);
+        const [tokenBal, decimals] = await Promise.all([
+          tokenContract.balanceOf(address),
+          tokenContract.decimals()
+        ]);
+        setTokenBalance((Number(tokenBal) / Math.pow(10, Number(decimals))).toFixed(4));
+      } else {
+        setTokenBalance('0.0000');
+      }
+
+      await Promise.all([refreshOnChainData(), refreshTransactions()]);
+      setAmount('');
+      addLog(`Transaction confirmed: ${shortenAddress(hash)}`);
+    } catch (error) {
+      console.error('[trade] execute error:', error);
+
+      const message = error instanceof Error ? error.message : 'Transaction failed.';
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
+        setTradeError('Transaction rejected in wallet.');
+      } else if (normalizedMessage.includes('insufficient funds')) {
+        setTradeError('Insufficient ETH for value plus gas.');
+      } else if (normalizedMessage.includes('deposittoosmall')) {
+        setTradeError('Deposit too small. Minimum is 0.0005 ETH.');
+      } else if (normalizedMessage.includes('cooldownactive')) {
+        setTradeError('Cooldown active. Wait 2 minutes after the last deposit.');
+      } else if (normalizedMessage.includes('slippageexceeded')) {
+        setTradeError('Slippage exceeded. Try a higher slippage setting.');
+      } else {
+        setTradeError(message.length > 180 ? `${message.slice(0, 177)}...` : message);
+      }
+    } finally {
+      setIsTransacting(false);
+    }
+  }, [
+    address,
+    addLog,
+    amount,
+    isConnected,
+    mode,
+    open,
+    rawQuote,
+    refreshOnChainData,
+    refreshTransactions,
+    selectedToken,
+    slippage,
+    writeContractAsync
+  ]);
+
+  const executeArbitrage = useCallback(async () => {
+    if (!isConnected || !address) {
+      open();
+      return;
+    }
+
+    if (!autoRebalanceOpportunity || !autoRebalanceOpportunity.eligible || autoRebalanceOpportunity.amountToSwap <= 0n) {
+      setArbError(t('rebalance.errorNoOpportunity'));
+      return;
+    }
+
+    setIsArbitraging(true);
+    setArbError(null);
+    setArbTxHash(null);
+
+    try {
+      const isWethToAsset = autoRebalanceOpportunity.recommendation === 'weth-to-asset';
+      const hash = await writeContractAsync({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: REBALANCE_ABI,
+        functionName: 'incentivizedRebalance',
+        args: [BigInt(autoRebalanceOpportunity.basketIndex), isWethToAsset, autoRebalanceOpportunity.amountToSwap],
+        chainId: BASE_CHAIN_ID
+      });
+
+      setArbTxHash(hash);
+      addLog(`Auto rebalance sent: ${shortenAddress(hash)} (${isWethToAsset ? 'WETH' : autoRebalanceOpportunity.name} -> ${isWethToAsset ? autoRebalanceOpportunity.name : 'WETH'})`);
+
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      await provider.waitForTransaction(hash, 1, 120000);
+
+      await Promise.all([refreshOnChainData(), refreshTransactions()]);
+      addLog(`Auto rebalance confirmed: ${shortenAddress(hash)}`);
+    } catch (error) {
+      console.error('[rebalance] execute error:', error);
+
+      const message = error instanceof Error ? error.message : 'Transaction failed.';
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
+        setArbError(t('rebalance.errorRejected'));
+      } else if (normalizedMessage.includes('insufficient funds')) {
+        setArbError(t('rebalance.errorGas'));
+      } else if (normalizedMessage.includes('rebalancenotneeded')) {
+        setArbError(t('rebalance.errorNoRebalance'));
+      } else if (normalizedMessage.includes('swapvolumetoolow')) {
+        setArbError(t('rebalance.errorTooLow'));
+      } else if (normalizedMessage.includes('oracle dead') || normalizedMessage.includes('staleoracle') || normalizedMessage.includes('sequencerdown')) {
+        setArbError(t('rebalance.errorOracle'));
+      } else if (normalizedMessage.includes('invalid asset') || normalizedMessage.includes('cannot swap weth for weth')) {
+        setArbError(t('rebalance.errorInvalidAsset'));
+      } else if (normalizedMessage.includes('slippageexceeded')) {
+        setArbError(t('rebalance.errorSlippage'));
+      } else {
+        setArbError(message.length > 180 ? `${message.slice(0, 177)}...` : message);
+      }
+    } finally {
+      setIsArbitraging(false);
+    }
+  }, [
+    address,
+    addLog,
+    autoRebalanceOpportunity,
+    isConnected,
+    open,
+    refreshOnChainData,
+    refreshTransactions,
+    t,
+    writeContractAsync
+  ]);
+
+  const isArbDisabled =
+    isArbitraging ||
+    !autoRebalanceOpportunity ||
+    !autoRebalanceOpportunity.eligible ||
+    autoRebalanceOpportunity.amountToSwap <= 0n;
+
+  const isTradeDisabled =
+    isTransacting ||
+    isLoadingQuote ||
+    !amount ||
+    parseFloat(amount) <= 0 ||
+    rawQuote <= 0n ||
+    (mode === 'buy' && selectedToken !== 'ETH');
 
   if (!isReady) return null;
 
@@ -914,7 +1351,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-4">
                 <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
                   <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-1">{t('dashboard.lastUpdate')}</div>
-                  <div className="text-sm font-medium tabular-nums">{currentTime}</div>
+                  <LiveClock />
                 </div>
                 <button 
                   onClick={refreshAllData}
@@ -1136,6 +1573,182 @@ export default function Home() {
         </div>
       </section>
 
+        <section id="rebalance" className="py-24 px-6 border-b border-white/5 bg-white/[0.01]">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-start">
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                  <SlidersHorizontal size={14} className="text-amber-500" />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500">{t('rebalance.badge')}</span>
+                </div>
+                <div>
+                  <h2 className="font-serif text-4xl md:text-5xl tracking-tight mb-4">{t('rebalance.title')}</h2>
+                  <p className="text-white/60 max-w-2xl leading-relaxed">{t('rebalance.desc')}</p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {rebalanceAssetStats.map((asset) => {
+                    const isAutoSelected = autoRebalanceOpportunity?.name === asset.name;
+
+                    return (
+                    <div
+                      key={asset.name}
+                      className={`text-left p-5 rounded-3xl border transition-all ${isAutoSelected ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.08)]' : 'bg-white/[0.03] border-white/10'}`}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                          <div className="text-xl font-serif italic">{asset.name}</div>
+                          <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.index')} {asset.basketIndex}</div>
+                        </div>
+                        {isAutoSelected && (
+                          <span className="px-2 py-1 rounded-full bg-amber-500 text-black text-[9px] font-bold uppercase tracking-widest">{t('rebalance.selected')}</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.actual')}</div>
+                          <div className="mt-2 text-sm font-semibold">{asset.actualWeight !== null ? `${asset.actualWeight.toFixed(2)}%` : '---'}</div>
+                        </div>
+                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.dynamic')}</div>
+                          <div className="mt-2 text-sm font-semibold">{asset.dynamicWeight !== null ? `${asset.dynamicWeight.toFixed(2)}%` : '---'}</div>
+                        </div>
+                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.base')}</div>
+                          <div className="mt-2 text-sm font-semibold">{asset.baseWeight !== null ? `${asset.baseWeight.toFixed(2)}%` : '---'}</div>
+                        </div>
+                      </div>
+                      <div className={`mt-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider ${asset.recommendation === 'weth-to-asset' ? 'text-emerald-400' : asset.recommendation === 'asset-to-weth' ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${asset.recommendation === 'weth-to-asset' ? 'bg-emerald-500' : asset.recommendation === 'asset-to-weth' ? 'bg-amber-500' : 'bg-zinc-600'}`}></div>
+                        <span>
+                          {asset.recommendation === 'weth-to-asset'
+                            ? t('rebalance.recommendationUnderweight')
+                            : asset.recommendation === 'asset-to-weth'
+                              ? t('rebalance.recommendationOverweight')
+                              : asset.recommendation === 'balanced'
+                                ? t('rebalance.recommendationBalanced')
+                                : t('rebalance.recommendationLoading')}
+                        </span>
+                      </div>
+                    </div>
+                  )})}
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -inset-4 bg-amber-500/10 blur-3xl rounded-[3rem] opacity-70"></div>
+                <div className="relative bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-8 backdrop-blur-sm">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-2">{t('rebalance.asset')}</div>
+                        <div className="text-2xl font-serif italic">{autoRebalanceOpportunity?.name ?? '---'}</div>
+                      </div>
+                      <div className={`px-3 py-2 rounded-2xl border text-[10px] font-mono uppercase tracking-widest ${rebalanceBountyActive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
+                        {rebalanceBountyActive ? t('rebalance.bountyReady') : t('rebalance.bountyLow')}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle size={16} className={`${autoRebalanceOpportunity?.eligible ? 'text-emerald-400' : 'text-amber-400'} shrink-0 mt-0.5`} />
+                        <div className="space-y-1">
+                          <p className="text-xs text-white/80 leading-relaxed">
+                            {autoRebalanceOpportunity?.recommendation === 'weth-to-asset'
+                              ? t('rebalance.recommendationUnderweight')
+                              : autoRebalanceOpportunity?.recommendation === 'asset-to-weth'
+                                ? t('rebalance.recommendationOverweight')
+                                : autoRebalanceOpportunity?.recommendation === 'balanced'
+                                  ? t('rebalance.recommendationBalanced')
+                                  : t('rebalance.recommendationLoading')}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                            {autoRebalanceOpportunity?.eligible ? t('rebalance.autoAmountHint') : t('rebalance.noOpportunity')}
+                          </p>
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.gasNotice')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                        <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.direction')}</div>
+                        <div className="mt-2 text-sm font-semibold">
+                          {autoRebalanceOpportunity?.recommendation === 'weth-to-asset'
+                            ? t('rebalance.directionToAsset')
+                            : autoRebalanceOpportunity?.recommendation === 'asset-to-weth'
+                              ? t('rebalance.directionToWeth')
+                              : '---'}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                        <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.amount')}</div>
+                        <div className="mt-2 text-sm font-semibold break-words">
+                          {autoRebalanceOpportunity ? `${autoRebalanceOpportunity.inputAmountText} ${autoRebalanceOpportunity.inputSymbol}` : '---'}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                        <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.minFloor')}</div>
+                        <div className="mt-2 text-sm font-semibold">{formatTokenAmount(rebalanceMinSwapRequiredEth, 4)} WETH</div>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">{t('rebalance.floorNotice')}</p>
+
+                    {arbError && (
+                      <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-3">
+                        <AlertCircle size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-rose-400 leading-relaxed font-medium uppercase tracking-wider">{arbError}</p>
+                      </div>
+                    )}
+
+                    {arbTxHash && (
+                      <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in duration-500">
+                        <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div className="flex-1 overflow-hidden">
+                          <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mb-1">{t('rebalance.txSuccess')}</p>
+                          <a
+                            href={`https://basescan.org/tx/${arbTxHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-emerald-500/60 font-mono truncate block hover:underline"
+                          >
+                            {arbTxHash}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isConnected ? (
+                      <button
+                        onClick={() => open()}
+                        className="w-full py-4 bg-amber-500 text-black rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-amber-400 transition-all shadow-[0_0_30px_rgba(245,158,11,0.2)]"
+                      >
+                        {t('rebalance.connectWallet')}
+                      </button>
+                    ) : (
+                      <button
+                        disabled={isArbDisabled}
+                        onClick={executeArbitrage}
+                        className={`w-full py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${isArbDisabled ? 'bg-white/5 text-zinc-500 cursor-not-allowed' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.2)] hover:-translate-y-0.5'}`}
+                      >
+                        {isArbitraging ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <RefreshCw size={16} className="animate-spin" />
+                            {t('rebalance.processing')}
+                          </span>
+                        ) : (
+                          isArbDisabled ? t('rebalance.waitingOpportunity') : t('rebalance.execute')
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Trade Section */}
         <section id="trade" className="py-24 px-6 relative overflow-hidden">
           <div className="max-w-7xl mx-auto">
@@ -1340,8 +1953,9 @@ export default function Home() {
                             )}
 
                             <button 
-                              disabled={isTransacting || !amount || parseFloat(amount) <= 0}
-                              className={`w-full py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${isTransacting ? 'bg-white/5 text-zinc-500 cursor-not-allowed' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.2)] hover:-translate-y-0.5'}`}
+                              disabled={isTradeDisabled}
+                              onClick={executeTrade}
+                              className={`w-full py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${isTradeDisabled ? 'bg-white/5 text-zinc-500 cursor-not-allowed' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.2)] hover:-translate-y-0.5'}`}
                             >
                               {isTransacting ? (
                                 <span className="flex items-center justify-center gap-2">
