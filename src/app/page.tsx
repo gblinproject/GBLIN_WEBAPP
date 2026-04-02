@@ -561,7 +561,8 @@ export default function Home() {
     const wethAsset = basketData.find((asset) => asset.name === 'WETH') ?? null;
     const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
     const wethBalance = wethAsset ? Number(wethAsset.balance) : 0;
-    const availableWeth = wethBalance;
+    const stabilityFundValue = onChainData?.stabilityFund ? parseFloat(onChainData.stabilityFund) : 0;
+    const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
     const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
 
     return REBALANCE_ASSET_OPTIONS.map((option) => {
@@ -583,7 +584,7 @@ export default function Home() {
         else recommendation = 'balanced';
       }
 
-      const rawInputAmount =
+      const targetInputAmount =
         recommendation === 'weth-to-asset'
           ? wethPrice > 0 ? Math.max(deltaUsd, 0) / wethPrice : 0
           : recommendation === 'asset-to-weth'
@@ -592,26 +593,33 @@ export default function Home() {
 
       const executableInputAmount =
         recommendation === 'weth-to-asset'
-          ? Math.min(rawInputAmount, availableWeth)
+          ? Math.min(targetInputAmount, availableWeth)
           : recommendation === 'asset-to-weth'
-            ? Math.min(rawInputAmount, assetBalance)
+            ? Math.min(targetInputAmount, assetBalance)
             : 0;
 
-      const executableEthAmount =
+      const targetEthAmount =
         recommendation === 'weth-to-asset'
-          ? executableInputAmount
+          ? targetInputAmount
           : recommendation === 'asset-to-weth' && assetPrice > 0 && wethPrice > 0
-            ? (executableInputAmount * assetPrice) / wethPrice
+            ? (targetInputAmount * assetPrice) / wethPrice
+            : 0;
+
+      const minimumInputAmount =
+        recommendation === 'weth-to-asset'
+          ? minSwapRequiredEth
+          : recommendation === 'asset-to-weth' && assetPrice > 0 && wethPrice > 0
+            ? (minSwapRequiredEth * wethPrice) / assetPrice
             : 0;
 
       const inputSymbol = recommendation === 'weth-to-asset' ? 'WETH' : option.name;
       const inputDecimals = recommendation === 'weth-to-asset' ? 18 : option.decimals;
       const inputPrecision = recommendation === 'weth-to-asset' ? 8 : option.decimals;
-      const inputAmountText = formatTokenAmount(executableInputAmount, inputPrecision);
+      const inputAmountText = formatTokenAmount(minimumInputAmount, inputPrecision);
 
       let amountToSwap = 0n;
       try {
-        if (inputAmountText !== '0') {
+        if (recommendation !== 'unknown' && recommendation !== 'balanced' && inputAmountText !== '0') {
           amountToSwap = ethers.parseUnits(inputAmountText, inputDecimals);
         }
       } catch {
@@ -621,7 +629,7 @@ export default function Home() {
       const eligible =
         recommendation !== 'unknown' &&
         recommendation !== 'balanced' &&
-        executableEthAmount >= minSwapRequiredEth &&
+        executableInputAmount > 0 &&
         amountToSwap > 0n;
 
       return {
@@ -633,17 +641,18 @@ export default function Home() {
         inputSymbol,
         inputAmountText,
         amountToSwap,
-        executableEthAmount,
+        targetEthAmount,
+        executableInputAmount,
         eligible,
         minSwapRequiredEth
       };
     });
-  }, [basketData]);
+  }, [basketData, onChainData]);
 
   const autoRebalanceOpportunity = useMemo(() => {
     const ranked = [...rebalanceAssetStats]
       .filter((asset) => asset.recommendation !== 'unknown')
-      .sort((a, b) => b.executableEthAmount - a.executableEthAmount);
+      .sort((a, b) => b.targetEthAmount - a.targetEthAmount);
 
     return ranked.find((asset) => asset.eligible) ?? ranked[0] ?? null;
   }, [rebalanceAssetStats]);
@@ -889,6 +898,88 @@ export default function Home() {
       return key;
     }
   }, [language]);
+
+  const rebalanceOverviewCards = useMemo(() => {
+    const executableCards = rebalanceAssetStats.map((asset) => {
+      const recommendationText =
+        asset.recommendation === 'weth-to-asset'
+          ? t('rebalance.recommendationUnderweight')
+          : asset.recommendation === 'asset-to-weth'
+            ? t('rebalance.recommendationOverweight')
+            : asset.recommendation === 'balanced'
+              ? t('rebalance.recommendationBalanced')
+              : t('rebalance.recommendationLoading');
+
+      const recommendationTone =
+        asset.recommendation === 'weth-to-asset'
+          ? 'text-emerald-400'
+          : asset.recommendation === 'asset-to-weth'
+            ? 'text-amber-400'
+            : 'text-zinc-500';
+
+      const recommendationDot =
+        asset.recommendation === 'weth-to-asset'
+          ? 'bg-emerald-500'
+          : asset.recommendation === 'asset-to-weth'
+            ? 'bg-amber-500'
+            : 'bg-zinc-600';
+
+      return {
+        name: asset.name,
+        actualWeight: asset.actualWeight,
+        dynamicWeight: asset.dynamicWeight,
+        baseWeight: asset.baseWeight,
+        directionLabel:
+          asset.recommendation === 'weth-to-asset'
+            ? t('rebalance.directionToAsset')
+            : asset.recommendation === 'asset-to-weth'
+              ? t('rebalance.directionToWeth')
+              : '---',
+        amountLabel: t('rebalance.amount'),
+        amountValue: `${asset.inputAmountText} ${asset.inputSymbol}`,
+        minFloorLabel: t('rebalance.minFloor'),
+        minFloorValue: `${formatTokenAmount(asset.minSwapRequiredEth, 4)} WETH`,
+        recommendationText,
+        recommendationTone,
+        recommendationDot,
+        containerClass: autoRebalanceOpportunity?.name === asset.name
+          ? 'border-amber-500/30 bg-amber-500/[0.05]'
+          : 'border-white/10 bg-white/[0.03]'
+      };
+    });
+
+    const wethMetrics = basketData.find((asset) => asset.name === 'WETH') ?? null;
+    const wethBalance = wethMetrics ? Number(wethMetrics.balance) : 0;
+    const stabilityFundValue = onChainData?.stabilityFund ? parseFloat(onChainData.stabilityFund) : 0;
+    const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
+    const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+
+    const wethCard = {
+      name: 'WETH',
+      actualWeight: wethMetrics ? Number(wethMetrics.realWeight) : null,
+      dynamicWeight: wethMetrics ? Number(wethMetrics.dynamicWeight) / 100 : null,
+      baseWeight: wethMetrics ? Number(wethMetrics.baseWeight) / 100 : null,
+      directionLabel: t('rebalance.directionCounterparty'),
+      amountLabel: t('rebalance.amountAvailable'),
+      amountValue: `${formatTokenAmount(availableWeth, 6)} WETH`,
+      minFloorLabel: t('rebalance.minFloor'),
+      minFloorValue: `${formatTokenAmount(minSwapRequiredEth, 4)} WETH`,
+      recommendationText: t('rebalance.recommendationCounterparty'),
+      recommendationTone: 'text-sky-400',
+      recommendationDot: 'bg-sky-500',
+      containerClass: 'border-sky-500/20 bg-sky-500/[0.04]'
+    };
+
+    const cards = [];
+    const cbBtcCard = executableCards.find((asset) => asset.name === 'cbBTC');
+    const usdcCard = executableCards.find((asset) => asset.name === 'USDC');
+
+    if (cbBtcCard) cards.push(cbBtcCard);
+    cards.push(wethCard);
+    if (usdcCard) cards.push(usdcCard);
+
+    return cards;
+  }, [autoRebalanceOpportunity?.name, basketData, onChainData, rebalanceAssetStats, t]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(CONTRACT_ADDRESS);
@@ -1586,52 +1677,57 @@ export default function Home() {
                   <p className="text-white/60 max-w-2xl leading-relaxed">{t('rebalance.desc')}</p>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {rebalanceAssetStats.map((asset) => {
-                    const isAutoSelected = autoRebalanceOpportunity?.name === asset.name;
-
+                <div className="grid gap-4 md:grid-cols-2">
+                  {rebalanceOverviewCards.map((asset) => {
                     return (
-                    <div
-                      key={asset.name}
-                      className={`text-left p-5 rounded-3xl border transition-all ${isAutoSelected ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.08)]' : 'bg-white/[0.03] border-white/10'}`}
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div>
-                          <div className="text-xl font-serif italic">{asset.name}</div>
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.index')} {asset.basketIndex}</div>
+                      <div
+                        key={asset.name}
+                        className={`rounded-[2rem] border p-6 md:p-8 ${asset.containerClass}`}
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                          <div>
+                            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-2">{t('rebalance.asset')}</div>
+                            <div className="text-3xl md:text-4xl font-serif italic">{asset.name}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-2">{t('rebalance.direction')}</div>
+                            <div className="text-sm font-semibold">{asset.directionLabel}</div>
+                          </div>
                         </div>
-                        {isAutoSelected && (
-                          <span className="px-2 py-1 rounded-full bg-amber-500 text-black text-[9px] font-bold uppercase tracking-widest">{t('rebalance.selected')}</span>
-                        )}
+
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.actual')}</div>
+                            <div className="mt-2 text-sm font-semibold">{asset.actualWeight !== null && asset.actualWeight !== undefined ? `${asset.actualWeight.toFixed(2)}%` : '---'}</div>
+                          </div>
+                          <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.dynamic')}</div>
+                            <div className="mt-2 text-sm font-semibold">{asset.dynamicWeight !== null && asset.dynamicWeight !== undefined ? `${asset.dynamicWeight.toFixed(2)}%` : '---'}</div>
+                          </div>
+                          <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.base')}</div>
+                            <div className="mt-2 text-sm font-semibold">{asset.baseWeight !== null && asset.baseWeight !== undefined ? `${asset.baseWeight.toFixed(2)}%` : '---'}</div>
+                          </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                          <div className="rounded-2xl bg-black/30 border border-white/5 px-4 py-4">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{asset.amountLabel}</div>
+                            <div className="mt-2 text-sm font-semibold break-words">{asset.amountValue}</div>
+                          </div>
+                          <div className="rounded-2xl bg-black/30 border border-white/5 px-4 py-4">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{asset.minFloorLabel}</div>
+                            <div className="mt-2 text-sm font-semibold">{asset.minFloorValue}</div>
+                          </div>
+                        </div>
+
+                        <div className={`mt-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider ${asset.recommendationTone}`}>
+                          <div className={`w-2 h-2 rounded-full ${asset.recommendationDot}`}></div>
+                          <span>{asset.recommendationText}</span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-center">
-                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
-                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.actual')}</div>
-                          <div className="mt-2 text-sm font-semibold">{asset.actualWeight !== null ? `${asset.actualWeight.toFixed(2)}%` : '---'}</div>
-                        </div>
-                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
-                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.dynamic')}</div>
-                          <div className="mt-2 text-sm font-semibold">{asset.dynamicWeight !== null ? `${asset.dynamicWeight.toFixed(2)}%` : '---'}</div>
-                        </div>
-                        <div className="rounded-2xl bg-black/30 border border-white/5 px-3 py-4">
-                          <div className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">{t('rebalance.base')}</div>
-                          <div className="mt-2 text-sm font-semibold">{asset.baseWeight !== null ? `${asset.baseWeight.toFixed(2)}%` : '---'}</div>
-                        </div>
-                      </div>
-                      <div className={`mt-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider ${asset.recommendation === 'weth-to-asset' ? 'text-emerald-400' : asset.recommendation === 'asset-to-weth' ? 'text-amber-400' : 'text-zinc-500'}`}>
-                        <div className={`w-2 h-2 rounded-full ${asset.recommendation === 'weth-to-asset' ? 'bg-emerald-500' : asset.recommendation === 'asset-to-weth' ? 'bg-amber-500' : 'bg-zinc-600'}`}></div>
-                        <span>
-                          {asset.recommendation === 'weth-to-asset'
-                            ? t('rebalance.recommendationUnderweight')
-                            : asset.recommendation === 'asset-to-weth'
-                              ? t('rebalance.recommendationOverweight')
-                              : asset.recommendation === 'balanced'
-                                ? t('rebalance.recommendationBalanced')
-                                : t('rebalance.recommendationLoading')}
-                        </span>
-                      </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                 </div>
               </div>
 
