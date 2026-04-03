@@ -1,7 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
+import { ContextProvider } from "@/context";
 
-export const ClientContextProvider = dynamic(() => import("@/context").then(mod => mod.ContextProvider), {
-  ssr: false,
-});
+export function ClientContextProvider({ children }: { children: ReactNode }) {
+  return <ContextProvider>{children}</ContextProvider>;
+}
