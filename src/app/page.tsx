@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { translations, Language } from '../translations/index';
+import { ProtocolApp } from '@/components/protocol/protocol-app';
 import { ethers } from 'ethers';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -36,7 +37,7 @@ interface DashboardData {
 
 // Constants - MUST be defined before fetch functions - Updated for deploy fix
 const RPC_URL = "https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt";
-const CONTRACT_ADDRESS = "0xED334B4CDaFCAe6D42bb9A57DE565fD3e9640a50";
+const CONTRACT_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
 const AERODROME_POOL = "0xdaecc15bf028bc4d135260d044b87001dafb3c22";
 const BASESCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3";
 const ETHERSCAN_API_KEY = "GPQ6DWRRK1S4RP9WAWGGZQP3FUTG4DU2H3"; // Unified Etherscan API key for V2
@@ -463,7 +464,7 @@ const LiveClock = React.memo(function LiveClock() {
   return <div className="text-sm font-medium tabular-nums">{currentTime}</div>;
 });
 
-export default function Home() {
+function LegacyHome() {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
   const { disconnect } = useDisconnect();
@@ -749,73 +750,6 @@ export default function Home() {
   }, [isConnected, address, selectedToken]);
 
   useEffect(() => {
-    if (!amount || parseFloat(amount) <= 0) {
-      setQuote('0');
-      setRawQuote(BigInt(0));
-      setUsdValue('$0.00');
-      return;
-    }
-    const fetchQuote = async () => {
-      setIsLoadingQuote(true);
-      try {
-        const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-        if (mode === 'buy' && selectedToken === 'ETH') {
-          const ethAmount = ethers.parseEther(amount);
-          const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
-            contract.quoteBuyGBLIN(ethAmount),
-            contract.totalSupply(),
-            contract.balanceOf(CONTRACT_ADDRESS)
-          ]);
-          const quotedGblinOut: bigint = result[0];
-          const founderFee: bigint = result[1];
-          const stabFee: bigint = result[2];
-          const totalSupply = BigInt(totalSupplyRaw.toString());
-          const contractBalance = BigInt(contractBalanceRaw.toString());
-          const activeSupply: bigint = totalSupply - contractBalance;
-          const netEth: bigint = ethAmount - founderFee - stabFee;
-
-          let effectiveGblinOut = quotedGblinOut;
-
-          if (activeSupply > 0n && quotedGblinOut > 0n) {
-            const navBefore = (netEth * ethers.WeiPerEther) / quotedGblinOut;
-            const tvlBefore = (activeSupply * navBefore) / ethers.WeiPerEther;
-            effectiveGblinOut = tvlBefore > 0n
-              ? (netEth * activeSupply) / (tvlBefore + ethAmount)
-              : quotedGblinOut;
-          } else if (quotedGblinOut > 1000n) {
-            effectiveGblinOut = quotedGblinOut - 1000n;
-          }
-
-          setRawQuote(effectiveGblinOut);
-          setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
-          const ethPrice = marketData?.ethPriceUsd || 3500;
-          setUsdValue(formatCurrency(parseFloat(amount) * ethPrice));
-        } else if (mode === 'sell') {
-          const gblinAmount = ethers.parseEther(amount);
-          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount);
-          setRawQuote(ethOut);
-          setQuote(parseFloat(ethers.formatEther(ethOut)).toFixed(6));
-          const ethPrice = marketData?.ethPriceUsd || 3500;
-          setUsdValue(formatCurrency(parseFloat(ethers.formatEther(ethOut)) * ethPrice));
-        } else {
-          setQuote('—');
-          setRawQuote(BigInt(0));
-          setUsdValue('$0.00');
-        }
-      } catch (e) {
-        console.error('[quote] fetch error:', e);
-        setQuote('Err');
-        setRawQuote(BigInt(0));
-      } finally {
-        setIsLoadingQuote(false);
-      }
-    };
-    const timer = setTimeout(fetchQuote, 600);
-    return () => clearTimeout(timer);
-  }, [amount, mode, selectedToken, marketData]);
-
-  useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -1061,13 +995,7 @@ export default function Home() {
           tokenContract.decimals()
         ]);
         setTokenBalance((Number(tokenBal) / Math.pow(10, Number(decimals))).toFixed(4));
-      } else {
-        setTokenBalance('0.0000');
       }
-
-      await Promise.all([refreshOnChainData(), refreshTransactions()]);
-      setAmount('');
-      addLog(`Transaction confirmed: ${shortenAddress(hash)}`);
     } catch (error) {
       console.error('[trade] execute error:', error);
 
@@ -1338,9 +1266,8 @@ export default function Home() {
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8">
                   <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></span>
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-amber-500/80">Algorithmic Sanctuary</span>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500">{t('hero.title1')}</span>
                 </div>
-
                 <h1 className="font-serif text-[clamp(2.5rem,10vw,7rem)] leading-[0.9] mb-8 tracking-tighter">
                   {t('hero.title1')} <br />
                   <span className="italic text-amber-500">{t('hero.title2')}</span>
@@ -1407,14 +1334,14 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <RefreshCw size={14} className={`text-amber-500/50 ${isMarketLoading ? 'animate-spin' : ''}`} />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Live Protocol Log</span>
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">Live Protocol Log</span>
               </div>
               <div className="flex gap-2">
                 <div className="w-2 h-2 rounded-full bg-amber-500/20"></div>
                 <div className="w-2 h-2 rounded-full bg-emerald-500/20"></div>
               </div>
             </div>
-            <div className="space-y-2 font-mono text-[10px] sm:text-xs">
+            <div className="space-y-2 font-mono text-[10px]">
               {logs.length > 0 ? logs.map((log, i) => (
                 <div key={i} className="text-zinc-500 border-l border-white/10 pl-3">
                   <span className="text-amber-500/50 mr-2">SYS:</span>
@@ -1436,7 +1363,7 @@ export default function Home() {
                   <LineChart size={14} className="text-amber-500" />
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-500">{t('dashboard.verified')}</span>
                 </div>
-                <h2 className="font-serif text-4xl md:text-5xl tracking-tight">{t('dashboard.title')}</h2>
+                <h2 className="font-serif text-4xl md:text-5xl tracking-tight mb-4">{t('dashboard.title')}</h2>
               </div>
               
               <div className="flex flex-wrap gap-4">
@@ -1544,16 +1471,16 @@ export default function Home() {
               <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-6">Treasury Reserve</div>
               <div className="space-y-4">
                 <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase">Stability Fund</span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">Stability Fund</span>
                   <span className="text-lg font-serif italic text-amber-500">{onChainData?.stabilityFund ? `${parseFloat(onChainData.stabilityFund).toFixed(4)} ETH` : '---'}</span>
                 </div>
                 <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase">Dynamic Reserve</span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">Dynamic Reserve</span>
                   <span className="text-lg font-serif italic text-zinc-300">{onChainData?.dynamicReserve ? `${parseFloat(onChainData.dynamicReserve).toFixed(4)} ETH` : '---'}</span>
                 </div>
                 {basketData.map((asset) => (
                   <div key={asset.name} className="flex justify-between items-end border-b border-white/5 pb-2">
-                    <span className="text-[10px] font-mono text-zinc-500 uppercase">{asset.name} Reserve</span>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">{asset.name} Reserve</span>
                     <span className="text-lg font-serif italic text-zinc-300">{asset.realWeight.toFixed(1)}%</span>
                   </div>
                 ))}
@@ -1677,7 +1604,7 @@ export default function Home() {
                   <p className="text-white/60 max-w-2xl leading-relaxed">{t('rebalance.desc')}</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-2">
                   {rebalanceOverviewCards.map((asset) => {
                     return (
                       <div
@@ -2013,7 +1940,7 @@ export default function Home() {
                             {tradeError && (
                               <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-3">
                                 <AlertCircle size={16} className="text-rose-500 shrink-0 mt-0.5" />
-                                <div className="space-y-2">
+                                <div className="flex-1 overflow-hidden">
                                   <p className="text-[10px] text-rose-500 leading-relaxed font-medium uppercase tracking-wider">{tradeError}</p>
                                   {showForceOption && (
                                     <button 
@@ -2085,17 +2012,17 @@ export default function Home() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="font-serif text-4xl md:text-5xl tracking-tight mb-4">{t('yield.title')}</h2>
-              <p className="text-white/50 max-w-2xl mx-auto font-light">{t('yield.desc')}</p>
+              <p className="text-white/50 max-w-2xl font-light">{t('yield.desc')}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="p-8 bg-white/[0.02] border border-white/10 rounded-3xl hover:border-amber-500/30 transition-all group">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 mb-6 group-hover:scale-110 transition-transform">
+                <div key={i} className="p-8 bg-white/[0.02] border border-white/10 rounded-3xl hover:border-amber-500/30 transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 mb-6">
                     {i === 1 ? <RefreshCw size={24} className="text-amber-500" /> : i === 2 ? <TrendingUp size={24} className="text-amber-500" /> : <Lock size={24} className="text-amber-500" />}
                   </div>
                   <h4 className="font-serif text-xl mb-3">{t(`yield.step${i}Title`)}</h4>
-                  <p className="text-sm text-white/40 leading-relaxed font-light">{t(`yield.step${i}Desc`)}</p>
+                  <p className="text-sm text-white/50 leading-relaxed font-light">{t(`yield.step${i}Desc`)}</p>
                 </div>
               ))}
             </div>
@@ -2220,7 +2147,7 @@ export default function Home() {
                     <Shield size={32} className="text-amber-500" />
                   </div>
                   <div>
-                    <h4 className="text-[clamp(1.25rem,4vw,2.5rem)] font-serif italic mb-6">{t('core.crashShieldTitle')}</h4>
+                    <h4 className="font-serif text-2xl italic mb-6">{t('core.crashShieldTitle')}</h4>
                     <p className="text-xl text-white/50 leading-relaxed max-w-lg font-light">{t('core.crashShieldDesc')}</p>
                   </div>
                 </div>
@@ -2231,7 +2158,7 @@ export default function Home() {
                   <Zap size={24} className="text-white/80" />
                 </div>
                 <div>
-                  <h4 className="text-2xl font-serif italic mb-3">{t('core.bankTitle')}</h4>
+                  <h4 className="font-serif text-xl mb-3">{t('core.bankTitle')}</h4>
                   <p className="text-sm text-white/50 leading-relaxed font-light">{t('core.bankDesc')}</p>
                 </div>
               </div>
@@ -2241,7 +2168,7 @@ export default function Home() {
                   <TrendingUp size={24} className="text-white/80" />
                 </div>
                 <div>
-                  <h4 className="text-2xl font-serif italic mb-3">{t('core.appreciationTitle')}</h4>
+                  <h4 className="font-serif text-xl mb-3">{t('core.appreciationTitle')}</h4>
                   <p className="text-sm text-white/50 leading-relaxed font-light">{t('core.appreciationDesc')}</p>
                 </div>
               </div>
@@ -2300,15 +2227,10 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center gap-4">
               <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                <img 
-                  src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png"
-                  alt="GBLIN Logo"
-                  className="object-cover w-full h-full"
-                  referrerPolicy="no-referrer"
-                />
+                <img src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png" alt="GBLIN" className="w-10 h-10" />
               </div>
               <div>
-                <h3 className="font-serif text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text text-transparent">{t('footer.protocolName')}</h3>
+                <h3 className="font-serif text-xl font-bold bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent">{t('footer.protocolName')}</h3>
                 <p className="text-xs text-zinc-500">{t('hero.subtitle')}</p>
               </div>
             </div>
@@ -2345,7 +2267,7 @@ export default function Home() {
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <img src="https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png" alt="GBLIN" className="w-10 h-10" />
-                <span className="font-serif text-2xl font-bold tracking-tighter bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent">GBLIN</span>
+                <span className="font-serif text-2xl font-bold bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent">GBLIN</span>
               </div>
               <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">
                 The first autonomous central bank on Base. Engineered for mathematical survival and absolute value invariance.
@@ -2373,16 +2295,20 @@ export default function Home() {
 
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex gap-8 text-[10px] font-mono uppercase tracking-widest text-zinc-600">
-              <a href="https://basescan.org/address/0xED334B4CDaFCAe6D42bb9A57DE565fD3e9640a50" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Contract</a>
+              <a href="https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Contract</a>
               <a href="https://warpcast.com/gblin" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Warpcast</a>
               <a href="https://x.com/gblinprotocol" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">Twitter</a>
             </div>
             <p className="text-[10px] font-mono text-zinc-700 tracking-[0.3em] uppercase">
-              {t('footer.protocolName')} © 2026 • DESIGNED FOR HUMANS & AI
+              {t('footer.protocolName')} &copy; 2026 &bull; DESIGNED FOR HUMANS & AI
             </p>
           </div>
         </div>
       </footer>
     </div>
   );
+}
+
+export default function HomePage() {
+  return <ProtocolApp view="home" />;
 }
