@@ -469,7 +469,7 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
       } else if (tx.source === 'ERC20') {
         if (from === aerodromeLower || to === contractLower || from === '0x0000000000000000000000000000000000000000') {
           type = 'BUY';
-        } else if (to === aerodromeLower || from === contractLower) {
+        } else if (to === aerodromeLower || from === contractLower || to === ZERO_ADDRESS) {
           type = 'SELL';
         }
       } else {
