@@ -65,10 +65,20 @@ interface HomeViewProps extends SharedViewProps {}
 interface DashboardViewProps extends SharedViewProps {}
 
 interface BuyViewProps extends SharedViewProps {
+  buyTokenOptions: string[];
+  customTokenAddress: string;
   mode: 'buy' | 'sell';
+  inputBalance: string;
   setMode: (mode: 'buy' | 'sell') => void;
   amount: string;
   setAmount: (value: string) => void;
+  quoteAssetLabel: string;
+  redeemOption: 'eth' | 'basket';
+  resolvedTokenSymbol: string;
+  selectedToken: string;
+  setCustomTokenAddress: (value: string) => void;
+  setRedeemOption: (value: 'eth' | 'basket') => void;
+  setSelectedToken: (value: string) => void;
   slippage: number;
   setSlippage: (value: number) => void;
   quote: string;
@@ -81,6 +91,7 @@ interface BuyViewProps extends SharedViewProps {
   tradeTxHash: string | null;
   ethBalance: string;
   gblinBalance: string;
+  tokenBalance: string;
 }
 
 interface RebalanceViewProps extends SharedViewProps {
@@ -506,7 +517,7 @@ export function DashboardView(props: DashboardViewProps) {
 }
 
 export function BuyView(props: BuyViewProps) {
-  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, isConnected, openWallet, marketData, onChainData } = props;
+  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, buyTokenOptions, customTokenAddress, quoteAssetLabel, redeemOption, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken, tokenBalance } = props;
 
   return (
     <div className="space-y-12">
@@ -541,7 +552,7 @@ export function BuyView(props: BuyViewProps) {
             </button>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className={`mt-8 grid gap-4 ${mode === 'buy' && selectedToken !== 'ETH' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">ETH {t('trade.balance')}</p>
               <p className="mt-2 text-xl font-semibold text-white">{ethBalance}</p>
@@ -550,17 +561,63 @@ export function BuyView(props: BuyViewProps) {
               <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">GBLIN {t('trade.balance')}</p>
               <p className="mt-2 text-xl font-semibold text-white">{gblinBalance}</p>
             </div>
+            {mode === 'buy' && selectedToken !== 'ETH' ? (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{resolvedTokenSymbol} {t('trade.balance')}</p>
+                <p className="mt-2 text-xl font-semibold text-white">{tokenBalance}</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6 space-y-5">
+            {mode === 'buy' ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <span className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.inputAsset')}</span>
+                  <select className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white outline-none transition focus:border-amber-400/50" onChange={(event) => setSelectedToken(event.target.value)} value={selectedToken}>
+                    {buyTokenOptions.map((tokenOption) => (
+                      <option className="bg-[#0A0A0A]" key={tokenOption} value={tokenOption}>{tokenOption}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <span className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.balance')}</span>
+                  <p className="mt-3 text-xl font-semibold text-white">{inputBalance}</p>
+                  <p className="mt-2 text-sm text-zinc-500">{resolvedTokenSymbol}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {mode === 'buy' && selectedToken === 'CUSTOM' ? (
+              <label className="block">
+                <span className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">Token Address</span>
+                <div className="mt-3 rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
+                  <input className="w-full bg-transparent text-base font-medium text-white outline-none placeholder:text-zinc-600" onChange={(event) => setCustomTokenAddress(event.target.value)} placeholder="0x..." type="text" value={customTokenAddress} />
+                </div>
+              </label>
+            ) : null}
+
+            {mode === 'sell' ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'eth' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('eth')} type="button">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
+                  <p className="mt-3 text-base font-semibold">ETH Only</p>
+                </button>
+                <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'basket' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('basket')} type="button">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
+                  <p className="mt-3 text-base font-semibold">Basket Tokens</p>
+                </button>
+              </div>
+            ) : null}
+
             <label className="block">
               <span className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.amount')}</span>
               <div className="mt-3 rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
                 <div className="flex items-center justify-between gap-4">
                   <input className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600" inputMode="decimal" onChange={(event) => setAmount(event.target.value)} placeholder={t('trade.enterAmount')} type="text" value={amount} />
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">{mode === 'buy' ? 'ETH' : 'GBLIN'}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">{mode === 'buy' ? resolvedTokenSymbol : 'GBLIN'}</span>
                 </div>
-                <p className="mt-3 text-sm text-zinc-500">{usdValue}</p>
+                <p className="mt-3 text-sm text-zinc-500">{usdValue} · {t('trade.balance')}: {inputBalance}</p>
               </div>
             </label>
 
@@ -572,8 +629,8 @@ export function BuyView(props: BuyViewProps) {
               </label>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.outputAsset')}</p>
-                <p className="mt-3 text-xl font-semibold text-white">{isLoadingQuote ? '...' : quote}</p>
-                <p className="mt-2 text-sm text-zinc-500">{mode === 'buy' ? 'GBLIN' : 'ETH'}</p>
+                <p className="mt-3 break-words text-base font-semibold leading-7 text-white">{isLoadingQuote ? '...' : quote}</p>
+                <p className="mt-2 text-sm text-zinc-500">{quoteAssetLabel}</p>
               </div>
             </div>
 

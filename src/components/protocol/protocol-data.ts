@@ -47,6 +47,20 @@ export interface OnChainData {
   } | null;
 }
 
+export interface TradeTokenOption {
+  symbol: string;
+  address: string;
+  decimals: number;
+  isNative: boolean;
+}
+
+export interface TokenRouteQuote {
+  path: `0x${string}`;
+  amountOut: bigint;
+  fees: number[];
+  tokens: string[];
+}
+
 export type RebalanceDirection = 'weth-to-asset' | 'asset-to-weth';
 
 export const RPC_URL = 'https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt';
@@ -56,6 +70,9 @@ export const MORALIS_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZCI
 export const BASE_CHAIN_ID = 8453;
 export const WHITEPAPER_URL = 'https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf';
 export const LOGO_URL = 'https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png';
+export const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+export const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+export const UNISWAP_V3_FACTORY = '0x33128a8fC17869897dcE68Ed026d694621f6FDfD';
 
 export const LANGUAGES: Array<{ code: Language; name: string; flag: string }> = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -67,11 +84,21 @@ export const LANGUAGES: Array<{ code: Language; name: string; flag: string }> = 
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' }
 ];
 
-export const TOKENS = ['ETH', 'USDC', 'cbBTC', 'DEGEN', 'AERO', 'BRETT', 'SHIB'];
+export const TRADE_TOKEN_OPTIONS: TradeTokenOption[] = [
+  { symbol: 'ETH', address: WETH_ADDRESS, decimals: 18, isNative: true },
+  { symbol: 'USDC', address: USDC_ADDRESS, decimals: 6, isNative: false },
+  { symbol: 'cbBTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf', decimals: 8, isNative: false },
+  { symbol: 'DEGEN', address: '0x4ed4e862860bed51a9570b96d89af5e1b0efefed', decimals: 18, isNative: false },
+  { symbol: 'AERO', address: '0x940181a94a35a4563e89545161c888d3d9804b08', decimals: 18, isNative: false },
+  { symbol: 'BRETT', address: '0x532f27101965dd1a44836f731139783f98018e69', decimals: 18, isNative: false },
+  { symbol: 'SHIB', address: '0x45cfe390b83a0552f1469797070107297e632837', decimals: 18, isNative: false }
+];
+
+export const TOKENS = [...TRADE_TOKEN_OPTIONS.map((token) => token.symbol), 'CUSTOM'];
 
 export const TOKEN_ADDRESSES: Record<string, string> = {
-  ETH: '0x4200000000000000000000000000000000000006',
-  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  ETH: WETH_ADDRESS,
+  USDC: USDC_ADDRESS,
   cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
   DEGEN: '0x4ed4e862860bed51a9570b96d89af5e1b0efefed',
   AERO: '0x940181a94a35a4563e89545161c888d3d9804b08',
@@ -87,14 +114,19 @@ export const GBLIN_ABI = [
   'function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap) external',
   'function buyGBLIN(uint256 minGblinOut) external payable',
   'function buyGBLINWithToken(bytes calldata path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut) external',
+  'function sellGBLIN(uint256 gblinAmount) external',
   'function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external',
+  'function sellGBLINForToken(uint256 gblinAmount, address targetToken, uint24 wethToTargetFee, uint256 minTokenOut) external',
   'function quoteBuyGBLIN(uint256 ethAmount) view returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)',
   'function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)',
+  'function quoteMintInKind(uint256 gblinTarget) view returns (uint256[] memory requiredAssets)',
+  'function mintInKind(uint256 gblinTarget) external',
+  'function redeemInKind(uint256 gblinAmount) external',
   'function refreshWeights() public',
   'function lastYieldDistribution() view returns (uint256)',
   'function getDynamicReserve() view returns (uint256)',
+  'function updateMaxSlippage(uint256 newMaxSlippage) external',
   'error SequencerDown()',
-  'error StaleOracle(address oracle)',
   'error DepositTooSmall()',
   'error SlippageExceeded()',
   'error Unauthorized()',
@@ -102,17 +134,48 @@ export const GBLIN_ABI = [
   'error RebalanceNotNeeded()',
   'error OracleDead()',
   'error SwapVolumeTooLow()',
-  'error InvalidFinalToken()'
+  'error InvalidAddress()',
+  'error NoAssetProposed()',
+  'error TimelockActive()',
+  'error InvalidIndex()',
+  'error InvalidAmount()',
+  'error TransferFailed()',
+  'error NoWethObtained()',
+  'error InvalidPath()',
+  'error TimeNotPassed()',
+  'error NoExcessYield()',
+  'error MaxSlippageExceeded()',
+  'error InvalidBounds()',
+  'error CannotSwapSameToken()'
 ];
 
 export const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)'
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)'
 ];
 
 export const ORACLE_ABI = [
   'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)'
 ];
+
+const UNISWAP_V3_FACTORY_ABI = [
+  'function getPool(address tokenA, address tokenB, uint24 fee) view returns (address)'
+];
+
+const UNISWAP_V3_POOL_ABI = [
+  'function token0() view returns (address)',
+  'function token1() view returns (address)',
+  'function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)'
+];
+
+const COMMON_UNISWAP_V3_FEES = [100, 500, 3000, 10000] as const;
+const UNISWAP_V3_FEE_DENOMINATOR = 1_000_000n;
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+const tokenMetadataCache = new Map<string, TradeTokenOption | null>();
+const tokenRouteCache = new Map<string, { tokens: string[]; fees: number[] } | null>();
 
 export const REBALANCE_ASSET_OPTIONS = [
   { name: 'cbBTC', basketIndex: 0, decimals: 8 },
@@ -142,6 +205,148 @@ export const parseUsdText = (value?: string | null) => {
   if (!value) return 0;
   return Number.parseFloat(value.replace(/[$,]/g, '')) || 0;
 };
+
+function buildV3Path(tokens: string[], fees: number[]): `0x${string}` {
+  let pathHex = tokens[0].replace(/^0x/, '');
+
+  for (let i = 0; i < fees.length; i += 1) {
+    pathHex += ethers.toBeHex(fees[i], 3).replace(/^0x/, '');
+    pathHex += tokens[i + 1].replace(/^0x/, '');
+  }
+
+  return `0x${pathHex}` as `0x${string}`;
+}
+
+async function getPoolAddress(provider: ethers.JsonRpcProvider, tokenA: string, tokenB: string, fee: number) {
+  const factory = new ethers.Contract(UNISWAP_V3_FACTORY, UNISWAP_V3_FACTORY_ABI, provider);
+  return factory.getPool(tokenA, tokenB, fee).catch(() => ZERO_ADDRESS);
+}
+
+async function quoteSpotPoolSwap(provider: ethers.JsonRpcProvider, tokenIn: string, tokenOut: string, fee: number, amountIn: bigint) {
+  if (amountIn <= 0n) return 0n;
+
+  const poolAddress = await getPoolAddress(provider, tokenIn, tokenOut, fee);
+  if (!poolAddress || poolAddress === ZERO_ADDRESS) return 0n;
+
+  const pool = new ethers.Contract(poolAddress, UNISWAP_V3_POOL_ABI, provider);
+  const [token0, token1, slot0] = await Promise.all([
+    pool.token0(),
+    pool.token1(),
+    pool.slot0()
+  ]).catch(() => [ZERO_ADDRESS, ZERO_ADDRESS, [0n]] as const);
+
+  const tokenInLower = tokenIn.toLowerCase();
+  const tokenOutLower = tokenOut.toLowerCase();
+  const token0Lower = String(token0).toLowerCase();
+  const token1Lower = String(token1).toLowerCase();
+  const sqrtPriceX96 = BigInt(slot0?.[0]?.toString?.() ?? '0');
+
+  if (!sqrtPriceX96 || token0Lower === ZERO_ADDRESS || token1Lower === ZERO_ADDRESS) return 0n;
+
+  const amountInAfterFee = (amountIn * (UNISWAP_V3_FEE_DENOMINATOR - BigInt(fee))) / UNISWAP_V3_FEE_DENOMINATOR;
+  const priceX192 = sqrtPriceX96 * sqrtPriceX96;
+  const q192 = 1n << 192n;
+
+  if (tokenInLower === token0Lower && tokenOutLower === token1Lower) {
+    return (amountInAfterFee * priceX192) / q192;
+  }
+
+  if (tokenInLower === token1Lower && tokenOutLower === token0Lower) {
+    return priceX192 > 0n ? (amountInAfterFee * q192) / priceX192 : 0n;
+  }
+
+  return 0n;
+}
+
+async function findTokenRoute(provider: ethers.JsonRpcProvider, tokenAddress: string) {
+  const tokenLower = tokenAddress.toLowerCase();
+  if (tokenLower === WETH_ADDRESS.toLowerCase()) return null;
+
+  const cachedRoute = tokenRouteCache.get(tokenLower);
+  if (cachedRoute !== undefined) return cachedRoute;
+
+  for (const fee of COMMON_UNISWAP_V3_FEES) {
+    const poolAddress = await getPoolAddress(provider, tokenAddress, WETH_ADDRESS, fee);
+    if (poolAddress && poolAddress !== ZERO_ADDRESS) {
+      const route = { tokens: [tokenAddress, WETH_ADDRESS], fees: [fee] };
+      tokenRouteCache.set(tokenLower, route);
+      return route;
+    }
+  }
+
+  if (tokenLower !== USDC_ADDRESS.toLowerCase()) {
+    for (const tokenToUsdcFee of COMMON_UNISWAP_V3_FEES) {
+      const tokenToUsdcPool = await getPoolAddress(provider, tokenAddress, USDC_ADDRESS, tokenToUsdcFee);
+      if (!tokenToUsdcPool || tokenToUsdcPool === ZERO_ADDRESS) continue;
+
+      for (const usdcToWethFee of COMMON_UNISWAP_V3_FEES) {
+        const usdcToWethPool = await getPoolAddress(provider, USDC_ADDRESS, WETH_ADDRESS, usdcToWethFee);
+        if (usdcToWethPool && usdcToWethPool !== ZERO_ADDRESS) {
+          const route = {
+            tokens: [tokenAddress, USDC_ADDRESS, WETH_ADDRESS],
+            fees: [tokenToUsdcFee, usdcToWethFee]
+          };
+          tokenRouteCache.set(tokenLower, route);
+          return route;
+        }
+      }
+    }
+  }
+
+  tokenRouteCache.set(tokenLower, null);
+  return null;
+}
+
+export async function resolveTradeToken(provider: ethers.JsonRpcProvider, tokenValue: string) {
+  const presetToken = TRADE_TOKEN_OPTIONS.find((token) => token.symbol === tokenValue);
+  if (presetToken) return presetToken;
+
+  if (!ethers.isAddress(tokenValue)) return null;
+
+  const tokenAddress = ethers.getAddress(tokenValue);
+  const cachedToken = tokenMetadataCache.get(tokenAddress.toLowerCase());
+  if (cachedToken !== undefined) return cachedToken;
+
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const [symbol, decimals] = await Promise.all([
+      tokenContract.symbol(),
+      tokenContract.decimals()
+    ]);
+
+    const resolvedToken = {
+      symbol: String(symbol),
+      address: tokenAddress,
+      decimals: Number(decimals),
+      isNative: false
+    } satisfies TradeTokenOption;
+
+    tokenMetadataCache.set(tokenAddress.toLowerCase(), resolvedToken);
+    return resolvedToken;
+  } catch {
+    tokenMetadataCache.set(tokenAddress.toLowerCase(), null);
+    return null;
+  }
+}
+
+export async function quoteTokenToWeth(provider: ethers.JsonRpcProvider, tokenAddress: string, amountIn: bigint): Promise<TokenRouteQuote | null> {
+  const route = await findTokenRoute(provider, tokenAddress);
+  if (!route) return null;
+
+  let runningAmount = amountIn;
+
+  for (let i = 0; i < route.fees.length; i += 1) {
+    runningAmount = await quoteSpotPoolSwap(provider, route.tokens[i], route.tokens[i + 1], route.fees[i], runningAmount);
+    if (runningAmount <= 0n) return null;
+  }
+
+  return {
+    path: buildV3Path(route.tokens, route.fees),
+    amountOut: runningAmount,
+    fees: route.fees,
+    tokens: route.tokens
+  };
+}
 
 export const fetchMarketData = async (): Promise<DashboardData> => {
   try {
@@ -259,7 +464,7 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
       const contractLower = CONTRACT_ADDRESS.toLowerCase();
       const aerodromeLower = AERODROME_POOL.toLowerCase();
 
-      if (input.includes('0x4641257d') || input.includes('0x8bc0d9f4')) {
+      if (input.includes('0xcde3791d')) {
         type = 'REBALANCE';
       } else if (tx.source === 'ERC20') {
         if (from === aerodromeLower || to === contractLower || from === '0x0000000000000000000000000000000000000000') {
@@ -268,9 +473,9 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
           type = 'SELL';
         }
       } else {
-        if (input.includes('0xefef39a1') || input.includes('0x16938992') || (tx.value !== '0' && to === contractLower)) {
+        if (input.includes('0x9020faac') || input.includes('0xee111dc9') || (tx.value !== '0' && to === contractLower)) {
           type = 'BUY';
-        } else if (input.includes('0x49999999') || from === contractLower) {
+        } else if (input.includes('0x5801b39b') || input.includes('0xa5d8e568') || input.includes('0x6a54df11') || from === contractLower) {
           type = 'SELL';
         }
       }
@@ -303,6 +508,7 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     const lastYield = await contract.lastYieldDistribution().catch(() => 0n);
     const stabilityFundRaw = await contract.stabilityFund().catch(() => 0n);
     const dynamicReserve = await contract.getDynamicReserve().catch(() => 0n);
+    const stabilityFund = Number.parseFloat(ethers.formatEther(stabilityFundRaw));
 
     const activeSupply = supplyFormatted - contractBalanceFormatted;
 
@@ -343,15 +549,25 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       } catch {}
     }
 
-    if (tvl > 0) {
+    const wethAsset = basketItems.find((item) => item.name === 'WETH') ?? null;
+    const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
+    const effectiveTvl = basketItems.reduce((sum, item) => {
+      if (item.name === 'WETH') {
+        return sum + Math.max(item.balance - stabilityFund, 0) * item.price;
+      }
+      return sum + item.tvl;
+    }, 0);
+
+    if (effectiveTvl > 0) {
       basketItems.forEach((item) => {
-        item.realWeight = (item.tvl / tvl) * 100;
+        const effectiveItemTvl = item.name === 'WETH' ? Math.max(item.balance - stabilityFund, 0) * item.price : item.tvl;
+        item.realWeight = (effectiveItemTvl / effectiveTvl) * 100;
       });
     }
 
-    const nav = activeSupply > 0 ? tvl / activeSupply : 1;
-    const stabilityFund = Number.parseFloat(ethers.formatEther(stabilityFundRaw));
-    const reserveRatio = tvl > 0 ? stabilityFund / tvl : 0;
+    const nav = activeSupply > 0 ? effectiveTvl / activeSupply : 1;
+    const stabilityFundUsd = stabilityFund * wethPrice;
+    const reserveRatio = effectiveTvl > 0 ? stabilityFundUsd / effectiveTvl : 0;
     const estimatedApy = (6 + Math.min(reserveRatio * 1200, 6)).toFixed(2);
 
     return {

@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ExternalLink, Globe, Menu, Wallet, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
@@ -66,7 +67,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <a className="flex items-center gap-3 sm:gap-4" href="/">
+              <Link className="flex items-center gap-3 sm:gap-4" href="/">
                 <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40 transition-transform duration-500 hover:scale-105">
                   <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
                 </span>
@@ -77,7 +78,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                     <p className="truncate text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">{t('site.brandSubtitle')}</p>
                   </div>
                 </div>
-              </a>
+              </Link>
             </div>
 
             <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-2 shadow-inner lg:flex">
@@ -85,14 +86,14 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 const isActive = isActiveNavItem(item.href);
 
                 return (
-                  <a
+                  <Link
                     aria-current={isActive ? 'page' : undefined}
                     className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
                     href={item.href}
                     key={item.key}
                   >
                     {t(`nav.${item.key}`)}
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
@@ -127,9 +128,9 @@ export function ProtocolShell(props: ProtocolShellProps) {
                   </div>
                 ) : null}
               </div>
-              <a className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
+              <Link className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
                 {t('nav.buyGblin')}
-              </a>
+              </Link>
               <button className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition-all ${isConnected ? 'border border-white/10 bg-white/5 text-white hover:bg-white/10' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]'}`} onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />
                 {isConnected && address ? shortenAddress(address) : t('nav.connect')}
@@ -177,9 +178,9 @@ export function ProtocolShell(props: ProtocolShellProps) {
           </div>
 
           <div className="mt-3 lg:hidden">
-            <a className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
+            <Link className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
               {t('nav.buyGblin')}
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -187,13 +188,13 @@ export function ProtocolShell(props: ProtocolShellProps) {
           <div className="border-t border-white/5 px-4 py-4 lg:hidden sm:px-6">
             <div className="mx-auto max-w-7xl space-y-3">
               {navItems.map((item) => (
-                <a
+                <Link
                   className={`block rounded-2xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActiveNavItem(item.href) ? 'bg-white text-black' : 'border border-white/10 bg-white/5 text-zinc-200'}`}
                   href={item.href}
                   key={item.key}
                 >
                   {t(`nav.${item.key}`)}
-                </a>
+                </Link>
               ))}
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200" onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />

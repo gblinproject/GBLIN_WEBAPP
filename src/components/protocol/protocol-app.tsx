@@ -10,16 +10,23 @@ import { protocolTranslations } from './protocol-translations';
 import {
   BASE_CHAIN_ID,
   CONTRACT_ADDRESS,
+  ERC20_ABI,
   GBLIN_ABI,
   LANGUAGES,
   REBALANCE_ASSET_OPTIONS,
   RPC_URL,
+  TOKENS,
+  TRADE_TOKEN_OPTIONS,
+  WETH_ADDRESS,
   fetchMarketData,
   fetchOnChainData,
   fetchTransactions,
   formatCurrency,
   formatTokenAmount,
   parseUsdText,
+  quoteTokenToWeth,
+  resolveTradeToken,
+  type TradeTokenOption,
   shortenAddress
 } from './protocol-data';
 import { ProtocolShell } from './protocol-shell';
@@ -36,11 +43,31 @@ import {
 
 const TRADE_ABI = parseAbi([
   'function buyGBLIN(uint256 minGblinOut) payable',
-  'function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)'
+  'function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)',
+  'function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)',
+  'function redeemInKind(uint256 gblinAmount)',
+  'error SequencerDown()',
+  'error DepositTooSmall()',
+  'error SlippageExceeded()',
+  'error CooldownActive()',
+  'error InvalidAmount()',
+  'error TransferFailed()',
+  'error NoWethObtained()'
 ]);
 
 const REBALANCE_ABI = parseAbi([
-  'function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)'
+  'function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)',
+  'error OracleDead()',
+  'error InvalidIndex()',
+  'error RebalanceNotNeeded()',
+  'error SwapVolumeTooLow()',
+  'error SlippageExceeded()',
+  'error CannotSwapSameToken()',
+  'error TransferFailed()'
+]);
+
+const ERC20_WRITE_ABI = parseAbi([
+  'function approve(address spender, uint256 amount) returns (bool)'
 ]);
 
 interface ProtocolAppProps {
@@ -51,23 +78,44 @@ function isSupportedLanguage(value: string | null): value is Language {
   return LANGUAGES.some((item) => item.code === value);
 }
 
+const protocolViewCache: {
+  marketData: any;
+  onChainData: any;
+  transactions: any[];
+  basketData: any[];
+  lastYieldDistribution: number;
+  logs: string[];
+} = {
+  marketData: null,
+  onChainData: null,
+  transactions: [],
+  basketData: [],
+  lastYieldDistribution: 0,
+  logs: []
+};
+
 export function ProtocolApp({ view }: ProtocolAppProps) {
   const { open } = useAppKit();
   const { address, isConnected } = useAppKitAccount();
   const { disconnect } = useDisconnect();
   const { writeContractAsync } = useWriteContract();
+  const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
 
-  const [isReady, setIsReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [language, setLanguageState] = useState<Language>('en');
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<string[]>(protocolViewCache.logs);
 
-  const [lastYieldDistribution, setLastYieldDistribution] = useState(0);
-  const [basketData, setBasketData] = useState<any[]>([]);
+  const [lastYieldDistribution, setLastYieldDistribution] = useState(protocolViewCache.lastYieldDistribution);
+  const [basketData, setBasketData] = useState<any[]>(protocolViewCache.basketData);
   const [ethBalance, setEthBalance] = useState('0.0000');
+  const [tokenBalance, setTokenBalance] = useState('0.0000');
   const [gblinBalance, setGblinBalance] = useState('0.0000');
 
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
+  const [selectedToken, setSelectedToken] = useState('ETH');
+  const [customTokenAddress, setCustomTokenAddress] = useState('');
+  const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
+  const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(1);
   const [quote, setQuote] = useState('0');
@@ -82,17 +130,28 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [arbTxHash, setArbTxHash] = useState<string | null>(null);
   const [arbError, setArbError] = useState<string | null>(null);
 
-  const [marketData, setMarketData] = useState<any>(null);
-  const [onChainData, setOnChainData] = useState<any>(null);
-  const [isMarketLoading, setIsMarketLoading] = useState(true);
-  const [isOnChainLoading, setIsOnChainLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [marketData, setMarketData] = useState<any>(protocolViewCache.marketData);
+  const [onChainData, setOnChainData] = useState<any>(protocolViewCache.onChainData);
+  const [isMarketLoading, setIsMarketLoading] = useState(!protocolViewCache.marketData);
+  const [isOnChainLoading, setIsOnChainLoading] = useState(!protocolViewCache.onChainData);
+  const [transactions, setTransactions] = useState<any[]>(protocolViewCache.transactions);
+  const [isTransactionsLoading, setIsTransactionsLoading] = useState(protocolViewCache.transactions.length === 0);
 
   const isFetchingRef = useRef(false);
 
   const addLog = useCallback((msg: string) => {
-    setLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10));
+    setLogs((prev) => {
+      const nextLogs = [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10);
+      protocolViewCache.logs = nextLogs;
+      return nextLogs;
+    });
+  }, []);
+
+  const getProvider = useCallback(() => {
+    if (!providerRef.current) {
+      providerRef.current = new ethers.JsonRpcProvider(RPC_URL);
+    }
+    return providerRef.current;
   }, []);
 
   const setLanguage = useCallback((nextLanguage: Language) => {
@@ -115,11 +174,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }
   }, []);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsReady(true), 80);
-    return () => window.clearTimeout(timer);
-  }, []);
-
   const t = useCallback(
     (key: string) => {
       const segments = key.split('.');
@@ -135,11 +189,58 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     [language]
   );
 
+  const activeTradeToken = useMemo<TradeTokenOption | null>(() => {
+    if (selectedToken === 'CUSTOM') {
+      return resolvedCustomToken;
+    }
+
+    return TRADE_TOKEN_OPTIONS.find((token) => token.symbol === selectedToken) ?? null;
+  }, [resolvedCustomToken, selectedToken]);
+
+  const inputBalanceDisplay = useMemo(() => {
+    if (mode === 'sell') return gblinBalance;
+    return activeTradeToken?.isNative ? ethBalance : tokenBalance;
+  }, [activeTradeToken, ethBalance, gblinBalance, mode, tokenBalance]);
+
+  const quoteAssetLabel = useMemo(() => {
+    if (mode === 'buy') return 'GBLIN';
+    return redeemOption === 'basket' ? 'BASKET' : 'ETH';
+  }, [mode, redeemOption]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (selectedToken !== 'CUSTOM') {
+      setResolvedCustomToken(null);
+      return undefined;
+    }
+
+    const nextAddress = customTokenAddress.trim();
+    if (!nextAddress || !ethers.isAddress(nextAddress)) {
+      setResolvedCustomToken(null);
+      return undefined;
+    }
+
+    const resolveToken = async () => {
+      const token = await resolveTradeToken(getProvider(), nextAddress);
+      if (!cancelled) {
+        setResolvedCustomToken(token);
+      }
+    };
+
+    void resolveToken();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customTokenAddress, getProvider, selectedToken]);
+
   const refreshMarketData = useCallback(async () => {
     setIsMarketLoading(true);
     try {
       const data = await fetchMarketData();
       setMarketData(data);
+      protocolViewCache.marketData = data;
       addLog(`Market data updated: $${data.priceUsd.toFixed(4)}`);
     } catch {
       addLog('Failed to fetch market data.');
@@ -155,6 +256,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setOnChainData(data);
       setLastYieldDistribution(data.lastYield || 0);
       setBasketData(data.basketData || []);
+      protocolViewCache.onChainData = data;
+      protocolViewCache.lastYieldDistribution = data.lastYield || 0;
+      protocolViewCache.basketData = data.basketData || [];
       addLog(`On-chain metrics sync complete. TVL: ${formatCurrency(data.tvl)}`);
     } catch {
       addLog('On-chain data sync failed.');
@@ -168,6 +272,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     try {
       const data = await fetchTransactions();
       setTransactions(data || []);
+      protocolViewCache.transactions = data || [];
       if (data.length > 0) {
         addLog(`Fetched ${data.length} recent transactions.`);
       }
@@ -188,11 +293,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     if (!isConnected || !address) {
       setEthBalance('0.0000');
       setGblinBalance('0.0000');
+      setTokenBalance('0.0000');
       return;
     }
 
     try {
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const provider = getProvider();
       const [ethBal, gblinBal] = await Promise.all([
         provider.getBalance(address),
         new ethers.Contract(CONTRACT_ADDRESS, ['function balanceOf(address) view returns (uint256)'], provider).balanceOf(address)
@@ -200,10 +306,18 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
 
       setEthBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(4));
       setGblinBalance(parseFloat(ethers.formatEther(gblinBal)).toFixed(4));
+
+      if (mode === 'buy' && activeTradeToken && !activeTradeToken.isNative) {
+        const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
+        const tokenBal = await tokenContract.balanceOf(address).catch(() => 0n);
+        setTokenBalance(parseFloat(ethers.formatUnits(tokenBal, activeTradeToken.decimals)).toFixed(4));
+      } else {
+        setTokenBalance('0.0000');
+      }
     } catch {
       addLog('Wallet balance refresh failed.');
     }
-  }, [address, addLog, isConnected]);
+  }, [activeTradeToken, address, addLog, getProvider, isConnected, mode]);
 
   useEffect(() => {
     if (isConnected && address) {
@@ -227,8 +341,53 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       }
     };
 
-    loadAll();
+    void loadAll();
   }, [refreshMarketData, refreshOnChainData, refreshTransactions]);
+
+  const quoteMintFromWeth = useCallback(async (wethAmount: bigint) => {
+    const provider = getProvider();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
+      contract.quoteBuyGBLIN(wethAmount),
+      contract.totalSupply(),
+      contract.balanceOf(CONTRACT_ADDRESS)
+    ]);
+
+    const quotedGblinOut: bigint = result[0];
+    const totalSupply = BigInt(totalSupplyRaw.toString());
+    const contractBalance = BigInt(contractBalanceRaw.toString());
+    const activeSupply = totalSupply - contractBalance;
+
+    if (activeSupply === 0n) {
+      return quotedGblinOut > 1000n ? quotedGblinOut - 1000n : 0n;
+    }
+
+    return quotedGblinOut;
+  }, [getProvider]);
+
+  const formatBasketRedeemQuote = useCallback((gblinAmount: number) => {
+    if (!onChainData?.supplyNum || !basketData.length || gblinAmount <= 0) return null;
+
+    const activeSupply = Number(onChainData.supplyNum);
+    if (!Number.isFinite(activeSupply) || activeSupply <= 0) return null;
+
+    const shareRatio = gblinAmount / activeSupply;
+    const cbBtcAsset = basketData.find((asset: any) => asset.name === 'cbBTC') ?? null;
+    const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
+    const usdcAsset = basketData.find((asset: any) => asset.name === 'USDC') ?? null;
+    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
+
+    const cbBtcOut = (cbBtcAsset ? Number(cbBtcAsset.balance) : 0) * shareRatio;
+    const wethOut = Math.max((wethAsset ? Number(wethAsset.balance) : 0) - stabilityFundValue, 0) * shareRatio;
+    const usdcOut = (usdcAsset ? Number(usdcAsset.balance) : 0) * shareRatio;
+
+    return {
+      cbBtcOut,
+      wethOut,
+      usdcOut,
+      summary: `${formatTokenAmount(cbBtcOut, 8)} cbBTC • ${formatTokenAmount(wethOut, 6)} WETH • ${formatTokenAmount(usdcOut, 2)} USDC`
+    };
+  }, [basketData, onChainData]);
 
   useEffect(() => {
     if (!amount || Number.parseFloat(amount) <= 0) {
@@ -241,46 +400,60 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const fetchQuote = async () => {
       setIsLoadingQuote(true);
       try {
-        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const provider = getProvider();
         const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+        const ethPrice = marketData?.ethPriceUsd || 3500;
 
         if (mode === 'buy') {
-          const ethAmount = ethers.parseEther(amount);
-          const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
-            contract.quoteBuyGBLIN(ethAmount),
-            contract.totalSupply(),
-            contract.balanceOf(CONTRACT_ADDRESS)
-          ]);
-
-          const quotedGblinOut: bigint = result[0];
-          const founderFee: bigint = result[1];
-          const stabFee: bigint = result[2];
-          const totalSupply = BigInt(totalSupplyRaw.toString());
-          const contractBalance = BigInt(contractBalanceRaw.toString());
-          const activeSupply = totalSupply - contractBalance;
-          const netEth = ethAmount - founderFee - stabFee;
-
-          let effectiveGblinOut = quotedGblinOut;
-
-          if (activeSupply > 0n && quotedGblinOut > 0n) {
-            const navBefore = (netEth * ethers.WeiPerEther) / quotedGblinOut;
-            const tvlBefore = (activeSupply * navBefore) / ethers.WeiPerEther;
-            effectiveGblinOut = tvlBefore > 0n ? (netEth * activeSupply) / (tvlBefore + ethAmount) : quotedGblinOut;
-          } else if (quotedGblinOut > 1000n) {
-            effectiveGblinOut = quotedGblinOut - 1000n;
+          if (!activeTradeToken) {
+            setQuote('Token required');
+            setRawQuote(0n);
+            setUsdValue('$0.00');
+            return;
           }
 
-          setRawQuote(effectiveGblinOut);
-          setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
-          const ethPrice = marketData?.ethPriceUsd || 3500;
-          setUsdValue(formatCurrency(Number.parseFloat(amount) * ethPrice));
+          if (!activeTradeToken.isNative && activeTradeToken.address.toLowerCase() === WETH_ADDRESS.toLowerCase()) {
+            setQuote('Use ETH');
+            setRawQuote(0n);
+            setUsdValue('$0.00');
+            return;
+          }
+
+          if (activeTradeToken.isNative) {
+            const wethAmount = ethers.parseEther(amount);
+            const effectiveGblinOut = await quoteMintFromWeth(wethAmount);
+            setRawQuote(effectiveGblinOut);
+            setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
+            setUsdValue(formatCurrency(Number.parseFloat(amount) * ethPrice));
+          } else {
+            const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
+            const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
+            if (!routeQuote || routeQuote.amountOut <= 0n) {
+              setQuote('No route');
+              setRawQuote(0n);
+              setUsdValue('$0.00');
+              return;
+            }
+
+            const effectiveGblinOut = await quoteMintFromWeth(routeQuote.amountOut);
+            setRawQuote(effectiveGblinOut);
+            setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
+            setUsdValue(formatCurrency(Number.parseFloat(ethers.formatEther(routeQuote.amountOut)) * ethPrice));
+          }
         } else {
           const gblinAmount = ethers.parseEther(amount);
-          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount);
-          setRawQuote(ethOut);
-          setQuote(parseFloat(ethers.formatEther(ethOut)).toFixed(6));
-          const ethPrice = marketData?.ethPriceUsd || 3500;
-          setUsdValue(formatCurrency(Number.parseFloat(ethers.formatEther(ethOut)) * ethPrice));
+          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+
+          if (redeemOption === 'basket') {
+            const basketQuote = formatBasketRedeemQuote(Number.parseFloat(amount));
+            setRawQuote(gblinAmount);
+            setQuote(basketQuote?.summary ?? 'Basket unavailable');
+            setUsdValue(formatCurrency(Number.parseFloat(ethers.formatEther(ethOut)) * ethPrice));
+          } else {
+            setRawQuote(ethOut);
+            setQuote(parseFloat(ethers.formatEther(ethOut)).toFixed(6));
+            setUsdValue(formatCurrency(Number.parseFloat(ethers.formatEther(ethOut)) * ethPrice));
+          }
         }
       } catch {
         setQuote('Err');
@@ -292,7 +465,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
 
     const timer = window.setTimeout(fetchQuote, 450);
     return () => window.clearTimeout(timer);
-  }, [amount, marketData, mode]);
+  }, [activeTradeToken, amount, formatBasketRedeemQuote, getProvider, marketData, mode, quoteMintFromWeth, redeemOption]);
 
   const discountPercentage = useMemo(() => {
     if (!marketData?.priceUsd || !onChainData?.nav) return 0;
@@ -303,21 +476,28 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [marketData, onChainData]);
 
   const rebalanceAssetStats = useMemo(() => {
-    const totalTvlUsd = basketData.reduce((sum: number, asset: any) => sum + (Number(asset.tvl) || 0), 0);
     const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const wethBalance = wethAsset ? Number(wethAsset.balance) : 0;
+    const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
     const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
     const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
     const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+    const effectiveTotalTvlUsd = basketData.reduce((sum: number, asset: any) => {
+      if (asset.name === 'WETH') {
+        return sum + availableWeth * wethPrice;
+      }
+      return sum + (Number(asset.tvl) || 0);
+    }, 0);
 
     return REBALANCE_ASSET_OPTIONS.map((option) => {
       const metrics = basketData.find((asset: any) => asset.name === option.name) ?? null;
-      const actualWeight = metrics ? Number(metrics.realWeight) : null;
+      const currentUsdValue = metrics ? Number(metrics.tvl) : 0;
+      const actualWeight = metrics && effectiveTotalTvlUsd > 0 ? (currentUsdValue / effectiveTotalTvlUsd) * 100 : null;
       const dynamicWeight = metrics ? Number(metrics.dynamicWeight) / 100 : null;
       const baseWeight = metrics ? Number(metrics.baseWeight) / 100 : null;
       const assetPrice = metrics ? Number(metrics.price) : 0;
-      const currentUsdValue = metrics ? Number(metrics.tvl) : 0;
-      const targetUsdValue = metrics ? (totalTvlUsd * Number(metrics.dynamicWeight)) / 10000 : 0;
+      const assetBalance = metrics ? Number(metrics.balance) : 0;
+      const targetUsdValue = metrics ? (effectiveTotalTvlUsd * Number(metrics.dynamicWeight)) / 10000 : 0;
       const deltaUsd = metrics ? targetUsdValue - currentUsdValue : 0;
       const weightGap = actualWeight !== null && dynamicWeight !== null ? dynamicWeight - actualWeight : null;
 
@@ -326,12 +506,35 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       else if (weightGap !== null && weightGap < -0.01) recommendation = 'asset-to-weth';
       else if (weightGap !== null) recommendation = 'balanced';
 
-      const targetEthAmount = assetPrice > 0 ? Math.abs(deltaUsd) / assetPrice : 0;
-      const executableInputAmount = recommendation === 'weth-to-asset' ? Math.min(targetEthAmount, availableWeth) : targetEthAmount;
+      const desiredWethInput = recommendation === 'weth-to-asset' && wethPrice > 0 ? Math.max(deltaUsd, 0) / wethPrice : 0;
+      const desiredAssetInput = recommendation === 'asset-to-weth' && assetPrice > 0 ? Math.abs(Math.min(deltaUsd, 0)) / assetPrice : 0;
+
+      const executableInputAmount = recommendation === 'weth-to-asset'
+        ? Math.min(desiredWethInput, availableWeth)
+        : recommendation === 'asset-to-weth'
+          ? Math.min(desiredAssetInput, assetBalance)
+          : 0;
+
+      const ethEquivalentInput = recommendation === 'weth-to-asset'
+        ? executableInputAmount
+        : recommendation === 'asset-to-weth' && assetPrice > 0 && wethPrice > 0
+          ? (executableInputAmount * assetPrice) / wethPrice
+          : 0;
+
       const inputSymbol = recommendation === 'weth-to-asset' ? 'WETH' : option.name;
-      const decimals = recommendation === 'weth-to-asset' ? 18 : option.decimals;
-      const amountToSwap = executableInputAmount > 0 ? ethers.parseUnits(executableInputAmount.toFixed(Math.min(decimals, 8)), decimals) : 0n;
-      const eligible = executableInputAmount >= minSwapRequiredEth;
+
+      let amountToSwap = 0n;
+      try {
+        if (recommendation === 'weth-to-asset' && executableInputAmount > 0) {
+          amountToSwap = ethers.parseUnits(executableInputAmount.toFixed(8), 18);
+        } else if (recommendation === 'asset-to-weth' && executableInputAmount > 0) {
+          amountToSwap = ethers.parseUnits(executableInputAmount.toFixed(option.decimals), option.decimals);
+        }
+      } catch {
+        amountToSwap = 0n;
+      }
+
+      const eligible = ethEquivalentInput >= minSwapRequiredEth && amountToSwap > 0n;
 
       return {
         name: option.name,
@@ -341,9 +544,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         baseWeight,
         recommendation,
         inputSymbol,
-        inputAmountText: formatTokenAmount(executableInputAmount, 6),
+        inputAmountText: formatTokenAmount(executableInputAmount, recommendation === 'weth-to-asset' ? 6 : option.decimals),
         amountToSwap,
-        targetEthAmount,
+        targetEthAmount: ethEquivalentInput,
         executableInputAmount,
         eligible,
         minSwapRequiredEth
@@ -414,13 +617,21 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
 
     const wethMetrics = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const wethBalance = wethMetrics ? Number(wethMetrics.balance) : 0;
+    const wethPrice = wethMetrics ? Number(wethMetrics.price) : 0;
     const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
     const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
     const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+    const effectiveTotalTvlUsd = basketData.reduce((sum: number, asset: any) => {
+      if (asset.name === 'WETH') {
+        return sum + availableWeth * wethPrice;
+      }
+      return sum + (Number(asset.tvl) || 0);
+    }, 0);
+    const wethActualWeight = effectiveTotalTvlUsd > 0 ? ((availableWeth * wethPrice) / effectiveTotalTvlUsd) * 100 : null;
 
     const wethCard: RebalanceCard = {
       name: 'WETH',
-      actualWeight: wethMetrics ? Number(wethMetrics.realWeight) : null,
+      actualWeight: wethActualWeight,
       dynamicWeight: wethMetrics ? Number(wethMetrics.dynamicWeight) / 100 : null,
       baseWeight: wethMetrics ? Number(wethMetrics.baseWeight) / 100 : null,
       directionLabel: t('rebalance.directionCounterparty'),
@@ -460,46 +671,116 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       return;
     }
 
-    if (rawQuote <= 0n) {
+    if (mode === 'buy' && !activeTradeToken) {
+      setTradeError('Select a valid input token.');
+      return;
+    }
+
+    if (mode === 'buy' && activeTradeToken && !activeTradeToken.isNative && activeTradeToken.address.toLowerCase() === WETH_ADDRESS.toLowerCase()) {
+      setTradeError('Use native ETH instead of WETH for minting.');
+      return;
+    }
+
+    if (redeemOption !== 'basket' && rawQuote <= 0n) {
       setTradeError('Quote not ready. Wait a moment and retry.');
       return;
     }
 
     const slippageBps = BigInt(Math.round(slippage * 100));
-    const minAmountOut = (rawQuote * (10000n - slippageBps)) / 10000n;
 
     setIsTransacting(true);
     setTradeError(null);
     setTradeTxHash(null);
 
     try {
+      const provider = getProvider();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
       let hash: `0x${string}`;
 
       if (mode === 'buy') {
-        const ethAmount = ethers.parseEther(amount);
-        hash = await writeContractAsync({
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: TRADE_ABI,
-          functionName: 'buyGBLIN',
-          args: [minAmountOut],
-          value: ethAmount,
-          chainId: BASE_CHAIN_ID
-        });
+        if (!activeTradeToken) {
+          throw new Error('token required');
+        }
+
+        if (activeTradeToken.isNative) {
+          const ethAmount = ethers.parseEther(amount);
+          const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+          const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
+
+          hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: TRADE_ABI,
+            functionName: 'buyGBLIN',
+            args: [minAmountOut],
+            value: ethAmount,
+            chainId: BASE_CHAIN_ID
+          });
+        } else {
+          const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
+          const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
+
+          if (!routeQuote || routeQuote.amountOut <= 0n) {
+            throw new Error('no route');
+          }
+
+          const quotedGblinOut = await quoteMintFromWeth(routeQuote.amountOut);
+          const minGblinOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
+          const minWethOut = (routeQuote.amountOut * (10000n - slippageBps)) / 10000n;
+          const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
+          const allowance = await tokenContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
+
+          if (allowance < amountIn) {
+            addLog(`Approval required for ${activeTradeToken.symbol}.`);
+
+            const approvalHash = await writeContractAsync({
+              address: activeTradeToken.address as `0x${string}`,
+              abi: ERC20_WRITE_ABI,
+              functionName: 'approve',
+              args: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
+              chainId: BASE_CHAIN_ID
+            });
+
+            addLog(`Approval sent: ${shortenAddress(approvalHash)}`);
+            await provider.waitForTransaction(approvalHash, 1, 120000);
+            addLog(`Approval confirmed: ${shortenAddress(approvalHash)}`);
+          }
+
+          hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: TRADE_ABI,
+            functionName: 'buyGBLINWithToken',
+            args: [routeQuote.path, amountIn, minWethOut, minGblinOut],
+            chainId: BASE_CHAIN_ID
+          });
+        }
       } else {
         const gblinAmount = ethers.parseEther(amount);
-        hash = await writeContractAsync({
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: TRADE_ABI,
-          functionName: 'sellGBLINForEth',
-          args: [gblinAmount, minAmountOut],
-          chainId: BASE_CHAIN_ID
-        });
+
+        if (redeemOption === 'basket') {
+          hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: TRADE_ABI,
+            functionName: 'redeemInKind',
+            args: [gblinAmount],
+            chainId: BASE_CHAIN_ID
+          });
+        } else {
+          const ethOut = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+          const minAmountOut = (ethOut * (10000n - slippageBps)) / 10000n;
+
+          hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: TRADE_ABI,
+            functionName: 'sellGBLINForEth',
+            args: [gblinAmount, minAmountOut],
+            chainId: BASE_CHAIN_ID
+          });
+        }
       }
 
       setTradeTxHash(hash);
       addLog(`Transaction sent: ${shortenAddress(hash)}`);
 
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
       await provider.waitForTransaction(hash, 1, 120000);
       await Promise.all([syncWalletBalances(), refreshOnChainData(), refreshTransactions()]);
       setAmount('');
@@ -512,19 +793,31 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         setTradeError('Transaction rejected in wallet.');
       } else if (normalizedMessage.includes('insufficient funds')) {
         setTradeError('Insufficient ETH for value plus gas.');
+      } else if (normalizedMessage.includes('no route')) {
+        setTradeError('No direct swap route to WETH was found for this token.');
+      } else if (normalizedMessage.includes('token required')) {
+        setTradeError('Select a valid input token before minting.');
       } else if (normalizedMessage.includes('deposittoosmall')) {
         setTradeError('Deposit too small. Minimum is 0.0005 ETH.');
+      } else if (normalizedMessage.includes('invalidamount')) {
+        setTradeError('Invalid amount. Check the entered value and retry.');
+      } else if (normalizedMessage.includes('invalidpath')) {
+        setTradeError('Invalid token route. Choose another token or retry.');
       } else if (normalizedMessage.includes('cooldownactive')) {
         setTradeError('Cooldown active. Wait 2 minutes after the last deposit.');
       } else if (normalizedMessage.includes('slippageexceeded')) {
         setTradeError('Slippage exceeded. Try a higher slippage setting.');
+      } else if (normalizedMessage.includes('sequencerdown')) {
+        setTradeError('Base sequencer unavailable. Try again later.');
+      } else if (normalizedMessage.includes('transferfailed')) {
+        setTradeError('Transfer failed during settlement. Retry in a moment.');
       } else {
         setTradeError(message.length > 180 ? `${message.slice(0, 177)}...` : message);
       }
     } finally {
       setIsTransacting(false);
     }
-  }, [address, addLog, amount, isConnected, mode, open, rawQuote, refreshOnChainData, refreshTransactions, slippage, syncWalletBalances, writeContractAsync]);
+  }, [activeTradeToken, address, addLog, amount, getProvider, isConnected, mode, open, quoteMintFromWeth, rawQuote, redeemOption, refreshOnChainData, refreshTransactions, slippage, syncWalletBalances, writeContractAsync]);
 
   const executeArbitrage = useCallback(async () => {
     if (!isConnected || !address) {
@@ -554,7 +847,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setArbTxHash(hash);
       addLog(`Auto rebalance sent: ${shortenAddress(hash)}`);
 
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const provider = getProvider();
       await provider.waitForTransaction(hash, 1, 120000);
       await Promise.all([refreshOnChainData(), refreshTransactions()]);
       addLog(`Auto rebalance confirmed: ${shortenAddress(hash)}`);
@@ -570,9 +863,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         setArbError(t('rebalance.errorNoRebalance'));
       } else if (normalizedMessage.includes('swapvolumetoolow')) {
         setArbError(t('rebalance.errorTooLow'));
-      } else if (normalizedMessage.includes('oracle dead') || normalizedMessage.includes('staleoracle') || normalizedMessage.includes('sequencerdown')) {
+      } else if (normalizedMessage.includes('oracledead') || normalizedMessage.includes('oracle dead') || normalizedMessage.includes('sequencerdown')) {
         setArbError(t('rebalance.errorOracle'));
-      } else if (normalizedMessage.includes('invalid asset') || normalizedMessage.includes('cannot swap weth for weth')) {
+      } else if (normalizedMessage.includes('invalidindex') || normalizedMessage.includes('cannotswapsametoken') || normalizedMessage.includes('invalid asset') || normalizedMessage.includes('cannot swap weth for weth')) {
         setArbError(t('rebalance.errorInvalidAsset'));
       } else if (normalizedMessage.includes('slippageexceeded')) {
         setArbError(t('rebalance.errorSlippage'));
@@ -582,9 +875,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     } finally {
       setIsArbitraging(false);
     }
-  }, [address, addLog, autoRebalanceOpportunity, isConnected, open, refreshOnChainData, refreshTransactions, t, writeContractAsync]);
+  }, [address, addLog, autoRebalanceOpportunity, getProvider, isConnected, open, refreshOnChainData, refreshTransactions, t, writeContractAsync]);
 
-  const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || rawQuote <= 0n;
+  const hasTradeQuote = mode === 'sell' && redeemOption === 'basket'
+    ? quote !== '0' && quote !== 'Err' && quote !== 'Basket unavailable'
+    : rawQuote > 0n;
+  const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote;
   const isArbDisabled = isArbitraging || !autoRebalanceOpportunity || !autoRebalanceOpportunity.eligible || autoRebalanceOpportunity.amountToSwap <= 0n;
 
   const sharedProps = {
@@ -608,8 +904,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     copied
   };
 
-  if (!isReady) return null;
-
   let content = null;
 
   if (view === 'home') {
@@ -621,18 +915,29 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       <BuyView
         {...sharedProps}
         amount={amount}
+        buyTokenOptions={TOKENS}
+        customTokenAddress={customTokenAddress}
         ethBalance={ethBalance}
         executeTrade={executeTrade}
         gblinBalance={gblinBalance}
+        inputBalance={inputBalanceDisplay}
         isLoadingQuote={isLoadingQuote}
         isTradeDisabled={isTradeDisabled}
         isTransacting={isTransacting}
         mode={mode}
         quote={quote}
+        quoteAssetLabel={quoteAssetLabel}
+        redeemOption={redeemOption}
+        resolvedTokenSymbol={activeTradeToken?.symbol ?? (selectedToken === 'CUSTOM' ? 'CUSTOM' : selectedToken)}
         setAmount={setAmount}
+        setCustomTokenAddress={setCustomTokenAddress}
         setMode={setMode}
+        setRedeemOption={setRedeemOption}
+        setSelectedToken={setSelectedToken}
         setSlippage={setSlippage}
+        selectedToken={selectedToken}
         slippage={slippage}
+        tokenBalance={tokenBalance}
         tradeError={tradeError}
         tradeTxHash={tradeTxHash}
         usdValue={usdValue}
