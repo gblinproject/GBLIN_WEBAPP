@@ -4,7 +4,7 @@ import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { type AppKitNetwork } from '@reown/appkit/networks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
+import { cookieToInitialState, type Config, WagmiProvider } from 'wagmi';
 import { cookieStorage, createStorage } from '@wagmi/core';
 import React from 'react';
 
@@ -47,17 +47,23 @@ if (projectId) {
   createAppKit({
     adapters: [wagmiAdapter],
     networks,
+    defaultNetwork: base,
     projectId,
     metadata,
     features: {
-      analytics: true
+      analytics: true,
+      email: false,
+      socials: [],
+      connectMethodsOrder: ['wallet']
     }
   });
 }
 
-export function ContextProvider({ children }: { children: React.ReactNode }) {
+export function ContextProvider({ children, cookies }: { children: React.ReactNode; cookies?: string | null }) {
+  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies ?? null);
+
   return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+    <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
