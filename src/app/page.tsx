@@ -1187,7 +1187,7 @@ function LegacyHome() {
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 group-hover:animate-ping"></span>
               Support
             </a>
-            <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf" target="_blank" rel="noopener noreferrer" className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-500 transition-colors italic underline decoration-amber-500/30 underline-offset-4">Whitepaper</a>
+            <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V5.pdf" target="_blank" rel="noopener noreferrer" className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-500 transition-colors italic underline decoration-amber-500/30 underline-offset-4">Whitepaper</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -2239,7 +2239,7 @@ function LegacyHome() {
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 mb-1">Resources</span>
                 <div className="flex flex-wrap gap-6">
-                  <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V3.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
+                  <a href="https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V5.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">White Paper</a>
                   <a href="https://github.com/gblinproject/gblin-dapp" target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">GitHub</a>
                   <a href="mailto:gblin.protocol@proton.me" className="hover:text-amber-500 transition-colors">Email</a>
                 </div>
