@@ -614,7 +614,7 @@ export function BuyView(props: BuyViewProps) {
               <span className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.amount')}</span>
               <div className="mt-3 rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
                 <div className="flex items-center justify-between gap-4">
-                  <input className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600" inputMode="decimal" onChange={(event) => setAmount(event.target.value)} placeholder={t('trade.enterAmount')} type="text" value={amount} />
+                  <input className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600" inputMode="decimal" onChange={(event) => setAmount(event.target.value.replaceAll(',', '.'))} placeholder={t('trade.enterAmount')} type="text" value={amount} />
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">{mode === 'buy' ? resolvedTokenSymbol : 'GBLIN'}</span>
                 </div>
                 <p className="mt-3 text-sm text-zinc-500">{usdValue} · {t('trade.balance')}: {inputBalance}</p>
