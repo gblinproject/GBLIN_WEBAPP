@@ -182,6 +182,160 @@ export const REBALANCE_ASSET_OPTIONS = [
   { name: 'USDC', basketIndex: 2, decimals: 6 }
 ] as const;
 
+type TransactionDisplayType = 'ADMIN' | 'BUY' | 'MAINT' | 'OTHER' | 'REBALANCE' | 'SELL' | 'TRANSFER' | 'YIELD';
+type TransactionValueSource = 'gblin-amount' | 'gblin-transfer' | 'native-eth' | 'none' | 'rebalance-amount' | 'reserve-bounds' | 'slippage-bps';
+
+const GBLIN_TRANSACTION_SIGNATURES: Array<{ signature: string; type: TransactionDisplayType; valueSource: TransactionValueSource }> = [
+  { signature: 'proposeAsset(address,address,uint24,bool,uint256)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'executeAssetAddition()', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'emergencyDelist(uint256)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'mintInKind(uint256)', type: 'BUY', valueSource: 'gblin-amount' },
+  { signature: 'redeemInKind(uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'buyGBLIN(uint256)', type: 'BUY', valueSource: 'native-eth' },
+  { signature: 'buyGBLINWithToken(bytes,uint256,uint256,uint256)', type: 'BUY', valueSource: 'gblin-transfer' },
+  { signature: 'sellGBLIN(uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'sellGBLINForEth(uint256,uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'sellGBLINForToken(uint256,address,uint24,uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'refreshWeights()', type: 'MAINT', valueSource: 'none' },
+  { signature: 'incentivizedRebalance(uint256,bool,uint256)', type: 'REBALANCE', valueSource: 'rebalance-amount' },
+  { signature: 'updateMaxSlippage(uint256)', type: 'ADMIN', valueSource: 'slippage-bps' },
+  { signature: 'distributeYield()', type: 'YIELD', valueSource: 'none' },
+  { signature: 'updateFounderWallet(address)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'updateOracle(uint256,address)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'updateWethOracle(address)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'updateReserveBounds(uint256,uint256)', type: 'ADMIN', valueSource: 'reserve-bounds' },
+  { signature: 'safeSwap(address,address,uint24,uint256,uint256)', type: 'MAINT', valueSource: 'none' },
+  { signature: 'renounceOwnership()', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'transferOwnership(address)', type: 'ADMIN', valueSource: 'none' }
+];
+
+const GBLIN_TRANSACTION_INTERFACE = new ethers.Interface(GBLIN_TRANSACTION_SIGNATURES.map((item) => `function ${item.signature}`));
+const GBLIN_TRANSACTION_SELECTOR_MAP = new Map<string, { name: string; type: TransactionDisplayType; valueSource: TransactionValueSource }>(
+  GBLIN_TRANSACTION_SIGNATURES.map((item) => [
+    ethers.id(item.signature).slice(0, 10),
+    {
+      name: item.signature.slice(0, item.signature.indexOf('(')),
+      type: item.type,
+      valueSource: item.valueSource
+    }
+  ])
+);
+
+const formatAddressCell = (address?: string | null) => (address ? shortenAddress(address) : '--');
+
+const formatUnitValue = (value: bigint | number | string, decimals: number, symbol?: string, maxFractionDigits = 4) => {
+  try {
+    const normalized = typeof value === 'bigint' ? value : BigInt(String(value || '0'));
+    const formatted = formatTokenAmount(Number.parseFloat(ethers.formatUnits(normalized, decimals)), maxFractionDigits);
+    return symbol ? `${formatted} ${symbol}` : formatted;
+  } catch {
+    return symbol ? `0 ${symbol}` : '0';
+  }
+};
+
+const getTransactionMethod = (input?: string | null) => {
+  const selector = input?.slice(0, 10).toLowerCase();
+  return selector ? GBLIN_TRANSACTION_SELECTOR_MAP.get(selector) ?? null : null;
+};
+
+const parseContractCall = (input?: string | null, value?: string | null) => {
+  if (!input || input === '0x') return null;
+
+  try {
+    return GBLIN_TRANSACTION_INTERFACE.parseTransaction({ data: input, value: value || '0' });
+  } catch {
+    return null;
+  }
+};
+
+const inferTransactionTypeFromTransfers = (transfers: any[]): TransactionDisplayType => {
+  const contractLower = CONTRACT_ADDRESS.toLowerCase();
+  const aerodromeLower = AERODROME_POOL.toLowerCase();
+
+  if (transfers.some((transfer) => {
+    const from = transfer.from_address?.toLowerCase();
+    const to = transfer.to_address?.toLowerCase();
+    return from === ZERO_ADDRESS || to === contractLower || from === aerodromeLower;
+  })) {
+    return 'BUY';
+  }
+
+  if (transfers.some((transfer) => {
+    const from = transfer.from_address?.toLowerCase();
+    const to = transfer.to_address?.toLowerCase();
+    return to === ZERO_ADDRESS || from === contractLower || to === aerodromeLower;
+  })) {
+    return 'SELL';
+  }
+
+  return 'OTHER';
+};
+
+const getPrimaryGblinTransfer = (transfers: any[], type: TransactionDisplayType) => {
+  const contractLower = CONTRACT_ADDRESS.toLowerCase();
+  const aerodromeLower = AERODROME_POOL.toLowerCase();
+
+  if (type === 'BUY') {
+    return transfers.find((transfer) => {
+      const from = transfer.from_address?.toLowerCase();
+      const to = transfer.to_address?.toLowerCase();
+      return from === ZERO_ADDRESS || from === aerodromeLower || to === contractLower;
+    }) || transfers[0] || null;
+  }
+
+  if (type === 'SELL') {
+    return transfers.find((transfer) => {
+      const from = transfer.from_address?.toLowerCase();
+      const to = transfer.to_address?.toLowerCase();
+      return to === ZERO_ADDRESS || to === aerodromeLower || from === contractLower;
+    }) || transfers[0] || null;
+  }
+
+  return transfers[0] || null;
+};
+
+const formatRebalanceAmount = (parsedTx: ethers.TransactionDescription | null) => {
+  if (!parsedTx) return '--';
+
+  const assetIndex = Number(parsedTx.args[0]);
+  const isWethToAsset = Boolean(parsedTx.args[1]);
+  const amountToSwap = parsedTx.args[2];
+
+  if (typeof amountToSwap !== 'bigint') return '--';
+  if (isWethToAsset) return formatUnitValue(amountToSwap, 18, 'WETH');
+
+  const asset = REBALANCE_ASSET_OPTIONS.find((item) => item.basketIndex === assetIndex);
+  return asset ? formatUnitValue(amountToSwap, asset.decimals, asset.name) : formatUnitValue(amountToSwap, 18);
+};
+
+const formatTransactionValue = (
+  type: TransactionDisplayType,
+  method: { name: string; type: TransactionDisplayType; valueSource: TransactionValueSource } | null,
+  parsedTx: ethers.TransactionDescription | null,
+  contractTx: any,
+  erc20Transfers: any[]
+) => {
+  if (type === 'BUY' || type === 'SELL') {
+    const transfer = getPrimaryGblinTransfer(erc20Transfers, type);
+    if (transfer?.value) return formatUnitValue(transfer.value, 18, 'GBLIN');
+  }
+
+  switch (method?.valueSource) {
+    case 'native-eth':
+      return contractTx?.value && contractTx.value !== '0' ? formatUnitValue(contractTx.value, 18, 'ETH') : '--';
+    case 'gblin-amount':
+      return parsedTx ? formatUnitValue(parsedTx.args[0], 18, 'GBLIN') : '--';
+    case 'rebalance-amount':
+      return formatRebalanceAmount(parsedTx);
+    case 'slippage-bps':
+      return parsedTx ? `${formatTokenAmount(Number(parsedTx.args[0]) / 100, 2)}%` : '--';
+    case 'reserve-bounds':
+      return parsedTx ? `${formatUnitValue(parsedTx.args[0], 18, undefined, 4)} - ${formatUnitValue(parsedTx.args[1], 18, undefined, 4)} ETH` : '--';
+    default:
+      return contractTx?.value && contractTx.value !== '0' ? formatUnitValue(contractTx.value, 18, 'ETH') : '--';
+  }
+};
+
 export const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
 export const formatCurrency = (value: number, decimals = 2) =>
@@ -417,29 +571,35 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
       fetch(erc20Url, { headers: { accept: 'application/json', 'X-API-Key': MORALIS_API_KEY } })
     ]);
 
-    let allTx: any[] = [];
+    const txMap = new Map<string, { hash: string; timestamp: number; contractTx: any | null; erc20Transfers: any[] }>();
 
     if (txRes.ok) {
       const data = await txRes.json();
       if (data && Array.isArray(data.result)) {
-        allTx = [
-          ...allTx,
-          ...data.result.map((tx: any) => ({
+        data.result.forEach((tx: any) => {
+          const normalizedTx = {
             ...tx,
             source: 'CONTRACT',
             timestamp: new Date(tx.block_timestamp).getTime(),
             hash: tx.hash
-          }))
-        ];
+          };
+
+          const existing = txMap.get(normalizedTx.hash);
+          txMap.set(normalizedTx.hash, {
+            hash: normalizedTx.hash,
+            timestamp: Math.max(existing?.timestamp ?? 0, normalizedTx.timestamp),
+            contractTx: normalizedTx,
+            erc20Transfers: existing?.erc20Transfers ?? []
+          });
+        });
       }
     }
 
     if (erc20Res.ok) {
       const data = await erc20Res.json();
       if (data && Array.isArray(data.result)) {
-        allTx = [
-          ...allTx,
-          ...data.result.map((tx: any) => ({
+        data.result.forEach((tx: any) => {
+          const normalizedTx = {
             ...tx,
             source: 'ERC20',
             timestamp: new Date(tx.block_timestamp).getTime(),
@@ -447,50 +607,43 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
             from_address: tx.from_address,
             to_address: tx.to_address,
             value: tx.value
-          }))
-        ];
+          };
+
+          const existing = txMap.get(normalizedTx.hash);
+          txMap.set(normalizedTx.hash, {
+            hash: normalizedTx.hash,
+            timestamp: Math.max(existing?.timestamp ?? 0, normalizedTx.timestamp),
+            contractTx: existing?.contractTx ?? null,
+            erc20Transfers: [...(existing?.erc20Transfers ?? []), normalizedTx]
+          });
+        });
       }
     }
 
-    const uniqueTx = Array.from(new Map(allTx.map((tx) => [tx.hash, tx])).values())
+    return Array.from(txMap.values())
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 15);
+      .slice(0, 15)
+      .map((tx) => {
+        const method = getTransactionMethod(tx.contractTx?.input);
+        const parsedTx = parseContractCall(tx.contractTx?.input, tx.contractTx?.value);
+        const transferType = tx.erc20Transfers.length > 0 ? inferTransactionTypeFromTransfers(tx.erc20Transfers) : 'OTHER';
+        const type: TransactionDisplayType = method?.type
+          ?? (tx.contractTx?.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && tx.contractTx?.input === '0x' && tx.contractTx?.value !== '0'
+            ? 'TRANSFER'
+            : transferType);
+        const primaryTransfer = getPrimaryGblinTransfer(tx.erc20Transfers, type);
 
-    return uniqueTx.map((tx: any) => {
-      let type = 'OTHER';
-      const input = tx.input ? tx.input.toLowerCase() : '0x';
-      const from = tx.from_address?.toLowerCase();
-      const to = tx.to_address?.toLowerCase();
-      const contractLower = CONTRACT_ADDRESS.toLowerCase();
-      const aerodromeLower = AERODROME_POOL.toLowerCase();
-
-      if (input.includes('0xcde3791d')) {
-        type = 'REBALANCE';
-      } else if (tx.source === 'ERC20') {
-        if (from === aerodromeLower || to === contractLower || from === '0x0000000000000000000000000000000000000000') {
-          type = 'BUY';
-        } else if (to === aerodromeLower || from === contractLower || to === ZERO_ADDRESS) {
-          type = 'SELL';
-        }
-      } else {
-        if (input.includes('0x9020faac') || input.includes('0xee111dc9') || (tx.value !== '0' && to === contractLower)) {
-          type = 'BUY';
-        } else if (input.includes('0x5801b39b') || input.includes('0xa5d8e568') || input.includes('0x6a54df11') || from === contractLower) {
-          type = 'SELL';
-        }
-      }
-
-      return {
-        type,
-        time: new Date(tx.timestamp).toLocaleString(),
-        hash: shortenAddress(tx.hash),
-        full_hash: tx.hash,
-        from: shortenAddress(tx.from_address || ''),
-        to: shortenAddress(tx.to_address || ''),
-        value: parseFloat(ethers.formatEther(tx.value || '0')).toFixed(4),
-        is_rebalance: type === 'REBALANCE'
-      };
-    });
+        return {
+          type,
+          time: new Date(tx.timestamp).toLocaleString(),
+          hash: shortenAddress(tx.hash),
+          full_hash: tx.hash,
+          from: formatAddressCell(tx.contractTx?.from_address || primaryTransfer?.from_address),
+          to: formatAddressCell(tx.contractTx?.to_address || primaryTransfer?.to_address),
+          value: formatTransactionValue(type, method, parsedTx, tx.contractTx, tx.erc20Transfers),
+          is_rebalance: type === 'REBALANCE'
+        };
+      });
   } catch {
     return [];
   }
