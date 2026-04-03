@@ -4,7 +4,7 @@ import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { type AppKitNetwork } from '@reown/appkit/networks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cookieToInitialState, type Config, WagmiProvider } from 'wagmi';
+import { cookieToInitialState, type Config, WagmiProvider, http } from 'wagmi';
 import { cookieStorage, createStorage } from '@wagmi/core';
 import React from 'react';
 
@@ -40,7 +40,10 @@ export const wagmiAdapter = new WagmiAdapter({
   }),
   ssr: true,
   networks,
-  projectId
+  projectId,
+  transports: {
+    [base.id]: http('https://mainnet.base.org')
+  }
 });
 
 if (projectId) {

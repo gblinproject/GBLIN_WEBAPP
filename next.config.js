@@ -21,7 +21,7 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       'fs': false,
@@ -30,6 +30,15 @@ const nextConfig = {
       'pino-pretty': false,
       '@react-native-async-storage/async-storage': false,
     };
+    
+    // Fix per WebSocket su iOS Safari - aggiungi polyfill globale
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'ws': false,
+      };
+    }
+    
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
     return config;
   },
