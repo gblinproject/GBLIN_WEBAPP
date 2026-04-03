@@ -30,6 +30,7 @@ const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault'; href:
 ];
 
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
+const shellContainer = 'mx-auto w-full max-w-[1720px]';
 
 function LiveClock() {
   const [currentTime, setCurrentTime] = useState('');
@@ -64,7 +65,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
       <div className="fixed inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm" />
 
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 shadow-lg backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className={`${shellContainer} px-4 py-4 sm:px-6 lg:px-8 2xl:px-10`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <Link className="flex items-center gap-3 sm:gap-4" href="/">
@@ -186,7 +187,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
 
         {menuOpen ? (
           <div className="border-t border-white/5 px-4 py-4 lg:hidden sm:px-6">
-            <div className="mx-auto max-w-7xl space-y-3">
+            <div className={`${shellContainer} space-y-3`}>
               {navItems.map((item) => (
                 <Link
                   className={`block rounded-2xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActiveNavItem(item.href) ? 'bg-white text-black' : 'border border-white/10 bg-white/5 text-zinc-200'}`}
@@ -205,7 +206,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
         ) : null}
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <main className={`${shellContainer} px-4 py-8 sm:px-6 sm:py-10 lg:px-8 2xl:px-10`}>
         <div className="mb-10 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-400">
             <span>{t('site.network')}</span>
@@ -222,7 +223,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
       </main>
 
       <footer className="border-t border-white/10 pb-10 pt-8">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-end lg:px-8">
+        <div className={`${shellContainer} grid gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-end lg:px-8 2xl:px-10`}>
           <div className={`${shellCard} p-5`}>
             <p className="font-serif text-xl tracking-tight text-white">GBLIN</p>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
