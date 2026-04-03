@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
 
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ClientContextProvider>{children}</ClientContextProvider>
+        <Analytics />
       </body>
     </html>
   );
