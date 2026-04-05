@@ -223,7 +223,7 @@ function TransactionTable({ t, transactions, isTransactionsLoading }: { t: (key:
                 <td className="px-5 py-6 text-zinc-500" colSpan={5}>{t('dashboard.noTransactions')}</td>
               </tr>
             ) : (
-              transactions.map((tx) => (
+              transactions.slice(0, 10).map((tx) => (
                 <tr className="border-t border-white/5" key={tx.full_hash}>
                   <td className="px-5 py-4">
                     <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${tx.is_rebalance ? 'bg-amber-500/10 text-amber-300' : tx.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-300' : tx.type === 'SELL' ? 'bg-rose-500/10 text-rose-300' : 'bg-sky-500/10 text-sky-300'}`}>
@@ -461,7 +461,7 @@ export function DashboardView(props: DashboardViewProps) {
         />
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard hint={t('dashboard.backing')} label={t('dashboard.priceLabel')} loading={isMarketLoading} value={formatCurrency(marketData?.priceUsd || 0, 4)} />
-          <MetricCard hint={t('dashboard.fairValue')} label={t('dashboard.navTitle')} loading={isOnChainLoading} value={onChainData?.nav || '$0.00'} />
+          <MetricCard hint={t('dashboard.backing')} label={t('dashboard.navTitle')} loading={isOnChainLoading} value={onChainData?.nav || '$0.00'} />
           <MetricCard hint={t('dashboard.assetsInVault')} label={t('dashboard.tvlTitle')} loading={isOnChainLoading} value={formatCurrency(onChainData?.tvl || 0)} />
           <MetricCard hint={t('site.marketDislocation')} label={t('site.discountPremium')} loading={isMarketLoading || isOnChainLoading} value={`${discountPercentage.toFixed(2)}%`} />
         </div>
