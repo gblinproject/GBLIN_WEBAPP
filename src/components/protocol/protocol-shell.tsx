@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ExternalLink, Globe, Menu, Wallet, X } from 'lucide-react';
+import { ExternalLink, Globe, Mail, Menu, Wallet, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
 import { CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
 import type { ProtocolView } from './protocol-sections';
@@ -31,6 +31,7 @@ const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault'; href:
 
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
 const shellContainer = 'mx-auto w-full max-w-[1720px]';
+const CONTACT_EMAIL = 'info@gblin.digital';
 
 function LiveClock() {
   const [currentTime, setCurrentTime] = useState('');
@@ -52,6 +53,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
   const pathname = usePathname();
 
   const activeLanguage = useMemo(() => LANGUAGES.find((item) => item.code === language) ?? LANGUAGES[0], [language]);
+  const contactLabel = language === 'it' ? 'CONTATTI' : 'CONTACTS';
   const isActiveNavItem = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   useEffect(() => {
@@ -132,6 +134,10 @@ export function ProtocolShell(props: ProtocolShellProps) {
               <Link className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
                 {t('nav.buyGblin')}
               </Link>
+              <a className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
+                <Mail className="h-4 w-4" />
+                {contactLabel}
+              </a>
               <button className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition-all ${isConnected ? 'border border-white/10 bg-white/5 text-white hover:bg-white/10' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]'}`} onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />
                 {isConnected && address ? shortenAddress(address) : t('nav.connect')}
@@ -179,9 +185,15 @@ export function ProtocolShell(props: ProtocolShellProps) {
           </div>
 
           <div className="mt-3 lg:hidden">
-            <Link className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
-              {t('nav.buyGblin')}
-            </Link>
+            <div className="grid gap-2">
+              <Link className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
+                {t('nav.buyGblin')}
+              </Link>
+              <a className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
+                <Mail className="h-4 w-4" />
+                {contactLabel}
+              </a>
+            </div>
           </div>
         </div>
 
@@ -197,6 +209,10 @@ export function ProtocolShell(props: ProtocolShellProps) {
                   {t(`nav.${item.key}`)}
                 </Link>
               ))}
+              <a className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25 hover:text-white" href={`mailto:${CONTACT_EMAIL}`}>
+                <Mail className="h-4 w-4" />
+                {contactLabel}
+              </a>
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200" onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />
                 {isConnected && address ? shortenAddress(address) : t('nav.connect')}
