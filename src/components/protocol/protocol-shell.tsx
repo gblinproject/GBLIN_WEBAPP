@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ExternalLink, Globe, Mail, Menu, Wallet, X } from 'lucide-react';
+import { ExternalLink, Globe, Menu, Wallet, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
 import { CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
 import type { ProtocolView } from './protocol-sections';
@@ -135,7 +135,6 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 {t('nav.buyGblin')}
               </Link>
               <a className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
-                <Mail className="h-4 w-4" />
                 {contactLabel}
               </a>
               <button className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition-all ${isConnected ? 'border border-white/10 bg-white/5 text-white hover:bg-white/10' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]'}`} onClick={isConnected ? disconnectWallet : openWallet} type="button">
@@ -190,7 +189,6 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 {t('nav.buyGblin')}
               </Link>
               <a className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
-                <Mail className="h-4 w-4" />
                 {contactLabel}
               </a>
             </div>
@@ -210,7 +208,6 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 </Link>
               ))}
               <a className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25 hover:text-white" href={`mailto:${CONTACT_EMAIL}`}>
-                <Mail className="h-4 w-4" />
                 {contactLabel}
               </a>
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200" onClick={isConnected ? disconnectWallet : openWallet} type="button">
