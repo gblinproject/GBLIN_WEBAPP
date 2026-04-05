@@ -32,6 +32,11 @@ const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault'; href:
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
 const shellContainer = 'mx-auto w-full max-w-[1720px]';
 const CONTACT_EMAIL = 'info@gblin.digital';
+const CONTACT_LINKS = [
+  { key: 'email', platform: 'Email', label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}`, external: false },
+  { key: 'farcaster', platform: 'Farcaster', label: '@gblin', href: 'https://warpcast.com/gblin', external: true },
+  { key: 'x', platform: 'X', label: '@GBLIN_Protocol', href: 'https://x.com/GBLIN_Protocol', external: true }
+] as const;
 
 function LiveClock() {
   const [currentTime, setCurrentTime] = useState('');
@@ -46,10 +51,33 @@ function LiveClock() {
   return <span>{currentTime}</span>;
 }
 
+function ContactMenuPanel({ className = '' }: { className?: string }) {
+  return (
+    <div className={`overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0A0A0A]/95 shadow-2xl backdrop-blur-2xl ${className}`}>
+      {CONTACT_LINKS.map((item, index) => (
+        <a
+          className={`flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-white/5 ${index > 0 ? 'border-t border-white/5' : ''}`}
+          href={item.href}
+          key={item.key}
+          rel={item.external ? 'noreferrer' : undefined}
+          target={item.external ? '_blank' : undefined}
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">{item.platform}</p>
+            <p className="truncate text-sm font-semibold text-white">{item.label}</p>
+          </div>
+          {item.external ? <ExternalLink className="h-4 w-4 shrink-0 text-zinc-500" /> : null}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function ProtocolShell(props: ProtocolShellProps) {
   const { language, setLanguage, t, isConnected, address, openWallet, disconnectWallet, children } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
+  const [showContactMenu, setShowContactMenu] = useState(false);
   const pathname = usePathname();
 
   const activeLanguage = useMemo(() => LANGUAGES.find((item) => item.code === language) ?? LANGUAGES[0], [language]);
@@ -59,6 +87,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
   useEffect(() => {
     setMenuOpen(false);
     setShowLangSelector(false);
+    setShowContactMenu(false);
   }, [pathname]);
 
   return (
@@ -106,6 +135,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition-all hover:bg-white/10 hover:text-amber-400" onClick={() => {
                   setShowLangSelector((value) => !value);
                   setMenuOpen(false);
+                  setShowContactMenu(false);
                 }} type="button">
                   <Globe className="h-4 w-4" />
                 </button>
@@ -134,9 +164,16 @@ export function ProtocolShell(props: ProtocolShellProps) {
               <Link className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
                 {t('nav.buyGblin')}
               </Link>
-              <a className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
-                {contactLabel}
-              </a>
+              <div className="relative">
+                <button aria-expanded={showContactMenu} aria-haspopup="true" className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" onClick={() => {
+                  setShowContactMenu((value) => !value);
+                  setShowLangSelector(false);
+                  setMenuOpen(false);
+                }} type="button">
+                  {contactLabel}
+                </button>
+                {showContactMenu ? <ContactMenuPanel className="absolute right-0 top-full mt-2 w-[320px]" /> : null}
+              </div>
               <button className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition-all ${isConnected ? 'border border-white/10 bg-white/5 text-white hover:bg-white/10' : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]'}`} onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />
                 {isConnected && address ? shortenAddress(address) : t('nav.connect')}
@@ -148,6 +185,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                 <button className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-200 transition hover:bg-white/10 hover:text-amber-300" onClick={() => {
                   setShowLangSelector((value) => !value);
                   setMenuOpen(false);
+                  setShowContactMenu(false);
                 }} type="button">
                   <Globe className="h-4 w-4" />
                   <span>{activeLanguage.code.toUpperCase()}</span>
@@ -177,6 +215,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
               <button className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10" onClick={() => {
                 setMenuOpen((value) => !value);
                 setShowLangSelector(false);
+                setShowContactMenu(false);
               }} type="button">
                 {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
@@ -188,9 +227,16 @@ export function ProtocolShell(props: ProtocolShellProps) {
               <Link className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition-all hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]" href="/buy-gblin">
                 {t('nav.buyGblin')}
               </Link>
-              <a className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" href={`mailto:${CONTACT_EMAIL}`}>
-                {contactLabel}
-              </a>
+              <div className="relative">
+                <button aria-expanded={showContactMenu} aria-haspopup="true" className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" onClick={() => {
+                  setShowContactMenu((value) => !value);
+                  setShowLangSelector(false);
+                  setMenuOpen(false);
+                }} type="button">
+                  {contactLabel}
+                </button>
+                {showContactMenu ? <ContactMenuPanel className="mt-2 w-full" /> : null}
+              </div>
             </div>
           </div>
         </div>
@@ -207,9 +253,10 @@ export function ProtocolShell(props: ProtocolShellProps) {
                   {t(`nav.${item.key}`)}
                 </Link>
               ))}
-              <a className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25 hover:text-white" href={`mailto:${CONTACT_EMAIL}`}>
-                {contactLabel}
-              </a>
+              <div className="space-y-2">
+                <p className="px-1 text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">{contactLabel}</p>
+                <ContactMenuPanel className="w-full" />
+              </div>
               <button className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200" onClick={isConnected ? disconnectWallet : openWallet} type="button">
                 <Wallet className="h-4 w-4" />
                 {isConnected && address ? shortenAddress(address) : t('nav.connect')}
