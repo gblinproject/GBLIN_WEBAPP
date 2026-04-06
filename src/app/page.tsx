@@ -620,8 +620,9 @@ function LegacyHome() {
 
       let amountToSwap = 0n;
       try {
-        if (recommendation !== 'unknown' && recommendation !== 'balanced' && inputAmountText !== '0') {
-          amountToSwap = ethers.parseUnits(inputAmountText, inputDecimals);
+        if (recommendation !== 'unknown' && recommendation !== 'balanced' && executableInputAmount > 0) {
+          const effectiveAmount = Math.max(executableInputAmount, minimumInputAmount);
+          amountToSwap = ethers.parseUnits(formatTokenAmount(effectiveAmount, inputPrecision), inputDecimals);
         }
       } catch {
         amountToSwap = 0n;

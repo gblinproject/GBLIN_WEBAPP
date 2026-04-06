@@ -526,15 +526,18 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       let amountToSwap = 0n;
       try {
         if (recommendation === 'weth-to-asset' && executableInputAmount > 0) {
-          amountToSwap = ethers.parseUnits(executableInputAmount.toFixed(8), 18);
+          const effectiveAmount = Math.max(executableInputAmount, minSwapRequiredEth);
+          amountToSwap = ethers.parseUnits(effectiveAmount.toFixed(8), 18);
         } else if (recommendation === 'asset-to-weth' && executableInputAmount > 0) {
-          amountToSwap = ethers.parseUnits(executableInputAmount.toFixed(option.decimals), option.decimals);
+          const minFloorInAsset = assetPrice > 0 && wethPrice > 0 ? (minSwapRequiredEth * wethPrice) / assetPrice : 0;
+          const effectiveAmount = Math.max(executableInputAmount, minFloorInAsset);
+          amountToSwap = ethers.parseUnits(effectiveAmount.toFixed(option.decimals), option.decimals);
         }
       } catch {
         amountToSwap = 0n;
       }
 
-      const eligible = ethEquivalentInput >= minSwapRequiredEth && amountToSwap > 0n;
+      const eligible = executableInputAmount > 0 && amountToSwap > 0n;
 
       return {
         name: option.name,
