@@ -485,8 +485,8 @@ export function DashboardView(props: DashboardViewProps) {
               {logs.length === 0 ? (
                 <p className="text-sm text-zinc-500">{t('site.noRecentSyncEvents')}</p>
               ) : (
-                logs.map((log) => (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300" key={log}>
+                logs.map((log, i) => (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300" key={`${i}-${log.substring(0, 15)}`}>
                     {log}
                   </div>
                 ))
