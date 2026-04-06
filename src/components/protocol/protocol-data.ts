@@ -563,8 +563,8 @@ export const fetchMarketData = async (): Promise<DashboardData> => {
 
 export const fetchTransactions = async (): Promise<TransactionItem[]> => {
   try {
-    const txUrl = `https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}?chain=base&order=DESC&limit=20`;
-    const erc20Url = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/transfers?chain=base&order=DESC&limit=20`;
+    const txUrl = `https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}?chain=base&order=DESC&limit=10`;
+    const erc20Url = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/transfers?chain=base&order=DESC&limit=10`;
 
     const [txRes, erc20Res] = await Promise.all([
       fetch(txUrl, { headers: { accept: 'application/json', 'X-API-Key': MORALIS_API_KEY } }),
@@ -622,7 +622,7 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
 
     return Array.from(txMap.values())
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 15)
+      .slice(0, 10)
       .map((tx) => {
         const method = getTransactionMethod(tx.contractTx?.input);
         const parsedTx = parseContractCall(tx.contractTx?.input, tx.contractTx?.value);
