@@ -409,7 +409,7 @@ export function HomeView(props: HomeViewProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <MetricCard hint={t('site.marketVsNav')} label={t('site.discountPremium')} value={`${discountPercentage.toFixed(2)}%`} />
             <MetricCard hint={t('site.recentContractCycle')} label={t('site.lastYield')} value={formatDateLabel(lastYieldDistribution)} />
-            <MetricCard hint="Liquidity backstop" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 4)} WETH`} />
+            <MetricCard hint="Liquidity backstop" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH`} />
             <MetricCard hint={t('site.connectedOperator')} label="Wallet" value={isConnected && address ? shortenAddress(address) : t('site.notConnected')} />
           </div>
         </div>
@@ -498,7 +498,7 @@ export function DashboardView(props: DashboardViewProps) {
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.stabilityFund')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 4)} WETH</p>
+                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.dynamicReserve')}</p>
@@ -745,7 +745,7 @@ export function RebalanceView(props: RebalanceViewProps) {
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">Stability Fund</p>
-                <p className="mt-2 text-lg font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 4)} WETH</p>
+                <p className="mt-2 text-lg font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
               </div>
             </div>
           </div>
@@ -812,7 +812,7 @@ export function VaultView(props: VaultViewProps) {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <MetricCard hint="Last automated cycle" label={t('site.lastYield')} value={formatDateLabel(lastYieldDistribution)} />
             <MetricCard hint="Protocol reserve target" label={t('site.dynamicReserve')} value={`${formatTokenAmount(Number(onChainData?.dynamicReserve || 0), 4)} WETH`} />
-            <MetricCard hint="Immediate liquidity buffer" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 4)} WETH`} />
+            <MetricCard hint="Immediate liquidity buffer" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH`} />
             <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '$0.00'} />
           </div>
           <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
