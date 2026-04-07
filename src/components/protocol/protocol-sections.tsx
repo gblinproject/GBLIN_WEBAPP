@@ -226,7 +226,7 @@ function TransactionTable({ t, transactions, isTransactionsLoading }: { t: (key:
               transactions.slice(0, 10).map((tx) => (
                 <tr className="border-t border-white/5" key={tx.full_hash}>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${tx.is_rebalance ? 'bg-amber-500/10 text-amber-300' : tx.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-300' : tx.type === 'SELL' ? 'bg-rose-500/10 text-rose-300' : 'bg-sky-500/10 text-sky-300'}`}>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${tx.is_rebalance ? 'bg-amber-500/10 text-amber-300' : tx.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-300' : tx.type === 'SELL' ? 'bg-rose-500/10 text-rose-300' : tx.type === 'APPROVE' ? 'bg-violet-500/10 text-violet-300' : 'bg-sky-500/10 text-sky-300'}`}>
                       {tx.type}
                     </span>
                   </td>

@@ -66,6 +66,8 @@ export type RebalanceDirection = 'weth-to-asset' | 'asset-to-weth';
 export const RPC_URL = 'https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt';
 export const CONTRACT_ADDRESS = '0x38DcDB3A381677239BBc652aed9811F2f8496345';
 export const AERODROME_POOL = '0xdaecc15bf028bc4d135260d044b87001dafb3c22';
+export const AERODROME_ROUTER = '0x6df1c91424f79e40e33b1a48f0687b666be71075';
+export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
 export const MORALIS_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjNjZmE1NWI1LWUxZDYtNGRhOS1iNjE5LTRmZGI5MjMwMTBhMCIsIm9yZ0lkIjoiNTA3NzcxIiwidXNlcklkIjoiNTIyNDYyIiwidHlwZUlkIjoiYTc1MzFkNjctOWMwZS00Yjg3LWE2ZDgtMTQ3ZDU3MzQ1YjYyIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NzQ5ODE0ODgsImV4cCI6NDkzMDc0MTQ4OH0.ET2R55zvlleoauhaUcJYqaQkUafLTzzCwFFEb07YTC8';
 export const BASE_CHAIN_ID = 8453;
 export const WHITEPAPER_URL = 'https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V5.pdf';
@@ -174,6 +176,16 @@ const UNISWAP_V3_POOL_ABI = [
 const COMMON_UNISWAP_V3_FEES = [100, 500, 3000, 10000] as const;
 const UNISWAP_V3_FEE_DENOMINATOR = 1_000_000n;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+const PROTOCOL_CORE_ADDRESSES = new Set([
+  CONTRACT_ADDRESS.toLowerCase(),
+  FOUNDER_WALLET.toLowerCase()
+]);
+const PROTOCOL_INFRA_ADDRESSES = new Set([
+  AERODROME_POOL.toLowerCase(),
+  AERODROME_ROUTER.toLowerCase(),
+  ZERO_ADDRESS
+]);
+const KNOWN_PROTOCOL_ADDRESSES = new Set([...PROTOCOL_CORE_ADDRESSES, ...PROTOCOL_INFRA_ADDRESSES]);
 const tokenMetadataCache = new Map<string, TradeTokenOption | null>();
 const tokenRouteCache = new Map<string, { tokens: string[]; fees: number[] } | null>();
 
@@ -182,7 +194,8 @@ export const REBALANCE_ASSET_OPTIONS = [
   { name: 'USDC', basketIndex: 2, decimals: 6 }
 ] as const;
 
-type TransactionDisplayType = 'ADMIN' | 'BUY' | 'MAINT' | 'OTHER' | 'REBALANCE' | 'SELL' | 'TRANSFER' | 'YIELD';
+type TransactionDisplayType = 'ADMIN' | 'APPROVE' | 'BUY' | 'MAINT' | 'OTHER' | 'REBALANCE' | 'SELL' | 'TRANSFER' | 'YIELD';
+const ERC20_APPROVE_SELECTOR = '0x095ea7b3';
 type TransactionValueSource = 'gblin-amount' | 'gblin-transfer' | 'native-eth' | 'none' | 'rebalance-amount' | 'reserve-bounds' | 'slippage-bps';
 
 const GBLIN_TRANSACTION_SIGNATURES: Array<{ signature: string; type: TransactionDisplayType; valueSource: TransactionValueSource }> = [
@@ -248,46 +261,74 @@ const parseContractCall = (input?: string | null, value?: string | null) => {
   }
 };
 
-const inferTransactionTypeFromTransfers = (transfers: any[]): TransactionDisplayType => {
-  const contractLower = CONTRACT_ADDRESS.toLowerCase();
-  const aerodromeLower = AERODROME_POOL.toLowerCase();
+const inferTransactionTypeFromTransfers = (transfers: any[], txSender?: string): TransactionDisplayType => {
+  if (transfers.length === 0) return 'OTHER';
 
-  if (transfers.some((transfer) => {
-    const from = transfer.from_address?.toLowerCase();
-    const to = transfer.to_address?.toLowerCase();
-    return from === ZERO_ADDRESS || to === contractLower || from === aerodromeLower;
-  })) {
-    return 'BUY';
+  const senderLower = txSender?.toLowerCase();
+
+  // Strategy A: reliable tx sender from contractTx (and it's a real user, not a protocol addr)
+  if (senderLower && !KNOWN_PROTOCOL_ADDRESSES.has(senderLower)) {
+    const userReceivesGblin = transfers.some((t) => t.to_address?.toLowerCase() === senderLower);
+    const userSendsGblin = transfers.some((t) => t.from_address?.toLowerCase() === senderLower);
+
+    if (userReceivesGblin && !userSendsGblin) return 'BUY';
+    if (userSendsGblin && !userReceivesGblin) return 'SELL';
+    if (userReceivesGblin && userSendsGblin) return 'OTHER';
   }
 
-  if (transfers.some((transfer) => {
+  // Strategy B: mint/burn heuristics
+  for (const transfer of transfers) {
     const from = transfer.from_address?.toLowerCase();
     const to = transfer.to_address?.toLowerCase();
-    return to === ZERO_ADDRESS || from === contractLower || to === aerodromeLower;
-  })) {
-    return 'SELL';
+    if (from === ZERO_ADDRESS) return 'BUY';
+    if (to === ZERO_ADDRESS) return 'SELL';
+  }
+
+  // Strategy C: identify user as the non-protocol address in the transfers
+  for (const transfer of transfers) {
+    const from = transfer.from_address?.toLowerCase();
+    const to = transfer.to_address?.toLowerCase();
+    const fromIsProtocol = !from || KNOWN_PROTOCOL_ADDRESSES.has(from);
+    const toIsProtocol = !to || KNOWN_PROTOCOL_ADDRESSES.has(to);
+
+    if (fromIsProtocol && !toIsProtocol) return 'BUY';
+    if (!fromIsProtocol && toIsProtocol) return 'SELL';
+  }
+
+  // Strategy D: all-protocol transfers — check direction relative to core vs infrastructure
+  for (const transfer of transfers) {
+    const from = transfer.from_address?.toLowerCase();
+    const to = transfer.to_address?.toLowerCase();
+    if (from && PROTOCOL_INFRA_ADDRESSES.has(from) && to && PROTOCOL_CORE_ADDRESSES.has(to)) return 'SELL';
+    if (from && PROTOCOL_CORE_ADDRESSES.has(from) && to && PROTOCOL_INFRA_ADDRESSES.has(to)) return 'BUY';
   }
 
   return 'OTHER';
 };
 
-const getPrimaryGblinTransfer = (transfers: any[], type: TransactionDisplayType) => {
-  const contractLower = CONTRACT_ADDRESS.toLowerCase();
-  const aerodromeLower = AERODROME_POOL.toLowerCase();
+const getPrimaryGblinTransfer = (transfers: any[], type: TransactionDisplayType, txSender?: string) => {
+  const senderLower = txSender?.toLowerCase();
+  const hasSender = senderLower && !KNOWN_PROTOCOL_ADDRESSES.has(senderLower);
 
   if (type === 'BUY') {
-    return transfers.find((transfer) => {
-      const from = transfer.from_address?.toLowerCase();
-      const to = transfer.to_address?.toLowerCase();
-      return from === ZERO_ADDRESS || from === aerodromeLower || to === contractLower;
+    if (hasSender) {
+      const match = transfers.find((t) => t.to_address?.toLowerCase() === senderLower);
+      if (match) return match;
+    }
+    return transfers.find((t) => {
+      const from = t.from_address?.toLowerCase();
+      return from === ZERO_ADDRESS || (from && KNOWN_PROTOCOL_ADDRESSES.has(from));
     }) || transfers[0] || null;
   }
 
   if (type === 'SELL') {
-    return transfers.find((transfer) => {
-      const from = transfer.from_address?.toLowerCase();
-      const to = transfer.to_address?.toLowerCase();
-      return to === ZERO_ADDRESS || to === aerodromeLower || from === contractLower;
+    if (hasSender) {
+      const match = transfers.find((t) => t.from_address?.toLowerCase() === senderLower);
+      if (match) return match;
+    }
+    return transfers.find((t) => {
+      const to = t.to_address?.toLowerCase();
+      return to === ZERO_ADDRESS || (to && KNOWN_PROTOCOL_ADDRESSES.has(to));
     }) || transfers[0] || null;
   }
 
@@ -317,7 +358,7 @@ const formatTransactionValue = (
 ) => {
   if (type === 'BUY' || type === 'SELL') {
     const transfer = getPrimaryGblinTransfer(erc20Transfers, type);
-    if (transfer?.value) return formatUnitValue(transfer.value, 18, 'GBLIN');
+    if (transfer?.value) return formatUnitValue(transfer.value, 18, 'GBLIN', 8);
   }
 
   switch (method?.valueSource) {
@@ -626,12 +667,19 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
       .map((tx) => {
         const method = getTransactionMethod(tx.contractTx?.input);
         const parsedTx = parseContractCall(tx.contractTx?.input, tx.contractTx?.value);
-        const transferType = tx.erc20Transfers.length > 0 ? inferTransactionTypeFromTransfers(tx.erc20Transfers) : 'OTHER';
-        const type: TransactionDisplayType = method?.type
-          ?? (tx.contractTx?.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && tx.contractTx?.input === '0x' && tx.contractTx?.value !== '0'
-            ? 'TRANSFER'
-            : transferType);
-        const primaryTransfer = getPrimaryGblinTransfer(tx.erc20Transfers, type);
+        const txSender = tx.contractTx?.from_address || null;
+        const inputSelector = tx.contractTx?.input?.slice(0, 10)?.toLowerCase();
+        const isApprove = inputSelector === ERC20_APPROVE_SELECTOR;
+        const transferType = tx.erc20Transfers.length > 0
+          ? inferTransactionTypeFromTransfers(tx.erc20Transfers, txSender)
+          : 'OTHER';
+        const type: TransactionDisplayType = isApprove
+          ? 'APPROVE'
+          : method?.type
+            ?? (tx.contractTx?.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() && tx.contractTx?.input === '0x' && tx.contractTx?.value !== '0'
+              ? 'TRANSFER'
+              : transferType);
+        const primaryTransfer = getPrimaryGblinTransfer(tx.erc20Transfers, type, txSender);
 
         return {
           type,
