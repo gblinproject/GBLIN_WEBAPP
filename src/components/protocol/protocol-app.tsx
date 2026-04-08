@@ -168,7 +168,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setLanguageState(storedLanguage);
       return;
     }
-    const browserLanguage = navigator.language.split('-')[0];
+    const browserLanguage = navigator.language.split('-')[0].toLowerCase();
     if (isSupportedLanguage(browserLanguage)) {
       setLanguageState(browserLanguage);
     }

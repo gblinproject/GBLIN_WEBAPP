@@ -191,7 +191,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                   <span>{activeLanguage.code.toUpperCase()}</span>
                 </button>
                 {showLangSelector ? (
-                  <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
+                  <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
                     {LANGUAGES.map((item) => (
                       <button
                         className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${item.code === language ? 'text-amber-400' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
