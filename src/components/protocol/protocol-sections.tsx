@@ -12,6 +12,7 @@ export interface RebalanceCard {
   actualWeight: number | null;
   dynamicWeight: number | null;
   baseWeight: number | null;
+  weightGap: number | null;
   directionLabel: string;
   amountLabel: string;
   amountValue: string;
@@ -681,6 +682,11 @@ export function RebalanceView(props: RebalanceViewProps) {
                     <span className={`h-2.5 w-2.5 rounded-full ${card.recommendationDot}`} />
                     {card.recommendationText}
                   </p>
+                  {card.weightGap !== null && card.weightGap < 1 && card.weightGap > 0 ? (
+                    <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-300">
+                      <span>⚠</span> {t('rebalance.gapTooSmall')} ({card.weightGap.toFixed(2)}%)
+                    </p>
+                  ) : null}
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-zinc-300">
                   {card.directionLabel}

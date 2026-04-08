@@ -604,11 +604,16 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             ? 'bg-amber-500'
             : 'bg-zinc-600';
 
+      const weightGap = asset.actualWeight !== null && asset.dynamicWeight !== null
+        ? Math.abs(asset.dynamicWeight - asset.actualWeight)
+        : null;
+
       return {
         name: asset.name,
         actualWeight: asset.actualWeight,
         dynamicWeight: asset.dynamicWeight,
         baseWeight: asset.baseWeight,
+        weightGap,
         directionLabel:
           asset.recommendation === 'weth-to-asset'
             ? t('rebalance.directionToAsset')
@@ -640,11 +645,15 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }, 0);
     const wethActualWeight = effectiveTotalTvlUsd > 0 ? ((availableWeth * wethPrice) / effectiveTotalTvlUsd) * 100 : null;
 
+    const wethDynamicWeight = wethMetrics ? Number(wethMetrics.dynamicWeight) / 100 : null;
+    const wethWeightGap = wethActualWeight !== null && wethDynamicWeight !== null ? Math.abs(wethDynamicWeight - wethActualWeight) : null;
+
     const wethCard: RebalanceCard = {
       name: 'WETH',
       actualWeight: wethActualWeight,
-      dynamicWeight: wethMetrics ? Number(wethMetrics.dynamicWeight) / 100 : null,
+      dynamicWeight: wethDynamicWeight,
       baseWeight: wethMetrics ? Number(wethMetrics.baseWeight) / 100 : null,
+      weightGap: wethWeightGap,
       directionLabel: t('rebalance.directionCounterparty'),
       amountLabel: t('rebalance.amountAvailable'),
       amountValue: `${formatTokenAmount(availableWeth, 6)} WETH`,
