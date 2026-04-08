@@ -130,6 +130,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [arbTxHash, setArbTxHash] = useState<string | null>(null);
   const [arbError, setArbError] = useState<string | null>(null);
 
+  const [isRebalancingAll, setIsRebalancingAll] = useState(false);
+  const [rebalanceAllProgress, setRebalanceAllProgress] = useState<{ current: number; total: number; currentAsset: string } | null>(null);
+  const [rebalanceAllResults, setRebalanceAllResults] = useState<Array<{ name: string; hash: string; success: boolean; error?: string }>>([]);
+
   const [marketData, setMarketData] = useState<any>(protocolViewCache.marketData);
   const [onChainData, setOnChainData] = useState<any>(protocolViewCache.onChainData);
   const [isMarketLoading, setIsMarketLoading] = useState(!protocolViewCache.marketData);
@@ -564,6 +568,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     return ranked.find((asset) => asset.eligible) ?? ranked[0] ?? null;
   }, [rebalanceAssetStats]);
 
+  const eligibleRebalanceAssets = useMemo(() => {
+    return rebalanceAssetStats.filter((asset) => asset.eligible && asset.amountToSwap > 0n);
+  }, [rebalanceAssetStats]);
+
   const rebalanceBountyActive = (onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0) >= 0.0001;
   const rebalanceMinSwapRequiredEth = autoRebalanceOpportunity?.minSwapRequiredEth ?? 0.01;
 
@@ -880,6 +888,74 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }
   }, [address, addLog, autoRebalanceOpportunity, getProvider, isConnected, open, refreshOnChainData, refreshTransactions, t, writeContractAsync]);
 
+  const executeRebalanceAll = useCallback(async () => {
+    if (!isConnected || !address) {
+      open();
+      return;
+    }
+
+    if (eligibleRebalanceAssets.length === 0) {
+      setArbError(t('rebalance.errorNoOpportunity'));
+      return;
+    }
+
+    setIsRebalancingAll(true);
+    setArbError(null);
+    setArbTxHash(null);
+    setRebalanceAllResults([]);
+
+    const results: Array<{ name: string; hash: string; success: boolean; error?: string }> = [];
+
+    for (let i = 0; i < eligibleRebalanceAssets.length; i++) {
+      const asset = eligibleRebalanceAssets[i];
+      setRebalanceAllProgress({ current: i + 1, total: eligibleRebalanceAssets.length, currentAsset: asset.name });
+
+      try {
+        const isWethToAsset = asset.recommendation === 'weth-to-asset';
+        const hash = await writeContractAsync({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: REBALANCE_ABI,
+          functionName: 'incentivizedRebalance',
+          args: [BigInt(asset.basketIndex), isWethToAsset, asset.amountToSwap],
+          chainId: BASE_CHAIN_ID
+        });
+
+        addLog(`Rebalance All [${i + 1}/${eligibleRebalanceAssets.length}] ${asset.name} sent: ${shortenAddress(hash)}`);
+        const provider = getProvider();
+        await provider.waitForTransaction(hash, 1, 120000);
+        addLog(`Rebalance All [${i + 1}/${eligibleRebalanceAssets.length}] ${asset.name} confirmed`);
+        results.push({ name: asset.name, hash, success: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Transaction failed.';
+        const normalizedMessage = message.toLowerCase();
+
+        let userMessage = message.length > 120 ? `${message.slice(0, 117)}...` : message;
+        if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
+          userMessage = t('rebalance.errorRejected');
+          results.push({ name: asset.name, hash: '', success: false, error: userMessage });
+          break;
+        } else if (normalizedMessage.includes('rebalancenotneeded')) {
+          userMessage = t('rebalance.errorNoRebalance');
+        } else if (normalizedMessage.includes('swapvolumetoolow')) {
+          userMessage = t('rebalance.errorTooLow');
+        } else if (normalizedMessage.includes('oracledead') || normalizedMessage.includes('sequencerdown')) {
+          userMessage = t('rebalance.errorOracle');
+        } else if (normalizedMessage.includes('slippageexceeded')) {
+          userMessage = t('rebalance.errorSlippage');
+        }
+
+        addLog(`Rebalance All [${i + 1}/${eligibleRebalanceAssets.length}] ${asset.name} failed: ${userMessage}`);
+        results.push({ name: asset.name, hash: '', success: false, error: userMessage });
+      }
+
+      setRebalanceAllResults([...results]);
+    }
+
+    setRebalanceAllProgress(null);
+    setIsRebalancingAll(false);
+    await Promise.all([refreshOnChainData(), refreshTransactions()]);
+  }, [address, addLog, eligibleRebalanceAssets, getProvider, isConnected, open, refreshOnChainData, refreshTransactions, t, writeContractAsync]);
+
   const hasTradeQuote = mode === 'sell' && redeemOption === 'basket'
     ? quote !== '0' && quote !== 'Err' && quote !== 'Basket unavailable'
     : rawQuote > 0n;
@@ -953,9 +1029,14 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         arbError={arbError}
         arbTxHash={arbTxHash}
         autoRebalanceOpportunity={autoRebalanceOpportunity}
+        eligibleRebalanceCount={eligibleRebalanceAssets.length}
         executeArbitrage={executeArbitrage}
+        executeRebalanceAll={executeRebalanceAll}
         isArbDisabled={isArbDisabled}
         isArbitraging={isArbitraging}
+        isRebalancingAll={isRebalancingAll}
+        rebalanceAllProgress={rebalanceAllProgress}
+        rebalanceAllResults={rebalanceAllResults}
         rebalanceBountyActive={rebalanceBountyActive}
         rebalanceMinSwapRequiredEth={rebalanceMinSwapRequiredEth}
         rebalanceOverviewCards={rebalanceOverviewCards}

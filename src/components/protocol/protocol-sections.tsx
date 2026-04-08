@@ -104,6 +104,11 @@ interface RebalanceViewProps extends SharedViewProps {
   executeArbitrage: () => void;
   arbError: string | null;
   arbTxHash: string | null;
+  eligibleRebalanceCount: number;
+  isRebalancingAll: boolean;
+  executeRebalanceAll: () => void;
+  rebalanceAllProgress: { current: number; total: number; currentAsset: string } | null;
+  rebalanceAllResults: Array<{ name: string; hash: string; success: boolean; error?: string }>;
 }
 
 interface VaultViewProps extends SharedViewProps {}
@@ -657,7 +662,7 @@ export function BuyView(props: BuyViewProps) {
 }
 
 export function RebalanceView(props: RebalanceViewProps) {
-  const { t, rebalanceOverviewCards, autoRebalanceOpportunity, rebalanceBountyActive, rebalanceMinSwapRequiredEth, isArbitraging, isArbDisabled, executeArbitrage, arbError, arbTxHash, isConnected, openWallet, onChainData } = props;
+  const { t, rebalanceOverviewCards, autoRebalanceOpportunity, rebalanceBountyActive, rebalanceMinSwapRequiredEth, isArbitraging, isArbDisabled, executeArbitrage, arbError, arbTxHash, isConnected, openWallet, onChainData, eligibleRebalanceCount, isRebalancingAll, executeRebalanceAll, rebalanceAllProgress, rebalanceAllResults } = props;
 
   return (
     <div className="space-y-12">
@@ -756,10 +761,27 @@ export function RebalanceView(props: RebalanceViewProps) {
             <p className="text-sm leading-7 text-zinc-300">{t('rebalance.recommendationCounterparty')}</p>
           </div>
 
-          <button className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${isArbDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-amber-400 text-black hover:bg-amber-300'}`} disabled={isArbDisabled} onClick={isConnected ? executeArbitrage : openWallet} type="button">
-            {isArbitraging ? t('rebalance.processing') : isConnected ? t('rebalance.execute') : t('rebalance.connectWallet')}
-            <Zap className="h-4 w-4" />
-          </button>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${isArbDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-amber-400 text-black hover:bg-amber-300'}`} disabled={isArbDisabled || isRebalancingAll} onClick={isConnected ? executeArbitrage : openWallet} type="button">
+              {isArbitraging ? t('rebalance.processing') : isConnected ? t('rebalance.execute') : t('rebalance.connectWallet')}
+              <Zap className="h-4 w-4" />
+            </button>
+            <button
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${eligibleRebalanceCount < 2 || isRebalancingAll || isArbitraging ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:from-amber-300 hover:to-amber-400'}`}
+              disabled={eligibleRebalanceCount < 2 || isRebalancingAll || isArbitraging}
+              onClick={isConnected ? executeRebalanceAll : openWallet}
+              type="button"
+            >
+              {isRebalancingAll
+                ? rebalanceAllProgress
+                  ? `${rebalanceAllProgress.currentAsset} (${rebalanceAllProgress.current}/${rebalanceAllProgress.total})...`
+                  : t('rebalance.processing')
+                : isConnected
+                  ? `${t('rebalance.executeAll')} (${eligibleRebalanceCount})`
+                  : t('rebalance.connectWallet')}
+              <Zap className="h-4 w-4" />
+            </button>
+          </div>
 
           {arbError ? <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{arbError}</div> : null}
           {arbTxHash ? (
@@ -769,6 +791,29 @@ export function RebalanceView(props: RebalanceViewProps) {
                 {t('trade.viewTx')}
                 <ExternalLink className="h-4 w-4" />
               </a>
+            </div>
+          ) : null}
+
+          {rebalanceAllResults.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              {rebalanceAllResults.map((result, i) => (
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-sm ${result.success ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-100' : 'border-rose-500/20 bg-rose-500/10 text-rose-200'}`}
+                  key={`${result.name}-${i}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">{result.name}</span>
+                    <span>{result.success ? '✓' : '✗'}</span>
+                  </div>
+                  {result.success && result.hash ? (
+                    <a className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-200 hover:text-white" href={`https://basescan.org/tx/${result.hash}`} rel="noreferrer" target="_blank">
+                      {result.hash.slice(0, 10)}...{result.hash.slice(-6)}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : null}
+                  {!result.success && result.error ? <p className="mt-1 text-xs">{result.error}</p> : null}
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
