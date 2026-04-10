@@ -313,17 +313,10 @@ export function HomeView(props: HomeViewProps) {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 className="group inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
-                href="/buy-gblin"
-              >
-                {t('nav.buyGblin')}
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white hover:-translate-y-0.5"
-                href="/dashboard"
+                href="/account"
               >
                 {t('nav.dashboard')}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <button
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-transparent px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-400"

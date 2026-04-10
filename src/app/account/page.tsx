@@ -599,7 +599,35 @@ export default function AccountPage() {
           const hasAmount = numVal > 0 && gblinQty > 0 && ethValue > 0;
 
           return (
-            <div className={`${shellCard} p-6 sm:p-8`}>
+            <div className="space-y-5">
+
+              {/* ── Intro: two options ── */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Option A: I already have a wallet */}
+                <div className={`${shellCard} relative overflow-hidden p-6`}>
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+                  <Wallet className="mb-3 h-7 w-7 text-amber-400" />
+                  <h4 className="mb-1 text-base font-bold text-white">{t("account.buyOptionWalletTitle") || "Ho già un wallet"}</h4>
+                  <p className="mb-4 text-sm leading-6 text-zinc-400">{t("account.buyOptionWalletDesc") || "Connetti MetaMask, Coinbase Wallet o qualsiasi wallet compatibile e acquista GBLIN direttamente con ETH."}</p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
+                    <ArrowRight className="h-3 w-3" /> {t("account.buyOptionWalletCta") || "Usa il modulo qui sotto"}
+                  </span>
+                </div>
+
+                {/* Option B: Advanced trading */}
+                <Link href="/buy-gblin" className={`${shellCard} relative overflow-hidden p-6 transition hover:border-amber-500/30 group`}>
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <TrendingUp className="mb-3 h-7 w-7 text-zinc-400 group-hover:text-amber-400 transition-colors" />
+                  <h4 className="mb-1 text-base font-bold text-white">{t("account.buyOptionAdvancedTitle") || "Trading avanzato"}</h4>
+                  <p className="mb-4 text-sm leading-6 text-zinc-400">{t("account.buyOptionAdvancedDesc") || "Acquista con qualsiasi token (USDC, cbBTC…), imposta slippage personalizzato e visualizza quote in tempo reale."}</p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-zinc-300 group-hover:bg-amber-500/10 group-hover:text-amber-400 transition">
+                    <ExternalLink className="h-3 w-3" /> {t("account.buyOptionAdvancedCta") || "Apri pagina trading"}
+                  </span>
+                </Link>
+              </div>
+
+              {/* ── Wallet purchase form ── */}
+              <div className={`${shellCard} p-6 sm:p-8`}>
               <h3 className="mb-1 text-2xl font-bold text-white">{t("account.buyTitle")}</h3>
               <p className="mb-6 text-zinc-400">{t("account.buyDesc")}</p>
 
@@ -674,6 +702,7 @@ export default function AccountPage() {
 
               <div className="mt-6 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
                 <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
+              </div>
               </div>
             </div>
           );
