@@ -18,6 +18,10 @@
     "thirdweb": "5.119.4",
     "viem": "^2.22.17"
   },
+  "overrides": {
+    "@walletconnect/sign-client": "^2.23.9",
+    "@walletconnect/universal-provider": "^2.23.9"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^20",
