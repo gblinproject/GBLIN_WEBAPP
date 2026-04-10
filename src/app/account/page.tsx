@@ -384,10 +384,10 @@ export default function AccountPage() {
                 client={thirdwebClient}
                 wallets={wallets}
                 theme="dark"
-                connectButton={{ label: t("account.connect") || "Connetti wallet" }}
+                connectButton={{ label: t("account.connect") }}
                 connectModal={{
                   size: "wide",
-                  title: t("account.connect"),
+                  title: t("account.loginHeadline"),
                   showThirdwebBranding: false,
                 }}
               />
@@ -410,21 +410,21 @@ export default function AccountPage() {
                 <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">{t("account.loginHeadline") || "Connetti il tuo wallet"}</h2>
-                <p className="mt-2 text-zinc-400">{t("account.loginSubheadline") || "Visualizza il tuo saldo, acquista, vendi e invia GBLIN."}</p>
+                <h2 className="text-2xl font-bold text-white">{t("account.loginHeadline")}</h2>
+                <p className="mt-2 text-zinc-400">{t("account.loginSubheadline")}</p>
               </div>
               <ConnectButton
                 client={thirdwebClient}
                 wallets={wallets}
                 theme="dark"
-                connectButton={{ label: t("account.connect") || "Connetti wallet" }}
+                connectButton={{ label: t("account.connect") }}
                 connectModal={{
                   size: "wide",
-                  title: t("account.connect"),
+                  title: t("account.loginHeadline"),
                   showThirdwebBranding: false,
                 }}
               />
-              <p className="text-xs text-zinc-600">{t("account.poweredBy") || "Powered by"} <span className="text-zinc-500">Thirdweb · Base</span></p>
+              <p className="text-xs text-zinc-600">{t("account.poweredBy")} <span className="text-zinc-500">Thirdweb · Base</span></p>
             </div>
           </div>
         )}
