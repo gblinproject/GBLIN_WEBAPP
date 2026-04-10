@@ -88,6 +88,7 @@ export default function AccountPage() {
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
 
   const [activeTab, setActiveTab] = useState<"overview" | "buy" | "sell" | "send">("overview");
+  const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
@@ -119,12 +120,18 @@ export default function AccountPage() {
 
   const address = account?.address;
 
-  // Read GBLIN balance
+  // Read GBLIN balance — also refetch every 15s so external purchases (MetaMask) show up
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
     contract: gblinContract,
     method: "function balanceOf(address) view returns (uint256)",
     params: [address ?? "0x0000000000000000000000000000000000000000"],
   });
+
+  useEffect(() => {
+    if (!address) return;
+    const id = setInterval(() => { void refetchBalance(); }, 15000);
+    return () => clearInterval(id);
+  }, [address, refetchBalance]);
 
   // Read GBLIN price via quoteSell
   const { data: quoteData } = useReadContract({
@@ -530,59 +537,98 @@ export default function AccountPage() {
         )}
 
         {/* ── BUY TAB ───────────────────────────────────────────────────────── */}
-        {activeTab === "buy" && (
-          <div className={`${shellCard} p-6 sm:p-8`}>
-            <h3 className="mb-1 text-2xl font-bold text-white">{t("account.buyTitle")}</h3>
-            <p className="mb-6 text-zinc-400">{t("account.buyDesc")}</p>
+        {activeTab === "buy" && (() => {
+          const numVal = parseFloat(buyAmount) || 0;
+          // gblinQty: how many GBLIN the user wants to buy
+          const gblinQty = buyInputMode === "gblin"
+            ? numVal
+            : gblinPriceUsd > 0 ? numVal / gblinPriceUsd : 0;
+          // ethValue: how much ETH to send
+          const ethValue = gblinPriceUsd > 0 && ethPriceUsd > 0
+            ? gblinQty * gblinPriceUsd / ethPriceUsd
+            : 0;
+          const hasAmount = numVal > 0 && gblinQty > 0 && ethValue > 0;
 
-            <div className="mx-auto max-w-md space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">{t("account.buyAmountLabel")}</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(e.target.value)}
-                    placeholder="es. 100"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30"
-                  />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-amber-400">GBLIN</span>
+          return (
+            <div className={`${shellCard} p-6 sm:p-8`}>
+              <h3 className="mb-1 text-2xl font-bold text-white">{t("account.buyTitle")}</h3>
+              <p className="mb-6 text-zinc-400">{t("account.buyDesc")}</p>
+
+              <div className="mx-auto max-w-md space-y-4">
+                {/* Mode toggle */}
+                <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                  <button
+                    onClick={() => { setBuyInputMode("currency"); setBuyAmount(""); }}
+                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
+                      buyInputMode === "currency" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {currencyConfig.symbol} {currencyConfig.code}
+                  </button>
+                  <button
+                    onClick={() => { setBuyInputMode("gblin"); setBuyAmount(""); }}
+                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
+                      buyInputMode === "gblin" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    GBLIN
+                  </button>
                 </div>
-                {buyAmount && parseFloat(buyAmount) > 0 && gblinPriceUsd > 0 && (
-                  <p className="mt-2 text-sm text-zinc-400">
-                    ≈ <span className="font-semibold text-amber-300">{formatLocal(parseFloat(buyAmount) * gblinPriceUsd)}</span>
-                  </p>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-300">
+                    {buyInputMode === "currency" ? t("account.buyAmountLabel") : t("account.buyAmountLabel")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={buyAmount}
+                      onChange={(e) => setBuyAmount(e.target.value)}
+                      placeholder={buyInputMode === "currency" ? `${currencyConfig.symbol}100` : "100"}
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-amber-400">
+                      {buyInputMode === "currency" ? currencyConfig.code : "GBLIN"}
+                    </span>
+                  </div>
+                  {hasAmount && (
+                    <p className="mt-2 text-sm text-zinc-400">
+                      {buyInputMode === "currency"
+                        ? <>≈ <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span></>
+                        : <>≈ <span className="font-semibold text-amber-300">{formatLocal(gblinQty * gblinPriceUsd)}</span></>}
+                    </p>
+                  )}
+                </div>
+
+                {hasAmount ? (
+                  <PayEmbed
+                    client={thirdwebClient}
+                    payOptions={{
+                      mode: "transaction",
+                      transaction: prepareContractCall({
+                        contract: gblinContract,
+                        method: "function buyGBLIN(uint256 minGblinOut) external payable",
+                        params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
+                        value: ethers.parseEther((ethValue * 1.02).toFixed(18)),
+                      }),
+                      metadata: { name: "GBLIN" },
+                    }}
+                    theme="dark"
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+                    <p className="text-zinc-500">{t("account.enterAmountToBuy")}</p>
+                  </div>
                 )}
               </div>
 
-              {buyAmount && parseFloat(buyAmount) > 0 ? (
-                <PayEmbed
-                  client={thirdwebClient}
-                  payOptions={{
-                    mode: "transaction",
-                    transaction: prepareContractCall({
-                      contract: gblinContract,
-                      method: "function buyGBLIN(uint256 minGblinOut) external payable",
-                      params: [ethers.parseEther((parseFloat(buyAmount) * 0.98).toFixed(18))],
-                      value: ethers.parseEther((parseFloat(buyAmount) * gblinPriceUsd / ethPriceUsd * 1.02).toFixed(18)),
-                    }),
-                    metadata: { name: "GBLIN" },
-                  }}
-                  theme="dark"
-                />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-                  <p className="text-zinc-500">{t("account.enterAmountToBuy")}</p>
-                </div>
-              )}
+              <div className="mt-6 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
+                <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
+              </div>
             </div>
-
-            <div className="mt-6 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
-              <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── SELL TAB ──────────────────────────────────────────────────────── */}
         {activeTab === "sell" && (
