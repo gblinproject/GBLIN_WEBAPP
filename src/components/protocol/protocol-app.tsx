@@ -346,7 +346,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const loadAll = async () => {
       isFetchingRef.current = true;
       try {
-        const needsMarket = view === 'home' || view === 'dashboard' || view === 'buy-gblin';
+        const needsMarket = view === 'home' || view === 'dashboard' || view === 'buy';
         const needsTx = view === 'home' || view === 'dashboard';
         const fetches: Promise<void>[] = [refreshOnChainData()];
         if (needsMarket) fetches.push(refreshMarketData());
