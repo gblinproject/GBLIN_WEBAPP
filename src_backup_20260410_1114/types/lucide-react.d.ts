@@ -1,0 +1,29 @@
+declare module 'lucide-react' {
+  export const Wallet: any;
+  export const RefreshCw: any;
+  export const ExternalLink: any;
+  export const Copy: any;
+  export const Check: any;
+  export const X: any;
+  export const Menu: any;
+  export const ChevronDown: any;
+  export const ArrowUpRight: any;
+  export const ArrowRight: any;
+  export const TrendingUp: any;
+  export const Shield: any;
+  export const Zap: any;
+  export const BarChart3: any;
+  export const Activity: any;
+  export const AlertCircle: any;
+  export const Globe: any;
+  export const LineChart: any;
+  export const SlidersHorizontal: any;
+  export const AlertTriangle: any;
+  export const Landmark: any;
+  export const Lock: any;
+  export const Network: any;
+  export const Brain: any;
+  export const Cpu: any;
+  export const Download: any;
+  export const Coins: any;
+}

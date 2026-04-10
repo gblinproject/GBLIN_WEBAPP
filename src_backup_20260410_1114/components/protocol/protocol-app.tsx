@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useActiveAccount, useActiveWallet, useSendTransaction, useDisconnect } from "thirdweb/react";
-import { prepareContractCall } from "thirdweb";
+import { prepareContractCall, toWei } from "thirdweb";
 import { base } from "thirdweb/chains";
 import { ethers } from 'ethers';
 import { thirdwebClient } from '@/lib/thirdweb';
 import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
 import {
+  BASE_CHAIN_ID,
   CONTRACT_ADDRESS,
   ERC20_ABI,
   GBLIN_ABI,
@@ -50,10 +51,6 @@ function isSupportedLanguage(value: string | null): value is Language {
   return LANGUAGES.some((item) => item.code === value);
 }
 
-const CACHE_TTL_MARKET = 30_000;   // 30s
-const CACHE_TTL_ONCHAIN = 60_000;  // 60s
-const CACHE_TTL_TX = 60_000;       // 60s
-
 const protocolViewCache: {
   marketData: any;
   onChainData: any;
@@ -61,19 +58,13 @@ const protocolViewCache: {
   basketData: any[];
   lastYieldDistribution: number;
   logs: string[];
-  marketDataAt: number;
-  onChainDataAt: number;
-  transactionsAt: number;
 } = {
   marketData: null,
   onChainData: null,
   transactions: [],
   basketData: [],
   lastYieldDistribution: 0,
-  logs: [],
-  marketDataAt: 0,
-  onChainDataAt: 0,
-  transactionsAt: 0,
+  logs: []
 };
 
 export function ProtocolApp({ view }: ProtocolAppProps) {
@@ -229,17 +220,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     };
   }, [customTokenAddress, getProvider, selectedToken]);
 
-  const refreshMarketData = useCallback(async (force = false) => {
-    if (!force && protocolViewCache.marketData && Date.now() - protocolViewCache.marketDataAt < CACHE_TTL_MARKET) {
-      setMarketData(protocolViewCache.marketData);
-      return;
-    }
+  const refreshMarketData = useCallback(async () => {
     setIsMarketLoading(true);
     try {
       const data = await fetchMarketData();
       setMarketData(data);
       protocolViewCache.marketData = data;
-      protocolViewCache.marketDataAt = Date.now();
       addLog(`Market data updated: $${data.priceUsd.toFixed(4)}`);
     } catch {
       addLog('Failed to fetch market data.');
@@ -248,13 +234,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }
   }, [addLog]);
 
-  const refreshOnChainData = useCallback(async (force = false) => {
-    if (!force && protocolViewCache.onChainData && Date.now() - protocolViewCache.onChainDataAt < CACHE_TTL_ONCHAIN) {
-      setOnChainData(protocolViewCache.onChainData);
-      setLastYieldDistribution(protocolViewCache.onChainData.lastYield || 0);
-      setBasketData(protocolViewCache.onChainData.basketData || []);
-      return;
-    }
+  const refreshOnChainData = useCallback(async () => {
     setIsOnChainLoading(true);
     try {
       const data = await fetchOnChainData();
@@ -262,7 +242,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setLastYieldDistribution(data.lastYield || 0);
       setBasketData(data.basketData || []);
       protocolViewCache.onChainData = data;
-      protocolViewCache.onChainDataAt = Date.now();
       protocolViewCache.lastYieldDistribution = data.lastYield || 0;
       protocolViewCache.basketData = data.basketData || [];
       addLog(`On-chain metrics sync complete. TVL: ${formatCurrency(data.tvl)}`);
@@ -273,17 +252,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }
   }, [addLog]);
 
-  const refreshTransactions = useCallback(async (force = false) => {
-    if (!force && protocolViewCache.transactions.length > 0 && Date.now() - protocolViewCache.transactionsAt < CACHE_TTL_TX) {
-      setTransactions(protocolViewCache.transactions);
-      return;
-    }
+  const refreshTransactions = useCallback(async () => {
     setIsTransactionsLoading(true);
     try {
       const data = await fetchTransactions();
       setTransactions(data || []);
       protocolViewCache.transactions = data || [];
-      protocolViewCache.transactionsAt = Date.now();
       if (data.length > 0) {
         addLog(`Fetched ${data.length} recent transactions.`);
       }
@@ -295,9 +269,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [addLog]);
 
   const refreshAllData = useCallback(() => {
-    refreshMarketData(true);
-    refreshOnChainData(true);
-    refreshTransactions(true);
+    refreshMarketData();
+    refreshOnChainData();
+    refreshTransactions();
   }, [refreshMarketData, refreshOnChainData, refreshTransactions]);
 
   const syncWalletBalances = useCallback(async () => {
@@ -346,19 +320,14 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const loadAll = async () => {
       isFetchingRef.current = true;
       try {
-        const needsMarket = view === 'home' || view === 'dashboard' || view === 'buy-gblin';
-        const needsTx = view === 'home' || view === 'dashboard';
-        const fetches: Promise<void>[] = [refreshOnChainData()];
-        if (needsMarket) fetches.push(refreshMarketData());
-        if (needsTx) fetches.push(refreshTransactions());
-        await Promise.all(fetches);
+        await Promise.all([refreshMarketData(), refreshOnChainData(), refreshTransactions()]);
       } finally {
         isFetchingRef.current = false;
       }
     };
 
     void loadAll();
-  }, [view, refreshMarketData, refreshOnChainData, refreshTransactions]);
+  }, [refreshMarketData, refreshOnChainData, refreshTransactions]);
 
   const quoteMintFromWeth = useCallback(async (wethAmount: bigint) => {
     const provider = getProvider();
@@ -728,7 +697,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     try {
       const provider = getProvider();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-      let hash: `0x${string}` = '' as `0x${string}`;
+      let hash: `0x${string}`;
 
       if (mode === 'buy') {
         if (!activeTradeToken) {

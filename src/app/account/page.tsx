@@ -1,0 +1,721 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  useActiveAccount,
+  useActiveWallet,
+  useReadContract,
+  useSendTransaction,
+} from "thirdweb/react";
+import { ConnectButton, PayEmbed } from "thirdweb/react";
+import { getContract, prepareContractCall } from "thirdweb";
+import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
+import { ethers } from "ethers";
+import { thirdwebClient, wallets, chain as thirdwebChain } from "@/lib/thirdweb";
+import {
+  CONTRACT_ADDRESS,
+  shortenAddress,
+  LOGO_URL,
+} from "@/components/protocol/protocol-data";
+import { translations, type Language } from "@/translations/index";
+import { protocolTranslations } from "@/components/protocol/protocol-translations";
+import { LANGUAGES } from "@/components/protocol/protocol-data";
+
+// Currency config per language
+const CURRENCY_CONFIG: Record<Language, { symbol: string; code: string; fxKey: string | null }> = {
+  en: { symbol: "$", code: "USD", fxKey: null },
+  it: { symbol: "€", code: "EUR", fxKey: "coingecko:eur" },
+  es: { symbol: "€", code: "EUR", fxKey: "coingecko:eur" },
+  fr: { symbol: "€", code: "EUR", fxKey: "coingecko:eur" },
+  de: { symbol: "€", code: "EUR", fxKey: "coingecko:eur" },
+  zh: { symbol: "¥", code: "CNY", fxKey: "coingecko:cny" },
+  ja: { symbol: "¥", code: "JPY", fxKey: "coingecko:jpy" },
+};
+
+const shellCard = "rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl";
+const shellContainer = "mx-auto w-full max-w-[1720px]";
+
+// Contract instances
+const gblinContract = getContract({
+  client: thirdwebClient,
+  chain: thirdwebChain,
+  address: CONTRACT_ADDRESS,
+});
+
+interface Transaction {
+  hash: string;
+  type: "buy" | "sell" | "transfer_in" | "transfer_out";
+  amount: string;
+  valueUsd: string;
+  time: string;
+  timestamp: number;
+}
+
+function isSupportedLanguage(value: string | null): value is Language {
+  return LANGUAGES.some((item) => item.code === value);
+}
+
+export default function AccountPage() {
+  const [language, setLanguageState] = useState<Language>("en");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedLanguage = window.localStorage.getItem("gblin-language");
+    if (isSupportedLanguage(storedLanguage)) {
+      setLanguageState(storedLanguage);
+      return;
+    }
+    const browserLang = navigator.language.split("-")[0].toLowerCase();
+    if (isSupportedLanguage(browserLang)) setLanguageState(browserLang);
+  }, []);
+
+  const t = useCallback(
+    (key: string) => {
+      const segments = key.split(".");
+      const getValue = (source: any) =>
+        segments.reduce<any>((acc, part) => (acc && typeof acc === "object" && part in acc ? acc[part] : null), source);
+      const current = getValue(protocolTranslations[language]) ?? getValue(translations[language]);
+      if (typeof current === "string") return current;
+      const fallback = getValue(protocolTranslations.en) ?? getValue(translations.en);
+      return typeof fallback === "string" ? fallback : key;
+    },
+    [language]
+  );
+
+  const account = useActiveAccount();
+  const wallet = useActiveWallet();
+  const { mutate: sendTx, isPending: isSending } = useSendTransaction();
+
+  const [activeTab, setActiveTab] = useState<"overview" | "buy" | "sell" | "send">("overview");
+  const [buyAmount, setBuyAmount] = useState("");
+  const [sellAmount, setSellAmount] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferAddress, setTransferAddress] = useState("");
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [txSuccess, setTxSuccess] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Prices
+  const [ethPriceUsd, setEthPriceUsd] = useState(3500);
+  const [fxRate, setFxRate] = useState(1); // USD → local currency
+
+  const currencyConfig = CURRENCY_CONFIG[language];
+
+  // Format value in local currency
+  const formatLocal = useCallback(
+    (usdValue: number) => {
+      const localValue = usdValue * fxRate;
+      return `${currencyConfig.symbol}${localValue.toLocaleString(language === "ja" || language === "zh" ? "en" : language, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+    },
+    [fxRate, currencyConfig, language]
+  );
+
+  const address = account?.address;
+
+  // Read GBLIN balance
+  const { data: balanceData, refetch: refetchBalance } = useReadContract({
+    contract: gblinContract,
+    method: "function balanceOf(address) view returns (uint256)",
+    params: [address ?? "0x0000000000000000000000000000000000000000"],
+  });
+
+  // Read GBLIN price via quoteSell
+  const { data: quoteData } = useReadContract({
+    contract: gblinContract,
+    method: "function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)",
+    params: [ethers.parseEther("1")],
+  });
+
+  // Fetch ETH price + FX rate together
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const ethRes = await fetch(
+          "https://coins.llama.fi/prices/current/ethereum:0x0000000000000000000000000000000000000000?searchWidth=4h"
+        );
+        if (ethRes.ok) {
+          const data = await ethRes.json();
+          const price = data.coins?.["ethereum:0x0000000000000000000000000000000000000000"]?.price;
+          if (price) setEthPriceUsd(price);
+        }
+      } catch {}
+
+      // Fetch FX rate from CoinGecko simple endpoint (free, no key needed)
+      if (currencyConfig.fxKey !== null) {
+        try {
+          const fxRes = await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=${currencyConfig.code.toLowerCase()}`
+          );
+          if (fxRes.ok) {
+            const data = await fxRes.json();
+            const rate = data["usd-coin"]?.[currencyConfig.code.toLowerCase()];
+            if (rate) setFxRate(rate);
+          }
+        } catch {}
+      } else {
+        setFxRate(1);
+      }
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 120000);
+    return () => clearInterval(interval);
+  }, [currencyConfig]);
+
+  const balance = useMemo(() => {
+    if (!balanceData) return 0;
+    return parseFloat(ethers.formatEther(balanceData));
+  }, [balanceData]);
+
+  const gblinPriceUsd = useMemo(() => {
+    if (!quoteData) return 0;
+    return parseFloat(ethers.formatEther(quoteData)) * ethPriceUsd;
+  }, [quoteData, ethPriceUsd]);
+
+  const balanceUsd = balance * gblinPriceUsd;
+
+  // Fetch user transactions (Moralis)
+  useEffect(() => {
+    if (!address) return;
+    const fetchTxs = async () => {
+      setLoadingTx(true);
+      try {
+        const res = await fetch(
+          `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}`,
+          {
+            headers: {
+              accept: "application/json",
+              "X-API-Key": process.env.NEXT_PUBLIC_MORALIS_API_KEY || "",
+            },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const txs: Transaction[] = (data.result || []).map((tx: any) => {
+            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
+            const isIncoming = tx.to_address?.toLowerCase() === address?.toLowerCase();
+            const type = isIncoming
+              ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
+                ? "buy"
+                : "transfer_in"
+              : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
+              ? "sell"
+              : "transfer_out";
+            return {
+              hash: tx.transaction_hash,
+              type,
+              amount: amount.toFixed(2),
+              valueUsd: (amount * gblinPriceUsd).toFixed(2),
+              time: new Date(tx.block_timestamp).toLocaleString(),
+              timestamp: new Date(tx.block_timestamp).getTime(),
+            };
+          });
+          txs.sort((a, b) => b.timestamp - a.timestamp);
+          setTransactions(txs);
+        }
+      } catch {}
+      finally { setLoadingTx(false); }
+    };
+    fetchTxs();
+  }, [address, gblinPriceUsd]);
+
+  const handleDisconnect = () => { if (wallet) wallet.disconnect(); };
+
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const showSuccess = (hash: string) => {
+    setTxHash(hash);
+    setTxSuccess(t("account.txSuccess"));
+    setTimeout(() => { setTxSuccess(null); setTxHash(null); }, 8000);
+  };
+
+  const handleSell = () => {
+    if (!address || !sellAmount) return;
+    const amount = parseFloat(sellAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    const tx = prepareContractCall({
+      contract: gblinContract,
+      method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external",
+      params: [ethers.parseEther(sellAmount), 0n],
+    });
+    sendTx(tx, {
+      onSuccess: (data: any) => {
+        showSuccess(data?.transactionHash ?? "");
+        setSellAmount("");
+        refetchBalance();
+      },
+      onError: () => {},
+    });
+  };
+
+  const handleTransfer = () => {
+    setTransferError(null);
+    if (!address || !transferAmount || !transferAddress) {
+      setTransferError(t("account.errorMissingFields"));
+      return;
+    }
+    if (!transferAddress.startsWith("0x") || transferAddress.length !== 42) {
+      setTransferError(t("account.errorInvalidAddress"));
+      return;
+    }
+    const amount = parseFloat(transferAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setTransferError(t("account.errorInvalidAmount"));
+      return;
+    }
+    const tx = prepareContractCall({
+      contract: gblinContract,
+      method: "function transfer(address to, uint256 amount) external",
+      params: [transferAddress as `0x${string}`, ethers.parseEther(transferAmount)],
+    });
+    sendTx(tx, {
+      onSuccess: (data: any) => {
+        showSuccess(data?.transactionHash ?? "");
+        setTransferAmount("");
+        setTransferAddress("");
+        refetchBalance();
+      },
+      onError: () => setTransferError(t("account.errorTxFailed")),
+    });
+  };
+
+  // ─── LOGIN SCREEN ────────────────────────────────────────────────────────────
+  if (!address) {
+    return (
+      <div className="min-h-screen bg-[#040404] text-white">
+        <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.10),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
+
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 backdrop-blur-xl">
+          <div className={`${shellContainer} flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8`}>
+            <Link className="flex items-center gap-3" href="/">
+              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40">
+                <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
+              </span>
+              <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
+            </Link>
+            <Link className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10" href="/">
+              <ArrowRight className="h-4 w-4 rotate-180" />
+              {t("account.backToSite")}
+            </Link>
+          </div>
+        </header>
+
+        <main className={`${shellContainer} flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-16 sm:px-6`}>
+          <div className="w-full max-w-sm">
+            {/* Logo badge */}
+            <div className="mb-8 flex flex-col items-center gap-4 text-center">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/10 shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+                <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">{t("account.loginHeadline")}</h1>
+                <p className="mt-2 text-base text-zinc-400">{t("account.loginSubheadline")}</p>
+              </div>
+            </div>
+
+            {/* Connect button */}
+            <div className={`${shellCard} flex flex-col items-center gap-6 p-8`}>
+              <ConnectButton
+                client={thirdwebClient}
+                wallets={wallets}
+                theme="dark"
+                connectModal={{
+                  size: "wide",
+                  title: t("account.connect"),
+                  showThirdwebBranding: false,
+                }}
+              />
+              <div className="w-full border-t border-white/5 pt-4 text-center">
+                <p className="text-xs text-zinc-500">{t("account.loginNote")}</p>
+              </div>
+            </div>
+
+            <p className="mt-6 text-center text-xs text-zinc-600">
+              {t("account.poweredBy")} <span className="text-zinc-500">Thirdweb · Base</span>
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── DASHBOARD (CONNECTED) ────────────────────────────────────────────────
+  const tabs = [
+    { key: "overview", label: t("account.tabOverview"), icon: Wallet },
+    { key: "buy",      label: t("account.tabBuy"),      icon: Coins },
+    { key: "sell",     label: t("account.tabSell"),     icon: TrendingUp },
+    { key: "send",     label: t("account.tabSend"),     icon: ArrowRight },
+  ] as const;
+
+  return (
+    <div className="min-h-screen bg-[#040404] text-white selection:bg-amber-500/30 selection:text-amber-100">
+      <div
+        className="fixed inset-0 -z-20 bg-cover bg-center bg-no-repeat opacity-20"
+        style={{ backgroundImage: "url('https://raw.githubusercontent.com/rubbe89/gblin-assets/main/TheGoldenVault.png')" }}
+      />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
+
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 backdrop-blur-xl">
+        <div className={`${shellContainer} flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8`}>
+          <Link className="flex items-center gap-3" href="/">
+            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40">
+              <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
+            </span>
+            <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyAddress}
+              className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10 sm:inline-flex"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
+              <span className="text-zinc-300">{shortenAddress(address)}</span>
+            </button>
+            <button
+              onClick={handleDisconnect}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-rose-500/20 hover:text-rose-300"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("account.disconnect")}</span>
+            </button>
+            <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10" href="/">
+              <ArrowRight className="h-4 w-4 rotate-180" />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className={`${shellContainer} px-4 py-8 sm:px-6 lg:px-8`}>
+
+        {/* ── BALANCE HERO CARD ─────────────────────────────────────────────── */}
+        <div className={`${shellCard} mb-6 overflow-hidden`}>
+          <div className="bg-gradient-to-br from-amber-500/10 via-transparent to-transparent p-6 sm:p-10">
+            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">{t("account.yourBalance")}</p>
+            <div className="mt-3 flex items-end gap-3">
+              <h2 className="text-5xl font-bold tabular-nums text-white sm:text-6xl">
+                {formatLocal(balanceUsd)}
+              </h2>
+            </div>
+            <p className="mt-2 text-lg text-zinc-400">
+              {balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} GBLIN
+              {gblinPriceUsd > 0 && (
+                <span className="ml-3 text-sm text-zinc-500">
+                  · {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* ── TABS ──────────────────────────────────────────────────────────── */}
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-semibold transition ${
+                activeTab === tab.key
+                  ? "bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                  : "border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <tab.icon className="h-4 w-4 shrink-0" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── SUCCESS BANNER ────────────────────────────────────────────────── */}
+        {txSuccess && (
+          <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-emerald-100">
+            <p className="font-semibold">{txSuccess}</p>
+            {txHash && (
+              <a className="mt-1 inline-flex items-center gap-1 text-sm text-emerald-300 hover:text-white" href={`https://basescan.org/tx/${txHash}`} rel="noreferrer" target="_blank">
+                {t("account.viewOnExplorer")} <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* ── OVERVIEW TAB ──────────────────────────────────────────────────── */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            {/* Transaction history */}
+            <div className={`${shellCard} p-6`}>
+              <h3 className="mb-5 text-lg font-semibold text-white">{t("account.transactions")}</h3>
+              {loadingTx ? (
+                <div className="flex items-center justify-center py-10">
+                  <RefreshCw className="h-6 w-6 animate-spin text-amber-400" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="py-10 text-center">
+                  <p className="text-zinc-400">{t("account.noTransactions")}</p>
+                  <button
+                    onClick={() => setActiveTab("buy")}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-amber-400"
+                  >
+                    <Coins className="h-4 w-4" />
+                    {t("account.tabBuy")}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {transactions.map((tx) => {
+                    const isIn = tx.type === "buy" || tx.type === "transfer_in";
+                    const label =
+                      tx.type === "buy" ? t("account.typeBuy") :
+                      tx.type === "sell" ? t("account.typeSell") :
+                      tx.type === "transfer_in" ? t("account.typeTransferIn") :
+                      t("account.typeTransferOut");
+                    return (
+                      <a
+                        key={tx.hash}
+                        href={`https://basescan.org/tx/${tx.hash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 transition hover:bg-white/[0.06]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isIn ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
+                            {tx.type === "buy" ? <Coins className="h-4 w-4" /> :
+                             tx.type === "sell" ? <TrendingUp className="h-4 w-4 rotate-180" /> :
+                             <ArrowRight className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{label}</p>
+                            <p className="text-xs text-zinc-500">{tx.time}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-semibold ${isIn ? "text-emerald-400" : "text-rose-400"}`}>
+                            {isIn ? "+" : "-"}{tx.amount} GBLIN
+                          </p>
+                          <p className="text-xs text-zinc-500">≈ {formatLocal(parseFloat(tx.valueUsd))}</p>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Address card */}
+            <div className={`${shellCard} p-5`}>
+              <p className="mb-2 text-xs uppercase tracking-[0.22em] text-zinc-500">{t("account.walletAddress")}</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded-xl bg-white/5 px-3 py-2.5 text-sm text-zinc-200">{address}</code>
+                <button
+                  onClick={copyAddress}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-zinc-300 transition hover:bg-amber-500/20 hover:text-amber-300"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? t("account.addressCopied") : t("account.copy")}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-zinc-600">{t("account.shareAddressHint")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── BUY TAB ───────────────────────────────────────────────────────── */}
+        {activeTab === "buy" && (
+          <div className={`${shellCard} p-6 sm:p-8`}>
+            <h3 className="mb-1 text-2xl font-bold text-white">{t("account.buyTitle")}</h3>
+            <p className="mb-6 text-zinc-400">{t("account.buyDesc")}</p>
+
+            <div className="mx-auto max-w-md space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-300">{t("account.buyAmountLabel")}</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={buyAmount}
+                    onChange={(e) => setBuyAmount(e.target.value)}
+                    placeholder="es. 100"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-amber-400">GBLIN</span>
+                </div>
+                {buyAmount && parseFloat(buyAmount) > 0 && gblinPriceUsd > 0 && (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    ≈ <span className="font-semibold text-amber-300">{formatLocal(parseFloat(buyAmount) * gblinPriceUsd)}</span>
+                  </p>
+                )}
+              </div>
+
+              {buyAmount && parseFloat(buyAmount) > 0 ? (
+                <PayEmbed
+                  client={thirdwebClient}
+                  payOptions={{
+                    mode: "transaction",
+                    transaction: prepareContractCall({
+                      contract: gblinContract,
+                      method: "function buyGBLIN(uint256 minGblinOut) external payable",
+                      params: [ethers.parseEther((parseFloat(buyAmount) * 0.98).toFixed(18))],
+                      value: ethers.parseEther((parseFloat(buyAmount) * gblinPriceUsd / ethPriceUsd * 1.02).toFixed(18)),
+                    }),
+                    metadata: { name: "GBLIN" },
+                  }}
+                  theme="dark"
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+                  <p className="text-zinc-500">{t("account.enterAmountToBuy")}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
+              <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── SELL TAB ──────────────────────────────────────────────────────── */}
+        {activeTab === "sell" && (
+          <div className={`${shellCard} p-6 sm:p-8`}>
+            <h3 className="mb-1 text-2xl font-bold text-white">{t("account.sellTitle")}</h3>
+            <p className="mb-6 text-zinc-400">{t("account.sellDesc")}</p>
+
+            <div className="mx-auto max-w-md space-y-4">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium text-zinc-300">{t("account.sellAmount")}</label>
+                  <button
+                    onClick={() => setSellAmount(balance.toFixed(4))}
+                    className="text-xs text-amber-400 hover:text-amber-300"
+                  >
+                    Max: {balance.toFixed(2)} GBLIN
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max={balance}
+                    value={sellAmount}
+                    onChange={(e) => setSellAmount(e.target.value)}
+                    placeholder="0.0"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-rose-500/60 focus:ring-1 focus:ring-rose-500/30"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-zinc-400">GBLIN</span>
+                </div>
+                {sellAmount && parseFloat(sellAmount) > 0 && gblinPriceUsd > 0 && (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {t("account.sellReceive")}: <span className="font-semibold text-emerald-300">{formatLocal(parseFloat(sellAmount) * gblinPriceUsd)}</span>
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={handleSell}
+                disabled={isSending || !sellAmount || parseFloat(sellAmount) <= 0 || parseFloat(sellAmount) > balance}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500 px-6 py-4 text-base font-bold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isSending ? <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</> : <><TrendingUp className="h-5 w-5 rotate-180" />{t("account.sellBtn")}</>}
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-zinc-400">{t("account.sellNote")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── SEND TAB ──────────────────────────────────────────────────────── */}
+        {activeTab === "send" && (
+          <div className={`${shellCard} p-6 sm:p-8`}>
+            <h3 className="mb-1 text-2xl font-bold text-white">{t("account.sendTitle")}</h3>
+            <p className="mb-6 text-zinc-400">{t("account.sendDesc")}</p>
+
+            {/* My address - share to receive */}
+            <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="mb-2 text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.yourAddressToShare")}</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded-xl bg-black/30 px-3 py-2 text-sm text-zinc-200">{shortenAddress(address)}</code>
+                <button
+                  onClick={copyAddress}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500/20 px-3 py-2 text-xs text-amber-300 transition hover:bg-amber-500/30"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {t("account.copy")}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-zinc-500">{t("account.shareAddressHint")}</p>
+            </div>
+
+            <div className="mx-auto max-w-md space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-300">{t("account.recipient")}</label>
+                <input
+                  type="text"
+                  value={transferAddress}
+                  onChange={(e) => setTransferAddress(e.target.value)}
+                  placeholder={t("account.recipientPlaceholder")}
+                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 font-mono text-sm text-white placeholder-zinc-600 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">{t("account.recipientHint")}</p>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium text-zinc-300">{t("account.sendAmount")}</label>
+                  <button onClick={() => setTransferAmount(balance.toFixed(4))} className="text-xs text-amber-400 hover:text-amber-300">
+                    Max: {balance.toFixed(2)} GBLIN
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    placeholder="0.0"
+                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-blue-500/60"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-zinc-400">GBLIN</span>
+                </div>
+                {transferAmount && parseFloat(transferAmount) > 0 && gblinPriceUsd > 0 && (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    ≈ <span className="font-semibold text-blue-300">{formatLocal(parseFloat(transferAmount) * gblinPriceUsd)}</span>
+                  </p>
+                )}
+              </div>
+
+              {transferError && (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+                  {transferError}
+                </div>
+              )}
+
+              <button
+                onClick={handleTransfer}
+                disabled={isSending || !transferAddress || !transferAmount || parseFloat(transferAmount) <= 0}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 px-6 py-4 text-base font-bold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isSending ? <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</> : <><ArrowRight className="h-5 w-5" />{t("account.sendBtn")}</>}
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-zinc-400">{t("account.sendNote")}</p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

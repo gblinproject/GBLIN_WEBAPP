@@ -561,8 +561,6 @@ export function DashboardView(props: DashboardViewProps) {
 }
 
 // ─── Fiat config per language ────────────────────────────────────────────────
-type InputMode = 'fiat' | 'gblin' | 'crypto';
-
 const FIAT_CONFIG: Record<string, { symbol: string; code: string }> = {
   en: { symbol: '$', code: 'USD' },
   it: { symbol: '€', code: 'EUR' },
@@ -581,15 +579,17 @@ const FX_TO_USD: Record<string, number> = {
 export function BuyView(props: BuyViewProps) {
   const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, buyTokenOptions, customTokenAddress, quoteAssetLabel, redeemOption, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken, tokenBalance } = props;
 
-  // Detect language from <html lang> attribute (set by ProtocolShell) — lazy init avoids extra render
-  const [detectedLang] = useState<string>(() => {
-    if (typeof document === 'undefined') return 'en';
+  // Detect language from <html lang> attribute (set by ProtocolShell)
+  const [detectedLang, setDetectedLang] = useState('en');
+  useEffect(() => {
     const lang = document.documentElement.lang?.slice(0, 2) || 'en';
-    return lang in FIAT_CONFIG ? lang : 'en';
-  });
+    setDetectedLang(lang in FIAT_CONFIG ? lang : 'en');
+  }, []);
 
   const fiat = FIAT_CONFIG[detectedLang] ?? FIAT_CONFIG.en;
 
+  // inputMode: fiat = locale currency, gblin = qty GBLIN (pro), crypto = raw ETH (default)
+  type InputMode = 'fiat' | 'gblin' | 'crypto';
   const [inputMode, setInputMode] = useState<InputMode>('fiat');
   const [displayValue, setDisplayValue] = useState('');
 

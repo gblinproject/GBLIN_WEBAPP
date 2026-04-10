@@ -1,5 +1,0 @@
-{
-  "name": "GBLIN (The Golden Vault)",
-  "description": "Protocollo di preservazione della ricchezza su Base Network. Ogni token è garantito da un tesoro reale (WETH, cbBTC, USDC).",
-  "requestFramePermissions": []
-}

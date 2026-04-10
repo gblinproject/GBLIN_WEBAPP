@@ -98,6 +98,16 @@ export const TRADE_TOKEN_OPTIONS: TradeTokenOption[] = [
 
 export const TOKENS = [...TRADE_TOKEN_OPTIONS.map((token) => token.symbol), 'CUSTOM'];
 
+export const TOKEN_ADDRESSES: Record<string, string> = {
+  ETH: WETH_ADDRESS,
+  USDC: USDC_ADDRESS,
+  cbBTC: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
+  DEGEN: '0x4ed4e862860bed51a9570b96d89af5e1b0efefed',
+  AERO: '0x940181a94a35a4563e89545161c888d3d9804b08',
+  BRETT: '0x532f27101965dd1a44836f731139783f98018e69',
+  SHIB: '0x45cfe390b83a0552f1469797070107297e632837'
+};
+
 export const GBLIN_ABI = [
   'function totalSupply() view returns (uint256)',
   'function balanceOf(address) view returns (uint256)',
@@ -692,55 +702,53 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
 
-    const [totalSupply, contractBalance, lastYield, stabilityFundRaw, dynamicReserve] = await Promise.all([
-      contract.totalSupply().catch(() => 0n),
-      contract.balanceOf(CONTRACT_ADDRESS).catch(() => 0n),
-      contract.lastYieldDistribution().catch(() => 0n),
-      contract.stabilityFund().catch(() => 0n),
-      contract.getDynamicReserve().catch(() => 0n),
-    ]);
-
+    const totalSupply = await contract.totalSupply().catch(() => 0n);
+    const contractBalance = await contract.balanceOf(CONTRACT_ADDRESS).catch(() => 0n);
     const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
     const contractBalanceFormatted = parseFloat(ethers.formatEther(contractBalance));
+    const lastYield = await contract.lastYieldDistribution().catch(() => 0n);
+    const stabilityFundRaw = await contract.stabilityFund().catch(() => 0n);
+    const dynamicReserve = await contract.getDynamicReserve().catch(() => 0n);
     const stabilityFund = Number.parseFloat(ethers.formatEther(stabilityFundRaw));
+
     const activeSupply = supplyFormatted - contractBalanceFormatted;
 
-    const ASSET_NAMES = ['cbBTC', 'WETH', 'USDC'] as const;
+    let tvl = 0;
+    const basketItems: BasketItem[] = [];
 
-    const rawBasket = await Promise.all([0, 1, 2].map(i => contract.basket(i).catch(() => null)));
+    for (let i = 0; i < 3; i += 1) {
+      try {
+        const basketItem = await contract.basket(i);
+        const tokenAddress = basketItem[0];
+        const oracleAddress = basketItem[1];
 
-    const basketResults = await Promise.all(
-      rawBasket.map(async (basketItem, i) => {
-        if (!basketItem) return null;
-        try {
-          const tokenAddress = basketItem[0];
-          const oracleAddress = basketItem[1];
-          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-          const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
-          const [balance, decimals, latestRound] = await Promise.all([
-            tokenContract.balanceOf(CONTRACT_ADDRESS),
-            tokenContract.decimals(),
-            oracleContract.latestRoundData()
-          ]);
-          const price = Number(latestRound[1]) / 1e8;
-          const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
-          return {
-            name: ASSET_NAMES[i],
-            address: tokenAddress,
-            price,
-            balance: balanceFormatted,
-            tvl: balanceFormatted * price,
-            peakPrice: Number(basketItem[6]) / 1e8,
-            baseWeight: Number(basketItem[4]),
-            dynamicWeight: Number(basketItem[5]),
-            realWeight: 0
-          } satisfies BasketItem;
-        } catch { return null; }
-      })
-    );
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+        const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
 
-    const basketItems: BasketItem[] = basketResults.filter((x): x is BasketItem => x !== null);
-    let tvl = basketItems.reduce((s, item) => s + item.tvl, 0);
+        const [balance, decimals, latestRound] = await Promise.all([
+          tokenContract.balanceOf(CONTRACT_ADDRESS),
+          tokenContract.decimals(),
+          oracleContract.latestRoundData()
+        ]);
+
+        const price = Number(latestRound[1]) / 1e8;
+        const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
+        const assetTvl = balanceFormatted * price;
+        tvl += assetTvl;
+
+        basketItems.push({
+          name: i === 0 ? 'cbBTC' : i === 1 ? 'WETH' : 'USDC',
+          address: tokenAddress,
+          price,
+          balance: balanceFormatted,
+          tvl: assetTvl,
+          peakPrice: Number(basketItem[6]) / 1e8,
+          baseWeight: Number(basketItem[4]),
+          dynamicWeight: Number(basketItem[5]),
+          realWeight: 0
+        });
+      } catch {}
+    }
 
     const wethAsset = basketItems.find((item) => item.name === 'WETH') ?? null;
     const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
