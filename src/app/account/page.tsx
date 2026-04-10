@@ -336,67 +336,7 @@ export default function AccountPage() {
     });
   };
 
-  // ─── LOGIN SCREEN ────────────────────────────────────────────────────────────
-  if (!address) {
-    return (
-      <div className="min-h-screen bg-[#040404] text-white">
-        <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.10),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
-
-        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 backdrop-blur-xl">
-          <div className={`${shellContainer} flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8`}>
-            <Link className="flex items-center gap-3" href="/">
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40">
-                <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
-              </span>
-              <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
-            </Link>
-            <Link className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10" href="/">
-              <ArrowRight className="h-4 w-4 rotate-180" />
-              {t("account.backToSite")}
-            </Link>
-          </div>
-        </header>
-
-        <main className={`${shellContainer} flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-16 sm:px-6`}>
-          <div className="w-full max-w-sm">
-            {/* Logo badge */}
-            <div className="mb-8 flex flex-col items-center gap-4 text-center">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-amber-500/30 bg-amber-500/10 shadow-[0_0_40px_rgba(245,158,11,0.2)]">
-                <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">{t("account.loginHeadline")}</h1>
-                <p className="mt-2 text-base text-zinc-400">{t("account.loginSubheadline")}</p>
-              </div>
-            </div>
-
-            {/* Connect button */}
-            <div className={`${shellCard} flex flex-col items-center gap-6 p-8`}>
-              <ConnectButton
-                client={thirdwebClient}
-                wallets={wallets}
-                theme="dark"
-                connectModal={{
-                  size: "wide",
-                  title: t("account.connect"),
-                  showThirdwebBranding: false,
-                }}
-              />
-              <div className="w-full border-t border-white/5 pt-4 text-center">
-                <p className="text-xs text-zinc-500">{t("account.loginNote")}</p>
-              </div>
-            </div>
-
-            <p className="mt-6 text-center text-xs text-zinc-600">
-              {t("account.poweredBy")} <span className="text-zinc-500">Thirdweb · Base</span>
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // ─── DASHBOARD (CONNECTED) ────────────────────────────────────────────────
+  // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
     { key: "overview", label: t("account.tabOverview"), icon: Wallet },
     { key: "buy",      label: t("account.tabBuy"),      icon: Coins },
@@ -422,20 +362,36 @@ export default function AccountPage() {
             <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
           </Link>
           <div className="flex items-center gap-2">
-            <button
-              onClick={copyAddress}
-              className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10 sm:inline-flex"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
-              <span className="text-zinc-300">{shortenAddress(address)}</span>
-            </button>
-            <button
-              onClick={handleDisconnect}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-rose-500/20 hover:text-rose-300"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("account.disconnect")}</span>
-            </button>
+            {address ? (
+              <>
+                <button
+                  onClick={copyAddress}
+                  className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10 sm:inline-flex"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
+                  <span className="text-zinc-300">{shortenAddress(address)}</span>
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-rose-500/20 hover:text-rose-300"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t("account.disconnect")}</span>
+                </button>
+              </>
+            ) : (
+              <ConnectButton
+                client={thirdwebClient}
+                wallets={wallets}
+                theme="dark"
+                connectButton={{ label: t("account.connect") || "Connetti wallet" }}
+                connectModal={{
+                  size: "wide",
+                  title: t("account.connect"),
+                  showThirdwebBranding: false,
+                }}
+              />
+            )}
             <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10" href="/">
               <ArrowRight className="h-4 w-4 rotate-180" />
             </Link>
@@ -445,22 +401,48 @@ export default function AccountPage() {
 
       <main className={`${shellContainer} px-4 py-8 sm:px-6 lg:px-8`}>
 
-        {/* ── BALANCE HERO CARD ─────────────────────────────────────────────── */}
+        {/* ── CONNECT BANNER (not connected) ────────────────────────────────── */}
+        {!address && (
+          <div className={`${shellCard} mb-6 overflow-hidden relative`}>
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+            <div className="flex flex-col items-center gap-5 p-8 sm:p-10 text-center">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-amber-500/30 bg-amber-500/10">
+                <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">{t("account.loginHeadline") || "Connetti il tuo wallet"}</h2>
+                <p className="mt-2 text-zinc-400">{t("account.loginSubheadline") || "Visualizza il tuo saldo, acquista, vendi e invia GBLIN."}</p>
+              </div>
+              <ConnectButton
+                client={thirdwebClient}
+                wallets={wallets}
+                theme="dark"
+                connectButton={{ label: t("account.connect") || "Connetti wallet" }}
+                connectModal={{
+                  size: "wide",
+                  title: t("account.connect"),
+                  showThirdwebBranding: false,
+                }}
+              />
+              <p className="text-xs text-zinc-600">{t("account.poweredBy") || "Powered by"} <span className="text-zinc-500">Thirdweb · Base</span></p>
+            </div>
+          </div>
+        )}
+
+        {/* ── BALANCE HERO CARD ───────────────────────────────────────────────────── */}
         <div className={`${shellCard} mb-6 overflow-hidden`}>
           <div className="bg-gradient-to-br from-amber-500/10 via-transparent to-transparent p-6 sm:p-10">
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">{t("account.yourBalance")}</p>
             <div className="mt-3 flex items-end gap-3">
-              <h2 className="text-5xl font-bold tabular-nums text-white sm:text-6xl">
-                {formatLocal(balanceUsd)}
+              <h2 className={`text-5xl font-bold tabular-nums sm:text-6xl ${!address ? "text-zinc-600" : "text-white"}`}>
+                {address ? formatLocal(balanceUsd) : "—"}
               </h2>
             </div>
             <p className="mt-2 text-lg text-zinc-400">
-              {balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} GBLIN
-              {gblinPriceUsd > 0 && (
-                <span className="ml-3 text-sm text-zinc-500">
-                  · {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}
-                </span>
-              )}
+              {address
+                ? <>{balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} GBLIN{gblinPriceUsd > 0 && <span className="ml-3 text-sm text-zinc-500">· {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}</span>}</>
+                : <span className="text-zinc-600">{t("account.loginHeadline") || "Connetti wallet per vedere il saldo"}</span>
+              }
             </p>
           </div>
         </div>
@@ -607,10 +589,10 @@ export default function AccountPage() {
                 <div className={`${shellCard} relative overflow-hidden p-6`}>
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
                   <Wallet className="mb-3 h-7 w-7 text-amber-400" />
-                  <h4 className="mb-1 text-base font-bold text-white">{t("account.buyOptionWalletTitle") || "Ho già un wallet"}</h4>
-                  <p className="mb-4 text-sm leading-6 text-zinc-400">{t("account.buyOptionWalletDesc") || "Connetti MetaMask, Coinbase Wallet o qualsiasi wallet compatibile e acquista GBLIN direttamente con ETH."}</p>
+                  <h4 className="mb-1 text-base font-bold text-white">Ho già un wallet</h4>
+                  <p className="mb-4 text-sm leading-6 text-zinc-400">Connetti MetaMask, Coinbase Wallet o qualsiasi wallet compatibile e acquista GBLIN direttamente con ETH.</p>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
-                    <ArrowRight className="h-3 w-3" /> {t("account.buyOptionWalletCta") || "Usa il modulo qui sotto"}
+                    <ArrowRight className="h-3 w-3" /> Usa il modulo qui sotto
                   </span>
                 </div>
 
@@ -618,10 +600,10 @@ export default function AccountPage() {
                 <Link href="/buy-gblin" className={`${shellCard} relative overflow-hidden p-6 transition hover:border-amber-500/30 group`}>
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   <TrendingUp className="mb-3 h-7 w-7 text-zinc-400 group-hover:text-amber-400 transition-colors" />
-                  <h4 className="mb-1 text-base font-bold text-white">{t("account.buyOptionAdvancedTitle") || "Trading avanzato"}</h4>
-                  <p className="mb-4 text-sm leading-6 text-zinc-400">{t("account.buyOptionAdvancedDesc") || "Acquista con qualsiasi token (USDC, cbBTC…), imposta slippage personalizzato e visualizza quote in tempo reale."}</p>
+                  <h4 className="mb-1 text-base font-bold text-white">Trading avanzato</h4>
+                  <p className="mb-4 text-sm leading-6 text-zinc-400">Acquista con qualsiasi token (USDC, cbBTC…), imposta slippage personalizzato e visualizza quote in tempo reale.</p>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-zinc-300 group-hover:bg-amber-500/10 group-hover:text-amber-400 transition">
-                    <ExternalLink className="h-3 w-3" /> {t("account.buyOptionAdvancedCta") || "Apri pagina trading"}
+                    <ExternalLink className="h-3 w-3" /> Apri pagina trading
                   </span>
                 </Link>
               </div>
@@ -769,7 +751,7 @@ export default function AccountPage() {
             <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
               <p className="mb-2 text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.yourAddressToShare")}</p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded-xl bg-black/30 px-3 py-2 text-sm text-zinc-200">{shortenAddress(address)}</code>
+                <code className="flex-1 truncate rounded-xl bg-black/30 px-3 py-2 text-sm text-zinc-200">{shortenAddress(address ?? "")}</code>
                 <button
                   onClick={copyAddress}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500/20 px-3 py-2 text-xs text-amber-300 transition hover:bg-amber-500/30"
