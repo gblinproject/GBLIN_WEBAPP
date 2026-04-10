@@ -15,6 +15,7 @@ import { ethers } from "ethers";
 import { thirdwebClient, wallets, chain as thirdwebChain } from "@/lib/thirdweb";
 import {
   CONTRACT_ADDRESS,
+  MORALIS_API_KEY,
   shortenAddress,
   LOGO_URL,
 } from "@/components/protocol/protocol-data";
@@ -187,27 +188,27 @@ export default function AccountPage() {
 
   const balanceUsd = balance * gblinPriceUsd;
 
-  // Fetch user transactions via BaseScan (free, no API key required for basic use)
+  // Fetch user transactions via Moralis
   useEffect(() => {
     if (!address) return;
     const fetchTxs = async () => {
       setLoadingTx(true);
       try {
-        const url = `https://api.basescan.org/api?module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&address=${address}&sort=desc&apikey=YourApiKeyToken`;
-        const res = await fetch(url);
+        const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
+        const res = await fetch(url, {
+          headers: { accept: "application/json", "X-API-Key": MORALIS_API_KEY },
+        });
         if (res.ok) {
           const data = await res.json();
-          const results = data.result;
-          if (!Array.isArray(results)) throw new Error("no results");
-          const txs: Transaction[] = results.map((tx: any) => {
-            const amount = parseFloat(ethers.formatUnits(tx.value, parseInt(tx.tokenDecimal) || 18));
-            const isIncoming = tx.to?.toLowerCase() === address.toLowerCase();
+          const txs: Transaction[] = (data.result || []).map((tx: any) => {
+            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
+            const isIncoming = tx.to_address?.toLowerCase() === address.toLowerCase();
             const type = isIncoming
-              ? tx.from?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
-              : tx.to?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
-            const ts = parseInt(tx.timeStamp) * 1000;
+              ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
+              : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
+            const ts = new Date(tx.block_timestamp).getTime();
             return {
-              hash: tx.hash,
+              hash: tx.transaction_hash,
               type,
               amount: amount.toFixed(4),
               valueUsd: (amount * gblinPriceUsd).toFixed(2),
@@ -215,6 +216,7 @@ export default function AccountPage() {
               timestamp: ts,
             };
           });
+          txs.sort((a, b) => b.timestamp - a.timestamp);
           setTransactions(txs);
         }
       } catch {}
