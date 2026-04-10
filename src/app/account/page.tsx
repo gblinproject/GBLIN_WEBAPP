@@ -187,43 +187,34 @@ export default function AccountPage() {
 
   const balanceUsd = balance * gblinPriceUsd;
 
-  // Fetch user transactions (Moralis)
+  // Fetch user transactions via BaseScan (free, no API key required for basic use)
   useEffect(() => {
     if (!address) return;
     const fetchTxs = async () => {
       setLoadingTx(true);
       try {
-        const res = await fetch(
-          `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}`,
-          {
-            headers: {
-              accept: "application/json",
-              "X-API-Key": process.env.NEXT_PUBLIC_MORALIS_API_KEY || "",
-            },
-          }
-        );
+        const url = `https://api.basescan.org/api?module=account&action=tokentx&contractaddress=${CONTRACT_ADDRESS}&address=${address}&sort=desc&apikey=YourApiKeyToken`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          const txs: Transaction[] = (data.result || []).map((tx: any) => {
-            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
-            const isIncoming = tx.to_address?.toLowerCase() === address?.toLowerCase();
+          const results = data.result;
+          if (!Array.isArray(results)) throw new Error("no results");
+          const txs: Transaction[] = results.map((tx: any) => {
+            const amount = parseFloat(ethers.formatUnits(tx.value, parseInt(tx.tokenDecimal) || 18));
+            const isIncoming = tx.to?.toLowerCase() === address.toLowerCase();
             const type = isIncoming
-              ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-                ? "buy"
-                : "transfer_in"
-              : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-              ? "sell"
-              : "transfer_out";
+              ? tx.from?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
+              : tx.to?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
+            const ts = parseInt(tx.timeStamp) * 1000;
             return {
-              hash: tx.transaction_hash,
+              hash: tx.hash,
               type,
-              amount: amount.toFixed(2),
+              amount: amount.toFixed(4),
               valueUsd: (amount * gblinPriceUsd).toFixed(2),
-              time: new Date(tx.block_timestamp).toLocaleString(),
-              timestamp: new Date(tx.block_timestamp).getTime(),
+              time: new Date(ts).toLocaleString(),
+              timestamp: ts,
             };
           });
-          txs.sort((a, b) => b.timestamp - a.timestamp);
           setTransactions(txs);
         }
       } catch {}
@@ -540,9 +531,11 @@ export default function AccountPage() {
         {activeTab === "buy" && (() => {
           const numVal = parseFloat(buyAmount) || 0;
           // gblinQty: how many GBLIN the user wants to buy
+          // If currency mode, convert local currency → USD first, then → GBLIN
+          const numValUsd = buyInputMode === "currency" && fxRate > 0 ? numVal / fxRate : numVal;
           const gblinQty = buyInputMode === "gblin"
             ? numVal
-            : gblinPriceUsd > 0 ? numVal / gblinPriceUsd : 0;
+            : gblinPriceUsd > 0 ? numValUsd / gblinPriceUsd : 0;
           // ethValue: how much ETH to send
           const ethValue = gblinPriceUsd > 0 && ethPriceUsd > 0
             ? gblinQty * gblinPriceUsd / ethPriceUsd
