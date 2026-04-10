@@ -46,7 +46,7 @@ const gblinContract = getContract({
 
 interface Transaction {
   hash: string;
-  type: "buy" | "sell" | "transfer_in" | "transfer_out";
+  type: "buy" | "sell" | "transfer_in" | "transfer_out" | "rebalance";
   amount: string;
   valueUsd: string;
   time: string;
@@ -188,37 +188,83 @@ export default function AccountPage() {
 
   const balanceUsd = balance * gblinPriceUsd;
 
-  // Fetch user transactions via Moralis
+  // Selector map for identifying tx type from input data
+  const REBALANCE_SELECTOR = ethers.id("incentivizedRebalance(uint256,bool,uint256)").slice(0, 10).toLowerCase();
+  const BUY_SELECTORS = new Set([
+    ethers.id("buyGBLIN(uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("buyGBLINWithToken(bytes,uint256,uint256,uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("mintInKind(uint256)").slice(0, 10).toLowerCase(),
+  ]);
+  const SELL_SELECTORS = new Set([
+    ethers.id("sellGBLIN(uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("sellGBLINForEth(uint256,uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("sellGBLINForToken(uint256,address,uint24,uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("redeemInKind(uint256)").slice(0, 10).toLowerCase(),
+  ]);
+
+  // Fetch user transactions via Moralis (ERC-20 transfers + contract txs for rebalance)
   useEffect(() => {
     if (!address) return;
     const fetchTxs = async () => {
       setLoadingTx(true);
       try {
-        const url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
-        const res = await fetch(url, {
-          headers: { accept: "application/json", "X-API-Key": MORALIS_API_KEY },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const txs: Transaction[] = (data.result || []).map((tx: any) => {
-            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
-            const isIncoming = tx.to_address?.toLowerCase() === address.toLowerCase();
-            const type = isIncoming
-              ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
-              : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
+        const headers = { accept: "application/json", "X-API-Key": MORALIS_API_KEY };
+        const erc20Url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
+        const contractTxUrl = `https://deep-index.moralis.io/api/v2.2/${address}?chain=base&order=DESC&limit=25&to_address=${CONTRACT_ADDRESS}`;
+
+        const [erc20Res, contractRes] = await Promise.all([
+          fetch(erc20Url, { headers }),
+          fetch(contractTxUrl, { headers }),
+        ]);
+
+        // Build map: hash → { erc20Amount, timestamp, type from input }
+        const txMap = new Map<string, { hash: string; amount: number; timestamp: number; type: Transaction["type"] }>();
+
+        if (contractRes.ok) {
+          const data = await contractRes.json();
+          for (const tx of (data.result || [])) {
+            const selector = tx.input?.slice(0, 10)?.toLowerCase();
             const ts = new Date(tx.block_timestamp).getTime();
-            return {
-              hash: tx.transaction_hash,
-              type,
-              amount: amount.toFixed(4),
-              valueUsd: (amount * gblinPriceUsd).toFixed(2),
-              time: new Date(ts).toLocaleString(),
-              timestamp: ts,
-            };
-          });
-          txs.sort((a, b) => b.timestamp - a.timestamp);
-          setTransactions(txs);
+            let type: Transaction["type"] = "buy";
+            if (selector === REBALANCE_SELECTOR) type = "rebalance" as Transaction["type"];
+            else if (SELL_SELECTORS.has(selector)) type = "sell";
+            else if (BUY_SELECTORS.has(selector)) type = "buy";
+            else continue; // skip unrelated txs
+            txMap.set(tx.hash, { hash: tx.hash, amount: 0, timestamp: ts, type });
+          }
         }
+
+        if (erc20Res.ok) {
+          const data = await erc20Res.json();
+          for (const tx of (data.result || [])) {
+            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
+            const ts = new Date(tx.block_timestamp).getTime();
+            const hash = tx.transaction_hash;
+            const existing = txMap.get(hash);
+            if (existing) {
+              existing.amount = amount;
+            } else {
+              const isIncoming = tx.to_address?.toLowerCase() === address.toLowerCase();
+              const type: Transaction["type"] = isIncoming
+                ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
+                : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
+              txMap.set(hash, { hash, amount, timestamp: ts, type });
+            }
+          }
+        }
+
+        const txs: Transaction[] = Array.from(txMap.values())
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .map((tx) => ({
+            hash: tx.hash,
+            type: tx.type,
+            amount: tx.amount.toFixed(4),
+            valueUsd: (tx.amount * gblinPriceUsd).toFixed(2),
+            time: new Date(tx.timestamp).toLocaleString(),
+            timestamp: tx.timestamp,
+          }));
+
+        setTransactions(txs);
       } catch {}
       finally { setLoadingTx(false); }
     };
@@ -477,6 +523,7 @@ export default function AccountPage() {
                     const label =
                       tx.type === "buy" ? t("account.typeBuy") :
                       tx.type === "sell" ? t("account.typeSell") :
+                      tx.type === "rebalance" ? "Rebalance" :
                       tx.type === "transfer_in" ? t("account.typeTransferIn") :
                       t("account.typeTransferOut");
                     return (
@@ -488,9 +535,13 @@ export default function AccountPage() {
                         className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3.5 transition hover:bg-white/[0.06]"
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isIn ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                            tx.type === "rebalance" ? "bg-amber-500/15 text-amber-400" :
+                            isIn ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"
+                          }`}>
                             {tx.type === "buy" ? <Coins className="h-4 w-4" /> :
                              tx.type === "sell" ? <TrendingUp className="h-4 w-4 rotate-180" /> :
+                             tx.type === "rebalance" ? <RefreshCw className="h-4 w-4" /> :
                              <ArrowRight className="h-4 w-4" />}
                           </div>
                           <div>
@@ -499,8 +550,11 @@ export default function AccountPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`font-semibold ${isIn ? "text-emerald-400" : "text-rose-400"}`}>
-                            {isIn ? "+" : "-"}{tx.amount} GBLIN
+                          <p className={`font-semibold ${
+                            tx.type === "rebalance" ? "text-amber-400" :
+                            isIn ? "text-emerald-400" : "text-rose-400"
+                          }`}>
+                            {tx.type === "rebalance" ? "swap" : (isIn ? "+" : "-") + tx.amount + " GBLIN"}
                           </p>
                           <p className="text-xs text-zinc-500">≈ {formatLocal(parseFloat(tx.valueUsd))}</p>
                         </div>
