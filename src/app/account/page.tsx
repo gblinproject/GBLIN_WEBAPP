@@ -480,6 +480,8 @@ export default function AccountPage() {
       } else {
         // Sell mode
         const gblinAmount = ethers.parseEther(amount);
+        // DEBUG: Alert to show current redeemOption
+        alert(`DEBUG: redeemOption = "${redeemOption}"\nExpected: "eth" for ETH Only\nIf this shows "basket", the bug is confirmed.`);
         console.log('[executeTrade] Sell mode:', { redeemOption, gblinAmount: amount, rawQuote: rawQuote.toString() });
 
         if (redeemOption === 'basket') {
