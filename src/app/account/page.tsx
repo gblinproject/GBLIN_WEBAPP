@@ -697,6 +697,7 @@ export default function AccountPage() {
                             </p>
                           </div>
                           <PayEmbed
+                            key={`${buyAmount}-${buyInputMode}`}
                             client={thirdwebClient}
                             theme="dark"
                             payOptions={{
@@ -707,7 +708,7 @@ export default function AccountPage() {
                               },
                               prefillBuy: {
                                 chain: thirdwebChain,
-                                amount: String((requiredEth * 10).toFixed(5)),
+                                amount: String(requiredEth.toFixed(4)),
                               },
                             }}
                           />
