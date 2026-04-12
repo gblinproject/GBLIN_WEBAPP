@@ -97,6 +97,7 @@ export default function AccountPage() {
   const [transferError, setTransferError] = useState<string | null>(null);
   const [txSuccess, setTxSuccess] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [ethBalance, setEthBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -128,11 +129,27 @@ export default function AccountPage() {
     params: [address ?? "0x0000000000000000000000000000000000000000"],
   });
 
+  // Fetch ETH balance via ethers provider
+  const fetchEthBalance = useCallback(async () => {
+    if (!address) return;
+    try {
+      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      const bal = await provider.getBalance(address);
+      setEthBalance(Number(ethers.formatEther(bal)));
+    } catch {
+      setEthBalance(0);
+    }
+  }, [address]);
+
   useEffect(() => {
     if (!address) return;
-    const id = setInterval(() => { void refetchBalance(); }, 15000);
+    void fetchEthBalance();
+    const id = setInterval(() => {
+      void refetchBalance();
+      void fetchEthBalance();
+    }, 15000);
     return () => clearInterval(id);
-  }, [address, refetchBalance]);
+  }, [address, refetchBalance, fetchEthBalance]);
 
   // Read GBLIN price via quoteSell
   const { data: quoteData } = useReadContract({
@@ -608,10 +625,10 @@ export default function AccountPage() {
                 </Link>
               </div>
 
-              {/* ── Wallet purchase form ── */}
+              {/* ── Wallet purchase form (requires ETH) ── */}
               <div className={`${shellCard} p-6 sm:p-8`}>
-              <h3 className="mb-1 text-2xl font-bold text-white">{t("account.buyTitle")}</h3>
-              <p className="mb-6 text-zinc-400">{t("account.buyDesc")}</p>
+              <h3 className="mb-1 text-2xl font-bold text-white">Acquista GBLIN con ETH</h3>
+              <p className="mb-6 text-zinc-400">Hai già ETH nel tuo wallet? Inserisci la quantità e acquista GBLIN direttamente.</p>
 
               <div className="mx-auto max-w-md space-y-4">
                 {/* Mode toggle */}
@@ -660,22 +677,23 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                {hasAmount ? (
+                {/* Single button: handles both on-ramp (if needed) + buyGBLIN transaction */}
+                {hasAmount && (
                   <PayEmbed
                     client={thirdwebClient}
+                    theme="dark"
                     payOptions={{
                       mode: "transaction",
                       transaction: prepareContractCall({
                         contract: gblinContract,
-                        method: "function buyGBLIN(uint256 minGblinOut) external payable",
+                        method: "function buyGBLIN(uint256 minGblinOut)",
                         params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
                         value: ethers.parseEther((ethValue * 1.02).toFixed(18)),
                       }),
-                      metadata: { name: "GBLIN" },
                     }}
-                    theme="dark"
                   />
-                ) : (
+                )}
+                {!hasAmount && (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
                     <p className="text-zinc-500">{t("account.enterAmountToBuy")}</p>
                   </div>
