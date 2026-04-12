@@ -10,6 +10,7 @@ import {
 } from "thirdweb/react";
 import { ConnectButton, PayEmbed } from "thirdweb/react";
 import { getContract, prepareContractCall } from "thirdweb";
+import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { ethers } from "ethers";
 import { thirdwebClient, wallets, chain as thirdwebChain } from "@/lib/thirdweb";
@@ -672,7 +673,7 @@ export default function AccountPage() {
                           payOptions={{
                             mode: "fund_wallet",
                             prefillBuy: {
-                              chain: { id: 1, name: "Ethereum Mainnet" },
+                              chain: ethereum,
                               amount: String((ethValue * 1.05).toFixed(4)),
                             },
                           }}
