@@ -8,7 +8,7 @@ import {
   useReadContract,
   useSendTransaction,
 } from "thirdweb/react";
-import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
+import { ConnectButton, PayEmbed, SwapWidget } from "thirdweb/react";
 import { getContract, prepareContractCall } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
@@ -1091,19 +1091,17 @@ export default function AccountPage() {
                                 Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
                               </p>
                             </div>
-                            <BridgeWidget
+                            <SwapWidget
                               client={thirdwebClient}
                               theme="dark"
-                              swap={{
-                                prefill: {
-                                  sellToken: {
-                                    chainId: 1, // Ethereum Mainnet
-                                    amount: (ethValue * 1.05).toFixed(4),
-                                  },
-                                  buyToken: {
-                                    chainId: 8453, // Base
-                                    tokenAddress: undefined, // ETH only, NO SWAP to GBLIN
-                                  },
+                              prefill={{
+                                sellToken: {
+                                  chainId: 1, // Ethereum Mainnet
+                                  amount: mainnetEthBalance.toFixed(6), // Bridge ALL ETH from Mainnet
+                                },
+                                buyToken: {
+                                  chainId: 8453, // Base
+                                  // tokenAddress undefined = ETH native token
                                 },
                               }}
                             />
