@@ -609,7 +609,7 @@ export default function AccountPage() {
                     buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  💳 Carta — Per neofiti
+                  💳 Carta
                 </button>
                 <button
                   onClick={() => setBuyMode("wallet")}
@@ -654,39 +654,31 @@ export default function AccountPage() {
                       )}
                     </div>
 
-                    {/* Step 2: Payment options */}
+                    {/* Step 2: Payment with Thirdweb */}
                     {hasAmount ? (
                       <div className="space-y-4">
                         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                           <p className="text-sm text-amber-200">
-                            <span className="font-semibold">Passo 1:</span> Acquista ETH su un exchange
+                            <span className="font-semibold">Passo 1:</span> Acquista ETH con carta
                           </p>
                           <p className="mt-1 text-xs text-amber-300/80">
-                            Servono {(ethValue * 1.02).toFixed(4)} ETH su rete Base
+                            L'ETH verrà acquistato su Ethereum Mainnet e poi trasferito automaticamente su Base.
                           </p>
                         </div>
-                        <div className="flex gap-3">
-                          <a
-                            href={`https://www.binance.com/buy-sell-crypto?fiat=EUR&crypto=ETH&amount=${numVal}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 rounded-xl bg-[#F0B90B] px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-[#F0B90B]/90"
-                          >
-                            Compra su Binance →
-                          </a>
-                          <a
-                            href={`https://www.coinbase.com/buy?asset=ETH&amount=${numVal}&currency=EUR`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 rounded-xl bg-[#0052FF] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
-                          >
-                            Compra su Coinbase →
-                          </a>
-                        </div>
+                        <PayEmbed
+                          key={`card-${buyAmount}`}
+                          client={thirdwebClient}
+                          theme="dark"
+                          payOptions={{
+                            mode: "fund_wallet",
+                            prefillBuy: {
+                              chain: { id: 1, name: "Ethereum Mainnet" },
+                              amount: String((ethValue * 1.05).toFixed(4)),
+                            },
+                          }}
+                        />
                         <p className="text-xs text-zinc-500">
-                          Dopo l'acquisto, trasferisci gli ETH al tuo wallet su rete Base.
-                          <br/>
-                          Il saldo si aggiorna automaticamente ogni 15 secondi.
+                          Dopo l'acquisto, usa il bottone qui sotto per trasferire gli ETH su Base e completare l'acquisto GBLIN.
                         </p>
                       </div>
                     ) : (
