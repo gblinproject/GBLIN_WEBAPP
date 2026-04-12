@@ -381,6 +381,7 @@ export default function AccountPage() {
           // Sell mode
           const gblinAmount = ethers.parseEther(amount);
           const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+          console.log('[Quote] Sell quote:', { gblinAmount: amount, ethOut: ethOut.toString(), ethOutFormatted: ethers.formatEther(ethOut) });
 
           if (redeemOption === 'basket') {
             const basketQuote = formatBasketRedeemQuote(Number.parseFloat(amount));
@@ -474,8 +475,10 @@ export default function AccountPage() {
       } else {
         // Sell mode
         const gblinAmount = ethers.parseEther(amount);
+        console.log('[executeTrade] Sell mode:', { redeemOption, gblinAmount: amount, rawQuote: rawQuote.toString() });
 
         if (redeemOption === 'basket') {
+          console.log('[executeTrade] Calling redeemInKind (basket)');
           const sellTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
@@ -496,6 +499,7 @@ export default function AccountPage() {
             });
           });
         } else {
+          console.log('[executeTrade] Calling sellGBLIN (ETH only)');
           const sellTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
