@@ -1039,13 +1039,13 @@ export default function AccountPage() {
                                     },
                                     buyToken: {
                                       chainId: 8453, // Base
-                                      tokenAddress: undefined, // Native ETH
+                                      tokenAddress: CONTRACT_ADDRESS, // GBLIN
                                     },
                                   },
                                 }}
                               />
                               <p className="text-xs text-zinc-500">
-                                Dopo il trasferimento, il sistema rileverà automaticamente gli ETH su Base.
+                                Il bridge convertirà automaticamente i tuoi ETH in GBLIN su Base.
                               </p>
                             </div>
                           );
@@ -1076,6 +1076,7 @@ export default function AccountPage() {
                                   prefillSource: {
                                     currency: "EUR",
                                   },
+                                  preferredProvider: "transak",
                                 },
                               }}
                             />
