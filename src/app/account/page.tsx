@@ -1098,7 +1098,7 @@ export default function AccountPage() {
                                 prefill: {
                                   sellToken: {
                                     chainId: 1, // Ethereum Mainnet
-                                    amount: mainnetEthBalance.toFixed(6), // Bridge ALL ETH from Mainnet
+                                    // amount undefined = thirdweb auto-calculates max minus gas
                                   },
                                   buyToken: {
                                     chainId: 8453, // Base
