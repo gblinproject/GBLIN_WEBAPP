@@ -757,7 +757,6 @@ export default function AccountPage() {
                               key={`card-${buyAmount}`}
                               client={thirdwebClient}
                               theme="dark"
-                              locale="it"
                               payOptions={{
                                 mode: "fund_wallet",
                                 prefillBuy: {
