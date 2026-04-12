@@ -478,7 +478,7 @@ export default function AccountPage() {
           });
         });
       } else {
-        // Sell mode - v2 FIX: Use direct check to avoid stale closure
+        // Sell mode - v3 FIX 2024-01-12: Use sellGBLINForEth (swaps to ETH) instead of sellGBLIN (basket)
         const gblinAmount = ethers.parseEther(amount);
         const currentRedeemOption = redeemOption; // Capture current value
         console.log('[executeTrade] Sell mode v2:', { currentRedeemOption, gblinAmount: amount, rawQuote: rawQuote.toString(), timestamp: Date.now() });
@@ -1052,13 +1052,13 @@ export default function AccountPage() {
                                     },
                                     buyToken: {
                                       chainId: 8453, // Base
-                                      tokenAddress: CONTRACT_ADDRESS, // GBLIN
+                                      tokenAddress: undefined, // ETH only, NO SWAP to GBLIN
                                     },
                                   },
                                 }}
                               />
                               <p className="text-xs text-zinc-500">
-                                Il bridge convertirà automaticamente i tuoi ETH in GBLIN su Base.
+                                Bridge ETH da Mainnet a Base (senza swap).
                               </p>
                             </div>
                           );
