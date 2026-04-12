@@ -844,7 +844,7 @@ export function BuyView(props: BuyViewProps) {
                 </div>
                 {/* Countervalue / ETH amount */}
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-500">
-                  <span>{countervalue() || usdValue}</span>
+                  <span>{mode === 'sell' ? usdValue : (countervalue() || usdValue)}</span>
                   {mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto' && amount && (
                     <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[11px] font-mono text-zinc-400">
                       {amount} ETH
