@@ -701,9 +701,13 @@ export default function AccountPage() {
                             theme="dark"
                             payOptions={{
                               mode: "fund_wallet",
+                              metadata: {
+                                name: `Acquista ETH per ${gblinQty.toFixed(4)} GBLIN`,
+                                description: `Paga con carta per ricevere ${requiredEth.toFixed(4)} ETH nel tuo wallet, poi completa l'acquisto GBLIN.`,
+                              },
                               prefillBuy: {
                                 chain: thirdwebChain,
-                                amount: requiredEth.toFixed(6),
+                                amount: String(requiredEth.toFixed(4)),
                               },
                             }}
                           />
