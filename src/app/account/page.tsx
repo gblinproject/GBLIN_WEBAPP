@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   useActiveAccount,
@@ -19,7 +19,12 @@ import {
   MORALIS_API_KEY,
   shortenAddress,
   LOGO_URL,
+  TRADE_TOKEN_OPTIONS,
+  GBLIN_ABI,
+  RPC_URL,
+  type TradeTokenOption,
 } from "@/components/protocol/protocol-data";
+import { BuyView } from "@/components/protocol/protocol-sections";
 import { translations, type Language } from "@/translations/index";
 import { protocolTranslations } from "@/components/protocol/protocol-translations";
 import { LANGUAGES } from "@/components/protocol/protocol-data";
@@ -105,6 +110,26 @@ export default function AccountPage() {
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Advanced trading states for BuyView
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
+  const [selectedToken, setSelectedToken] = useState('ETH');
+  const [customTokenAddress, setCustomTokenAddress] = useState('');
+  const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
+  const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
+  const [amount, setAmount] = useState('');
+  const [slippage, setSlippage] = useState(1);
+  const [quote, setQuote] = useState('0');
+  const [rawQuote, setRawQuote] = useState<bigint>(0n);
+  const [usdValue, setUsdValue] = useState('$0.00');
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [isTransacting, setIsTransacting] = useState(false);
+  const [tradeError, setTradeError] = useState<string | null>(null);
+  const [tradeTxHash, setTradeTxHash] = useState<string | null>(null);
+  const [tokenBalance, setTokenBalance] = useState('0.0000');
+  const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
+  const [marketData, setMarketData] = useState({ priceUsd: 0, volume24h: 0, change24h: 0, txCount: 0 });
+  const [onChainData, setOnChainData] = useState<any>(null);
+
   // Prices
   const [ethPriceUsd, setEthPriceUsd] = useState(3500);
   const [fxRate, setFxRate] = useState(1); // USD → local currency
@@ -124,6 +149,86 @@ export default function AccountPage() {
   );
 
   const address = account?.address;
+
+  // Provider for advanced trading
+  const getProvider = useCallback(() => {
+    if (!providerRef.current) {
+      providerRef.current = new ethers.JsonRpcProvider(RPC_URL);
+    }
+    return providerRef.current;
+  }, []);
+
+  // Quote GBLIN output from WETH input
+  const quoteMintFromWeth = useCallback(async (wethAmount: bigint) => {
+    const provider = getProvider();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
+      contract.quoteBuyGBLIN(wethAmount),
+      contract.totalSupply(),
+      contract.balanceOf(CONTRACT_ADDRESS)
+    ]);
+
+    const quotedGblinOut: bigint = result[0];
+    const totalSupply = BigInt(totalSupplyRaw.toString());
+    const contractBalance = BigInt(contractBalanceRaw.toString());
+    const activeSupply = totalSupply - contractBalance;
+
+    if (activeSupply === 0n) {
+      return quotedGblinOut > 1000n ? quotedGblinOut - 1000n : 0n;
+    }
+    return quotedGblinOut;
+  }, [getProvider]);
+
+  // Format basket redeem quote for display
+  const formatBasketRedeemQuote = useCallback((gblinAmount: number) => {
+    if (!onChainData?.supplyNum || !onChainData?.basketData?.length || gblinAmount <= 0) return null;
+
+    const activeSupply = Number(onChainData.supplyNum);
+    if (!Number.isFinite(activeSupply) || activeSupply <= 0) return null;
+
+    const shareRatio = gblinAmount / activeSupply;
+    const basketData = onChainData.basketData;
+    const cbBtcAsset = basketData.find((asset: any) => asset.name === 'cbBTC') ?? null;
+    const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
+    const usdcAsset = basketData.find((asset: any) => asset.name === 'USDC') ?? null;
+    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
+
+    const cbBtcOut = (cbBtcAsset ? Number(cbBtcAsset.balance) : 0) * shareRatio;
+    const wethOut = Math.max((wethAsset ? Number(wethAsset.balance) : 0) - stabilityFundValue, 0) * shareRatio;
+    const usdcOut = (usdcAsset ? Number(usdcAsset.balance) : 0) * shareRatio;
+
+    return {
+      cbBtcOut,
+      wethOut,
+      usdcOut,
+      summary: `${cbBtcOut.toFixed(8)} cbBTC • ${wethOut.toFixed(6)} WETH • ${usdcOut.toFixed(2)} USDC`
+    };
+  }, [onChainData]);
+
+  // Active trade token
+  const activeTradeToken = useMemo<TradeTokenOption | null>(() => {
+    if (selectedToken === 'CUSTOM') {
+      return resolvedCustomToken;
+    }
+    return TRADE_TOKEN_OPTIONS.find((token) => token.symbol === selectedToken) ?? null;
+  }, [resolvedCustomToken, selectedToken]);
+
+  // Quote asset label
+  const quoteAssetLabel = useMemo(() => {
+    if (tradeMode === 'buy') return 'GBLIN';
+    return redeemOption === 'basket' ? 'BASKET' : 'ETH';
+  }, [tradeMode, redeemOption]);
+
+  // Resolved token symbol
+  const resolvedTokenSymbol = useMemo(() => {
+    if (selectedToken === 'CUSTOM') {
+      return resolvedCustomToken?.symbol ?? '???';
+    }
+    return selectedToken;
+  }, [resolvedCustomToken, selectedToken]);
+
+  // Buy token options
+  const buyTokenOptions = useMemo(() => TRADE_TOKEN_OPTIONS.map((t) => t.symbol), []);
 
   // Read GBLIN balance — also refetch every 15s so external purchases (MetaMask) show up
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
@@ -210,10 +315,214 @@ export default function AccountPage() {
     return () => clearInterval(interval);
   }, [currencyConfig]);
 
+  // Resolve custom token address
+  useEffect(() => {
+    let cancelled = false;
+    if (selectedToken !== 'CUSTOM') {
+      setResolvedCustomToken(null);
+      return undefined;
+    }
+    const nextAddress = customTokenAddress.trim();
+    if (!nextAddress || !ethers.isAddress(nextAddress)) {
+      setResolvedCustomToken(null);
+      return undefined;
+    }
+    const resolveToken = async () => {
+      try {
+        const provider = getProvider();
+        const tokenContract = new ethers.Contract(nextAddress, ['function symbol() view returns (string)', 'function decimals() view returns (uint8)'], provider);
+        const [symbol, decimals] = await Promise.all([tokenContract.symbol(), tokenContract.decimals()]);
+        if (!cancelled) {
+          setResolvedCustomToken({ symbol, decimals: Number(decimals), address: nextAddress, isNative: false });
+        }
+      } catch {
+        if (!cancelled) setResolvedCustomToken(null);
+      }
+    };
+    void resolveToken();
+    return () => { cancelled = true; };
+  }, [customTokenAddress, getProvider, selectedToken]);
+
+  // Calculate quote for buy/sell
+  useEffect(() => {
+    if (!amount || Number.parseFloat(amount) <= 0) {
+      setQuote('0');
+      setRawQuote(0n);
+      setUsdValue('$0.00');
+      return;
+    }
+
+    const fetchQuote = async () => {
+      setIsLoadingQuote(true);
+      try {
+        const provider = getProvider();
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+
+        if (tradeMode === 'buy') {
+          if (!activeTradeToken) {
+            setQuote('Token required');
+            setRawQuote(0n);
+            setUsdValue('$0.00');
+            return;
+          }
+
+          if (activeTradeToken.isNative) {
+            const wethAmount = ethers.parseEther(amount);
+            const effectiveGblinOut = await quoteMintFromWeth(wethAmount);
+            setRawQuote(effectiveGblinOut);
+            setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
+            setUsdValue(`$${(Number.parseFloat(amount) * ethPriceUsd).toFixed(2)}`);
+          } else {
+            setQuote('Use ETH for trading');
+            setRawQuote(0n);
+            setUsdValue('$0.00');
+          }
+        } else {
+          // Sell mode
+          const gblinAmount = ethers.parseEther(amount);
+          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+
+          if (redeemOption === 'basket') {
+            const basketQuote = formatBasketRedeemQuote(Number.parseFloat(amount));
+            setRawQuote(gblinAmount);
+            setQuote(basketQuote?.summary ?? 'Basket unavailable');
+            setUsdValue(`$${(Number.parseFloat(ethers.formatEther(ethOut)) * ethPriceUsd).toFixed(2)}`);
+          } else {
+            setRawQuote(ethOut);
+            setQuote(parseFloat(ethers.formatEther(ethOut)).toFixed(6));
+            setUsdValue(`$${(Number.parseFloat(ethers.formatEther(ethOut)) * ethPriceUsd).toFixed(2)}`);
+          }
+        }
+      } catch {
+        setQuote('Err');
+        setRawQuote(0n);
+      } finally {
+        setIsLoadingQuote(false);
+      }
+    };
+
+    const timer = window.setTimeout(fetchQuote, 450);
+    return () => window.clearTimeout(timer);
+  }, [activeTradeToken, amount, ethPriceUsd, formatBasketRedeemQuote, getProvider, quoteMintFromWeth, redeemOption, tradeMode]);
+
   const balance = useMemo(() => {
     if (!balanceData) return 0;
     return parseFloat(ethers.formatEther(balanceData));
   }, [balanceData]);
+
+  // Input balance display (computed after balance is defined)
+  const inputBalanceDisplay = useMemo(() => {
+    if (tradeMode === 'sell') return balance.toFixed(4);
+    return activeTradeToken?.isNative ? String(ethBalance) : tokenBalance;
+  }, [activeTradeToken, balance, ethBalance, tokenBalance, tradeMode]);
+
+  // Execute trade function
+  const executeTrade = useCallback(async () => {
+    if (!account || !address) return;
+
+    if (!amount || Number.parseFloat(amount) <= 0) {
+      setTradeError('Enter a valid amount.');
+      return;
+    }
+
+    if (tradeMode === 'buy' && !activeTradeToken) {
+      setTradeError('Select a valid input token.');
+      return;
+    }
+
+    if (redeemOption !== 'basket' && rawQuote <= 0n) {
+      setTradeError('Quote not ready. Wait a moment and retry.');
+      return;
+    }
+
+    const slippageBps = BigInt(Math.round(slippage * 100));
+
+    setIsTransacting(true);
+    setTradeError(null);
+    setTradeTxHash(null);
+
+    try {
+      if (tradeMode === 'buy') {
+        if (!activeTradeToken?.isNative) {
+          throw new Error('Only ETH is supported for buy');
+        }
+
+        const ethAmount = ethers.parseEther(amount);
+        const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+        const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
+
+        const buyTx = prepareContractCall({
+          contract: {
+            client: thirdwebClient,
+            chain: thirdwebChain,
+            address: CONTRACT_ADDRESS as `0x${string}`,
+          },
+          method: "function buyGBLIN(uint256 minGblinOut) payable",
+          params: [minAmountOut],
+          value: ethAmount,
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          sendTx(buyTx, {
+            onSuccess: (data) => {
+              setTradeTxHash(data.transactionHash);
+              resolve();
+            },
+            onError: (err: Error) => reject(err),
+          });
+        });
+      } else {
+        // Sell mode
+        const gblinAmount = ethers.parseEther(amount);
+
+        if (redeemOption === 'basket') {
+          const sellTx = prepareContractCall({
+            contract: {
+              client: thirdwebClient,
+              chain: thirdwebChain,
+              address: CONTRACT_ADDRESS as `0x${string}`,
+            },
+            method: "function redeemInKind(uint256 gblinAmount)",
+            params: [gblinAmount],
+          });
+
+          await new Promise<void>((resolve, reject) => {
+            sendTx(sellTx, {
+              onSuccess: (data) => {
+                setTradeTxHash(data.transactionHash);
+                resolve();
+              },
+              onError: (err: Error) => reject(err),
+            });
+          });
+        } else {
+          const sellTx = prepareContractCall({
+            contract: {
+              client: thirdwebClient,
+              chain: thirdwebChain,
+              address: CONTRACT_ADDRESS as `0x${string}`,
+            },
+            method: "function sellGBLIN(uint256 minEthOut)",
+            params: [(rawQuote * (10000n - slippageBps)) / 10000n],
+          });
+
+          await new Promise<void>((resolve, reject) => {
+            sendTx(sellTx, {
+              onSuccess: (data) => {
+                setTradeTxHash(data.transactionHash);
+                resolve();
+              },
+              onError: (err: Error) => reject(err),
+            });
+          });
+        }
+      }
+    } catch (err: any) {
+      setTradeError(err?.message ?? 'Transaction failed');
+    } finally {
+      setIsTransacting(false);
+    }
+  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, sendTx]);
 
   const gblinPriceUsd = useMemo(() => {
     if (!quoteData) return 0;
@@ -785,137 +1094,55 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {/* ── WALLET MODE: For advanced users with ETH ── */}
+              {/* ── WALLET MODE: Full buy-gblin interface for advanced users ── */}
               {buyMode === "wallet" && (
-                <div className={`${shellCard} p-6 sm:p-8`}>
-                  <h3 className="mb-1 text-2xl font-bold text-white">Acquista GBLIN con ETH</h3>
-                  <p className="mb-6 text-zinc-400">Hai già ETH nel tuo wallet su Base? Acquista GBLIN direttamente.</p>
-
-              <div className="mx-auto max-w-md space-y-4">
-                {/* Mode toggle */}
-                <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
-                  <button
-                    onClick={() => { setBuyInputMode("currency"); setBuyAmount(""); }}
-                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
-                      buyInputMode === "currency" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    {currencyConfig.symbol} {currencyConfig.code}
-                  </button>
-                  <button
-                    onClick={() => { setBuyInputMode("gblin"); setBuyAmount(""); }}
-                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
-                      buyInputMode === "gblin" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    GBLIN
-                  </button>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-300">
-                    {buyInputMode === "currency" ? t("account.buyAmountLabel") : t("account.buyAmountLabel")}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      value={buyAmount}
-                      onChange={(e) => setBuyAmount(e.target.value)}
-                      placeholder={buyInputMode === "currency" ? `${currencyConfig.symbol}100` : "100"}
-                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30"
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-amber-400">
-                      {buyInputMode === "currency" ? currencyConfig.code : "GBLIN"}
-                    </span>
-                  </div>
-                  {hasAmount && (
-                    <p className="mt-2 text-sm text-zinc-400">
-                      {buyInputMode === "currency"
-                        ? <>≈ <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span></>
-                        : <>≈ <span className="font-semibold text-amber-300">{formatLocal(gblinQty * gblinPriceUsd)}</span></>}
-                    </p>
-                  )}
-                </div>
-
-                {/* STEP 1: Check if user has enough ETH */}
-                {hasAmount && (
-                  (() => {
-                    const requiredEth = ethValue * 1.02;
-                    const hasEnoughEth = ethBalance >= requiredEth;
-
-                    if (!hasEnoughEth) {
-                      // Show on-ramp to buy ETH first, then user clicks GBLIN buy
-                      return (
-                          <div className="space-y-4">
-                            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                              <p className="text-sm text-amber-200">
-                                <span className="font-semibold">Servono {requiredEth.toFixed(4)} ETH</span> per questo acquisto.
-                              </p>
-                              <p className="mt-2 text-xs text-amber-300/80">
-                                Gli acquisti con carta non sono disponibili in Italia per ETH su Base.
-                              </p>
-                            </div>
-                            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                              <p className="text-sm text-zinc-300">Acquista ETH su:</p>
-                              <div className="flex gap-3">
-                                <a
-                                  href="https://www.binance.com/buy-sell-crypto"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 rounded-xl bg-[#F0B90B] px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-[#F0B90B]/90"
-                                >
-                                  Binance
-                                </a>
-                                <a
-                                  href="https://www.coinbase.com/buy"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-1 rounded-xl bg-[#0052FF] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
-                                >
-                                  Coinbase
-                                </a>
-                              </div>
-                              <p className="text-xs text-zinc-500">
-                                Dopo l'acquisto, trasferisci gli ETH al tuo wallet su rete Base.
-                              </p>
-                            </div>
-                          </div>
-                      );
-                    }
-
-                    // Has enough ETH - show direct buy button
-                    return (
-                      <button
-                        onClick={async () => {
-                          if (!account) return;
-                          const tx = prepareContractCall({
-                            contract: gblinContract,
-                            method: "function buyGBLIN(uint256 minGblinOut)",
-                            params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
-                            value: ethers.parseEther(requiredEth.toFixed(18)),
-                          });
-                          await sendTx(tx);
-                        }}
-                        disabled={!address || isSending}
-                        className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
-                      >
-                        {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
-                      </button>
-                    );
-                  })()
-                )}
-                {!hasAmount && (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-                    <p className="text-zinc-500">{t("account.enterAmountToBuy")}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
-                <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
-              </div>
-              </div>
+                <BuyView
+                  t={t}
+                  mode={tradeMode}
+                  setMode={setTradeMode}
+                  amount={amount}
+                  setAmount={setAmount}
+                  slippage={slippage}
+                  setSlippage={setSlippage}
+                  quote={quote}
+                  usdValue={usdValue}
+                  isLoadingQuote={isLoadingQuote}
+                  isTransacting={isTransacting}
+                  isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && rawQuote <= 0n)}
+                  executeTrade={executeTrade}
+                  tradeError={tradeError}
+                  tradeTxHash={tradeTxHash}
+                  ethBalance={String(ethBalance)}
+                  gblinBalance={balance.toFixed(4)}
+                  inputBalance={inputBalanceDisplay}
+                  isConnected={!!account}
+                  address={address}
+                  openWallet={() => {}}
+                  disconnectWallet={() => {}}
+                  copyContract={() => {}}
+                  copied={false}
+                  marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
+                  onChainData={{ nav: `$${(gblinPriceUsd * balance).toFixed(2)}`, ...onChainData }}
+                  basketData={[]}
+                  lastYieldDistribution={0}
+                  discountPercentage={0}
+                  isMarketLoading={false}
+                  isOnChainLoading={false}
+                  isTransactionsLoading={false}
+                  transactions={[]}
+                  logs={[]}
+                  refreshAllData={() => {}}
+                  buyTokenOptions={buyTokenOptions}
+                  customTokenAddress={customTokenAddress}
+                  quoteAssetLabel={quoteAssetLabel}
+                  redeemOption={redeemOption}
+                  resolvedTokenSymbol={resolvedTokenSymbol}
+                  selectedToken={selectedToken}
+                  setCustomTokenAddress={setCustomTokenAddress}
+                  setRedeemOption={setRedeemOption}
+                  setSelectedToken={setSelectedToken}
+                  tokenBalance={tokenBalance}
+                />
               )}
             </div>
           );

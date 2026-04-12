@@ -5,6 +5,8 @@ export interface DashboardData {
   priceUsd: number;
   volume24h: number;
   ethPriceUsd: number;
+  change24h?: number;
+  txCount?: number;
 }
 
 export interface TransactionItem {
