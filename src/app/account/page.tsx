@@ -116,6 +116,11 @@ export default function AccountPage() {
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
   const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
+
+  // Debug: log redeemOption changes
+  useEffect(() => {
+    console.log('[redeemOption] Changed to:', redeemOption);
+  }, [redeemOption]);
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(1);
   const [quote, setQuote] = useState('0');
