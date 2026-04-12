@@ -89,6 +89,7 @@ export default function AccountPage() {
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
 
   const [activeTab, setActiveTab] = useState<"overview" | "buy" | "sell" | "send">("overview");
+  const [buyMode, setBuyMode] = useState<"card" | "wallet">("card");
   const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
@@ -600,35 +601,108 @@ export default function AccountPage() {
           return (
             <div className="space-y-5">
 
-              {/* ── Intro: two options ── */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Option A: I already have a wallet */}
-                <div className={`${shellCard} relative overflow-hidden p-6`}>
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
-                  <Wallet className="mb-3 h-7 w-7 text-amber-400" />
-                  <h4 className="mb-1 text-base font-bold text-white">Ho già un wallet</h4>
-                  <p className="mb-4 text-sm leading-6 text-zinc-400">Connetti MetaMask, Coinbase Wallet o qualsiasi wallet compatibile e acquista GBLIN direttamente con ETH.</p>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
-                    <ArrowRight className="h-3 w-3" /> Usa il modulo qui sotto
-                  </span>
-                </div>
-
-                {/* Option B: Advanced trading */}
-                <Link href="/buy-gblin" className={`${shellCard} relative overflow-hidden p-6 transition hover:border-amber-500/30 group`}>
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  <TrendingUp className="mb-3 h-7 w-7 text-zinc-400 group-hover:text-amber-400 transition-colors" />
-                  <h4 className="mb-1 text-base font-bold text-white">Trading avanzato</h4>
-                  <p className="mb-4 text-sm leading-6 text-zinc-400">Acquista con qualsiasi token (USDC, cbBTC…), imposta slippage personalizzato e visualizza quote in tempo reale.</p>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-zinc-300 group-hover:bg-amber-500/10 group-hover:text-amber-400 transition">
-                    <ExternalLink className="h-3 w-3" /> Apri pagina trading
-                  </span>
-                </Link>
+              {/* ── Sub-tabs: Card vs Wallet ── */}
+              <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                <button
+                  onClick={() => setBuyMode("card")}
+                  className={`flex-1 rounded-xl py-3 text-sm font-medium transition ${
+                    buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  💳 Carta — Per neofiti
+                </button>
+                <button
+                  onClick={() => setBuyMode("wallet")}
+                  className={`flex-1 rounded-xl py-3 text-sm font-medium transition ${
+                    buyMode === "wallet" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  🔐 Wallet — Ho già crypto
+                </button>
               </div>
 
-              {/* ── Wallet purchase form (requires ETH) ── */}
-              <div className={`${shellCard} p-6 sm:p-8`}>
-              <h3 className="mb-1 text-2xl font-bold text-white">Acquista GBLIN con ETH</h3>
-              <p className="mb-6 text-zinc-400">Hai già ETH nel tuo wallet? Inserisci la quantità e acquista GBLIN direttamente.</p>
+              {/* ── CARD MODE: Simple 2-step for beginners ── */}
+              {buyMode === "card" && (
+                <div className={`${shellCard} p-6 sm:p-8`}>
+                  <div className="mb-6 text-center">
+                    <h3 className="mb-2 text-2xl font-bold text-white">Acquista GBLIN con Carta</h3>
+                    <p className="text-zinc-400">Semplice e veloce. Inserisci l'importo e paga con carta.</p>
+                  </div>
+
+                  <div className="mx-auto max-w-md space-y-6">
+                    {/* Step 1: Enter amount */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-zinc-300">Quanto vuoi spendere?</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="100"
+                          value={buyAmount}
+                          onChange={(e) => setBuyAmount(e.target.value)}
+                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-white placeholder-zinc-500 outline-none ring-amber-500/20 transition focus:border-amber-500 focus:ring-2"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-amber-400">
+                          EUR
+                        </span>
+                      </div>
+                      {hasAmount && (
+                        <p className="mt-2 text-sm text-zinc-400">
+                          Riceverai circa <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Step 2: Payment options */}
+                    {hasAmount ? (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                          <p className="text-sm text-amber-200">
+                            <span className="font-semibold">Passo 1:</span> Acquista ETH su un exchange
+                          </p>
+                          <p className="mt-1 text-xs text-amber-300/80">
+                            Servono {(ethValue * 1.02).toFixed(4)} ETH su rete Base
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <a
+                            href={`https://www.binance.com/buy-sell-crypto?fiat=EUR&crypto=ETH&amount=${numVal}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 rounded-xl bg-[#F0B90B] px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-[#F0B90B]/90"
+                          >
+                            Compra su Binance →
+                          </a>
+                          <a
+                            href={`https://www.coinbase.com/buy?asset=ETH&amount=${numVal}&currency=EUR`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 rounded-xl bg-[#0052FF] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
+                          >
+                            Compra su Coinbase →
+                          </a>
+                        </div>
+                        <p className="text-xs text-zinc-500">
+                          Dopo l'acquisto, trasferisci gli ETH al tuo wallet su rete Base.
+                          <br/>
+                          Il saldo si aggiorna automaticamente ogni 15 secondi.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+                        <p className="text-zinc-500">Inserisci un importo per iniziare</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── WALLET MODE: For advanced users with ETH ── */}
+              {buyMode === "wallet" && (
+                <div className={`${shellCard} p-6 sm:p-8`}>
+                  <h3 className="mb-1 text-2xl font-bold text-white">Acquista GBLIN con ETH</h3>
+                  <p className="mb-6 text-zinc-400">Hai già ETH nel tuo wallet su Base? Acquista GBLIN direttamente.</p>
 
               <div className="mx-auto max-w-md space-y-4">
                 {/* Mode toggle */}
@@ -686,33 +760,40 @@ export default function AccountPage() {
                     if (!hasEnoughEth) {
                       // Show on-ramp to buy ETH first, then user clicks GBLIN buy
                       return (
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-                            <p className="text-sm text-amber-200">
-                              Servono <span className="font-semibold">{requiredEth.toFixed(4)} ETH</span> per questo acquisto.
-                            </p>
-                            <p className="mt-1 text-xs text-amber-300/80">
-                              1. Acquista ETH con carta qui sotto<br/>
-                              2. Poi clicca "Completa acquisto GBLIN"
-                            </p>
+                          <div className="space-y-4">
+                            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                              <p className="text-sm text-amber-200">
+                                <span className="font-semibold">Servono {requiredEth.toFixed(4)} ETH</span> per questo acquisto.
+                              </p>
+                              <p className="mt-2 text-xs text-amber-300/80">
+                                Gli acquisti con carta non sono disponibili in Italia per ETH su Base.
+                              </p>
+                            </div>
+                            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                              <p className="text-sm text-zinc-300">Acquista ETH su:</p>
+                              <div className="flex gap-3">
+                                <a
+                                  href="https://www.binance.com/buy-sell-crypto"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 rounded-xl bg-[#F0B90B] px-4 py-3 text-center text-sm font-semibold text-black transition hover:bg-[#F0B90B]/90"
+                                >
+                                  Binance
+                                </a>
+                                <a
+                                  href="https://www.coinbase.com/buy"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 rounded-xl bg-[#0052FF] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
+                                >
+                                  Coinbase
+                                </a>
+                              </div>
+                              <p className="text-xs text-zinc-500">
+                                Dopo l'acquisto, trasferisci gli ETH al tuo wallet su rete Base.
+                              </p>
+                            </div>
                           </div>
-                          <PayEmbed
-                            key={`${buyAmount}-${buyInputMode}`}
-                            client={thirdwebClient}
-                            theme="dark"
-                            payOptions={{
-                              mode: "fund_wallet",
-                              metadata: {
-                                name: `Acquista ETH per ${gblinQty.toFixed(4)} GBLIN`,
-                                description: `Paga con carta per ricevere ${requiredEth.toFixed(4)} ETH nel tuo wallet, poi completa l'acquisto GBLIN.`,
-                              },
-                              prefillBuy: {
-                                chain: thirdwebChain,
-                                amount: String(requiredEth.toFixed(4)),
-                              },
-                            }}
-                          />
-                        </div>
                       );
                     }
 
@@ -748,6 +829,7 @@ export default function AccountPage() {
                 <p className="text-sm text-amber-200/80">{t("account.buyNote")}</p>
               </div>
               </div>
+              )}
             </div>
           );
         })()}
