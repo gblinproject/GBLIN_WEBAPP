@@ -999,74 +999,111 @@ export default function AccountPage() {
                         const hasMainnetEth = mainnetEthBalance >= requiredEth * 0.8; // 80% tolerance
                         const hasBaseEth = ethBalance >= requiredEth;
 
-                        // Step 3: Has Base ETH -> Buy GBLIN directly
-                        if (hasBaseEth) {
-                          return (
-                            <div className="space-y-4">
-                              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                                <p className="text-sm text-emerald-200">
-                                  <span className="font-semibold">Pronto!</span> Hai {ethBalance.toFixed(4)} ETH su Base
-                                </p>
-                              </div>
-                              <button
-                                onClick={async () => {
-                                  if (!account) return;
-                                  const tx = prepareContractCall({
-                                    contract: gblinContract,
-                                    method: "function buyGBLIN(uint256 minGblinOut)",
-                                    params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
-                                    value: ethers.parseEther(requiredEth.toFixed(18)),
-                                  });
-                                  await sendTx(tx);
-                                }}
-                                disabled={isSending}
-                                className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
-                              >
-                                {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
-                              </button>
-                            </div>
-                          );
-                        }
+                        // Determine current step
+                        let currentStep = 1;
+                        if (hasMainnetEth) currentStep = 2;
+                        if (hasBaseEth) currentStep = 3;
 
-                        // Step 2: Has Mainnet ETH but not Base -> Bridge to Base
-                        if (hasMainnetEth) {
-                          return (
-                            <div className="space-y-4">
-                              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                                <p className="text-sm text-amber-200">
-                                  <span className="font-semibold">Passo 2:</span> Trasferisci ETH su Base
-                                </p>
-                                <p className="mt-1 text-xs text-amber-300/80">
-                                  Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
-                                </p>
-                              </div>
-                              <BridgeWidget
-                                client={thirdwebClient}
-                                theme="dark"
-                                currency="EUR"
-                                swap={{
-                                  prefill: {
-                                    sellToken: {
-                                      chainId: 1, // Ethereum Mainnet
-                                      amount: (ethValue * 1.05).toFixed(4),
-                                    },
-                                    buyToken: {
-                                      chainId: 8453, // Base
-                                      tokenAddress: undefined, // ETH only, NO SWAP to GBLIN
-                                    },
-                                  },
-                                }}
-                              />
-                              <p className="text-xs text-zinc-500">
-                                Bridge ETH da Mainnet a Base (senza swap).
-                              </p>
-                            </div>
-                          );
-                        }
-
-                        // Step 1: No ETH -> Buy on Mainnet with card
                         return (
                           <div className="space-y-4">
+                            {/* Visual Wizard Steps */}
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                              <div className="flex items-center justify-between">
+                                {/* Step 1 */}
+                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 1 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                    <span className="text-sm font-bold">1</span>
+                                  </div>
+                                  <span className="text-xs font-medium">Compra ETH</span>
+                                </div>
+                                {/* Connector */}
+                                <div className={`h-0.5 w-12 ${currentStep >= 2 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
+                                {/* Step 2 */}
+                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 2 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                    <span className="text-sm font-bold">2</span>
+                                  </div>
+                                  <span className="text-xs font-medium">Bridge a Base</span>
+                                </div>
+                                {/* Connector */}
+                                <div className={`h-0.5 w-12 ${currentStep >= 3 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
+                                {/* Step 3 */}
+                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 3 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                    <span className="text-sm font-bold">3</span>
+                                  </div>
+                                  <span className="text-xs font-medium">Acquista GBLIN</span>
+                                </div>
+                              </div>
+                            </div>
+
+                        {/* Step 3: Has Base ETH -> Buy GBLIN directly */}
+                        {hasBaseEth && (
+                          <>
+                            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                              <p className="text-sm text-emerald-200">
+                                <span className="font-semibold">Passo 3:</span> Pronto per acquistare GBLIN
+                              </p>
+                              <p className="mt-1 text-xs text-emerald-300/80">
+                                Hai {ethBalance.toFixed(4)} ETH su Base. Clicca il bottone per acquistare {gblinQty.toFixed(4)} GBLIN.
+                              </p>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (!account) return;
+                                const tx = prepareContractCall({
+                                  contract: gblinContract,
+                                  method: "function buyGBLIN(uint256 minGblinOut)",
+                                  params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
+                                  value: ethers.parseEther(requiredEth.toFixed(18)),
+                                });
+                                await sendTx(tx);
+                              }}
+                              disabled={isSending}
+                              className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
+                            >
+                              {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
+                            </button>
+                          </>
+                        )}
+
+                        {/* Step 2: Has Mainnet ETH but not Base -> Bridge to Base */}
+                        {!hasBaseEth && hasMainnetEth && (
+                          <>
+                            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                              <p className="text-sm text-amber-200">
+                                <span className="font-semibold">Passo 2:</span> Trasferisci ETH su Base
+                              </p>
+                              <p className="mt-1 text-xs text-amber-300/80">
+                                Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
+                              </p>
+                            </div>
+                            <BridgeWidget
+                              client={thirdwebClient}
+                              theme="dark"
+                              currency="EUR"
+                              swap={{
+                                prefill: {
+                                  sellToken: {
+                                    chainId: 1, // Ethereum Mainnet
+                                    amount: (ethValue * 1.05).toFixed(4),
+                                  },
+                                  buyToken: {
+                                    chainId: 8453, // Base
+                                    tokenAddress: undefined, // ETH only, NO SWAP to GBLIN
+                                  },
+                                },
+                              }}
+                            />
+                            <p className="text-xs text-zinc-500">
+                              Bridge ETH da Mainnet a Base (senza swap).
+                            </p>
+                          </>
+                        )}
+
+                        {/* Step 1: No ETH -> Buy on Mainnet with card */}
+                        {!hasBaseEth && !hasMainnetEth && (
+                          <>
                             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                               <p className="text-sm text-amber-200">
                                 <span className="font-semibold">Passo 1:</span> Acquista ETH con carta
@@ -1096,10 +1133,12 @@ export default function AccountPage() {
                             <p className="text-xs text-zinc-500">
                               Dopo l'acquisto, il sistema rileverà automaticamente gli ETH e ti guiderà al passo successivo.
                             </p>
-                          </div>
-                        );
-                      })()
-                    ) : (
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : (
                       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
                         <p className="text-zinc-500">Inserisci un importo per iniziare</p>
                       </div>
