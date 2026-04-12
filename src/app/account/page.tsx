@@ -106,6 +106,7 @@ export default function AccountPage() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [ethBalance, setEthBalance] = useState<number>(0);
   const [mainnetEthBalance, setMainnetEthBalance] = useState<number>(0);
+  const [cardWizardStep, setCardWizardStep] = useState<1 | 2 | 3 | null>(null); // null = auto-detect based on balances
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -999,46 +1000,58 @@ export default function AccountPage() {
                         const hasMainnetEth = mainnetEthBalance >= requiredEth * 0.8; // 80% tolerance
                         const hasBaseEth = ethBalance >= requiredEth;
 
-                        // Determine current step
-                        let currentStep = 1;
-                        if (hasMainnetEth) currentStep = 2;
-                        if (hasBaseEth) currentStep = 3;
+                        // Determine auto-detected step based on balances
+                        let autoStep = 1;
+                        if (hasMainnetEth) autoStep = 2;
+                        if (hasBaseEth) autoStep = 3;
+
+                        // Use manual step if set, otherwise auto-detect
+                        const activeStep = cardWizardStep ?? autoStep;
 
                         return (
                           <div className="space-y-4">
-                            {/* Visual Wizard Steps */}
+                            {/* Visual Wizard Steps - Clickable for manual navigation */}
                             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
                               <div className="flex items-center justify-between">
-                                {/* Step 1 */}
-                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 1 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                {/* Step 1 - Clickable */}
+                                <button
+                                  onClick={() => setCardWizardStep(1)}
+                                  className={`flex flex-col items-center gap-2 transition-colors ${activeStep === 1 ? 'text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 1 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">1</span>
                                   </div>
                                   <span className="text-xs font-medium">Compra ETH</span>
-                                </div>
+                                </button>
                                 {/* Connector */}
-                                <div className={`h-0.5 w-12 ${currentStep >= 2 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
-                                {/* Step 2 */}
-                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 2 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                <div className={`h-0.5 w-12 ${activeStep >= 2 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
+                                {/* Step 2 - Clickable */}
+                                <button
+                                  onClick={() => setCardWizardStep(2)}
+                                  className={`flex flex-col items-center gap-2 transition-colors ${activeStep === 2 ? 'text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 2 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">2</span>
                                   </div>
                                   <span className="text-xs font-medium">Bridge a Base</span>
-                                </div>
+                                </button>
                                 {/* Connector */}
-                                <div className={`h-0.5 w-12 ${currentStep >= 3 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
-                                {/* Step 3 */}
-                                <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
-                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${currentStep >= 3 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800'}`}>
+                                <div className={`h-0.5 w-12 ${activeStep >= 3 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
+                                {/* Step 3 - Clickable */}
+                                <button
+                                  onClick={() => setCardWizardStep(3)}
+                                  className={`flex flex-col items-center gap-2 transition-colors ${activeStep === 3 ? 'text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 3 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">3</span>
                                   </div>
                                   <span className="text-xs font-medium">Acquista GBLIN</span>
-                                </div>
+                                </button>
                               </div>
                             </div>
 
-                        {/* Step 3: Has Base ETH -> Buy GBLIN directly */}
-                        {hasBaseEth && (
+                        {/* Step 3: Buy GBLIN with Base ETH */}
+                        {activeStep === 3 && (
                           <>
                             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                               <p className="text-sm text-emerald-200">
@@ -1067,8 +1080,8 @@ export default function AccountPage() {
                           </>
                         )}
 
-                        {/* Step 2: Has Mainnet ETH but not Base -> Bridge to Base */}
-                        {!hasBaseEth && hasMainnetEth && (
+                        {/* Step 2: Bridge ETH to Base */}
+                        {activeStep === 2 && (
                           <>
                             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                               <p className="text-sm text-amber-200">
@@ -1101,8 +1114,8 @@ export default function AccountPage() {
                           </>
                         )}
 
-                        {/* Step 1: No ETH -> Buy on Mainnet with card */}
-                        {!hasBaseEth && !hasMainnetEth && (
+                        {/* Step 1: Buy ETH with card */}
+                        {activeStep === 1 && (
                           <>
                             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                               <p className="text-sm text-amber-200">
