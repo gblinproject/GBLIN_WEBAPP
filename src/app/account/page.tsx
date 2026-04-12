@@ -478,13 +478,12 @@ export default function AccountPage() {
           });
         });
       } else {
-        // Sell mode
+        // Sell mode - v2 FIX: Use direct check to avoid stale closure
         const gblinAmount = ethers.parseEther(amount);
-        // DEBUG: Alert to show current redeemOption
-        alert(`DEBUG: redeemOption = "${redeemOption}"\nExpected: "eth" for ETH Only\nIf this shows "basket", the bug is confirmed.`);
-        console.log('[executeTrade] Sell mode:', { redeemOption, gblinAmount: amount, rawQuote: rawQuote.toString() });
+        const currentRedeemOption = redeemOption; // Capture current value
+        console.log('[executeTrade] Sell mode v2:', { currentRedeemOption, gblinAmount: amount, rawQuote: rawQuote.toString(), timestamp: Date.now() });
 
-        if (redeemOption === 'basket') {
+        if (currentRedeemOption === 'basket') {
           console.log('[executeTrade] Calling redeemInKind (basket)');
           const sellTx = prepareContractCall({
             contract: {
@@ -506,15 +505,18 @@ export default function AccountPage() {
             });
           });
         } else {
-          console.log('[executeTrade] Calling sellGBLIN (ETH only)');
+          console.log('[executeTrade] Calling sellGBLINForEth (ETH only) v2');
+          // Use sellGBLINForEth with explicit slippage instead of sellGBLIN
+          const minEthOut = (rawQuote * (10000n - slippageBps)) / 10000n;
+          console.log('[executeTrade] minEthOut:', minEthOut.toString());
           const sellTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
               chain: thirdwebChain,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
-            method: "function sellGBLIN(uint256 minEthOut)",
-            params: [(rawQuote * (10000n - slippageBps)) / 10000n],
+            method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
+            params: [gblinAmount, minEthOut],
           });
 
           await new Promise<void>((resolve, reject) => {
