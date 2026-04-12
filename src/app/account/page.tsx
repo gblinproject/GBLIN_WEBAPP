@@ -707,7 +707,7 @@ export default function AccountPage() {
                               },
                               prefillBuy: {
                                 chain: thirdwebChain,
-                                amount: String(requiredEth.toFixed(4)),
+                                amount: String((requiredEth * 10).toFixed(5)),
                               },
                             }}
                           />
