@@ -100,6 +100,7 @@ export default function AccountPage() {
   const [txSuccess, setTxSuccess] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [ethBalance, setEthBalance] = useState<number>(0);
+  const [mainnetEthBalance, setMainnetEthBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -131,7 +132,7 @@ export default function AccountPage() {
     params: [address ?? "0x0000000000000000000000000000000000000000"],
   });
 
-  // Fetch ETH balance via ethers provider
+  // Fetch ETH balance via ethers provider (Base)
   const fetchEthBalance = useCallback(async () => {
     if (!address) return;
     try {
@@ -143,15 +144,29 @@ export default function AccountPage() {
     }
   }, [address]);
 
+  // Fetch ETH balance on Mainnet for bridge detection
+  const fetchMainnetEthBalance = useCallback(async () => {
+    if (!address) return;
+    try {
+      const provider = new ethers.JsonRpcProvider("https://ethereum.publicnode.com");
+      const bal = await provider.getBalance(address);
+      setMainnetEthBalance(Number(ethers.formatEther(bal)));
+    } catch {
+      setMainnetEthBalance(0);
+    }
+  }, [address]);
+
   useEffect(() => {
     if (!address) return;
     void fetchEthBalance();
+    void fetchMainnetEthBalance();
     const id = setInterval(() => {
       void refetchBalance();
       void fetchEthBalance();
+      void fetchMainnetEthBalance();
     }, 15000);
     return () => clearInterval(id);
-  }, [address, refetchBalance, fetchEthBalance]);
+  }, [address, refetchBalance, fetchEthBalance, fetchMainnetEthBalance]);
 
   // Read GBLIN price via quoteSell
   const { data: quoteData } = useReadContract({
@@ -655,33 +670,103 @@ export default function AccountPage() {
                       )}
                     </div>
 
-                    {/* Step 2: Payment with Thirdweb */}
+                    {/* Step 2: Automatic flow detection */}
                     {hasAmount ? (
-                      <div className="space-y-4">
-                        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                          <p className="text-sm text-amber-200">
-                            <span className="font-semibold">Passo 1:</span> Acquista ETH con carta
-                          </p>
-                          <p className="mt-1 text-xs text-amber-300/80">
-                            L'ETH verrà acquistato su Ethereum Mainnet e poi trasferito automaticamente su Base.
-                          </p>
-                        </div>
-                        <PayEmbed
-                          key={`card-${buyAmount}`}
-                          client={thirdwebClient}
-                          theme="dark"
-                          payOptions={{
-                            mode: "fund_wallet",
-                            prefillBuy: {
-                              chain: ethereum,
-                              amount: String((ethValue * 1.05).toFixed(4)),
-                            },
-                          }}
-                        />
-                        <p className="text-xs text-zinc-500">
-                          Dopo l'acquisto, usa il bottone qui sotto per trasferire gli ETH su Base e completare l'acquisto GBLIN.
-                        </p>
-                      </div>
+                      (() => {
+                        const requiredEth = ethValue * 1.02;
+                        const hasMainnetEth = mainnetEthBalance >= requiredEth * 0.8; // 80% tolerance
+                        const hasBaseEth = ethBalance >= requiredEth;
+
+                        // Step 3: Has Base ETH -> Buy GBLIN directly
+                        if (hasBaseEth) {
+                          return (
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                <p className="text-sm text-emerald-200">
+                                  <span className="font-semibold">Pronto!</span> Hai {ethBalance.toFixed(4)} ETH su Base
+                                </p>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!account) return;
+                                  const tx = prepareContractCall({
+                                    contract: gblinContract,
+                                    method: "function buyGBLIN(uint256 minGblinOut)",
+                                    params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
+                                    value: ethers.parseEther(requiredEth.toFixed(18)),
+                                  });
+                                  await sendTx(tx);
+                                }}
+                                disabled={isSending}
+                                className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
+                              >
+                                {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        // Step 2: Has Mainnet ETH but not Base -> Bridge to Base
+                        if (hasMainnetEth) {
+                          return (
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                <p className="text-sm text-amber-200">
+                                  <span className="font-semibold">Passo 2:</span> Trasferisci ETH su Base
+                                </p>
+                                <p className="mt-1 text-xs text-amber-300/80">
+                                  Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
+                                </p>
+                              </div>
+                              <a
+                                href={`https://bridge.base.org/deposit?amount=${(ethValue * 1.05).toFixed(4)}&from=ethereum&to=base`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block w-full rounded-2xl bg-[#0052FF] px-5 py-4 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
+                              >
+                                Trasferisci su Base →
+                              </a>
+                              <p className="text-xs text-zinc-500">
+                                Dopo il trasferimento, torna qui e clicca "Aggiorna" per completare l'acquisto.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        // Step 1: No ETH -> Buy on Mainnet with card
+                        return (
+                          <div className="space-y-4">
+                            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                              <p className="text-sm text-amber-200">
+                                <span className="font-semibold">Passo 1:</span> Acquista ETH con carta
+                              </p>
+                              <p className="mt-1 text-xs text-amber-300/80">
+                                L'ETH verrà acquistato su Ethereum Mainnet e poi trasferito su Base.
+                              </p>
+                            </div>
+                            <PayEmbed
+                              key={`card-${buyAmount}`}
+                              client={thirdwebClient}
+                              theme="dark"
+                              payOptions={{
+                                mode: "fund_wallet",
+                                prefillBuy: {
+                                  chain: ethereum,
+                                  amount: String((ethValue * 1.05).toFixed(4)),
+                                },
+                                buyWithFiat: {
+                                  prefillSource: {
+                                    currency: "EUR",
+                                  },
+                                },
+                              }}
+                            />
+                            <p className="text-xs text-zinc-500">
+                              Dopo l'acquisto, il sistema rileverà automaticamente gli ETH e ti guiderà al passo successivo.
+                            </p>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
                         <p className="text-zinc-500">Inserisci un importo per iniziare</p>
