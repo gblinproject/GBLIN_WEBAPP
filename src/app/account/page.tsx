@@ -1094,6 +1094,7 @@ export default function AccountPage() {
                             <BridgeWidget
                               client={thirdwebClient}
                               theme="dark"
+                              hide={{ buy: true }}
                               swap={{
                                 prefill: {
                                   sellToken: {
