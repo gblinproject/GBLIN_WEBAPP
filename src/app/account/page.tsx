@@ -677,22 +677,60 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                {/* Single button: handles both on-ramp (if needed) + buyGBLIN transaction */}
+                {/* STEP 1: Check if user has enough ETH */}
                 {hasAmount && (
-                  <PayEmbed
-                    client={thirdwebClient}
-                    theme="dark"
-                    payOptions={{
-                      mode: "transaction",
-                      buyWithCrypto: false,
-                      transaction: prepareContractCall({
-                        contract: gblinContract,
-                        method: "function buyGBLIN(uint256 minGblinOut)",
-                        params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
-                        value: ethers.parseEther((ethValue * 1.02).toFixed(18)),
-                      }),
-                    }}
-                  />
+                  (() => {
+                    const requiredEth = ethValue * 1.02;
+                    const hasEnoughEth = ethBalance >= requiredEth;
+
+                    if (!hasEnoughEth) {
+                      // Show on-ramp to buy ETH first, then user clicks GBLIN buy
+                      return (
+                        <div className="space-y-4">
+                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                            <p className="text-sm text-amber-200">
+                              Servono <span className="font-semibold">{requiredEth.toFixed(4)} ETH</span> per questo acquisto.
+                            </p>
+                            <p className="mt-1 text-xs text-amber-300/80">
+                              1. Acquista ETH con carta qui sotto<br/>
+                              2. Poi clicca "Completa acquisto GBLIN"
+                            </p>
+                          </div>
+                          <PayEmbed
+                            client={thirdwebClient}
+                            theme="dark"
+                            payOptions={{
+                              mode: "fund_wallet",
+                              prefillBuy: {
+                                chain: thirdwebChain,
+                                amount: requiredEth.toFixed(6),
+                              },
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    // Has enough ETH - show direct buy button
+                    return (
+                      <button
+                        onClick={async () => {
+                          if (!account) return;
+                          const tx = prepareContractCall({
+                            contract: gblinContract,
+                            method: "function buyGBLIN(uint256 minGblinOut)",
+                            params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
+                            value: ethers.parseEther(requiredEth.toFixed(18)),
+                          });
+                          await sendTx(tx);
+                        }}
+                        disabled={!address || isSending}
+                        className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
+                      >
+                        {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
+                      </button>
+                    );
+                  })()
                 )}
                 {!hasAmount && (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
