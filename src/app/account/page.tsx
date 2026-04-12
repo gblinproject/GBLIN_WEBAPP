@@ -8,7 +8,7 @@ import {
   useReadContract,
   useSendTransaction,
 } from "thirdweb/react";
-import { ConnectButton, PayEmbed } from "thirdweb/react";
+import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
 import { getContract, prepareContractCall } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
@@ -718,16 +718,25 @@ export default function AccountPage() {
                                   Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
                                 </p>
                               </div>
-                              <a
-                                href={`https://bridge.base.org/deposit?amount=${(ethValue * 1.05).toFixed(4)}&from=ethereum&to=base`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block w-full rounded-2xl bg-[#0052FF] px-5 py-4 text-center text-sm font-semibold text-white transition hover:bg-[#0052FF]/90"
-                              >
-                                Trasferisci su Base →
-                              </a>
+                              <BridgeWidget
+                                client={thirdwebClient}
+                                theme="dark"
+                                currency="EUR"
+                                swap={{
+                                  prefill: {
+                                    sellToken: {
+                                      chainId: 1, // Ethereum Mainnet
+                                      amount: (ethValue * 1.05).toFixed(4),
+                                    },
+                                    buyToken: {
+                                      chainId: 8453, // Base
+                                      tokenAddress: undefined, // Native ETH
+                                    },
+                                  },
+                                }}
+                              />
                               <p className="text-xs text-zinc-500">
-                                Dopo il trasferimento, torna qui e clicca "Aggiorna" per completare l'acquisto.
+                                Dopo il trasferimento, il sistema rileverà automaticamente gli ETH su Base.
                               </p>
                             </div>
                           );
