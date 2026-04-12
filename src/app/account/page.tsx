@@ -690,6 +690,9 @@ export default function AccountPage() {
                         params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
                         value: ethers.parseEther((ethValue * 1.02).toFixed(18)),
                       }),
+                      prefillSource: {
+                        amount: (ethValue * 1.02).toFixed(6),
+                      },
                     }}
                   />
                 )}
