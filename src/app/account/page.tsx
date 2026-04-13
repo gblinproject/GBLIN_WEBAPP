@@ -1110,55 +1110,107 @@ export default function AccountPage() {
                               </div>
                             </div>
 
-                        {/* Step 3: Buy GBLIN with Base ETH - uses same BuyView as advanced tab */}
+                        {/* Step 3: Buy GBLIN — simplified UI for neofiti */}
                         {activeStep === 3 && (
-                          <BuyView
-                            t={t}
-                            mode={tradeMode}
-                            setMode={setTradeMode}
-                            amount={amount}
-                            setAmount={setAmount}
-                            slippage={slippage}
-                            setSlippage={setSlippage}
-                            quote={quote}
-                            usdValue={usdValue}
-                            isLoadingQuote={isLoadingQuote}
-                            isTransacting={isTransacting}
-                            isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && !isLoadingQuote && rawQuote <= 0n)}
-                            executeTrade={executeTrade}
-                            tradeError={tradeError}
-                            tradeTxHash={tradeTxHash}
-                            ethBalance={String(ethBalance)}
-                            gblinBalance={balance.toFixed(4)}
-                            inputBalance={inputBalanceDisplay}
-                            isConnected={!!account}
-                            address={address}
-                            openWallet={() => {}}
-                            disconnectWallet={() => {}}
-                            copyContract={() => {}}
-                            copied={false}
-                            marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
-                            onChainData={{ nav: `$${(gblinPriceUsd * balance).toFixed(2)}`, ...onChainData }}
-                            basketData={[]}
-                            lastYieldDistribution={0}
-                            discountPercentage={0}
-                            isMarketLoading={false}
-                            isOnChainLoading={false}
-                            isTransactionsLoading={false}
-                            transactions={[]}
-                            logs={[]}
-                            refreshAllData={() => {}}
-                            buyTokenOptions={buyTokenOptions}
-                            customTokenAddress={customTokenAddress}
-                            quoteAssetLabel={quoteAssetLabel}
-                            redeemOption={redeemOption}
-                            resolvedTokenSymbol={resolvedTokenSymbol}
-                            selectedToken={selectedToken}
-                            setCustomTokenAddress={setCustomTokenAddress}
-                            setRedeemOption={setRedeemOption}
-                            setSelectedToken={setSelectedToken}
-                            tokenBalance={tokenBalance}
-                          />
+                          <div className="space-y-4">
+                            {/* Wallet balance */}
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">ETH disponibili</p>
+                                <p className="mt-2 text-lg font-semibold text-white">{ethBalance.toFixed(6)} ETH</p>
+                                <p className="mt-1 text-xs text-zinc-500">≈ ${(ethBalance * ethPriceUsd).toFixed(2)}</p>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">GBLIN in portafoglio</p>
+                                <p className="mt-2 text-lg font-semibold text-white">{balance.toFixed(4)} GBLIN</p>
+                                <p className="mt-1 text-xs text-zinc-500">≈ ${(balance * gblinPriceUsd).toFixed(2)}</p>
+                              </div>
+                            </div>
+
+                            {/* ETH amount input with max pre-filled */}
+                            <div className="rounded-[24px] border border-amber-500/20 bg-black/20 px-5 py-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={step3EthAmount}
+                                  onChange={(e) => setStep3EthAmount(e.target.value.replace(',', '.'))}
+                                  placeholder="0.000000"
+                                  className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setStep3EthAmount((ethBalance * 0.9999).toFixed(6))}
+                                  className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
+                                >
+                                  Max
+                                </button>
+                                <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">ETH</span>
+                              </div>
+                              <div className="mt-2 flex items-center justify-between text-sm text-zinc-500">
+                                <span>
+                                  {(() => {
+                                    const ethAmt = parseFloat(step3EthAmount) || 0;
+                                    const usdVal = ethAmt * ethPriceUsd;
+                                    const gblinEst = gblinPriceUsd > 0 ? (usdVal / gblinPriceUsd) : 0;
+                                    return ethAmt > 0 ? `≈ $${usdVal.toFixed(2)} · ≈ ${gblinEst.toFixed(4)} GBLIN` : '';
+                                  })()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Buy button */}
+                            <button
+                              onClick={async () => {
+                                if (!account) return;
+                                const ethAmt = parseFloat(step3EthAmount);
+                                if (!ethAmt || ethAmt <= 0) return;
+                                try {
+                                  setPendingTx(true);
+                                  const ethAmount = ethers.parseEther(ethAmt.toFixed(18));
+                                  const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+                                  const minAmountOut = (quotedGblinOut * 9800n) / 10000n;
+                                  const tx = prepareContractCall({
+                                    contract: gblinContract,
+                                    method: "function buyGBLIN(uint256 minGblinOut) payable",
+                                    params: [minAmountOut],
+                                    value: ethAmount,
+                                  });
+                                  sendTx(tx, {
+                                    onSuccess: () => {
+                                      showSuccess("GBLIN acquistati con successo!");
+                                      setPendingTx(false);
+                                      setStep3EthAmount("");
+                                      setTimeout(() => fetchTransactions(), 3000);
+                                    },
+                                    onError: (err: Error) => {
+                                      setPendingTx(false);
+                                      console.error("Buy GBLIN error:", err);
+                                    },
+                                  });
+                                } catch (err: any) {
+                                  setPendingTx(false);
+                                  console.error("Buy GBLIN error:", err);
+                                }
+                              }}
+                              disabled={pendingTx || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
+                              className="w-full rounded-full bg-amber-400 px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_0_24px_rgba(245,158,11,0.25)]"
+                            >
+                              {pendingTx ? "Acquisto in corso..." : "Acquista GBLIN →"}
+                            </button>
+
+                            {/* Success message */}
+                            {txSuccess && (
+                              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+                                <p className="font-semibold">Transazione Riuscita!</p>
+                                {txHash && (
+                                  <a className="mt-2 inline-flex items-center gap-2 text-emerald-200 hover:text-white" href={`https://basescan.org/tx/${txHash}`} rel="noreferrer" target="_blank">
+                                    Vedi su Explorer <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
 
                         {/* Step 2: Bridge ETH to Base */}
