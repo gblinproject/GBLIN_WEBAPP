@@ -648,13 +648,15 @@ export default function AccountPage() {
   }, [pendingTx, isSending, fetchTransactions]);
 
   // Auto-fill max ETH amount when entering Step 3
+  // Also check if we're in auto-detect mode (cardWizardStep === null but activeStep would be 3)
+  const effectiveStep3 = cardWizardStep ?? (ethBalance > 0 && !hasAmount ? 3 : 1);
   useEffect(() => {
-    if (cardWizardStep === 3 && ethBalance > 0) {
+    if (effectiveStep3 === 3 && ethBalance > 0) {
       // Use 99.99% of balance (0.01% fee buffer)
       const maxEth = ethBalance * 0.9999;
       setStep3EthAmount(maxEth.toFixed(6));
     }
-  }, [cardWizardStep, ethBalance]);
+  }, [effectiveStep3, ethBalance, hasAmount]);
 
   // Bridge timer countdown
   useEffect(() => {
@@ -1055,9 +1057,11 @@ export default function AccountPage() {
                     </div>
 
                     {/* Step 2: Automatic flow detection */}
-                    {hasAmount ? (
+                    {(hasAmount || ethBalance > 0 || mainnetEthBalance > 0) ? (
                       (() => {
-                        const requiredEth = ethValue * 1.02;
+                        // If no amount entered but has ETH, use minimum required
+                        const effectiveEthValue = hasAmount ? ethValue : (ethBalance > 0 ? ethBalance * 0.99 : 0.01);
+                        const requiredEth = effectiveEthValue * 1.02;
                         const hasMainnetEth = mainnetEthBalance >= requiredEth * 0.8; // 80% tolerance
                         const hasBaseEth = ethBalance >= requiredEth;
 
