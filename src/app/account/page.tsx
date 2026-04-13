@@ -9,7 +9,7 @@ import {
   useSendTransaction,
 } from "thirdweb/react";
 import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
-import { getContract, prepareContractCall } from "thirdweb";
+import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { ethers } from "ethers";
@@ -1110,91 +1110,55 @@ export default function AccountPage() {
                               </div>
                             </div>
 
-                        {/* Step 3: Buy GBLIN with Base ETH */}
+                        {/* Step 3: Buy GBLIN with Base ETH - uses same BuyView as advanced tab */}
                         {activeStep === 3 && (
-                          <>
-                            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                              <p className="text-sm text-emerald-200">
-                                <span className="font-semibold">Passo 3:</span> Pronto per acquistare GBLIN
-                              </p>
-                              <p className="mt-1 text-xs text-emerald-300/80">
-                                Hai {ethBalance.toFixed(4)} ETH su Base. Inserisci l'importo ETH da usare.
-                              </p>
-                            </div>
-                            {/* ETH Input with Max button */}
-                            <div className="relative">
-                              <input
-                                type="number"
-                                value={step3EthAmount}
-                                onChange={(e) => setStep3EthAmount(e.target.value)}
-                                placeholder="0.0"
-                                step="0.0001"
-                                min="0"
-                                className="w-full rounded-2xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 pr-20 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:outline-none"
-                              />
-                              <button
-                                onClick={() => {
-                                  // Use 99.99% of balance (0.01% fee buffer)
-                                  const maxEth = ethBalance * 0.9999;
-                                  setStep3EthAmount(maxEth.toFixed(6));
-                                }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600"
-                              >
-                                Max
-                              </button>
-                            </div>
-                            {(() => {
-                              const ethAmt = parseFloat(step3EthAmount) || 0;
-                              const gblinEst = ethPriceUsd > 0 && gblinPriceUsd > 0
-                                ? (ethAmt * ethPriceUsd / gblinPriceUsd).toFixed(4)
-                                : '0';
-                              return ethAmt > 0 ? (
-                                <p className="text-sm text-zinc-400">
-                                  Riceverai circa <span className="font-semibold text-amber-300">{gblinEst} GBLIN</span>
-                                </p>
-                              ) : null;
-                            })()}
-                            <button
-                              onClick={async () => {
-                                if (!account) return;
-                                const ethAmt = parseFloat(step3EthAmount);
-                                if (!ethAmt || ethAmt <= 0) return;
-                                try {
-                                  setPendingTx(true);
-                                  // Use contract quote for accurate minGblinOut (same as advanced tab)
-                                  const ethAmount = ethers.parseEther(ethAmt.toFixed(18));
-                                  const quotedGblinOut = await quoteMintFromWeth(ethAmount);
-                                  // 2% slippage protection (200 bps)
-                                  const minAmountOut = (quotedGblinOut * 9800n) / 10000n;
-                                  const tx = prepareContractCall({
-                                    contract: gblinContract,
-                                    method: "function buyGBLIN(uint256 minGblinOut) payable",
-                                    params: [minAmountOut],
-                                    value: ethAmount,
-                                  });
-                                  sendTx(tx, {
-                                    onSuccess: () => {
-                                      showSuccess("GBLIN acquistati con successo!");
-                                      setPendingTx(false);
-                                      setStep3EthAmount("");
-                                      setTimeout(() => fetchTransactions(), 3000);
-                                    },
-                                    onError: (err: Error) => {
-                                      setPendingTx(false);
-                                      console.error("Buy GBLIN error:", err);
-                                    },
-                                  });
-                                } catch (err: any) {
-                                  setPendingTx(false);
-                                  console.error("Buy GBLIN error:", err);
-                                }
-                              }}
-                              disabled={isSending || pendingTx || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
-                              className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
-                            >
-                              {isSending || pendingTx ? "Acquisto in corso..." : "Acquista GBLIN"}
-                            </button>
-                          </>
+                          <BuyView
+                            t={t}
+                            mode={tradeMode}
+                            setMode={setTradeMode}
+                            amount={amount}
+                            setAmount={setAmount}
+                            slippage={slippage}
+                            setSlippage={setSlippage}
+                            quote={quote}
+                            usdValue={usdValue}
+                            isLoadingQuote={isLoadingQuote}
+                            isTransacting={isTransacting}
+                            isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && rawQuote <= 0n)}
+                            executeTrade={executeTrade}
+                            tradeError={tradeError}
+                            tradeTxHash={tradeTxHash}
+                            ethBalance={String(ethBalance)}
+                            gblinBalance={balance.toFixed(4)}
+                            inputBalance={inputBalanceDisplay}
+                            isConnected={!!account}
+                            address={address}
+                            openWallet={() => {}}
+                            disconnectWallet={() => {}}
+                            copyContract={() => {}}
+                            copied={false}
+                            marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
+                            onChainData={{ nav: `$${(gblinPriceUsd * balance).toFixed(2)}`, ...onChainData }}
+                            basketData={[]}
+                            lastYieldDistribution={0}
+                            discountPercentage={0}
+                            isMarketLoading={false}
+                            isOnChainLoading={false}
+                            isTransactionsLoading={false}
+                            transactions={[]}
+                            logs={[]}
+                            refreshAllData={() => {}}
+                            buyTokenOptions={buyTokenOptions}
+                            customTokenAddress={customTokenAddress}
+                            quoteAssetLabel={quoteAssetLabel}
+                            redeemOption={redeemOption}
+                            resolvedTokenSymbol={resolvedTokenSymbol}
+                            selectedToken={selectedToken}
+                            setCustomTokenAddress={setCustomTokenAddress}
+                            setRedeemOption={setRedeemOption}
+                            setSelectedToken={setSelectedToken}
+                            tokenBalance={tokenBalance}
+                          />
                         )}
 
                         {/* Step 2: Bridge ETH to Base */}
