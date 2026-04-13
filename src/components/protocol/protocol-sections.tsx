@@ -621,7 +621,7 @@ export function BuyView(props: BuyViewProps) {
     if (inputMode === 'fiat') {
       const usd = n * fxRate;
       const ethVal = usd / ethPrice;
-      const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(2) : '—';
+      const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(6) : '—';
       return `≈ ${ethVal.toFixed(5)} ETH · ≈ ${gblinEst} GBLIN`;
     }
     if (inputMode === 'gblin') {
@@ -633,7 +633,7 @@ export function BuyView(props: BuyViewProps) {
     // crypto mode — show fiat equivalent
     const usd = n * ethPrice;
     const fiatVal = (usd / fxRate).toFixed(2);
-    const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(2) : '—';
+    const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(6) : '—';
     return `≈ ${fiat.symbol}${fiatVal} · ≈ ${gblinEst} GBLIN`;
   }, [displayValue, inputMode, ethPrice, fxRate, gblinPriceUsd, fiat]);
 
@@ -838,6 +838,30 @@ export function BuyView(props: BuyViewProps) {
                     type="text"
                     value={mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto' ? displayValue : amount}
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bal = mode === 'sell' ? parseFloat(gblinBalance) : parseFloat(inputBalance);
+                      if (!bal || bal <= 0) return;
+                      const maxVal = (bal * 0.9999).toFixed(6);
+                      if (mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto') {
+                        if (inputMode === 'fiat') {
+                          const ethBal = parseFloat(ethBalance);
+                          const fiatMax = (ethBal * 0.9999 * ethPrice / fxRate).toFixed(2);
+                          setDisplayValue(fiatMax);
+                        } else {
+                          const ethBal = parseFloat(ethBalance);
+                          const gblinMax = gblinPriceUsd > 0 ? (ethBal * 0.9999 * ethPrice / gblinPriceUsd).toFixed(4) : '0';
+                          setDisplayValue(gblinMax);
+                        }
+                      } else {
+                        handleCryptoAmountChange(maxVal);
+                      }
+                    }}
+                    className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
+                  >
+                    Max
+                  </button>
                   <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">
                     {mode === 'buy' && selectedToken === 'ETH' ? inputSuffix[inputMode] : (mode === 'buy' ? resolvedTokenSymbol : 'GBLIN')}
                   </span>
@@ -864,7 +888,7 @@ export function BuyView(props: BuyViewProps) {
               </label>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.outputAsset')}</p>
-                <p className="mt-3 break-words text-base font-semibold leading-7 text-white">{isLoadingQuote ? '...' : quote}</p>
+                <p className="mt-3 break-words text-base font-semibold leading-7 text-white">{isLoadingQuote ? '...' : (parseFloat(quote) > 0 && parseFloat(quote) < 0.0001 ? parseFloat(quote).toFixed(8) : quote)}</p>
                 <p className="mt-2 text-sm text-zinc-500">{quoteAssetLabel}</p>
               </div>
             </div>

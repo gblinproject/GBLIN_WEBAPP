@@ -1124,7 +1124,7 @@ export default function AccountPage() {
                             usdValue={usdValue}
                             isLoadingQuote={isLoadingQuote}
                             isTransacting={isTransacting}
-                            isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && rawQuote <= 0n)}
+                            isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && !isLoadingQuote && rawQuote <= 0n)}
                             executeTrade={executeTrade}
                             tradeError={tradeError}
                             tradeTxHash={tradeTxHash}
@@ -1319,7 +1319,7 @@ export default function AccountPage() {
                   usdValue={usdValue}
                   isLoadingQuote={isLoadingQuote}
                   isTransacting={isTransacting}
-                  isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && rawQuote <= 0n)}
+                  isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && !isLoadingQuote && rawQuote <= 0n)}
                   executeTrade={executeTrade}
                   tradeError={tradeError}
                   tradeTxHash={tradeTxHash}
