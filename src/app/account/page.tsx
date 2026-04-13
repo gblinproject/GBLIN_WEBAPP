@@ -1171,20 +1171,6 @@ export default function AccountPage() {
 
                         {/* Step 1: Buy ETH with card */}
                         {activeStep === 1 && (
-                          <>
-                            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                              <p className="text-sm text-amber-200">
-                                <span className="font-semibold">Passo 1:</span> Acquista ETH con carta
-                              </p>
-                              <p className="mt-1 text-xs text-amber-300/80">
-                                L'ETH verrà acquistato su Ethereum Mainnet e poi trasferito su Base.
-                              </p>
-                            </div>
-                            <PayEmbed
-                              key={`card-${buyAmount}`}
-                              client={thirdwebClient}
-                              theme="dark"
-                              payOptions={{
                                 mode: "fund_wallet",
                                 prefillBuy: {
                                   chain: ethereum,
