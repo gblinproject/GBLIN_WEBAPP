@@ -647,6 +647,15 @@ export default function AccountPage() {
     }
   }, [pendingTx, isSending, fetchTransactions]);
 
+  // Auto-fill max ETH amount when entering Step 3
+  useEffect(() => {
+    if (activeStep === 3 && ethBalance > 0) {
+      // Use 99.99% of balance (0.01% fee buffer)
+      const maxEth = ethBalance * 0.9999;
+      setStep3EthAmount(maxEth.toFixed(6));
+    }
+  }, [activeStep, ethBalance]);
+
   // Bridge timer countdown
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -1126,8 +1135,8 @@ export default function AccountPage() {
                               />
                               <button
                                 onClick={() => {
-                                  // Leave ~0.0001 ETH for gas
-                                  const maxEth = Math.max(0, ethBalance - 0.0001);
+                                  // Use 99.99% of balance (0.01% fee buffer)
+                                  const maxEth = ethBalance * 0.9999;
                                   setStep3EthAmount(maxEth.toFixed(6));
                                 }}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600"
