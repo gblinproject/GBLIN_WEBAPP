@@ -1248,11 +1248,14 @@ export default function AccountPage() {
                                     tokenAddress: undefined, // ETH only, NO SWAP to GBLIN
                                   },
                                 },
-                              }}
-                              onSwapStart={() => {
-                                setIsBridging(true);
-                                setBridgeStatus('processing');
-                                setBridgeTimeLeft(60);
+                                onSuccess: () => {
+                                  setIsBridging(false);
+                                  showSuccess("Bridge completato! ETH arrivati su Base.");
+                                  setTimeout(() => setCardWizardStep(3), 2000);
+                                },
+                                onError: () => {
+                                  setBridgeStatus('failed');
+                                },
                               }}
                             />
                             <p className="text-xs text-zinc-500">
