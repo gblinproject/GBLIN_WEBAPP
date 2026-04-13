@@ -107,6 +107,8 @@ export default function AccountPage() {
   const [ethBalance, setEthBalance] = useState<number>(0);
   const [mainnetEthBalance, setMainnetEthBalance] = useState<number>(0);
   const [cardWizardStep, setCardWizardStep] = useState<1 | 2 | 3 | null>(null); // null = auto-detect based on balances
+  const [step3EthAmount, setStep3EthAmount] = useState<string>("");
+  const [pendingTx, setPendingTx] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -560,73 +562,87 @@ export default function AccountPage() {
   ]);
 
   // Fetch user transactions via Moralis (ERC-20 transfers + contract txs for rebalance)
-  useEffect(() => {
+  const fetchTransactions = useCallback(async () => {
     if (!address) return;
-    const fetchTxs = async () => {
-      setLoadingTx(true);
-      try {
-        const headers = { accept: "application/json", "X-API-Key": MORALIS_API_KEY };
-        const erc20Url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
-        const contractTxUrl = `https://deep-index.moralis.io/api/v2.2/${address}?chain=base&order=DESC&limit=25&to_address=${CONTRACT_ADDRESS}`;
+    setLoadingTx(true);
+    try {
+      const headers = { accept: "application/json", "X-API-Key": MORALIS_API_KEY };
+      const erc20Url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
+      const contractTxUrl = `https://deep-index.moralis.io/api/v2.2/${address}?chain=base&order=DESC&limit=25&to_address=${CONTRACT_ADDRESS}`;
 
-        const [erc20Res, contractRes] = await Promise.all([
-          fetch(erc20Url, { headers }),
-          fetch(contractTxUrl, { headers }),
-        ]);
+      const [erc20Res, contractRes] = await Promise.all([
+        fetch(erc20Url, { headers }),
+        fetch(contractTxUrl, { headers }),
+      ]);
 
-        // Build map: hash → { erc20Amount, timestamp, type from input }
-        const txMap = new Map<string, { hash: string; amount: number; timestamp: number; type: Transaction["type"] }>();
+      // Build map: hash → { erc20Amount, timestamp, type from input }
+      const txMap = new Map<string, { hash: string; amount: number; timestamp: number; type: Transaction["type"] }>();
 
-        if (contractRes.ok) {
-          const data = await contractRes.json();
-          for (const tx of (data.result || [])) {
-            const selector = tx.input?.slice(0, 10)?.toLowerCase();
-            const ts = new Date(tx.block_timestamp).getTime();
-            let type: Transaction["type"] = "buy";
-            if (selector === REBALANCE_SELECTOR) type = "rebalance" as Transaction["type"];
-            else if (SELL_SELECTORS.has(selector)) type = "sell";
-            else if (BUY_SELECTORS.has(selector)) type = "buy";
-            else continue; // skip unrelated txs
-            txMap.set(tx.hash, { hash: tx.hash, amount: 0, timestamp: ts, type });
+      if (contractRes.ok) {
+        const data = await contractRes.json();
+        for (const tx of (data.result || [])) {
+          const selector = tx.input?.slice(0, 10)?.toLowerCase();
+          const ts = new Date(tx.block_timestamp).getTime();
+          let type: Transaction["type"] = "buy";
+          if (selector === REBALANCE_SELECTOR) type = "rebalance" as Transaction["type"];
+          else if (SELL_SELECTORS.has(selector)) type = "sell";
+          else if (BUY_SELECTORS.has(selector)) type = "buy";
+          else continue; // skip unrelated txs
+          txMap.set(tx.hash, { hash: tx.hash, amount: 0, timestamp: ts, type });
+        }
+      }
+
+      if (erc20Res.ok) {
+        const data = await erc20Res.json();
+        for (const tx of (data.result || [])) {
+          const amount = parseFloat(ethers.formatUnits(tx.value, 18));
+          const ts = new Date(tx.block_timestamp).getTime();
+          const hash = tx.transaction_hash;
+          const existing = txMap.get(hash);
+          if (existing) {
+            existing.amount = amount;
+          } else {
+            const isIncoming = tx.to_address?.toLowerCase() === address.toLowerCase();
+            const type: Transaction["type"] = isIncoming
+              ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
+              : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
+            txMap.set(hash, { hash, amount, timestamp: ts, type });
           }
         }
+      }
 
-        if (erc20Res.ok) {
-          const data = await erc20Res.json();
-          for (const tx of (data.result || [])) {
-            const amount = parseFloat(ethers.formatUnits(tx.value, 18));
-            const ts = new Date(tx.block_timestamp).getTime();
-            const hash = tx.transaction_hash;
-            const existing = txMap.get(hash);
-            if (existing) {
-              existing.amount = amount;
-            } else {
-              const isIncoming = tx.to_address?.toLowerCase() === address.toLowerCase();
-              const type: Transaction["type"] = isIncoming
-                ? tx.from_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "buy" : "transfer_in"
-                : tx.to_address?.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() ? "sell" : "transfer_out";
-              txMap.set(hash, { hash, amount, timestamp: ts, type });
-            }
-          }
-        }
+      const txs: Transaction[] = Array.from(txMap.values())
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((tx) => ({
+          hash: tx.hash,
+          type: tx.type,
+          amount: tx.amount.toFixed(4),
+          valueUsd: (tx.amount * gblinPriceUsd).toFixed(2),
+          time: new Date(tx.timestamp).toLocaleString(),
+          timestamp: tx.timestamp,
+        }));
 
-        const txs: Transaction[] = Array.from(txMap.values())
-          .sort((a, b) => b.timestamp - a.timestamp)
-          .map((tx) => ({
-            hash: tx.hash,
-            type: tx.type,
-            amount: tx.amount.toFixed(4),
-            valueUsd: (tx.amount * gblinPriceUsd).toFixed(2),
-            time: new Date(tx.timestamp).toLocaleString(),
-            timestamp: tx.timestamp,
-          }));
-
-        setTransactions(txs);
-      } catch {}
-      finally { setLoadingTx(false); }
-    };
-    fetchTxs();
+      setTransactions(txs);
+    } catch {}
+    finally { setLoadingTx(false); }
   }, [address, gblinPriceUsd]);
+
+  // Auto-fetch transactions on mount/address change
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Monitor transaction completion for Step 3
+  useEffect(() => {
+    if (pendingTx && !isSending) {
+      // Transaction completed
+      setPendingTx(false);
+      setStep3EthAmount("");
+      showSuccess("Transazione completata!");
+      // Refresh transactions after a delay to allow Moralis to index
+      setTimeout(() => fetchTransactions(), 3000);
+    }
+  }, [pendingTx, isSending, fetchTransactions]);
 
   const handleDisconnect = () => { if (wallet) wallet.disconnect(); };
 
@@ -1058,24 +1074,64 @@ export default function AccountPage() {
                                 <span className="font-semibold">Passo 3:</span> Pronto per acquistare GBLIN
                               </p>
                               <p className="mt-1 text-xs text-emerald-300/80">
-                                Hai {ethBalance.toFixed(4)} ETH su Base. Clicca il bottone per acquistare {gblinQty.toFixed(4)} GBLIN.
+                                Hai {ethBalance.toFixed(4)} ETH su Base. Inserisci l'importo ETH da usare.
                               </p>
                             </div>
+                            {/* ETH Input with Max button */}
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={step3EthAmount}
+                                onChange={(e) => setStep3EthAmount(e.target.value)}
+                                placeholder="0.0"
+                                step="0.0001"
+                                min="0"
+                                className="w-full rounded-2xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 pr-20 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:outline-none"
+                              />
+                              <button
+                                onClick={() => {
+                                  // Leave ~0.0001 ETH for gas
+                                  const maxEth = Math.max(0, ethBalance - 0.0001);
+                                  setStep3EthAmount(maxEth.toFixed(6));
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600"
+                              >
+                                Max
+                              </button>
+                            </div>
+                            {(() => {
+                              const ethAmt = parseFloat(step3EthAmount) || 0;
+                              const gblinEst = ethPriceUsd > 0 && gblinPriceUsd > 0
+                                ? (ethAmt * ethPriceUsd / gblinPriceUsd).toFixed(4)
+                                : '0';
+                              return ethAmt > 0 ? (
+                                <p className="text-sm text-zinc-400">
+                                  Riceverai circa <span className="font-semibold text-amber-300">{gblinEst} GBLIN</span>
+                                </p>
+                              ) : null;
+                            })()}
                             <button
                               onClick={async () => {
                                 if (!account) return;
+                                const ethAmt = parseFloat(step3EthAmount);
+                                if (!ethAmt || ethAmt <= 0) return;
+                                // Calculate expected GBLIN with 2% slippage protection
+                                const expectedGblin = (ethAmt * ethPriceUsd) / gblinPriceUsd;
+                                const minGblinOut = ethers.parseEther((expectedGblin * 0.98).toFixed(18));
                                 const tx = prepareContractCall({
                                   contract: gblinContract,
                                   method: "function buyGBLIN(uint256 minGblinOut)",
-                                  params: [ethers.parseEther((gblinQty * 0.98).toFixed(18))],
-                                  value: ethers.parseEther(requiredEth.toFixed(18)),
+                                  params: [minGblinOut],
+                                  value: ethers.parseEther(ethAmt.toFixed(18)),
                                 });
+                                setPendingTx(true);
                                 await sendTx(tx);
+                                // Success will be handled by useEffect monitoring pendingTx
                               }}
-                              disabled={isSending}
+                              disabled={isSending || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
                               className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
                             >
-                              {isSending ? "Acquisto in corso..." : `Acquista ${gblinQty.toFixed(4)} GBLIN`}
+                              {isSending ? "Acquisto in corso..." : "Acquista GBLIN"}
                             </button>
                           </>
                         )}
