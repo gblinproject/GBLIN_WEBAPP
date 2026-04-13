@@ -110,7 +110,6 @@ export default function AccountPage() {
   const [step3EthAmount, setStep3EthAmount] = useState<string>("");
   const [pendingTx, setPendingTx] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isEuropeanIp, setIsEuropeanIp] = useState<boolean | null>(null); // null = loading
   const [loadingTx, setLoadingTx] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -632,31 +631,6 @@ export default function AccountPage() {
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
-
-  // Detect if user is in Europe for currency configuration
-  useEffect(() => {
-    const detectRegion = async () => {
-      try {
-        const response = await fetch('https://ipapi.co/json/');
-        if (response.ok) {
-          const data = await response.json();
-          // European Union country codes + UK + Switzerland + Norway
-          const euCountries = [
-            'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
-            'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
-            'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
-            'GB', 'UK', 'CH', 'NO', 'IS', 'LI'
-          ];
-          setIsEuropeanIp(euCountries.includes(data.country_code));
-        } else {
-          setIsEuropeanIp(false);
-        }
-      } catch {
-        setIsEuropeanIp(false);
-      }
-    };
-    detectRegion();
-  }, []);
 
   // Monitor transaction completion for Step 3
   useEffect(() => {
@@ -1216,16 +1190,9 @@ export default function AccountPage() {
                                   chain: ethereum,
                                   amount: String((ethValue * 1.05).toFixed(4)),
                                 },
-                                buyWithFiat: isEuropeanIp === true ? {
-                                  // European users: force EUR and EU-compatible providers
+                                buyWithFiat: {
                                   prefillSource: {
                                     currency: "EUR",
-                                  },
-                                  preferredProvider: "transak",
-                                } : {
-                                  // Non-European users: use default configuration
-                                  prefillSource: {
-                                    currency: "USD",
                                   },
                                 },
                               }}
