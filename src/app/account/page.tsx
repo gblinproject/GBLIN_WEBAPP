@@ -649,12 +649,12 @@ export default function AccountPage() {
 
   // Auto-fill max ETH amount when entering Step 3
   useEffect(() => {
-    if (activeStep === 3 && ethBalance > 0) {
+    if (cardWizardStep === 3 && ethBalance > 0) {
       // Use 99.99% of balance (0.01% fee buffer)
       const maxEth = ethBalance * 0.9999;
       setStep3EthAmount(maxEth.toFixed(6));
     }
-  }, [activeStep, ethBalance]);
+  }, [cardWizardStep, ethBalance]);
 
   // Bridge timer countdown
   useEffect(() => {
