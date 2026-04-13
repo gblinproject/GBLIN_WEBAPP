@@ -788,6 +788,10 @@ export default function AccountPage() {
                   size: "wide",
                   title: t("account.loginHeadline"),
                   showThirdwebBranding: false,
+                  welcomeScreen: {
+                    title: "GBLIN",
+                    subtitle: "Accedi con email, Google o wallet",
+                  },
                 }}
               />
             )}
@@ -821,6 +825,10 @@ export default function AccountPage() {
                   size: "wide",
                   title: t("account.loginHeadline"),
                   showThirdwebBranding: false,
+                  welcomeScreen: {
+                    title: "GBLIN",
+                    subtitle: "Accedi con email, Google o wallet",
+                  },
                 }}
               />
               <p className="text-xs text-zinc-600">{t("account.poweredBy")} <span className="text-zinc-500">Thirdweb · Base</span></p>
