@@ -1171,6 +1171,17 @@ export default function AccountPage() {
 
                         {/* Step 1: Buy ETH with card */}
                         {activeStep === 1 && (
+                          <>
+                            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+                              <p className="text-sm font-medium text-rose-300">
+                                🔴 <strong>Avviso per utenti EU:</strong> Seleziona <strong>Stripe</strong> come provider. Quando richiesto, il campo TIN è il tuo <strong>Codice Fiscale</strong>.
+                              </p>
+                            </div>
+                            <PayEmbed
+                              key={`card-${buyAmount}`}
+                              client={thirdwebClient}
+                              theme="dark"
+                              payOptions={{
                                 mode: "fund_wallet",
                                 prefillBuy: {
                                   chain: ethereum,
