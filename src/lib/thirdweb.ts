@@ -12,13 +12,10 @@ export const thirdwebClient = createThirdwebClient({
 export const chain = base;
 
 export const wallets = [
-  createWallet("io.metamask"),
-  createWallet("io.rabby"),
-  createWallet("com.coinbase.wallet"),
-  createWallet("walletConnect"),
   inAppWallet({
     auth: {
-      options: ["google", "email", "passkey"],
+      options: ["email", "google", "passkey"],
+      mode: "popup",
     },
     metadata: {
       name: "GBLIN",
@@ -29,4 +26,8 @@ export const wallets = [
       },
     },
   }),
+  createWallet("io.metamask"),
+  createWallet("io.rabby"),
+  createWallet("com.coinbase.wallet"),
+  createWallet("walletConnect"),
 ];
