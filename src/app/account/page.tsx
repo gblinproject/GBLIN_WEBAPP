@@ -111,6 +111,9 @@ export default function AccountPage() {
   const [pendingTx, setPendingTx] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
+  const [isBridging, setIsBridging] = useState<boolean>(false);
+  const [bridgeTimeLeft, setBridgeTimeLeft] = useState<number>(60);
+  const [bridgeStatus, setBridgeStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const [copied, setCopied] = useState(false);
 
   // Advanced trading states for BuyView
@@ -644,6 +647,39 @@ export default function AccountPage() {
     }
   }, [pendingTx, isSending, fetchTransactions]);
 
+  // Bridge timer countdown
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isBridging && bridgeStatus === 'processing' && bridgeTimeLeft > 0) {
+      interval = setInterval(() => {
+        setBridgeTimeLeft((prev) => {
+          if (prev <= 1) {
+            // Timer expired
+            setBridgeStatus('failed');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isBridging, bridgeStatus, bridgeTimeLeft]);
+
+  // Monitor bridge success (when balance changes during bridging)
+  useEffect(() => {
+    if (isBridging && bridgeStatus === 'processing') {
+      // Check if ETH arrived on Base
+      if (ethBalance > 0 && mainnetEthBalance < 0.001) {
+        // Bridge likely succeeded
+        setBridgeStatus('success');
+        setIsBridging(false);
+        showSuccess("Bridge completato! ETH arrivati su Base.");
+        // Auto-advance to step 3
+        setTimeout(() => setCardWizardStep(3), 2000);
+      }
+    }
+  }, [ethBalance, mainnetEthBalance, isBridging, bridgeStatus]);
+
   const handleDisconnect = () => { if (wallet) wallet.disconnect(); };
 
   const copyAddress = () => {
@@ -1139,12 +1175,60 @@ export default function AccountPage() {
                         {/* Step 2: Bridge ETH to Base */}
                         {activeStep === 2 && (
                           <>
+                            {/* Bridge Progress Modal */}
+                            {isBridging && (
+                              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                                <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-zinc-900 p-8 text-center">
+                                  {bridgeStatus === 'processing' && (
+                                    <>
+                                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-amber-500/30">
+                                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+                                      </div>
+                                      <h3 className="mb-2 text-xl font-bold text-white">Transazione in corso...</h3>
+                                      <p className="text-zinc-400">Non chiudere questa pagina</p>
+                                      <div className="mt-6">
+                                        <div className="mb-2 flex justify-between text-sm">
+                                          <span className="text-zinc-500">Attesa massima</span>
+                                          <span className="text-amber-400">{bridgeTimeLeft}s</span>
+                                        </div>
+                                        <div className="h-2 w-full rounded-full bg-zinc-800">
+                                          <div 
+                                            className="h-2 rounded-full bg-amber-500 transition-all duration-1000"
+                                            style={{ width: `${(60 - bridgeTimeLeft) / 60 * 100}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                  {bridgeStatus === 'failed' && (
+                                    <>
+                                      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-rose-500/30">
+                                        <span className="text-2xl">❌</span>
+                                      </div>
+                                      <h3 className="mb-2 text-xl font-bold text-rose-400">Transazione fallita</h3>
+                                      <p className="text-zinc-400">Riprova il bridge</p>
+                                      <button
+                                        onClick={() => {
+                                          setIsBridging(false);
+                                          setBridgeStatus('idle');
+                                          setBridgeTimeLeft(60);
+                                        }}
+                                        className="mt-6 w-full rounded-xl bg-amber-500 px-6 py-3 font-semibold text-black transition hover:bg-amber-400"
+                                      >
+                                        Riprova
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                               <p className="text-sm text-amber-200">
                                 <span className="font-semibold">Passo 2:</span> Trasferisci ETH su Base
                               </p>
                               <p className="mt-1 text-xs text-amber-300/80">
-                                Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Trasferiscili su Base per completare l'acquisto.
+                                Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Verrà prefillato il massimo meno 1% per le gas fee.
                               </p>
                             </div>
                             <BridgeWidget
@@ -1154,7 +1238,10 @@ export default function AccountPage() {
                                 prefill: {
                                   sellToken: {
                                     chainId: 1, // Ethereum Mainnet
-                                    // amount undefined = thirdweb auto-calculates max minus gas
+                                    // Pre-fill with max amount minus 1% for gas fees
+                                    amount: mainnetEthBalance > 0 
+                                      ? String((mainnetEthBalance * 0.99).toFixed(6))
+                                      : undefined,
                                   },
                                   buyToken: {
                                     chainId: 8453, // Base
@@ -1162,9 +1249,14 @@ export default function AccountPage() {
                                   },
                                 },
                               }}
+                              onSwapStart={() => {
+                                setIsBridging(true);
+                                setBridgeStatus('processing');
+                                setBridgeTimeLeft(60);
+                              }}
                             />
                             <p className="text-xs text-zinc-500">
-                              Bridge ETH da Mainnet a Base (senza swap).
+                              Bridge ETH da Mainnet a Base. Pre-fill: max meno 1% gas fee.
                             </p>
                           </>
                         )}
@@ -1191,6 +1283,16 @@ export default function AccountPage() {
                                   prefillSource: {
                                     currency: "EUR",
                                   },
+                                },
+                                onPurchaseSuccess: (info) => {
+                                  console.log("Purchase success:", info);
+                                  showSuccess("ETH acquistati! Preparazione al bridge...");
+                                  // Force refresh Mainnet balance after purchase
+                                  setTimeout(() => {
+                                    fetchMainnetEthBalance();
+                                    // Auto-advance to step 2 after short delay
+                                    setTimeout(() => setCardWizardStep(2), 2000);
+                                  }, 3000);
                                 },
                               }}
                             />
