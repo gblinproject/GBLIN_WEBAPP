@@ -1159,23 +1159,40 @@ export default function AccountPage() {
                                 if (!account) return;
                                 const ethAmt = parseFloat(step3EthAmount);
                                 if (!ethAmt || ethAmt <= 0) return;
-                                // Calculate expected GBLIN with 2% slippage protection
-                                const expectedGblin = (ethAmt * ethPriceUsd) / gblinPriceUsd;
-                                const minGblinOut = ethers.parseEther((expectedGblin * 0.98).toFixed(18));
-                                const tx = prepareContractCall({
-                                  contract: gblinContract,
-                                  method: "function buyGBLIN(uint256 minGblinOut)",
-                                  params: [minGblinOut],
-                                  value: ethers.parseEther(ethAmt.toFixed(18)),
-                                });
-                                setPendingTx(true);
-                                await sendTx(tx);
-                                // Success will be handled by useEffect monitoring pendingTx
+                                try {
+                                  setPendingTx(true);
+                                  // Use contract quote for accurate minGblinOut (same as advanced tab)
+                                  const ethAmount = ethers.parseEther(ethAmt.toFixed(18));
+                                  const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+                                  // 2% slippage protection (200 bps)
+                                  const minAmountOut = (quotedGblinOut * 9800n) / 10000n;
+                                  const tx = prepareContractCall({
+                                    contract: gblinContract,
+                                    method: "function buyGBLIN(uint256 minGblinOut) payable",
+                                    params: [minAmountOut],
+                                    value: ethAmount,
+                                  });
+                                  sendTx(tx, {
+                                    onSuccess: () => {
+                                      showSuccess("GBLIN acquistati con successo!");
+                                      setPendingTx(false);
+                                      setStep3EthAmount("");
+                                      setTimeout(() => fetchTransactions(), 3000);
+                                    },
+                                    onError: (err: Error) => {
+                                      setPendingTx(false);
+                                      console.error("Buy GBLIN error:", err);
+                                    },
+                                  });
+                                } catch (err: any) {
+                                  setPendingTx(false);
+                                  console.error("Buy GBLIN error:", err);
+                                }
                               }}
-                              disabled={isSending || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
+                              disabled={isSending || pendingTx || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
                               className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:opacity-50"
                             >
-                              {isSending ? "Acquisto in corso..." : "Acquista GBLIN"}
+                              {isSending || pendingTx ? "Acquisto in corso..." : "Acquista GBLIN"}
                             </button>
                           </>
                         )}
