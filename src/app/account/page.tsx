@@ -1063,21 +1063,10 @@ export default function AccountPage() {
                     </div>
 
                     {/* Step 2: Automatic flow detection */}
-                    {(hasAmount || ethBalance > 0 || mainnetEthBalance > 0) ? (
+                    {(hasAmount || ethBalance > 0 || mainnetEthBalance > MAINNET_DUST_THRESHOLD) ? (
                       (() => {
-                        // If no amount entered but has ETH, use minimum required
-                        const effectiveEthValue = hasAmount ? ethValue : (ethBalance > 0 ? ethBalance * 0.99 : 0.01);
-                        const requiredEth = effectiveEthValue * 1.02;
-                        const hasMainnetEth = mainnetEthBalance >= requiredEth * 0.8; // 80% tolerance
-                        const hasBaseEth = ethBalance >= requiredEth;
-
-                        // Determine auto-detected step based on balances
-                        let autoStep = 1;
-                        if (hasMainnetEth) autoStep = 2;
-                        if (hasBaseEth) autoStep = 3;
-
-                        // Use manual step if set, otherwise auto-detect
-                        const activeStep = cardWizardStep ?? autoStep;
+                        // Use the globally computed effectiveStep
+                        const activeStep = effectiveStep;
 
                         return (
                           <div className="space-y-4">
