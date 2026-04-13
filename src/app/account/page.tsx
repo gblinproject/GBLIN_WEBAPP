@@ -647,16 +647,22 @@ export default function AccountPage() {
     }
   }, [pendingTx, isSending, fetchTransactions]);
 
+  // Auto-detect wizard step based on balances when no manual step is set
+  // Step 3: has ETH on Base → buy GBLIN directly
+  // Step 2: has ETH on Mainnet → bridge to Base (ignore dust < 0.005 ETH ~$13)
+  // Step 1: no ETH → buy with card
+  const MAINNET_DUST_THRESHOLD = ethPriceUsd > 0 ? 0.5 / ethPriceUsd : 0.0002; // Ignore dust < $0.50 on Mainnet
+  const autoDetectedStep = ethBalance > 0 ? 3 : mainnetEthBalance > MAINNET_DUST_THRESHOLD ? 2 : 1;
+  const effectiveStep = cardWizardStep ?? autoDetectedStep;
+
   // Auto-fill max ETH amount when entering Step 3
-  // Also check if we're in auto-detect mode (cardWizardStep === null but activeStep would be 3)
-  const effectiveStep3 = cardWizardStep ?? (ethBalance > 0 && !hasAmount ? 3 : 1);
   useEffect(() => {
-    if (effectiveStep3 === 3 && ethBalance > 0) {
+    if (effectiveStep === 3 && ethBalance > 0) {
       // Use 99.99% of balance (0.01% fee buffer)
       const maxEth = ethBalance * 0.9999;
       setStep3EthAmount(maxEth.toFixed(6));
     }
-  }, [effectiveStep3, ethBalance, hasAmount]);
+  }, [effectiveStep, ethBalance]);
 
   // Bridge timer countdown
   useEffect(() => {
