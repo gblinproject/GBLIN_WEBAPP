@@ -542,8 +542,8 @@ export function DashboardView(props: DashboardViewProps) {
                 <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.dynamicReserve || 0), 4)} WETH</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('dashboard.apyTitle')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{onChainData?.apyData?.estimatedApy || '0.00'}%</p>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('dashboard.totalYieldTitle')}</p>
+                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
               </div>
             </div>
           </div>
