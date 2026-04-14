@@ -807,15 +807,20 @@ export const fetchTotalYieldDistributed = async (): Promise<number> => {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     
+    // Check last yield distribution time first
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const lastYieldTime = await contract.lastYieldDistribution().catch(() => 0n);
+    console.log('Last yield distribution timestamp:', Number(lastYieldTime), new Date(Number(lastYieldTime) * 1000).toISOString());
+    
     // Create interface to get correct event topic
     const iface = new ethers.Interface(["event YieldDistributed(uint256 amount)"]);
     const eventTopic = iface.getEvent("YieldDistributed")!.topicHash;
     
     console.log('YieldDistributed topic:', eventTopic);
     
-    // Get logs from recent blocks (last 50000 blocks ~ 1 week on Base)
+    // Get logs from last 500,000 blocks (~2 months on Base)
     const currentBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlock - 50000);
+    const fromBlock = Math.max(0, currentBlock - 500000);
     
     console.log('Fetching logs from block', fromBlock, 'to', currentBlock);
     
