@@ -174,7 +174,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Bridge ETH from Mainnet to Base. Pre-fill: max minus 1% gas fee.',
       ethPurchasedPreparing: 'ETH purchased! Preparing for bridge...',
       afterPurchaseDetect: 'After purchase, the system will automatically detect the ETH and guide you to the next step.',
-      bridgeCompleted: 'Bridge completed! ETH arrived on Base.'
+      bridgeCompleted: 'Bridge completed! ETH arrived on Base.',
+      ethArrivedProceedBridge: 'ETH arrived! Proceed with bridge to Base.',
+      checkBalanceClickBridge: 'Check your balance and click Bridge to Base when ETH is visible.'
     }
   },
   it: {
@@ -350,7 +352,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Bridge ETH da Mainnet a Base. Pre-fill: max meno 1% gas fee.',
       ethPurchasedPreparing: 'ETH acquistati! Preparazione al bridge...',
       afterPurchaseDetect: 'Dopo l\'acquisto, il sistema rileverà automaticamente gli ETH e ti guiderà al passo successivo.',
-      bridgeCompleted: 'Bridge completato! ETH arrivati su Base.'
+      bridgeCompleted: 'Bridge completato! ETH arrivati su Base.',
+      ethArrivedProceedBridge: 'ETH arrivati! Procedi con il bridge a Base.',
+      checkBalanceClickBridge: 'Controlla il tuo saldo e clicca Bridge a Base quando gli ETH saranno visibili.'
     }
   },
   es: {
@@ -526,7 +530,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Bridge de ETH de Mainnet a Base. Pre-fill: máximo menos 1% gas.',
       ethPurchasedPreparing: '¡ETH comprados! Preparando el bridge...',
       afterPurchaseDetect: 'Después de la compra, el sistema detectará automáticamente los ETH y te guiará al siguiente paso.',
-      bridgeCompleted: '¡Bridge completado! ETH llegaron a Base.'
+      bridgeCompleted: '¡Bridge completado! ETH llegaron a Base.',
+      ethArrivedProceedBridge: '¡ETH llegados! Procede con el bridge a Base.',
+      checkBalanceClickBridge: 'Comprueba tu saldo y haz clic en Bridge a Base cuando los ETH sean visibles.'
     }
   },
   fr: {
@@ -702,7 +708,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Bridge ETH de Mainnet vers Base. Pré-remplissage : max moins 1% frais de gas.',
       ethPurchasedPreparing: 'ETH achetés ! Préparation au bridge...',
       afterPurchaseDetect: 'Après l\'achat, le système détectera automatiquement les ETH et vous guidera vers l\'étape suivante.',
-      bridgeCompleted: 'Bridge terminé ! ETH arrivés sur Base.'
+      bridgeCompleted: 'Bridge terminé ! ETH arrivés sur Base.',
+      ethArrivedProceedBridge: 'ETH arrivés ! Procédez avec le bridge vers Base.',
+      checkBalanceClickBridge: 'Vérifiez votre solde et cliquez sur Bridge vers Base quand les ETH seront visibles.'
     }
   },
   de: {
@@ -878,7 +886,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Bridge ETH von Mainnet zu Base. Vorausfüllung: max minus 1% Gas-Gebühr.',
       ethPurchasedPreparing: 'ETH gekauft! Vorbereitung für Bridge...',
       afterPurchaseDetect: 'Nach dem Kauf erkennt das System automatisch die ETH und führt Sie zum nächsten Schritt.',
-      bridgeCompleted: 'Bridge abgeschlossen! ETH auf Base angekommen.'
+      bridgeCompleted: 'Bridge abgeschlossen! ETH auf Base angekommen.',
+      ethArrivedProceedBridge: 'ETH angekommen! Fahren Sie mit dem Bridge zu Base fort.',
+      checkBalanceClickBridge: 'Überprüfen Sie Ihren Saldo und klicken Sie auf Bridge zu Base, wenn die ETH sichtbar sind.'
     }
   },
   zh: {
@@ -1054,7 +1064,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: '将 ETH 从 Mainnet 桥接到 Base。预填：最大值减去 1% gas 费用。',
       ethPurchasedPreparing: '已购买 ETH！准备桥接...',
       afterPurchaseDetect: '购买后，系统将自动检测 ETH 并引导您进入下一步。',
-      bridgeCompleted: '桥接完成！ETH 已到达 Base。'
+      bridgeCompleted: '桥接完成！ETH 已到达 Base。',
+      ethArrivedProceedBridge: 'ETH 已到账！继续进行到 Base 的桥接。',
+      checkBalanceClickBridge: '请检查您的余额，当 ETH 可见时点击桥接到 Base。'
     }
   },
   ja: {
@@ -1230,7 +1242,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       bridgeEthDescription: 'Mainnet から Base へ ETH をブリッジ。プリフィル: 最大値から 1% ガス料を差し引き。',
       ethPurchasedPreparing: 'ETH を購入しました！ブリッジの準備中...',
       afterPurchaseDetect: '購入後、システムが自動的に ETH を検出し、次のステップにご案内します。',
-      bridgeCompleted: 'ブリッジ完了！Base に ETH が到着しました。'
+      bridgeCompleted: 'ブリッジ完了！Base に ETH が到着しました。',
+      ethArrivedProceedBridge: 'ETH が到着しました！Base へのブリッジを続行してください。',
+      checkBalanceClickBridge: '残高を確認し、ETH が表示されたら Base へのブリッジをクリックしてください。'
     }
   }
 };

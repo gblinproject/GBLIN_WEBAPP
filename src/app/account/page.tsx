@@ -115,6 +115,8 @@ export default function AccountPage() {
   const [bridgeTimeLeft, setBridgeTimeLeft] = useState<number>(60);
   const [bridgeStatus, setBridgeStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const [copied, setCopied] = useState(false);
+  const [waitingForEth, setWaitingForEth] = useState<boolean>(false);
+  const [mainnetBalanceBefore, setMainnetBalanceBefore] = useState<number>(0);
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -659,12 +661,18 @@ export default function AccountPage() {
   // Auto-fill max ETH amount when entering Step 3
   useEffect(() => {
     if (effectiveStep === 3 && ethBalance > BASE_MIN_THRESHOLD) {
-      // Reserve 0.00002 ETH (~$0.05) for gas fees on Base
-      const gasReserve = 0.00002;
-      const maxEth = Math.max(0, ethBalance - gasReserve);
-      setStep3EthAmount(maxEth.toFixed(6));
+      // Delay to ensure balance is fresh after bridge (3 seconds)
+      const timeout = setTimeout(() => {
+        // Refetch to get latest balance
+        fetchEthBalance();
+        // Reserve 0.00002 ETH (~$0.05) for gas fees on Base
+        const gasReserve = 0.00002;
+        const maxEth = Math.max(0, ethBalance - gasReserve);
+        setStep3EthAmount(maxEth.toFixed(6));
+      }, 3000);
+      return () => clearTimeout(timeout);
     }
-  }, [effectiveStep, ethBalance, BASE_MIN_THRESHOLD]);
+  }, [effectiveStep, ethBalance, BASE_MIN_THRESHOLD, fetchEthBalance]);
 
   // Bridge timer countdown
   useEffect(() => {
@@ -683,6 +691,34 @@ export default function AccountPage() {
     }
     return () => clearInterval(interval);
   }, [isBridging, bridgeStatus, bridgeTimeLeft]);
+
+  // Poll for ETH arrival after purchase (Step 1 → Step 2)
+  useEffect(() => {
+    if (!waitingForEth) return;
+
+    let checkCount = 0;
+    const maxChecks = 30; // 2 minutes max (30 * 4 seconds)
+
+    const interval = setInterval(async () => {
+      checkCount++;
+      await fetchMainnetEthBalance();
+
+      // Check if balance increased
+      if (mainnetEthBalance > mainnetBalanceBefore + MAINNET_DUST_THRESHOLD) {
+        setWaitingForEth(false);
+        setCardWizardStep(2);
+        showSuccess(t("account.ethArrivedProceedBridge"));
+        clearInterval(interval);
+      } else if (checkCount >= maxChecks) {
+        // Timeout after 2 minutes
+        setWaitingForEth(false);
+        showSuccess(t("account.checkBalanceClickBridge"));
+        clearInterval(interval);
+      }
+    }, 4000); // Check every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [waitingForEth, mainnetEthBalance, mainnetBalanceBefore, fetchMainnetEthBalance, MAINNET_DUST_THRESHOLD, t]);
 
   // Monitor bridge success (when balance changes during bridging)
   useEffect(() => {
@@ -1327,7 +1363,7 @@ export default function AccountPage() {
                           <>
                             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
                               <p className="text-sm font-medium text-rose-300">
-                                🔴 <strong>Avviso per utenti EU:</strong> Modifica la valuta da dollari a euro.
+                                🔴 <strong>Avviso per utenti EU:</strong> Consigliato Transak, attesa circa 2 minuti.
                               </p>
                             </div>
                             <PayEmbed
@@ -1348,12 +1384,9 @@ export default function AccountPage() {
                                 onPurchaseSuccess: (info) => {
                                   console.log("Purchase success:", info);
                                   showSuccess(t("account.ethPurchasedPreparing"));
-                                  // Force refresh Mainnet balance after purchase
-                                  setTimeout(() => {
-                                    fetchMainnetEthBalance();
-                                    // Auto-advance to step 2 after short delay
-                                    setTimeout(() => setCardWizardStep(2), 2000);
-                                  }, 3000);
+                                  // Save current balance and start polling for ETH arrival
+                                  setMainnetBalanceBefore(mainnetEthBalance);
+                                  setWaitingForEth(true);
                                 },
                               }}
                             />
