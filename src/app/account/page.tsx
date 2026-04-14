@@ -1181,7 +1181,7 @@ export default function AccountPage() {
                                   console.log("Buy GBLIN tx:", result.transactionHash);
                                   showSuccess("GBLIN acquistati con successo!");
                                   setTxHash(result.transactionHash);
-                                  setTxSuccess(true);
+                                  setTxSuccess("GBLIN acquistati con successo!");
                                   setPendingTx(false);
                                   setStep3EthAmount("");
                                   setTimeout(() => fetchTransactions(), 3000);
