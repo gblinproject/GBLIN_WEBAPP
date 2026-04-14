@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   title: "GBLIN (The Golden Vault)",
   description: "Protocollo di preservazione della ricchezza su Base Network.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    shortcut: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    apple: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
