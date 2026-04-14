@@ -1143,7 +1143,12 @@ export default function AccountPage() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setStep3EthAmount((ethBalance * 0.9995).toFixed(6))}
+                                  onClick={() => {
+                                    // Reserve 0.000005 ETH (~$0.012) for gas fees
+                                    const gasReserve = 0.000005;
+                                    const maxEth = Math.max(0, ethBalance - gasReserve);
+                                    setStep3EthAmount(maxEth.toFixed(6));
+                                  }}
                                   className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
                                 >
                                   Max
