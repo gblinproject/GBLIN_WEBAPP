@@ -690,12 +690,12 @@ export default function AccountPage() {
         // Bridge likely succeeded
         setBridgeStatus('success');
         setIsBridging(false);
-        showSuccess("Bridge completato! ETH arrivati su Base.");
+        showSuccess(t("account.bridgeCompleted"));
         // Auto-advance to step 3
         setTimeout(() => setCardWizardStep(3), 2000);
       }
     }
-  }, [ethBalance, mainnetEthBalance, isBridging, bridgeStatus]);
+  }, [ethBalance, mainnetEthBalance, isBridging, bridgeStatus, t]);
 
   const handleDisconnect = () => { if (wallet) wallet.disconnect(); };
 
@@ -818,9 +818,9 @@ export default function AccountPage() {
                 }}
               />
             )}
-            <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10" href="/">
+            <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-zinc-300 transition hover:bg-white/10" href="/">
               <ArrowRight className="h-4 w-4 rotate-180" />
-              <span>HOME</span>
+              <span>{t('account.homeButton')}</span>
             </Link>
           </div>
         </div>
@@ -856,7 +856,10 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* ── BALANCE HERO CARD ───────────────────────────────────────────────────── */}
+        {/* ── MAIN CONTENT (connected only) ───────────────────────────────────── */}
+        {address && (
+          <>
+            {/* ── BALANCE HERO CARD ─────────────────────────────────────────── */}
         <div className={`${shellCard} mb-6 overflow-hidden`}>
           <div className="bg-gradient-to-br from-amber-500/10 via-transparent to-transparent p-6 sm:p-10">
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">{t("account.yourBalance")}</p>
@@ -897,7 +900,7 @@ export default function AccountPage() {
           <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-emerald-100">
             <p className="font-semibold">{txSuccess}</p>
             {txHash && (
-              <a className="mt-1 inline-flex items-center gap-1 text-sm text-emerald-300 hover:text-white" href={`https://basescan.org/tx/${txHash}`} rel="noreferrer" target="_blank">
+              <a className="mt-1 inline-flex items-center gap-1 text-emerald-300 hover:text-white" href={`https://basescan.org/tx/${txHash}`} rel="noreferrer" target="_blank">
                 {t("account.viewOnExplorer")} <ExternalLink className="h-3 w-3" />
               </a>
             )}
@@ -992,7 +995,7 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* ── BUY TAB ───────────────────────────────────────────────────────── */}
+        {/* ── BUY TAB ──────────────────────────────────────────────────────── */}
         {activeTab === "buy" && (() => {
           const numVal = parseFloat(buyAmount) || 0;
           // gblinQty: how many GBLIN the user wants to buy
@@ -1018,7 +1021,7 @@ export default function AccountPage() {
                     buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  💳 Carta
+                  {t('account.cardMode')}
                 </button>
                 <button
                   onClick={() => setBuyMode("wallet")}
@@ -1026,7 +1029,7 @@ export default function AccountPage() {
                     buyMode === "wallet" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  🔐 Wallet — Ho già crypto
+                  {t('account.walletMode')}
                 </button>
               </div>
 
@@ -1034,15 +1037,15 @@ export default function AccountPage() {
               {buyMode === "card" && (
                 <div className={`${shellCard} p-6 sm:p-8`}>
                   <div className="mb-6 text-center">
-                    <h3 className="mb-2 text-2xl font-bold text-white">Acquista GBLIN con Carta</h3>
-                    <p className="text-zinc-400">Semplice e veloce. Inserisci l'importo e paga con carta.</p>
+                    <h3 className="mb-2 text-2xl font-bold text-white">{t('account.buyWithCard')}</h3>
+                    <p className="text-zinc-400">{t('account.buySimpleDesc')}</p>
                   </div>
 
                   <div className="mx-auto max-w-md space-y-6">
                     {/* Step 1: Enter amount — only show when on Step 1 (no ETH yet) */}
                     {effectiveStep === 1 && (
                       <div>
-                        <label className="mb-2 block text-sm font-medium text-zinc-300">Quanto vuoi spendere?</label>
+                        <label className="mb-2 block text-sm font-medium text-zinc-300">{t('account.howMuchToSpend')}</label>
                         <div className="relative">
                           <input
                             type="number"
@@ -1059,7 +1062,7 @@ export default function AccountPage() {
                         </div>
                         {hasAmount && (
                           <p className="mt-2 text-sm text-zinc-400">
-                            Riceverai circa <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
+                            {t('account.youWillReceiveAbout')} <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
                           </p>
                         )}
                       </div>
@@ -1084,7 +1087,7 @@ export default function AccountPage() {
                                   <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 1 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">1</span>
                                   </div>
-                                  <span className="text-xs font-medium">Compra ETH</span>
+                                  <span className="text-xs font-medium">{t('account.step1Label')}</span>
                                 </button>
                                 {/* Connector */}
                                 <div className={`h-0.5 w-12 ${activeStep >= 2 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
@@ -1096,7 +1099,7 @@ export default function AccountPage() {
                                   <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 2 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">2</span>
                                   </div>
-                                  <span className="text-xs font-medium">Bridge a Base</span>
+                                  <span className="text-xs font-medium">{t('account.step2Label')}</span>
                                 </button>
                                 {/* Connector */}
                                 <div className={`h-0.5 w-12 ${activeStep >= 3 ? 'bg-amber-500' : 'bg-zinc-700'}`} />
@@ -1108,7 +1111,7 @@ export default function AccountPage() {
                                   <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${activeStep === 3 ? 'border-amber-500 bg-amber-500/20' : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'}`}>
                                     <span className="text-sm font-bold">3</span>
                                   </div>
-                                  <span className="text-xs font-medium">Acquista GBLIN</span>
+                                  <span className="text-xs font-medium">{t('account.step3Label')}</span>
                                 </button>
                               </div>
                             </div>
@@ -1119,12 +1122,12 @@ export default function AccountPage() {
                             {/* Wallet balance */}
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">ETH disponibili</p>
+                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('account.ethAvailable')}</p>
                                 <p className="mt-2 text-lg font-semibold text-white">{ethBalance.toFixed(6)} ETH</p>
                                 <p className="mt-1 text-xs text-zinc-500">≈ ${(ethBalance * ethPriceUsd).toFixed(2)}</p>
                               </div>
                               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">GBLIN in portafoglio</p>
+                                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('account.gblinInWallet')}</p>
                                 <p className="mt-2 text-lg font-semibold text-white">{balance.toFixed(4)} GBLIN</p>
                                 <p className="mt-1 text-xs text-zinc-500">≈ ${(balance * gblinPriceUsd).toFixed(2)}</p>
                               </div>
@@ -1151,7 +1154,7 @@ export default function AccountPage() {
                                   }}
                                   className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
                                 >
-                                  Max
+                                  {t('account.maxButton')}
                                 </button>
                                 <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">ETH</span>
                               </div>
@@ -1193,31 +1196,31 @@ export default function AccountPage() {
                                   console.log("Buy GBLIN tx:", result.transactionHash);
                                   // Wait 2 seconds for BaseScan indexing
                                   await new Promise(resolve => setTimeout(resolve, 2000));
-                                  showSuccess("GBLIN acquistati con successo!");
+                                  showSuccess(t("account.txSuccess"));
                                   setTxHash(result.transactionHash);
-                                  setTxSuccess("GBLIN acquistati con successo!");
+                                  setTxSuccess(t("account.txSuccess"));
                                   setPendingTx(false);
                                   setStep3EthAmount("");
                                   setTimeout(() => fetchTransactions(), 3000);
                                 } catch (err: any) {
                                   setPendingTx(false);
                                   console.error("Buy GBLIN error:", err);
-                                  alert(err.message || "Errore durante l'acquisto");
+                                  alert(err.message || t("account.errorTxFailed"));
                                 }
                               }}
                               disabled={pendingTx || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
                               className="w-full rounded-full bg-amber-400 px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_0_24px_rgba(245,158,11,0.25)]"
                             >
-                              {pendingTx ? "Acquisto in corso..." : "Acquista GBLIN →"}
+                              {pendingTx ? `${t('account.txInProgress')}` : `${t('account.buyGblinButton')} →`}
                             </button>
 
                             {/* Success message */}
                             {txSuccess && (
                               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
-                                <p className="font-semibold">Transazione Riuscita!</p>
+                                <p className="font-semibold">{t('account.txSuccessMessage')}</p>
                                 {txHash && (
                                   <a className="mt-2 inline-flex items-center gap-2 text-emerald-200 hover:text-white" href={`https://basescan.org/tx/${txHash}`} rel="noreferrer" target="_blank">
-                                    Vedi su Explorer <ExternalLink className="h-4 w-4" />
+                                    {t('account.viewOnExplorer')} <ExternalLink className="h-4 w-4" />
                                   </a>
                                 )}
                               </div>
@@ -1237,11 +1240,11 @@ export default function AccountPage() {
                                       <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-amber-500/30">
                                         <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
                                       </div>
-                                      <h3 className="mb-2 text-xl font-bold text-white">Transazione in corso...</h3>
-                                      <p className="text-zinc-400">Non chiudere questa pagina</p>
+                                      <h3 className="mb-2 text-xl font-bold text-white">{t('account.txInProgress')}</h3>
+                                      <p className="text-zinc-400">{t('account.dontClosePage')}</p>
                                       <div className="mt-6">
                                         <div className="mb-2 flex justify-between text-sm">
-                                          <span className="text-zinc-500">Attesa massima</span>
+                                          <span className="text-zinc-500">{t('account.maxWait')}</span>
                                           <span className="text-amber-400">{bridgeTimeLeft}s</span>
                                         </div>
                                         <div className="h-2 w-full rounded-full bg-zinc-800">
@@ -1258,8 +1261,8 @@ export default function AccountPage() {
                                       <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-rose-500/30">
                                         <span className="text-2xl">❌</span>
                                       </div>
-                                      <h3 className="mb-2 text-xl font-bold text-rose-400">Transazione fallita</h3>
-                                      <p className="text-zinc-400">Riprova il bridge</p>
+                                      <h3 className="mb-2 text-xl font-bold text-rose-400">{t('account.txFailed')}</h3>
+                                      <p className="text-zinc-400">{t('account.retryBridge')}</p>
                                       <button
                                         onClick={() => {
                                           setIsBridging(false);
@@ -1268,7 +1271,7 @@ export default function AccountPage() {
                                         }}
                                         className="mt-6 w-full rounded-xl bg-amber-500 px-6 py-3 font-semibold text-black transition hover:bg-amber-400"
                                       >
-                                        Riprova
+                                        {t('account.retry')}
                                       </button>
                                     </>
                                   )}
@@ -1278,10 +1281,10 @@ export default function AccountPage() {
 
                             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
                               <p className="text-sm text-amber-200">
-                                <span className="font-semibold">Passo 2:</span> Trasferisci ETH su Base
+                                <span className="font-semibold">{t('account.step2Title')}</span> {t('account.transferEthToBase')}
                               </p>
                               <p className="mt-1 text-xs text-amber-300/80">
-                                Hai {mainnetEthBalance.toFixed(4)} ETH su Mainnet. Verrà prefillato il massimo meno 1% per le gas fee.
+                                {t('account.youHaveEthOnMainnet').replace('{{amount}}', mainnetEthBalance.toFixed(4))}
                               </p>
                             </div>
                             <BridgeWidget
@@ -1303,7 +1306,7 @@ export default function AccountPage() {
                                 },
                                 onSuccess: () => {
                                   setIsBridging(false);
-                                  showSuccess("Bridge completato! ETH arrivati su Base.");
+                                  showSuccess(t("account.bridgeCompleted"));
                                   setTimeout(() => setCardWizardStep(3), 2000);
                                 },
                                 onError: () => {
@@ -1312,7 +1315,7 @@ export default function AccountPage() {
                               }}
                             />
                             <p className="text-xs text-zinc-500">
-                              Bridge ETH da Mainnet a Base. Pre-fill: max meno 1% gas fee.
+                              {t('account.bridgeEthDescription')}
                             </p>
                           </>
                         )}
@@ -1342,7 +1345,7 @@ export default function AccountPage() {
                                 },
                                 onPurchaseSuccess: (info) => {
                                   console.log("Purchase success:", info);
-                                  showSuccess("ETH acquistati! Preparazione al bridge...");
+                                  showSuccess(t("account.ethPurchasedPreparing"));
                                   // Force refresh Mainnet balance after purchase
                                   setTimeout(() => {
                                     fetchMainnetEthBalance();
@@ -1353,7 +1356,7 @@ export default function AccountPage() {
                               }}
                             />
                             <p className="text-xs text-zinc-500">
-                              Dopo l'acquisto, il sistema rileverà automaticamente gli ETH e ti guiderà al passo successivo.
+                              {t('account.afterPurchaseDetect')}
                             </p>
                           </>
                         )}
@@ -1362,7 +1365,7 @@ export default function AccountPage() {
                   })()
                 ) : (
                       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
-                        <p className="text-zinc-500">Inserisci un importo per iniziare</p>
+                        <p className="text-zinc-500">{t('account.enterAmountToStart')}</p>
                       </div>
                     )}
                   </div>
@@ -1553,6 +1556,8 @@ export default function AccountPage() {
               <p className="text-sm text-zinc-400">{t("account.sendNote")}</p>
             </div>
           </div>
+        )}
+          </>
         )}
       </main>
     </div>
