@@ -807,21 +807,26 @@ export const fetchTotalYieldDistributed = async (): Promise<number> => {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     
-    // YieldDistributed event signature: YieldDistributed(uint256 amount)
-    const eventSignature = '0x8b2d2d8b5b1b5e0e9c2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2'; // keccak256("YieldDistributed(uint256)")
-    const eventTopic = ethers.id("YieldDistributed(uint256)");
+    // Create interface to get correct event topic
+    const iface = new ethers.Interface(["event YieldDistributed(uint256 amount)"]);
+    const eventTopic = iface.getEvent("YieldDistributed")!.topicHash;
     
-    // Get logs from contract creation to now
-    // GBLIN deployed around block 18000000 on Base (approx)
-    const fromBlock = 18000000;
-    const toBlock = 'latest';
+    console.log('YieldDistributed topic:', eventTopic);
+    
+    // Get logs from recent blocks (last 50000 blocks ~ 1 week on Base)
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 50000);
+    
+    console.log('Fetching logs from block', fromBlock, 'to', currentBlock);
     
     const logs = await provider.getLogs({
       address: CONTRACT_ADDRESS,
       topics: [eventTopic],
       fromBlock,
-      toBlock,
+      toBlock: 'latest',
     });
+    
+    console.log('Found', logs.length, 'YieldDistributed events');
     
     let totalDistributed = 0n;
     
@@ -829,9 +834,12 @@ export const fetchTotalYieldDistributed = async (): Promise<number> => {
       // Decode the amount from the data field (uint256)
       const amount = ethers.getBigInt(log.data);
       totalDistributed += amount;
+      console.log('Event amount:', ethers.formatEther(amount), 'WETH');
     }
     
-    return Number(ethers.formatEther(totalDistributed));
+    const total = Number(ethers.formatEther(totalDistributed));
+    console.log('Total yield distributed:', total, 'WETH');
+    return total;
   } catch (error) {
     console.error('Error fetching yield distributed:', error);
     return 0;
