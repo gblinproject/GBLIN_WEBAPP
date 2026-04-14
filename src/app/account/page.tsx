@@ -1038,31 +1038,33 @@ export default function AccountPage() {
                   </div>
 
                   <div className="mx-auto max-w-md space-y-6">
-                    {/* Step 1: Enter amount */}
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-zinc-300">Quanto vuoi spendere?</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="100"
-                          value={buyAmount}
-                          onChange={(e) => setBuyAmount(e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-white placeholder-zinc-500 outline-none ring-amber-500/20 transition focus:border-amber-500 focus:ring-2"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-amber-400">
-                          EUR
-                        </span>
+                    {/* Step 1: Enter amount — only show when on Step 1 (no ETH yet) */}
+                    {effectiveStep === 1 && (
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-zinc-300">Quanto vuoi spendere?</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="100"
+                            value={buyAmount}
+                            onChange={(e) => setBuyAmount(e.target.value)}
+                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-white placeholder-zinc-500 outline-none ring-amber-500/20 transition focus:border-amber-500 focus:ring-2"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-amber-400">
+                            EUR
+                          </span>
+                        </div>
+                        {hasAmount && (
+                          <p className="mt-2 text-sm text-zinc-400">
+                            Riceverai circa <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
+                          </p>
+                        )}
                       </div>
-                      {hasAmount && (
-                        <p className="mt-2 text-sm text-zinc-400">
-                          Riceverai circa <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
-                        </p>
-                      )}
-                    </div>
+                    )}
 
-                    {/* Step 2: Automatic flow detection */}
+                    {/* Step 2/3: Automatic flow detection */}
                     {(hasAmount || ethBalance > 0 || mainnetEthBalance > MAINNET_DUST_THRESHOLD) ? (
                       (() => {
                         // Use the globally computed effectiveStep
