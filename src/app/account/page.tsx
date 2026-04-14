@@ -820,6 +820,7 @@ export default function AccountPage() {
             )}
             <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs transition hover:bg-white/10" href="/">
               <ArrowRight className="h-4 w-4 rotate-180" />
+              <span>HOME</span>
             </Link>
           </div>
         </div>
