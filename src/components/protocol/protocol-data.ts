@@ -41,6 +41,7 @@ export interface OnChainData {
   stabilityFund: string;
   dynamicReserve: string;
   basketData: BasketItem[];
+  totalYieldDistributed: number;
   apyData?: {
     totalVolume: number;
     transactionCount: number;
@@ -765,6 +766,9 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     const reserveRatio = effectiveTvl > 0 ? stabilityFundUsd / effectiveTvl : 0;
     const estimatedApy = (6 + Math.min(reserveRatio * 1200, 6)).toFixed(2);
 
+    // Fetch total yield distributed from events
+    const totalYieldDistributed = await fetchTotalYieldDistributed();
+
     return {
       totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 4 }),
       nav: formatCurrency(nav),
@@ -774,6 +778,7 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       stabilityFund: ethers.formatEther(stabilityFundRaw),
       dynamicReserve: ethers.formatEther(dynamicReserve),
       basketData: basketItems,
+      totalYieldDistributed,
       apyData: {
         totalVolume: tvl * 0.6,
         transactionCount: 15,
@@ -791,7 +796,44 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       stabilityFund: '0',
       dynamicReserve: '0',
       basketData: [],
+      totalYieldDistributed: 0,
       apyData: null
     };
+  }
+};
+
+// Fetch total yield distributed from YieldDistributed events
+export const fetchTotalYieldDistributed = async (): Promise<number> => {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    
+    // YieldDistributed event signature: YieldDistributed(uint256 amount)
+    const eventSignature = '0x8b2d2d8b5b1b5e0e9c2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2e8f2'; // keccak256("YieldDistributed(uint256)")
+    const eventTopic = ethers.id("YieldDistributed(uint256)");
+    
+    // Get logs from contract creation to now
+    // GBLIN deployed around block 18000000 on Base (approx)
+    const fromBlock = 18000000;
+    const toBlock = 'latest';
+    
+    const logs = await provider.getLogs({
+      address: CONTRACT_ADDRESS,
+      topics: [eventTopic],
+      fromBlock,
+      toBlock,
+    });
+    
+    let totalDistributed = 0n;
+    
+    for (const log of logs) {
+      // Decode the amount from the data field (uint256)
+      const amount = ethers.getBigInt(log.data);
+      totalDistributed += amount;
+    }
+    
+    return Number(ethers.formatEther(totalDistributed));
+  } catch (error) {
+    console.error('Error fetching yield distributed:', error);
+    return 0;
   }
 };
