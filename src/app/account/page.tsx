@@ -648,22 +648,23 @@ export default function AccountPage() {
   }, [pendingTx, isSending, fetchTransactions]);
 
   // Auto-detect wizard step based on balances when no manual step is set
-  // Step 3: has ETH on Base → buy GBLIN directly
-  // Step 2: has ETH on Mainnet → bridge to Base (ignore dust < 0.005 ETH ~$13)
+  // Step 3: has ETH on Base → buy GBLIN directly (min $0.50 worth)
+  // Step 2: has ETH on Mainnet → bridge to Base (ignore dust < $0.50)
   // Step 1: no ETH → buy with card
   const MAINNET_DUST_THRESHOLD = ethPriceUsd > 0 ? 0.5 / ethPriceUsd : 0.0002; // Ignore dust < $0.50 on Mainnet
-  const autoDetectedStep = ethBalance > 0 ? 3 : mainnetEthBalance > MAINNET_DUST_THRESHOLD ? 2 : 1;
+  const BASE_MIN_THRESHOLD = ethPriceUsd > 0 ? 0.5 / ethPriceUsd : 0.0002; // Min $0.50 on Base to show Step 3
+  const autoDetectedStep = ethBalance > BASE_MIN_THRESHOLD ? 3 : mainnetEthBalance > MAINNET_DUST_THRESHOLD ? 2 : 1;
   const effectiveStep = cardWizardStep ?? autoDetectedStep;
 
   // Auto-fill max ETH amount when entering Step 3
   useEffect(() => {
-    if (effectiveStep === 3 && ethBalance > 0) {
+    if (effectiveStep === 3 && ethBalance > BASE_MIN_THRESHOLD) {
       // Reserve 0.00002 ETH (~$0.05) for gas fees on Base
       const gasReserve = 0.00002;
       const maxEth = Math.max(0, ethBalance - gasReserve);
       setStep3EthAmount(maxEth.toFixed(6));
     }
-  }, [effectiveStep, ethBalance]);
+  }, [effectiveStep, ethBalance, BASE_MIN_THRESHOLD]);
 
   // Bridge timer countdown
   useEffect(() => {
