@@ -658,8 +658,9 @@ export default function AccountPage() {
   // Auto-fill max ETH amount when entering Step 3
   useEffect(() => {
     if (effectiveStep === 3 && ethBalance > 0) {
-      // Use 99.99% of balance (0.01% fee buffer)
-      const maxEth = ethBalance * 0.9999;
+      // Reserve 0.00002 ETH (~$0.05) for gas fees on Base
+      const gasReserve = 0.00002;
+      const maxEth = Math.max(0, ethBalance - gasReserve);
       setStep3EthAmount(maxEth.toFixed(6));
     }
   }, [effectiveStep, ethBalance]);
@@ -1147,8 +1148,8 @@ export default function AccountPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    // Reserve 0.0001 ETH (~$0.25) for gas fees
-                                    const gasReserve = 0.0001;
+                                    // Reserve 0.00002 ETH (~$0.05) for gas fees on Base
+                                    const gasReserve = 0.00002;
                                     const maxEth = Math.max(0, ethBalance - gasReserve);
                                     setStep3EthAmount(maxEth.toFixed(6));
                                   }}
