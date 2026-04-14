@@ -1142,7 +1142,7 @@ export default function AccountPage() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setStep3EthAmount((ethBalance * 0.9999).toFixed(6))}
+                                  onClick={() => setStep3EthAmount((ethBalance * 0.9995).toFixed(6))}
                                   className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
                                 >
                                   Max
@@ -1171,7 +1171,11 @@ export default function AccountPage() {
                                   setPendingTx(true);
                                   const ethAmount = ethers.parseEther(ethAmt.toFixed(18));
                                   const quotedGblinOut = await quoteMintFromWeth(ethAmount);
-                                  const minAmountOut = (quotedGblinOut * 9800n) / 10000n;
+                                  if (quotedGblinOut <= 0n) {
+                                    throw new Error("Importo troppo piccolo - la quota GBLIN è zero. Prova con più ETH.");
+                                  }
+                                  // 5% slippage for small amounts to ensure success
+                                  const minAmountOut = (quotedGblinOut * 9500n) / 10000n;
                                   const tx = prepareContractCall({
                                     contract: gblinContract,
                                     method: "function buyGBLIN(uint256 minGblinOut) payable",
@@ -1181,6 +1185,8 @@ export default function AccountPage() {
                                   // Send directly without thirdweb confirmation modal
                                   const result = await sendTxDirect({ transaction: tx, account });
                                   console.log("Buy GBLIN tx:", result.transactionHash);
+                                  // Wait 2 seconds for BaseScan indexing
+                                  await new Promise(resolve => setTimeout(resolve, 2000));
                                   showSuccess("GBLIN acquistati con successo!");
                                   setTxHash(result.transactionHash);
                                   setTxSuccess("GBLIN acquistati con successo!");
@@ -1190,6 +1196,7 @@ export default function AccountPage() {
                                 } catch (err: any) {
                                   setPendingTx(false);
                                   console.error("Buy GBLIN error:", err);
+                                  alert(err.message || "Errore durante l'acquisto");
                                 }
                               }}
                               disabled={pendingTx || !step3EthAmount || parseFloat(step3EthAmount) <= 0}
@@ -1309,7 +1316,7 @@ export default function AccountPage() {
                           <>
                             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
                               <p className="text-sm font-medium text-rose-300">
-                                🔴 <strong>Avviso per utenti EU:</strong> Seleziona <strong>Stripe</strong> come provider. Quando richiesto, il campo TIN è il tuo <strong>Codice Fiscale</strong>.
+                                🔴 <strong>Avviso per utenti EU:</strong> Modifica la valuta da dollari a euro.
                               </p>
                             </div>
                             <PayEmbed
