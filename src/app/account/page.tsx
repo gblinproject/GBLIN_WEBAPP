@@ -1176,18 +1176,15 @@ export default function AccountPage() {
                                     params: [minAmountOut],
                                     value: ethAmount,
                                   });
-                                  sendTx(tx, {
-                                    onSuccess: () => {
-                                      showSuccess("GBLIN acquistati con successo!");
-                                      setPendingTx(false);
-                                      setStep3EthAmount("");
-                                      setTimeout(() => fetchTransactions(), 3000);
-                                    },
-                                    onError: (err: Error) => {
-                                      setPendingTx(false);
-                                      console.error("Buy GBLIN error:", err);
-                                    },
-                                  });
+                                  // Send directly without thirdweb confirmation modal
+                                  const result = await sendTxDirect({ transaction: tx, account });
+                                  console.log("Buy GBLIN tx:", result.transactionHash);
+                                  showSuccess("GBLIN acquistati con successo!");
+                                  setTxHash(result.transactionHash);
+                                  setTxSuccess(true);
+                                  setPendingTx(false);
+                                  setStep3EthAmount("");
+                                  setTimeout(() => fetchTransactions(), 3000);
                                 } catch (err: any) {
                                   setPendingTx(false);
                                   console.error("Buy GBLIN error:", err);
