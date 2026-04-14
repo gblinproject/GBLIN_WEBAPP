@@ -1147,8 +1147,8 @@ export default function AccountPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    // Reserve 0.000005 ETH (~$0.012) for gas fees
-                                    const gasReserve = 0.000005;
+                                    // Reserve 0.0001 ETH (~$0.25) for gas fees
+                                    const gasReserve = 0.0001;
                                     const maxEth = Math.max(0, ethBalance - gasReserve);
                                     setStep3EthAmount(maxEth.toFixed(6));
                                   }}
