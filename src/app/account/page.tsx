@@ -122,6 +122,9 @@ export default function AccountPage() {
   const [showQrScanner, setShowQrScanner] = useState<boolean>(false);
   const [showMyQr, setShowMyQr] = useState<boolean>(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const [sellStep, setSellStep] = useState<"redeem" | "offramp">("redeem");
+  const [sellRedeemDone, setSellRedeemDone] = useState<boolean>(false);
+  const transakRef = useRef<any>(null);
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -768,11 +771,52 @@ export default function AccountPage() {
       onSuccess: (data: any) => {
         showSuccess(data?.transactionHash ?? "");
         setSellAmount("");
+        setSellRedeemDone(true);
         refetchBalance();
+        fetchEthBalance();
       },
       onError: () => {},
     });
   };
+
+  const openTransakOfframp = useCallback(() => {
+    if (!address) return;
+    // Dynamic import to avoid SSR issues
+    import("@transak/ui-js-sdk").then(({ Transak }) => {
+      const TRANSAK_API_KEY = process.env.NEXT_PUBLIC_TRANSAK_API_KEY || "bf960e79-dc61-4d4e-b9af-89f462a483b5"; // staging key
+      const isStaging = !process.env.NEXT_PUBLIC_TRANSAK_API_KEY;
+      const baseUrl = isStaging ? "https://global-stg.transak.com" : "https://global.transak.com";
+      const params = new URLSearchParams({
+        apiKey: TRANSAK_API_KEY,
+        productsAvailed: "SELL",
+        cryptoCurrencyCode: "ETH",
+        network: "base",
+        defaultFiatCurrency: "EUR",
+        walletAddress: address,
+        disableWalletAddressForm: "true",
+        themeColor: "f59e0b",
+        hideMenu: "true",
+      });
+      const widgetUrl = `${baseUrl}?${params.toString()}`;
+
+      if (transakRef.current) {
+        transakRef.current.close();
+        transakRef.current.cleanup();
+      }
+
+      const transak = new Transak({ widgetUrl });
+      transakRef.current = transak;
+      transak.init();
+
+      Transak.on(Transak.EVENTS.TRANSAK_ORDER_SUCCESSFUL, () => {
+        transak.close();
+      });
+      Transak.on(Transak.EVENTS.TRANSAK_WIDGET_CLOSE, () => {
+        transak.cleanup();
+        transakRef.current = null;
+      });
+    });
+  }, [address]);
 
   const handleTransfer = () => {
     setTransferError(null);
@@ -1533,48 +1577,149 @@ export default function AccountPage() {
             <h3 className="mb-1 text-2xl font-bold text-white">{t("account.sellTitle")}</h3>
             <p className="mb-6 text-zinc-400">{t("account.sellDesc")}</p>
 
-            <div className="mx-auto max-w-md space-y-4">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="text-sm font-medium text-zinc-300">{t("account.sellAmount")}</label>
-                  <button
-                    onClick={() => setSellAmount(balance.toFixed(4))}
-                    className="text-xs text-amber-400 hover:text-amber-300"
-                  >
-                    Max: {balance.toFixed(2)} GBLIN
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max={balance}
-                    value={sellAmount}
-                    onChange={(e) => setSellAmount(e.target.value)}
-                    placeholder="0.0"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-rose-500/60 focus:ring-1 focus:ring-rose-500/30"
-                  />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-zinc-400">GBLIN</span>
-                </div>
-                {sellAmount && parseFloat(sellAmount) > 0 && gblinPriceUsd > 0 && (
-                  <p className="mt-2 text-sm text-zinc-400">
-                    {t("account.sellReceive")}: <span className="font-semibold text-emerald-300">{formatLocal(parseFloat(sellAmount) * gblinPriceUsd)}</span>
-                  </p>
-                )}
-              </div>
-
+            {/* Step indicator */}
+            <div className="mx-auto mb-6 flex max-w-md items-center gap-3">
               <button
-                onClick={handleSell}
-                disabled={isSending || !sellAmount || parseFloat(sellAmount) <= 0 || parseFloat(sellAmount) > balance}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500 px-6 py-4 text-base font-bold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+                onClick={() => { setSellStep("redeem"); }}
+                className={`flex flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  sellStep === "redeem"
+                    ? "border-rose-500/50 bg-rose-500/10 text-rose-300"
+                    : sellRedeemDone
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-white/10 bg-white/5 text-zinc-500"
+                }`}
               >
-                {isSending ? <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</> : <><TrendingUp className="h-5 w-5 rotate-180" />{t("account.sellBtn")}</>}
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  sellRedeemDone ? "bg-emerald-500 text-white" : sellStep === "redeem" ? "bg-rose-500 text-white" : "bg-zinc-700 text-zinc-400"
+                }`}>
+                  {sellRedeemDone ? "✓" : "1"}
+                </span>
+                {t("account.sellStep1Label")}
+              </button>
+              <div className="h-px w-4 bg-zinc-700" />
+              <button
+                onClick={() => { if (sellRedeemDone || ethBalance > 0) setSellStep("offramp"); }}
+                className={`flex flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  sellStep === "offramp"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-300"
+                    : "border-white/10 bg-white/5 text-zinc-500"
+                }`}
+              >
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  sellStep === "offramp" ? "bg-amber-500 text-white" : "bg-zinc-700 text-zinc-400"
+                }`}>
+                  2
+                </span>
+                {t("account.sellStep2Label")}
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-sm text-zinc-400">{t("account.sellNote")}</p>
-            </div>
+            {/* Step 1: Redeem GBLIN → ETH */}
+            {sellStep === "redeem" && (
+              <div className="mx-auto max-w-md space-y-4">
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-sm font-medium text-zinc-300">{t("account.sellAmount")}</label>
+                    <button
+                      onClick={() => setSellAmount(balance.toFixed(4))}
+                      className="text-xs text-amber-400 hover:text-amber-300"
+                    >
+                      Max: {balance.toFixed(2)} GBLIN
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max={balance}
+                      value={sellAmount}
+                      onChange={(e) => setSellAmount(e.target.value)}
+                      placeholder="0.0"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-lg text-white placeholder-zinc-600 outline-none focus:border-rose-500/60 focus:ring-1 focus:ring-rose-500/30"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-base font-medium text-zinc-400">GBLIN</span>
+                  </div>
+                  {sellAmount && parseFloat(sellAmount) > 0 && gblinPriceUsd > 0 && (
+                    <p className="mt-2 text-sm text-zinc-400">
+                      {t("account.sellReceive")}: <span className="font-semibold text-emerald-300">{formatLocal(parseFloat(sellAmount) * gblinPriceUsd)}</span>
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSell}
+                  disabled={isSending || !sellAmount || parseFloat(sellAmount) <= 0 || parseFloat(sellAmount) > balance}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500 px-6 py-4 text-base font-bold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+                >
+                  {isSending ? <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</> : <><TrendingUp className="h-5 w-5 rotate-180" />{t("account.sellBtn")}</>}
+                </button>
+
+                {sellRedeemDone && (
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
+                    <p className="text-sm font-semibold text-emerald-300">{t("account.sellRedeemSuccess")}</p>
+                    <p className="mt-1 text-xs text-zinc-400">ETH: {ethBalance.toFixed(6)}</p>
+                    <button
+                      onClick={() => setSellStep("offramp")}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-400"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      {t("account.sellGoToOfframp")}
+                    </button>
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm text-zinc-400">{t("account.sellNote")}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Off-ramp ETH → EUR via Transak */}
+            {sellStep === "offramp" && (
+              <div className="mx-auto max-w-md space-y-4">
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <p className="mb-1 text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.sellOfframpEthAvailable")}</p>
+                  <p className="text-2xl font-bold text-white">{ethBalance.toFixed(6)} <span className="text-base font-normal text-zinc-400">ETH</span></p>
+                  {ethBalance > 0 && ethPriceUsd > 0 && (
+                    <p className="mt-1 text-sm text-zinc-400">≈ {formatLocal(ethBalance * ethPriceUsd)}</p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-zinc-200">{t("account.sellOfframpHow")}</p>
+                  <ul className="space-y-1.5 text-sm text-zinc-400">
+                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">1.</span>{t("account.sellOfframpStep1")}</li>
+                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">2.</span>{t("account.sellOfframpStep2")}</li>
+                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">3.</span>{t("account.sellOfframpStep3")}</li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={openTransakOfframp}
+                  disabled={ethBalance <= 0}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+                >
+                  <ExternalLink className="h-5 w-5" />
+                  {t("account.sellOfframpBtn")}
+                </button>
+
+                {ethBalance <= 0 && (
+                  <div className="rounded-2xl border border-zinc-500/20 bg-zinc-500/10 p-4 text-center">
+                    <p className="text-sm text-zinc-400">{t("account.sellOfframpNoEth")}</p>
+                    <button
+                      onClick={() => setSellStep("redeem")}
+                      className="mt-2 text-sm font-semibold text-rose-400 hover:text-rose-300 transition"
+                    >
+                      ← {t("account.sellStep1Label")}
+                    </button>
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm text-zinc-400">{t("account.sellOfframpNote")}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
