@@ -834,21 +834,34 @@ export default function AccountPage() {
     }
   }, []);
 
-  const stopQrScanner = useCallback(() => {
-    if (qrScannerRef.current) {
-      qrScannerRef.current.stop().catch(() => {});
-      qrScannerRef.current.clear();
-      qrScannerRef.current = null;
-    }
+  const stopQrScanner = useCallback(async () => {
+    const scanner = qrScannerRef.current;
+    qrScannerRef.current = null;
     setShowQrScanner(false);
+    if (scanner) {
+      try {
+        const state = scanner.getState();
+        if (state === 2) { // SCANNING
+          await scanner.stop();
+        }
+        scanner.clear();
+      } catch {
+        // Already stopped or cleared — ignore
+      }
+    }
   }, []);
 
   // Cleanup scanner on unmount
   useEffect(() => {
     return () => {
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop().catch(() => {});
-        qrScannerRef.current.clear();
+      const scanner = qrScannerRef.current;
+      qrScannerRef.current = null;
+      if (scanner) {
+        try {
+          scanner.stop().then(() => scanner.clear()).catch(() => {});
+        } catch {
+          // ignore
+        }
       }
     };
   }, []);
