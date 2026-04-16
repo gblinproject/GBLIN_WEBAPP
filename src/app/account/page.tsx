@@ -124,7 +124,8 @@ export default function AccountPage() {
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const [sellStep, setSellStep] = useState<"redeem" | "offramp">("redeem");
   const [sellRedeemDone, setSellRedeemDone] = useState<boolean>(false);
-  const transakRef = useRef<any>(null);
+  const [showTransakModal, setShowTransakModal] = useState<boolean>(false);
+  const [transakUrl, setTransakUrl] = useState<string>("");
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -781,41 +782,23 @@ export default function AccountPage() {
 
   const openTransakOfframp = useCallback(() => {
     if (!address) return;
-    // Dynamic import to avoid SSR issues
-    import("@transak/ui-js-sdk").then(({ Transak }) => {
-      const TRANSAK_API_KEY = process.env.NEXT_PUBLIC_TRANSAK_API_KEY || "bf960e79-dc61-4d4e-b9af-89f462a483b5"; // staging key
-      const isStaging = !process.env.NEXT_PUBLIC_TRANSAK_API_KEY;
-      const baseUrl = isStaging ? "https://global-stg.transak.com" : "https://global.transak.com";
-      const params = new URLSearchParams({
-        apiKey: TRANSAK_API_KEY,
-        productsAvailed: "SELL",
-        cryptoCurrencyCode: "ETH",
-        network: "base",
-        defaultFiatCurrency: "EUR",
-        walletAddress: address,
-        disableWalletAddressForm: "true",
-        themeColor: "f59e0b",
-        hideMenu: "true",
-      });
-      const widgetUrl = `${baseUrl}?${params.toString()}`;
-
-      if (transakRef.current) {
-        transakRef.current.close();
-        transakRef.current.cleanup();
-      }
-
-      const transak = new Transak({ widgetUrl });
-      transakRef.current = transak;
-      transak.init();
-
-      Transak.on(Transak.EVENTS.TRANSAK_ORDER_SUCCESSFUL, () => {
-        transak.close();
-      });
-      Transak.on(Transak.EVENTS.TRANSAK_WIDGET_CLOSE, () => {
-        transak.cleanup();
-        transakRef.current = null;
-      });
+    const TRANSAK_API_KEY = process.env.NEXT_PUBLIC_TRANSAK_API_KEY || "bf960e79-dc61-4d4e-b9af-89f462a483b5"; // staging key
+    const isStaging = !process.env.NEXT_PUBLIC_TRANSAK_API_KEY;
+    const baseUrl = isStaging ? "https://global-stg.transak.com" : "https://global.transak.com";
+    const params = new URLSearchParams({
+      apiKey: TRANSAK_API_KEY,
+      productsAvailed: "SELL",
+      cryptoCurrencyCode: "ETH",
+      network: "base",
+      defaultFiatCurrency: "EUR",
+      walletAddress: address,
+      disableWalletAddressForm: "true",
+      themeColor: "f59e0b",
+      hideMenu: "true",
     });
+    const url = `${baseUrl}?${params.toString()}`;
+    setTransakUrl(url);
+    setShowTransakModal(true);
   }, [address]);
 
   const handleTransfer = () => {
@@ -909,6 +892,14 @@ export default function AccountPage() {
       }
     };
   }, []);
+
+  // Auto-detect sell step: if user has ETH on Base, jump to off-ramp
+  useEffect(() => {
+    if (activeTab === "sell" && ethBalance > 0.0001) {
+      setSellStep("offramp");
+      setSellRedeemDone(true);
+    }
+  }, [activeTab, ethBalance]);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
@@ -1720,6 +1711,30 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── TRANSAK OFF-RAMP MODAL ──────────────────────────────────────── */}
+        {showTransakModal && transakUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <div className="relative mx-4 flex h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-white/10 bg-zinc-900 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+                <h4 className="text-base font-bold text-white">{t("account.sellOfframpBtn")}</h4>
+                <button
+                  onClick={() => { setShowTransakModal(false); setTransakUrl(""); }}
+                  className="rounded-xl bg-white/10 p-2 text-zinc-400 transition hover:bg-white/20 hover:text-white"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+              <iframe
+                src={transakUrl}
+                className="flex-1 w-full"
+                allow="camera;microphone;payment"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
+                style={{ border: "none" }}
+              />
+            </div>
           </div>
         )}
 
