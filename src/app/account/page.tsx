@@ -12,6 +12,8 @@ import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
 import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import { thirdwebClient, wallets, chain as thirdwebChain } from "@/lib/thirdweb";
 import {
@@ -117,6 +119,9 @@ export default function AccountPage() {
   const [copied, setCopied] = useState(false);
   const [waitingForEth, setWaitingForEth] = useState<boolean>(false);
   const [mainnetBalanceBefore, setMainnetBalanceBefore] = useState<number>(0);
+  const [showQrScanner, setShowQrScanner] = useState<boolean>(false);
+  const [showMyQr, setShowMyQr] = useState<boolean>(false);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -799,6 +804,54 @@ export default function AccountPage() {
       onError: () => setTransferError(t("account.errorTxFailed")),
     });
   };
+
+  // ─── QR Scanner ────────────────────────────────────────────────────────────
+  const startQrScanner = useCallback(async () => {
+    setShowQrScanner(true);
+    // Small delay to ensure the DOM element is rendered
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      const scanner = new Html5Qrcode("qr-reader");
+      qrScannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Extract address from ethereum: URI or plain address
+          const addr = decodedText.startsWith("ethereum:")
+            ? decodedText.replace("ethereum:", "").split("@")[0]
+            : decodedText;
+          if (addr.startsWith("0x") && addr.length === 42) {
+            setTransferAddress(addr);
+            stopQrScanner();
+          }
+        },
+        () => {} // ignore errors (no QR found yet)
+      );
+    } catch (err) {
+      console.error("QR scanner error:", err);
+      setShowQrScanner(false);
+    }
+  }, []);
+
+  const stopQrScanner = useCallback(() => {
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop().catch(() => {});
+      qrScannerRef.current.clear();
+      qrScannerRef.current = null;
+    }
+    setShowQrScanner(false);
+  }, []);
+
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop().catch(() => {});
+        qrScannerRef.current.clear();
+      }
+    };
+  }, []);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
@@ -1518,9 +1571,39 @@ export default function AccountPage() {
             <h3 className="mb-1 text-2xl font-bold text-white">{t("account.sendTitle")}</h3>
             <p className="mb-6 text-zinc-400">{t("account.sendDesc")}</p>
 
-            {/* My address - share to receive */}
+            {/* My address - QR + copy */}
             <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-              <p className="mb-2 text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.yourAddressToShare")}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.yourAddressToShare")}</p>
+                <button
+                  onClick={() => setShowMyQr(!showMyQr)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 px-3 py-1.5 text-xs text-amber-300 transition hover:bg-amber-500/30"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  {showMyQr ? t("account.hideQr") : t("account.showQr")}
+                </button>
+              </div>
+              {showMyQr && address && (
+                <div className="mb-3 flex justify-center">
+                  <div className="rounded-2xl bg-white p-3">
+                    <QRCodeSVG
+                      value={`ethereum:${address}`}
+                      size={200}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      level="H"
+                      imageSettings={{
+                        src: LOGO_URL,
+                        x: undefined,
+                        y: undefined,
+                        height: 40,
+                        width: 40,
+                        excavate: true,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <code className="flex-1 truncate rounded-xl bg-black/30 px-3 py-2 text-sm text-zinc-200">{shortenAddress(address ?? "")}</code>
                 <button
@@ -1537,14 +1620,42 @@ export default function AccountPage() {
             <div className="mx-auto max-w-md space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">{t("account.recipient")}</label>
-                <input
-                  type="text"
-                  value={transferAddress}
-                  onChange={(e) => setTransferAddress(e.target.value)}
-                  placeholder={t("account.recipientPlaceholder")}
-                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 font-mono text-sm text-white placeholder-zinc-600 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={transferAddress}
+                    onChange={(e) => setTransferAddress(e.target.value)}
+                    placeholder={t("account.recipientPlaceholder")}
+                    className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-5 py-4 font-mono text-sm text-white placeholder-zinc-600 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
+                  />
+                  <button
+                    onClick={startQrScanner}
+                    className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-300 transition hover:bg-blue-500/20"
+                    title={t("account.scanQr")}
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                  </button>
+                </div>
                 <p className="mt-1.5 text-xs text-zinc-500">{t("account.recipientHint")}</p>
+
+                {/* QR Scanner Modal */}
+                {showQrScanner && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                    <div className="relative mx-4 w-full max-w-sm rounded-3xl border border-white/10 bg-zinc-900 p-6">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h4 className="text-lg font-bold text-white">{t("account.scanQr")}</h4>
+                        <button
+                          onClick={stopQrScanner}
+                          className="rounded-xl bg-white/10 p-2 text-zinc-400 transition hover:bg-white/20 hover:text-white"
+                        >
+                          <LogOut className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <div id="qr-reader" className="overflow-hidden rounded-2xl" />
+                      <p className="mt-3 text-center text-xs text-zinc-500">{t("account.scanQrHint")}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
