@@ -192,7 +192,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: 'After purchase, the system will automatically detect the ETH and guide you to the next step.',
       bridgeCompleted: 'Bridge completed! ETH arrived on Base.',
       ethArrivedProceedBridge: 'ETH arrived! Proceed with bridge to Base.',
-      checkBalanceClickBridge: 'Check your balance and click Bridge to Base when ETH is visible.'
+      checkBalanceClickBridge: 'Check your balance and click Bridge to Base when ETH is visible.',
+      transakConfirmTitle: 'Confirm Transfer',
+      transakConfirmDesc: 'Transak requires you to send ETH to complete the sale. Confirm to proceed.',
+      transakConfirmBtn: 'Confirm & Send',
+      transakTransferSuccess: 'ETH sent to Transak! You will receive EUR on your account.',
+      cancel: 'Cancel'
     }
   },
   it: {
@@ -386,7 +391,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: 'Dopo l\'acquisto, il sistema rileverà automaticamente gli ETH e ti guiderà al passo successivo.',
       bridgeCompleted: 'Bridge completato! ETH arrivati su Base.',
       ethArrivedProceedBridge: 'ETH arrivati! Procedi con il bridge a Base.',
-      checkBalanceClickBridge: 'Controlla il tuo saldo e clicca Bridge a Base quando gli ETH saranno visibili.'
+      checkBalanceClickBridge: 'Controlla il tuo saldo e clicca Bridge a Base quando gli ETH saranno visibili.',
+      transakConfirmTitle: 'Conferma Trasferimento',
+      transakConfirmDesc: 'Transak richiede l\'invio degli ETH per completare la vendita. Conferma per procedere.',
+      transakConfirmBtn: 'Conferma e Invia',
+      transakTransferSuccess: 'ETH inviati a Transak! Riceverai EUR sul tuo conto.',
+      cancel: 'Annulla'
     }
   },
   es: {
@@ -580,7 +590,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: 'Después de la compra, el sistema detectará automáticamente los ETH y te guiará al siguiente paso.',
       bridgeCompleted: '¡Bridge completado! ETH llegaron a Base.',
       ethArrivedProceedBridge: '¡ETH llegados! Procede con el bridge a Base.',
-      checkBalanceClickBridge: 'Comprueba tu saldo y haz clic en Bridge a Base cuando los ETH sean visibles.'
+      checkBalanceClickBridge: 'Comprueba tu saldo y haz clic en Bridge a Base cuando los ETH sean visibles.',
+      transakConfirmTitle: 'Confirmar Transferencia',
+      transakConfirmDesc: 'Transak requiere que envíes ETH para completar la venta. Confirma para proceder.',
+      transakConfirmBtn: 'Confirmar y Enviar',
+      transakTransferSuccess: '¡ETH enviados a Transak! Recibirás EUR en tu cuenta.',
+      cancel: 'Cancelar'
     }
   },
   fr: {
@@ -774,7 +789,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: 'Après l\'achat, le système détectera automatiquement les ETH et vous guidera vers l\'étape suivante.',
       bridgeCompleted: 'Bridge terminé ! ETH arrivés sur Base.',
       ethArrivedProceedBridge: 'ETH arrivés ! Procédez avec le bridge vers Base.',
-      checkBalanceClickBridge: 'Vérifiez votre solde et cliquez sur Bridge vers Base quand les ETH seront visibles.'
+      checkBalanceClickBridge: 'Vérifiez votre solde et cliquez sur Bridge vers Base quand les ETH seront visibles.',
+      transakConfirmTitle: 'Confirmer le Transfert',
+      transakConfirmDesc: 'Transak nécessite l\'envoi d\'ETH pour finaliser la vente. Confirmez pour continuer.',
+      transakConfirmBtn: 'Confirmer et Envoyer',
+      transakTransferSuccess: 'ETH envoyés à Transak ! Vous recevrez des EUR sur votre compte.',
+      cancel: 'Annuler'
     }
   },
   de: {
@@ -968,7 +988,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: 'Nach dem Kauf erkennt das System automatisch die ETH und führt Sie zum nächsten Schritt.',
       bridgeCompleted: 'Bridge abgeschlossen! ETH auf Base angekommen.',
       ethArrivedProceedBridge: 'ETH angekommen! Fahren Sie mit dem Bridge zu Base fort.',
-      checkBalanceClickBridge: 'Überprüfen Sie Ihren Saldo und klicken Sie auf Bridge zu Base, wenn die ETH sichtbar sind.'
+      checkBalanceClickBridge: 'Überprüfen Sie Ihren Saldo und klicken Sie auf Bridge zu Base, wenn die ETH sichtbar sind.',
+      transakConfirmTitle: 'Überweisung bestätigen',
+      transakConfirmDesc: 'Transak erfordert den Versand von ETH, um den Verkauf abzuschließen. Bestätigen Sie, um fortzufahren.',
+      transakConfirmBtn: 'Bestätigen und Senden',
+      transakTransferSuccess: 'ETH an Transak gesendet! Sie erhalten EUR auf Ihrem Konto.',
+      cancel: 'Abbrechen'
     }
   },
   zh: {
@@ -1162,7 +1187,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: '购买后，系统将自动检测 ETH 并引导您进入下一步。',
       bridgeCompleted: '桥接完成！ETH 已到达 Base。',
       ethArrivedProceedBridge: 'ETH 已到账！继续进行到 Base 的桥接。',
-      checkBalanceClickBridge: '请检查您的余额，当 ETH 可见时点击桥接到 Base。'
+      checkBalanceClickBridge: '请检查您的余额，当 ETH 可见时点击桥接到 Base。',
+      transakConfirmTitle: '确认转账',
+      transakConfirmDesc: 'Transak 需要您发送 ETH 以完成出售。确认以继续。',
+      transakConfirmBtn: '确认并发送',
+      transakTransferSuccess: 'ETH 已发送至 Transak！您将在账户中收到 EUR。',
+      cancel: '取消'
     }
   },
   ja: {
@@ -1356,7 +1386,12 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       afterPurchaseDetect: '購入後、システムが自動的に ETH を検出し、次のステップにご案内します。',
       bridgeCompleted: 'ブリッジ完了！Base に ETH が到着しました。',
       ethArrivedProceedBridge: 'ETH が到着しました！Base へのブリッジを続行してください。',
-      checkBalanceClickBridge: '残高を確認し、ETH が表示されたら Base へのブリッジをクリックしてください。'
+      checkBalanceClickBridge: '残高を確認し、ETH が表示されたら Base へのブリッジをクリックしてください。',
+      transakConfirmTitle: '送金の確認',
+      transakConfirmDesc: 'Transak は売却を完了するために ETH の送信を必要とします。確認して続行してください。',
+      transakConfirmBtn: '確認して送信',
+      transakTransferSuccess: 'ETH を Transak に送信しました！アカウントに EUR が届きます。',
+      cancel: 'キャンセル'
     }
   }
 };
