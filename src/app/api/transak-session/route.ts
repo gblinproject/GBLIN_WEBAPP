@@ -20,6 +20,7 @@ const API_BASE = "https://api-stg.transak.com";
 const GATEWAY_BASE = "https://api-gateway-stg.transak.com";
 
 // ── In-memory access-token cache (token valid 7 days per Transak docs) ──
+// Reset on deploy — bump this to invalidate: v2
 let cachedAccessToken: string | null = null;
 let cachedTokenExpiresAt = 0; // unix ms
 
@@ -89,8 +90,8 @@ export async function POST(req: NextRequest) {
           apiKey: TRANSAK_API_KEY,
           referrerDomain: REFERRER_DOMAIN,
           productsAvailed: "SELL",
-          cryptoCurrencyCode: "ETH",
-          network: "base",
+          defaultCryptoCurrency: "ETH",
+          defaultNetwork: "ethereum",
           defaultFiatCurrency: "EUR",
           walletAddress,
           disableWalletAddressForm: true,
@@ -119,6 +120,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No widgetUrl returned" }, { status: 502 });
     }
 
+    console.log("[transak] widgetUrl:", widgetUrl);
     return NextResponse.json({ widgetUrl });
   } catch (err) {
     console.error("[transak] session error:", err);
