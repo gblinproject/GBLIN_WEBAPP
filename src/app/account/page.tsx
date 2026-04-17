@@ -134,6 +134,10 @@ export default function AccountPage() {
     network: string;
   } | null>(null);
   const [transakSending, setTransakSending] = useState(false);
+  const [coinbaseAddress, setCoinbaseAddress] = useState("");
+  const [coinbaseAmount, setCoinbaseAmount] = useState("");
+  const [coinbaseSending, setCoinbaseSending] = useState(false);
+  const [coinbaseError, setCoinbaseError] = useState<string | null>(null);
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -995,6 +999,47 @@ export default function AccountPage() {
     }
   }, [transakOrder, account, ethBalance, fetchEthBalance, t]);
 
+  // Send ETH to Coinbase deposit address
+  const sendEthToCoinbase = useCallback(async () => {
+    if (!account) return;
+    setCoinbaseError(null);
+    if (!coinbaseAddress || !/^0x[a-fA-F0-9]{40}$/.test(coinbaseAddress)) {
+      setCoinbaseError(t("account.errorInvalidAddress") || "Indirizzo non valido");
+      return;
+    }
+    const amount = parseFloat(coinbaseAmount);
+    if (!amount || amount <= 0) {
+      setCoinbaseError(t("account.errorInvalidAmount") || "Importo non valido");
+      return;
+    }
+    if (amount >= ethBalance) {
+      setCoinbaseError(t("account.errorInsufficientEth") || "Importo superiore al saldo (considera il gas)");
+      return;
+    }
+    setCoinbaseSending(true);
+    try {
+      const amountWei = ethers.parseEther(amount.toFixed(18));
+      await sendTxDirect({
+        transaction: {
+          client: thirdwebClient,
+          chain: thirdwebChain,
+          to: coinbaseAddress,
+          value: amountWei,
+        } as any,
+        account,
+      });
+      setCoinbaseAddress("");
+      setCoinbaseAmount("");
+      fetchEthBalance();
+      setTxSuccess(t("account.coinbaseSendSuccess") || "ETH inviati con successo! Controlla il tuo account Coinbase.");
+    } catch (err) {
+      console.error("[coinbase-send] error:", err);
+      setCoinbaseError(err instanceof Error ? err.message : "Invio fallito");
+    } finally {
+      setCoinbaseSending(false);
+    }
+  }, [account, coinbaseAddress, coinbaseAmount, ethBalance, fetchEthBalance, t]);
+
   // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
     { key: "overview", label: t("account.tabOverview"), icon: Wallet },
@@ -1743,13 +1788,6 @@ export default function AccountPage() {
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
                     <p className="text-sm font-semibold text-emerald-300">{t("account.sellRedeemSuccess")}</p>
                     <p className="mt-1 text-xs text-zinc-400">ETH: {ethBalance.toFixed(6)}</p>
-                    <button
-                      onClick={() => setSellStep("offramp")}
-                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-amber-400"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      {t("account.sellGoToOfframp")}
-                    </button>
                   </div>
                 )}
 
@@ -1759,9 +1797,10 @@ export default function AccountPage() {
               </div>
             )}
 
-            {/* Step 2: Off-ramp ETH → EUR via Transak */}
+            {/* Step 2: Off-ramp ETH → EUR via Coinbase */}
             {sellStep === "offramp" && (
               <div className="mx-auto max-w-md space-y-4">
+                {/* ETH balance */}
                 <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
                   <p className="mb-1 text-xs uppercase tracking-[0.22em] text-amber-400">{t("account.sellOfframpEthAvailable")}</p>
                   <p className="text-2xl font-bold text-white">{ethBalance.toFixed(6)} <span className="text-base font-normal text-zinc-400">ETH</span></p>
@@ -1770,50 +1809,87 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
-                  <p className="text-sm font-semibold text-zinc-200">{t("account.sellOfframpHow")}</p>
-                  <ul className="space-y-1.5 text-sm text-zinc-400">
-                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">1.</span>{t("account.sellOfframpStep1")}</li>
-                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">2.</span>{t("account.sellOfframpStep2")}</li>
-                    <li className="flex items-start gap-2"><span className="mt-0.5 text-amber-400">3.</span>{t("account.sellOfframpStep3")}</li>
-                  </ul>
+                {/* Step-by-step guide */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-zinc-200">{t("account.coinbaseGuideTitle") || "Come ritirare EUR tramite Coinbase"}</p>
+                  <ol className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400">1</span>
+                      <span className="text-sm text-zinc-400">{t("account.coinbaseGuideStep1") || "Registrati su Coinbase.com (gratuito, KYC individuale ~5 min)"}</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400">2</span>
+                      <span className="text-sm text-zinc-400">{t("account.coinbaseGuideStep2") || "Su Coinbase vai su \"Ricevi\" → seleziona ETH → seleziona rete Base → copia il tuo indirizzo"}</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400">3</span>
+                      <span className="text-sm text-zinc-400">{t("account.coinbaseGuideStep3") || "Incolla l'indirizzo Coinbase nel campo qui sotto e invia i tuoi ETH"}</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400">4</span>
+                      <span className="text-sm text-zinc-400">{t("account.coinbaseGuideStep4") || "Su Coinbase vendi ETH → ricevi EUR → bonifico SEPA sul tuo conto"}</span>
+                    </li>
+                  </ol>
+                  <a
+                    href="https://coinbase.com/signup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {t("account.coinbaseSignup") || "Apri Coinbase.com"}
+                  </a>
                 </div>
 
-                <button
-                  onClick={openTransakOfframp}
-                  disabled={ethBalance < 0.00422897 || transakLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
-                >
-                  {transakLoading ? (
-                    <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</>
-                  ) : (
-                    <><ExternalLink className="h-5 w-5" />{t("account.sellOfframpBtn")}</>
-                  )}
-                </button>
-
-                {transakError && (
-                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-center">
-                    <p className="text-sm text-rose-300">{transakError}</p>
+                {/* ETH send form */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-zinc-200">{t("account.coinbaseSendTitle") || "Invia ETH al tuo indirizzo Coinbase"}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={coinbaseAddress}
+                      onChange={e => setCoinbaseAddress(e.target.value)}
+                      placeholder="0x... (indirizzo Coinbase su rete Base)"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+                    />
                   </div>
-                )}
-
-                {ethBalance > 0 && ethBalance < 0.00422897 && (
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-center">
-                    <p className="text-sm text-amber-300">{t("account.sellOfframpMinEth") || "Minimo richiesto da Transak: 0.00422897 ETH"}</p>
-                  </div>
-                )}
-
-                {ethBalance <= 0 && (
-                  <div className="rounded-2xl border border-zinc-500/20 bg-zinc-500/10 p-4 text-center">
-                    <p className="text-sm text-zinc-400">{t("account.sellOfframpNoEth")}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={coinbaseAmount}
+                      onChange={e => setCoinbaseAmount(e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.0001"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+                    />
                     <button
-                      onClick={() => setSellStep("redeem")}
-                      className="mt-2 text-sm font-semibold text-rose-400 hover:text-rose-300 transition"
+                      onClick={() => setCoinbaseAmount(Math.max(0, ethBalance - 0.00005).toFixed(6))}
+                      className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
                     >
-                      ← {t("account.sellStep1Label")}
+                      Max
                     </button>
+                    <span className="flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">ETH</span>
                   </div>
-                )}
+
+                  {coinbaseError && (
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3">
+                      <p className="text-sm text-rose-300">{coinbaseError}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={sendEthToCoinbase}
+                    disabled={coinbaseSending || !coinbaseAddress || !coinbaseAmount || parseFloat(coinbaseAmount) <= 0}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+                  >
+                    {coinbaseSending ? (
+                      <><RefreshCw className="h-4 w-4 animate-spin" />{t("account.processing")}</>
+                    ) : (
+                      <><ArrowRight className="h-4 w-4" />{t("account.coinbaseSendBtn") || "Invia ETH"}</>
+                    )}
+                  </button>
+                </div>
 
                 {address && (
                   <a
@@ -1826,10 +1902,6 @@ export default function AccountPage() {
                     {t("account.viewTransactionsBasescan") || "Verifica transazioni su Basescan"}
                   </a>
                 )}
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-zinc-400">{t("account.sellOfframpNote")}</p>
-                </div>
               </div>
             )}
           </div>
