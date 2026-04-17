@@ -124,8 +124,6 @@ export default function AccountPage() {
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const [sellStep, setSellStep] = useState<"redeem" | "offramp">("redeem");
   const [sellRedeemDone, setSellRedeemDone] = useState<boolean>(false);
-  const [showTransakModal, setShowTransakModal] = useState<boolean>(false);
-  const [transakUrl, setTransakUrl] = useState<string>("");
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -780,41 +778,34 @@ export default function AccountPage() {
     });
   };
 
+  const [transakLoading, setTransakLoading] = useState(false);
+  const [transakError, setTransakError] = useState<string | null>(null);
+
   const openTransakOfframp = useCallback(async () => {
     if (!address) return;
-    // Try to get a signed widgetUrl from our API route (requires TRANSAK_API_SECRET)
+    setTransakLoading(true);
+    setTransakError(null);
     try {
       const res = await fetch("/api/transak-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: address }),
       });
-      if (res.ok) {
-        const { widgetUrl } = await res.json();
-        if (widgetUrl) {
-          setTransakUrl(widgetUrl);
-          setShowTransakModal(true);
-          return;
-        }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
       }
-    } catch {
-      // API route not available or no secret configured — fall through
+      if (!data.widgetUrl) {
+        throw new Error("No widgetUrl returned");
+      }
+      // Open the signed widgetUrl in a new tab (per Transak docs: redirect integration)
+      window.open(data.widgetUrl, "_blank", "noopener");
+    } catch (err) {
+      console.error("[transak] offramp error:", err);
+      setTransakError(err instanceof Error ? err.message : "Errore Transak");
+    } finally {
+      setTransakLoading(false);
     }
-    // Fallback: open Transak in a new tab (always works, no backend needed)
-    const TRANSAK_API_KEY = "0bafda03-0ae5-4a65-849e-54971b453ab2";
-    const baseUrl = "https://global.transak.com";
-    const params = new URLSearchParams({
-      apiKey: TRANSAK_API_KEY,
-      productsAvailed: "SELL",
-      cryptoCurrencyCode: "ETH",
-      network: "base",
-      defaultFiatCurrency: "EUR",
-      walletAddress: address,
-      disableWalletAddressForm: "true",
-      themeColor: "f59e0b",
-      hideMenu: "true",
-    });
-    window.open(`${baseUrl}?${params.toString()}`, "_blank", "noopener");
   }, [address]);
 
   const handleTransfer = () => {
@@ -1703,12 +1694,21 @@ export default function AccountPage() {
 
                 <button
                   onClick={openTransakOfframp}
-                  disabled={ethBalance <= 0}
+                  disabled={ethBalance <= 0 || transakLoading}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
                 >
-                  <ExternalLink className="h-5 w-5" />
-                  {t("account.sellOfframpBtn")}
+                  {transakLoading ? (
+                    <><RefreshCw className="h-5 w-5 animate-spin" />{t("account.processing")}</>
+                  ) : (
+                    <><ExternalLink className="h-5 w-5" />{t("account.sellOfframpBtn")}</>
+                  )}
                 </button>
+
+                {transakError && (
+                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-center">
+                    <p className="text-sm text-rose-300">{transakError}</p>
+                  </div>
+                )}
 
                 {ethBalance <= 0 && (
                   <div className="rounded-2xl border border-zinc-500/20 bg-zinc-500/10 p-4 text-center">
@@ -1727,30 +1727,6 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── TRANSAK OFF-RAMP MODAL (iframe with sessionId) ────────────── */}
-        {showTransakModal && transakUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="relative mx-4 flex h-[90vh] w-full max-w-lg flex-col rounded-3xl border border-white/10 bg-zinc-900 overflow-hidden">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-                <h4 className="text-base font-bold text-white">{t("account.sellOfframpBtn")}</h4>
-                <button
-                  onClick={() => { setShowTransakModal(false); setTransakUrl(""); }}
-                  className="rounded-xl bg-white/10 p-2 text-zinc-400 transition hover:bg-white/20 hover:text-white"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
-              </div>
-              <iframe
-                src={transakUrl}
-                className="flex-1 w-full"
-                allow="camera;microphone;payment;clipboard-write"
-                referrerPolicy="strict-origin-when-cross-origin"
-                style={{ border: "none" }}
-              />
-            </div>
           </div>
         )}
 
