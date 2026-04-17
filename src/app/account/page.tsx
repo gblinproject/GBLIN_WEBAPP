@@ -785,6 +785,8 @@ export default function AccountPage() {
     if (!address) return;
     setTransakLoading(true);
     setTransakError(null);
+    // Open window immediately (synchronous, within user gesture) to avoid popup blocker
+    const newWindow = window.open("about:blank", "_blank");
     try {
       const res = await fetch("/api/transak-session", {
         method: "POST",
@@ -798,11 +800,16 @@ export default function AccountPage() {
       if (!data.widgetUrl) {
         throw new Error("No widgetUrl returned");
       }
-      // Open the signed widgetUrl in a new tab (per Transak docs: redirect integration)
-      window.open(data.widgetUrl, "_blank", "noopener");
+      if (newWindow) {
+        newWindow.location.href = data.widgetUrl;
+      } else {
+        // Fallback if popup was still blocked
+        window.location.href = data.widgetUrl;
+      }
     } catch (err) {
       console.error("[transak] offramp error:", err);
       setTransakError(err instanceof Error ? err.message : "Errore Transak");
+      if (newWindow) newWindow.close();
     } finally {
       setTransakLoading(false);
     }
