@@ -120,14 +120,12 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionData = await sessionRes.json();
-    console.log("[transak] full session response:", JSON.stringify(sessionData));
     const widgetUrl = sessionData?.data?.widgetUrl as string | undefined;
     if (!widgetUrl) {
       console.error("[transak] no widgetUrl in response:", JSON.stringify(sessionData));
       return NextResponse.json({ error: "No widgetUrl returned" }, { status: 502 });
     }
 
-    console.log("[transak] widgetUrl:", widgetUrl);
     return NextResponse.json({ widgetUrl });
   } catch (err) {
     console.error("[transak] session error:", err);

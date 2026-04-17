@@ -124,6 +124,16 @@ export default function AccountPage() {
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const [sellStep, setSellStep] = useState<"redeem" | "offramp">("redeem");
   const [sellRedeemDone, setSellRedeemDone] = useState<boolean>(false);
+  const [transakOrder, setTransakOrder] = useState<{
+    orderId: string;
+    walletAddress: string;
+    cryptoAmount: string;
+    cryptoCurrency: string;
+    fiatAmount: string;
+    fiatCurrency: string;
+    network: string;
+  } | null>(null);
+  const [transakSending, setTransakSending] = useState(false);
 
   // Advanced trading states for BuyView
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -914,6 +924,56 @@ export default function AccountPage() {
       setSellRedeemDone(true);
     }
   }, [activeTab, ethBalance]);
+
+  // Intercept Transak wallet redirection (redirect back with order params)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("orderId");
+    const walletAddr = params.get("walletAddress");
+    const cryptoAmt = params.get("cryptoAmount");
+    if (orderId && walletAddr && cryptoAmt) {
+      setTransakOrder({
+        orderId,
+        walletAddress: walletAddr,
+        cryptoAmount: cryptoAmt,
+        cryptoCurrency: params.get("cryptoCurrency") || "ETH",
+        fiatAmount: params.get("fiatAmount") || "",
+        fiatCurrency: params.get("fiatCurrency") || "EUR",
+        network: params.get("network") || "BASE",
+      });
+      setActiveTab("sell");
+      setSellStep("offramp");
+      // Clean URL without reload
+      window.history.replaceState({}, "", "/account");
+    }
+  }, []);
+
+  // Send ETH to Transak deposit address
+  const confirmTransakTransfer = useCallback(async () => {
+    if (!transakOrder || !account) return;
+    setTransakSending(true);
+    try {
+      const amountWei = ethers.parseEther(transakOrder.cryptoAmount);
+      await sendTxDirect({
+        transaction: {
+          client: thirdwebClient,
+          chain: thirdwebChain,
+          to: transakOrder.walletAddress,
+          value: amountWei,
+        } as any,
+        account,
+      });
+      setTransakOrder(null);
+      setTransakError(null);
+      fetchEthBalance();
+      showSuccess(t("account.transakTransferSuccess") || "ETH inviati a Transak! Riceverai EUR sul tuo conto.");
+    } catch (err) {
+      console.error("[transak] transfer error:", err);
+      setTransakError(err instanceof Error ? err.message : "Transfer failed");
+    } finally {
+      setTransakSending(false);
+    }
+  }, [transakOrder, account, fetchEthBalance, t]);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
@@ -1878,6 +1938,65 @@ export default function AccountPage() {
           </>
         )}
       </main>
+
+      {/* Transak Transfer Confirmation Modal */}
+      {transakOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-zinc-900 p-8">
+            <h3 className="mb-4 text-xl font-bold text-white text-center">
+              {t("account.transakConfirmTitle") || "Conferma Trasferimento"}
+            </h3>
+            <p className="mb-6 text-sm text-zinc-400 text-center">
+              {t("account.transakConfirmDesc") || "Transak richiede l'invio degli ETH per completare la vendita. Conferma per inviare."}
+            </p>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between rounded-xl bg-black/30 p-3">
+                <span className="text-sm text-zinc-500">Importo</span>
+                <span className="text-sm font-semibold text-white">{parseFloat(transakOrder.cryptoAmount).toFixed(6)} {transakOrder.cryptoCurrency}</span>
+              </div>
+              <div className="flex justify-between rounded-xl bg-black/30 p-3">
+                <span className="text-sm text-zinc-500">Riceverai</span>
+                <span className="text-sm font-semibold text-emerald-400">{transakOrder.fiatAmount} {transakOrder.fiatCurrency}</span>
+              </div>
+              <div className="flex justify-between rounded-xl bg-black/30 p-3">
+                <span className="text-sm text-zinc-500">Rete</span>
+                <span className="text-sm text-white">{transakOrder.network}</span>
+              </div>
+              <div className="flex justify-between rounded-xl bg-black/30 p-3">
+                <span className="text-sm text-zinc-500">Destinazione</span>
+                <span className="text-xs text-zinc-300 font-mono">{transakOrder.walletAddress.slice(0, 10)}...{transakOrder.walletAddress.slice(-8)}</span>
+              </div>
+            </div>
+
+            {transakError && (
+              <div className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-center">
+                <p className="text-sm text-rose-300">{transakError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setTransakOrder(null); setTransakError(null); }}
+                disabled={transakSending}
+                className="flex-1 rounded-xl border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 disabled:opacity-50"
+              >
+                {t("account.cancel") || "Annulla"}
+              </button>
+              <button
+                onClick={confirmTransakTransfer}
+                disabled={transakSending}
+                className="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-amber-400 disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {transakSending ? (
+                  <span className="flex items-center justify-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" />{t("account.processing")}</span>
+                ) : (
+                  t("account.transakConfirmBtn") || "Conferma e Invia"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
