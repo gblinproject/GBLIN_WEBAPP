@@ -21,7 +21,9 @@ export const translations: Record<Language, any> = {
       title2: "VAULT",
       desc: "The first autonomous central bank on Base. Algorithmic wealth preservation backed by real-world crypto assets.",
       cta: "ENTER THE VAULT",
-      subtitle: "// The Autonomous Central Bank"
+      subtitle: "// The Autonomous Central Bank",
+      aerodromeLabel: "BUY GBLIN ON AERODROME",
+      aerodromeHint: "DEX on Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Protocol Dashboard",
@@ -226,7 +228,9 @@ export const translations: Record<Language, any> = {
       title2: "D'ORO",
       desc: "La prima banca centrale autonoma su Base. Preservazione algoritmica della ricchezza supportata da crypto asset reali.",
       cta: "ENTRA NEL CAVEAU",
-      subtitle: "// La Banca Centrale Autonoma"
+      subtitle: "// La Banca Centrale Autonoma",
+      aerodromeLabel: "COMPRA GBLIN SU AERODROME",
+      aerodromeHint: "DEX su Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Dashboard del Protocollo",
@@ -431,7 +435,9 @@ export const translations: Record<Language, any> = {
       title2: "DE ORO",
       desc: "El primer banco central autónomo en Base. Preservación de riqueza algorítmica respaldada por activos cripto reales.",
       cta: "ENTRAR EN LA BÓVEDA",
-      subtitle: "// El Banco Central Autónomo"
+      subtitle: "// El Banco Central Autónomo",
+      aerodromeLabel: "COMPRA GBLIN EN AERODROME",
+      aerodromeHint: "DEX en Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Panel del Protocolo",
@@ -589,7 +595,9 @@ export const translations: Record<Language, any> = {
       title2: "D'OR",
       desc: "La première banque centrale autonome sur Base. Préservation algorithmique de la richesse soutenue par des actifs crypto réels.",
       cta: "ENTRER DANS LE COFFRE",
-      subtitle: "// La Banque Centrale Autonome"
+      subtitle: "// La Banque Centrale Autonome",
+      aerodromeLabel: "ACHETER GBLIN SUR AERODROME",
+      aerodromeHint: "DEX sur Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Tableau de Bord du Protocole",
@@ -747,7 +755,9 @@ export const translations: Record<Language, any> = {
       title2: "TRESOR",
       desc: "Die erste autonome Zentralbank auf Base. Algorithmische Vermögenserhaltung, abgesichert durch reale Krypto-Assets.",
       cta: "TRESOR BETRETEN",
-      subtitle: "// Die autonome Zentralbank"
+      subtitle: "// Die autonome Zentralbank",
+      aerodromeLabel: "GBLIN AUF AERODROME KAUFEN",
+      aerodromeHint: "DEX auf Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Protokoll-Dashboard",
@@ -905,7 +915,9 @@ export const translations: Record<Language, any> = {
       title2: "金库",
       desc: "Base 上的首个自主中央银行。由现实世界加密资产支持的算法财富保值。",
       cta: "进入金库",
-      subtitle: "// 自主中央银行"
+      subtitle: "// 自主中央银行",
+      aerodromeLabel: "在 AERODROME 购买 GBLIN",
+      aerodromeHint: "Base 上的 DEX · ETH → GBLIN"
     },
     dashboard: {
       title: "协议仪表板",
@@ -1063,7 +1075,9 @@ export const translations: Record<Language, any> = {
       title2: "金庫",
       desc: "Base上の最初の自律型中央銀行。現実世界の暗号資産に裏打ちされたアルゴリズムによる資産保全。",
       cta: "金庫に入る",
-      subtitle: "// 自律型中央銀行"
+      subtitle: "// 自律型中央銀行",
+      aerodromeLabel: "AERODROME で GBLIN を購入",
+      aerodromeHint: "Base 上の DEX · ETH → GBLIN"
     },
     dashboard: {
       title: "プロトコル・ダッシュボード",

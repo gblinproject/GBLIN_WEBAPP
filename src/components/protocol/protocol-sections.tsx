@@ -327,6 +327,25 @@ export function HomeView(props: HomeViewProps) {
                 {copied ? t('site.copied') : shortenAddress(CONTRACT_ADDRESS)}
               </button>
             </div>
+
+            {/* Aerodrome pool CTA */}
+            <a
+              href="https://aerodrome.finance/swap?from=eth&to=0x38dcdb3a381677239bbc652aed9811f2f8496345&chain0=8453&chain1=8453"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 group inline-flex w-full max-w-sm items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] px-5 py-3.5 transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </span>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400">{t('hero.aerodromeLabel') || 'Compra GBLIN su Aerodrome'}</p>
+                  <p className="text-[10px] text-zinc-500">{t('hero.aerodromeHint') || 'DEX su Base · ETH → GBLIN'}</p>
+                </div>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
+            </a>
           </div>
           {/* KPI tiles */}
           <div className="grid grid-cols-2 gap-3 xl:w-[340px]">
