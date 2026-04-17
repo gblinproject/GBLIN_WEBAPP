@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const walletAddress = body.walletAddress as string;
+    const cryptoAmount = body.cryptoAmount as number | undefined;
     if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return NextResponse.json({ error: "Valid walletAddress required" }, { status: 400 });
     }
@@ -93,6 +94,9 @@ export async function POST(req: NextRequest) {
       hideMenu: true,
       redirectURL: "https://gblin.digital/account",
     };
+    if (cryptoAmount && cryptoAmount > 0) {
+      widgetParams.cryptoAmount = cryptoAmount;
+    }
 
     // Step 2 — create single-use widgetUrl with sessionId
     const sessionRes = await fetch(`${GATEWAY_BASE}/api/v2/auth/session`, {

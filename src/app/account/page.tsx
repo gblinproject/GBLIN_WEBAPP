@@ -791,7 +791,7 @@ export default function AccountPage() {
       const res = await fetch("/api/transak-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address }),
+        body: JSON.stringify({ walletAddress: address, cryptoAmount: ethBalance > 0 ? ethBalance : undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -813,7 +813,7 @@ export default function AccountPage() {
     } finally {
       setTransakLoading(false);
     }
-  }, [address]);
+  }, [address, ethBalance]);
 
   const handleTransfer = () => {
     setTransferError(null);
