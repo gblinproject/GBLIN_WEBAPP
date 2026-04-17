@@ -953,7 +953,16 @@ export default function AccountPage() {
     if (!transakOrder || !account) return;
     setTransakSending(true);
     try {
-      const amountWei = ethers.parseEther(transakOrder.cryptoAmount);
+      // Reserve gas: if the requested amount equals (or exceeds) our balance, subtract a gas buffer
+      const GAS_BUFFER = 0.00005; // ~0.00005 ETH for Base L2 gas
+      let sendAmount = parseFloat(transakOrder.cryptoAmount);
+      if (sendAmount >= ethBalance) {
+        sendAmount = ethBalance - GAS_BUFFER;
+      }
+      if (sendAmount <= 0) {
+        throw new Error("Insufficient ETH balance to cover gas fees");
+      }
+      const amountWei = ethers.parseEther(sendAmount.toFixed(18));
       await sendTxDirect({
         transaction: {
           client: thirdwebClient,
@@ -966,14 +975,14 @@ export default function AccountPage() {
       setTransakOrder(null);
       setTransakError(null);
       fetchEthBalance();
-      showSuccess(t("account.transakTransferSuccess") || "ETH inviati a Transak! Riceverai EUR sul tuo conto.");
+      setTxSuccess(t("account.transakTransferSuccess") || "ETH inviati a Transak! Riceverai EUR sul tuo conto.");
     } catch (err) {
       console.error("[transak] transfer error:", err);
       setTransakError(err instanceof Error ? err.message : "Transfer failed");
     } finally {
       setTransakSending(false);
     }
-  }, [transakOrder, account, fetchEthBalance, t]);
+  }, [transakOrder, account, ethBalance, fetchEthBalance, t]);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
   const tabs = [
