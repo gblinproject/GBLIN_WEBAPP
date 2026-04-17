@@ -13,11 +13,10 @@ import { NextRequest, NextResponse } from "next/server";
  * The API key is hardcoded because it is a public identifier.
  */
 
-const TRANSAK_API_KEY = "84b36c5b-0c95-4241-a1eb-0f8dd87a8a03";
+const TRANSAK_API_KEY = "0bafda03-0ae5-4a65-849e-54971b453ab2";
 const REFERRER_DOMAIN = "gblin.digital";
-// Using staging until KYB is approved for production
-const API_BASE = "https://api-stg.transak.com";
-const GATEWAY_BASE = "https://api-gateway-stg.transak.com";
+const API_BASE = "https://api.transak.com";
+const GATEWAY_BASE = "https://api-gateway.transak.com";
 
 // ── In-memory access-token cache (token valid 7 days per Transak docs) ──
 // Reset on deploy — bump this to invalidate: v2

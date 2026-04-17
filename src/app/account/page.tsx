@@ -953,6 +953,17 @@ export default function AccountPage() {
     if (!transakOrder || !account) return;
     setTransakSending(true);
     try {
+      // Verify order is still active before sending ETH
+      const statusRes = await fetch(`/api/transak-order-status?orderId=${transakOrder.orderId}`);
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        const orderStatus = statusData?.status as string | undefined;
+        const blocked = ["EXPIRED", "CANCELLED", "FAILED", "REFUNDED"];
+        if (orderStatus && blocked.includes(orderStatus.toUpperCase())) {
+          throw new Error(`Ordine Transak ${orderStatus} — non inviare ETH. Crea un nuovo ordine.`);
+        }
+      }
+
       // Reserve gas: if the requested amount equals (or exceeds) our balance, subtract a gas buffer
       const GAS_BUFFER = 0.00005; // ~0.00005 ETH for Base L2 gas
       let sendAmount = parseFloat(transakOrder.cryptoAmount);
