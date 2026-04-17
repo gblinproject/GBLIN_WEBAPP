@@ -1804,6 +1804,18 @@ export default function AccountPage() {
                   </div>
                 )}
 
+                {address && (
+                  <a
+                    href={`https://basescan.org/address/${address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {t("account.viewTransactionsBasescan") || "Verifica transazioni su Basescan"}
+                  </a>
+                )}
+
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-zinc-400">{t("account.sellOfframpNote")}</p>
                 </div>
