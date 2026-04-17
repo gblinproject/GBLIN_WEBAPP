@@ -1844,16 +1844,14 @@ export default function AccountPage() {
                 {/* ETH send form */}
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   <p className="text-sm font-semibold text-zinc-200">{t("account.coinbaseSendTitle") || "Invia ETH al tuo indirizzo Coinbase"}</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={coinbaseAddress}
-                      onChange={e => setCoinbaseAddress(e.target.value)}
-                      placeholder="0x... (indirizzo Coinbase su rete Base)"
-                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={coinbaseAddress}
+                    onChange={e => setCoinbaseAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+                  />
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-2">
                     <input
                       type="number"
                       value={coinbaseAmount}
@@ -1861,11 +1859,11 @@ export default function AccountPage() {
                       placeholder="0.00"
                       min="0"
                       step="0.0001"
-                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
                     />
                     <button
                       onClick={() => setCoinbaseAmount(Math.max(0, ethBalance - 0.00005).toFixed(6))}
-                      className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 whitespace-nowrap"
                     >
                       Max
                     </button>
