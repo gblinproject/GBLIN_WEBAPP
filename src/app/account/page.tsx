@@ -1770,7 +1770,7 @@ export default function AccountPage() {
 
                 <button
                   onClick={openTransakOfframp}
-                  disabled={ethBalance <= 0 || transakLoading}
+                  disabled={ethBalance < 0.00422897 || transakLoading}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
                 >
                   {transakLoading ? (
@@ -1783,6 +1783,12 @@ export default function AccountPage() {
                 {transakError && (
                   <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-center">
                     <p className="text-sm text-rose-300">{transakError}</p>
+                  </div>
+                )}
+
+                {ethBalance > 0 && ethBalance < 0.00422897 && (
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-center">
+                    <p className="text-sm text-amber-300">{t("account.sellOfframpMinEth") || "Minimo richiesto da Transak: 0.00422897 ETH"}</p>
                   </div>
                 )}
 
