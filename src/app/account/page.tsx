@@ -800,6 +800,9 @@ export default function AccountPage() {
       if (!data.widgetUrl) {
         throw new Error("No widgetUrl returned");
       }
+      // Debug: log the widgetUrl
+      console.log("[transak] widgetUrl:", data.widgetUrl);
+      setTransakError("DEBUG URL: " + data.widgetUrl);
       if (newWindow) {
         newWindow.location.href = data.widgetUrl;
       } else {
