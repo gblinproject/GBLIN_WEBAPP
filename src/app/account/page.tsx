@@ -791,7 +791,7 @@ export default function AccountPage() {
       const res = await fetch("/api/transak-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address, ethBalance }),
+        body: JSON.stringify({ walletAddress: address }),
       });
       const data = await res.json();
       if (!res.ok) {
