@@ -71,12 +71,32 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const walletAddress = body.walletAddress as string;
+    const ethBalance = body.ethBalance as number | undefined;
     if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return NextResponse.json({ error: "Valid walletAddress required" }, { status: 400 });
     }
 
     // Step 1 — get (cached) partner access token
     const accessToken = await getAccessToken(TRANSAK_API_SECRET);
+
+    // Build widgetParams
+    const widgetParams: Record<string, unknown> = {
+      apiKey: TRANSAK_API_KEY,
+      referrerDomain: REFERRER_DOMAIN,
+      productsAvailed: "SELL",
+      cryptoCurrencyCode: "ETH",
+      network: "base",
+      fiatCurrency: "EUR",
+      walletAddress,
+      disableWalletAddressForm: true,
+      walletRedirection: true,
+      themeColor: "f59e0b",
+      hideMenu: true,
+      redirectURL: "https://gblin.digital/account",
+    };
+    if (ethBalance && ethBalance > 0) {
+      widgetParams.cryptoAmount = ethBalance;
+    }
 
     // Step 2 — create single-use widgetUrl with sessionId
     const sessionRes = await fetch(`${GATEWAY_BASE}/api/v2/auth/session`, {
@@ -85,22 +105,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         "access-token": accessToken,
       },
-      body: JSON.stringify({
-        widgetParams: {
-          apiKey: TRANSAK_API_KEY,
-          referrerDomain: REFERRER_DOMAIN,
-          productsAvailed: "SELL",
-          cryptoCurrencyCode: "ETH",
-          network: "ethereum",
-          fiatCurrency: "EUR",
-          walletAddress,
-          disableWalletAddressForm: true,
-          walletRedirection: true,
-          themeColor: "f59e0b",
-          hideMenu: true,
-          redirectURL: "https://gblin.digital/account",
-        },
-      }),
+      body: JSON.stringify({ widgetParams }),
     });
 
     if (!sessionRes.ok) {

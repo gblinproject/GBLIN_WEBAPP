@@ -791,7 +791,7 @@ export default function AccountPage() {
       const res = await fetch("/api/transak-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address }),
+        body: JSON.stringify({ walletAddress: address, ethBalance }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -800,9 +800,6 @@ export default function AccountPage() {
       if (!data.widgetUrl) {
         throw new Error("No widgetUrl returned");
       }
-      // Debug: log the widgetUrl
-      console.log("[transak] widgetUrl:", data.widgetUrl);
-      setTransakError("DEBUG URL: " + data.widgetUrl);
       if (newWindow) {
         newWindow.location.href = data.widgetUrl;
       } else {
