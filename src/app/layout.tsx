@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/react";
@@ -21,6 +21,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "GBLIN Protocol",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#050505",
 };
 
 export default async function RootLayout({

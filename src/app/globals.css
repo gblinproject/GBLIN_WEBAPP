@@ -12,6 +12,34 @@ body {
   color: var(--ink);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Fix iOS 15+ viewport issues with dynamic island / notch */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ios-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .ios-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent scroll lock issues on iOS when modal is open */
+html {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Fix for iOS Safari 100vh issue */
+@supports (-webkit-touch-callout: none) {
+  .h-screen {
+    height: -webkit-fill-available;
+  }
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
 }
 
 .glass {

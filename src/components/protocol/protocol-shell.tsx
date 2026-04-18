@@ -95,7 +95,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
       <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
       <div className="fixed inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm" />
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 shadow-lg backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 shadow-lg backdrop-blur-xl pt-[env(safe-area-inset-top)]">
         <div className={`${shellContainer} px-4 py-4 sm:px-6 lg:px-8 2xl:px-10`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
