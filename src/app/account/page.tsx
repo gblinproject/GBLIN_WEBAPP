@@ -1846,7 +1846,7 @@ export default function AccountPage() {
                   <p className="text-sm font-semibold text-amber-200">{t("account.transakSupportTitle") || "Hai bisogno di assistenza Transak?"}</p>
                   <p className="text-xs text-zinc-400">{t("account.transakSupportDesc") || "Apri Transak con il tuo wallet e 1 ETH precompilato per contattare il supporto riguardo il trasferimento di staging."}</p>
                   <a
-                    href={`https://global.transak.com/?apiKey=0bafda03-0ae5-4a65-849e-54971b453ab2&cryptoCurrency=ETH&fiatCurrency=EUR&walletAddress=${address || ""}&defaultCryptoAmount=1&isAutoFillUserDetails=true`}
+                    href={`https://global-stg.transak.com/?apiKey=84b36c5b-0c95-4241-a1eb-0f8dd87a8a03&cryptoCurrency=ETH&fiatCurrency=EUR&walletAddress=${address || ""}&defaultCryptoAmount=1&isAutoFillUserDetails=true`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500"
