@@ -445,6 +445,128 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
+      {/* DEFILLAMA TRACKED */}
+      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <a 
+              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
+                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
+                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
+              </div>
+            </a>
+            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
+              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECURITY & TRANSPARENCY */}
+      <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] to-[#080808] overflow-hidden">
+        <div className="p-6 sm:p-8">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-amber-400/70">{t('security.eyebrow') || 'Transparency is our Infrastructure'}</p>
+              <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white">{t('security.title') || 'Security & Transparency'}</h2>
+            </div>
+          </div>
+
+          {/* Story Text */}
+          <div className="mb-8 p-5 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            <p className="text-sm leading-7 text-white/60 mb-4">{t('security.story1') || 'At GBLIN, we believe security is built by addressing problems in broad daylight. Before launching our definitive version (V5), a white-hat researcher identified a critical vulnerability involving a "Silent Catch" and Path Spoofing vector.'}</p>
+            <p className="text-sm leading-7 text-white/60">{t('security.story2') || 'Unlike the crypto standard, we did not hide it. We rebuilt our engine from scratch to make it an impenetrable fortress. The GBLIN V5 infrastructure today guarantees rigorous mathematical protection for your capital.'}</p>
+          </div>
+          
+          {/* Security Cards Grid */}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {/* Delta-Balance Card */}
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-semibold text-white">{t('security.deltaBalanceTitle') || 'Rigorous Delta-Balance'}</p>
+              </div>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.deltaBalanceDesc') || 'The contract performs precise mathematical checks to prevent any liquidity drainage attacks. Every transaction validates total assets ≥ liabilities.'}</p>
+              <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] px-3 py-2">
+                <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">{t('security.mathProtection') || 'Math protection'}</p>
+              </div>
+            </div>
+
+            {/* Slippage Protection Card */}
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-semibold text-white">{t('security.slippageTitle') || 'Inviolable 2% Slippage'}</p>
+              </div>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.slippageDesc') || 'We eliminated "silent try/catch" transactions. If slippage exceeds the 2% maximum ceiling, the smart contract automatically reverts the operation. Funds are 100% protected.'}</p>
+              <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] px-3 py-2">
+                <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">{t('security.noSilentFail') || 'No silent fails'}</p>
+              </div>
+            </div>
+
+            {/* Open Source Card */}
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <ExternalLink className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-semibold text-white">{t('security.openSourceTitle') || 'Zero Pre-Mint & Open Source'}</p>
+              </div>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.openSourceDesc') || 'No hidden allocations. The code is fully open-source and verified on BaseScan. Complete transparency from day one.'}</p>
+              <a 
+                href={`https://basescan.org/address/${CONTRACT_ADDRESS}`}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/[0.12]"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {t('security.viewOnBasescan') || 'View on BaseScan'}
+              </a>
+            </div>
+
+            {/* Bug Bounty Card */}
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5 hover:border-amber-500/40 transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400">
+                  <Zap className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-semibold text-white">{t('security.bugBountyTitle') || '$257 Math Challenge'}</p>
+              </div>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.bugBountyDesc') || 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $257 Bug Bounty permanently open for anyone who can break the protocol mathematics.'}</p>
+              <a 
+                href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.1] px-3 py-2 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.15]"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {t('security.viewBounty') || 'View Bug Bounty'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* PROTOCOL SNAPSHOT */}
       <section className="rounded-2xl border border-white/[0.07] bg-[#080808] overflow-hidden">
         <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.1fr_0.9fr]">
