@@ -1841,6 +1841,21 @@ export default function AccountPage() {
                   </a>
                 </div>
 
+                {/* Transak Support Button */}
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] p-4 space-y-3">
+                  <p className="text-sm font-semibold text-amber-200">{t("account.transakSupportTitle") || "Hai bisogno di assistenza Transak?"}</p>
+                  <p className="text-xs text-zinc-400">{t("account.transakSupportDesc") || "Apri Transak con il tuo wallet e 1 ETH precompilato per contattare il supporto riguardo il trasferimento di staging."}</p>
+                  <a
+                    href={`https://global.transak.com/?apiKey=0bafda03-0ae5-4a65-849e-54971b453ab2&cryptoCurrency=ETH&fiatCurrency=EUR&walletAddress=${address || ""}&defaultCryptoAmount=1&isAutoFillUserDetails=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {t("account.transakSupportBtn") || "Apri Transak (1 ETH)"}
+                  </a>
+                </div>
+
                 {/* ETH send form */}
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   <p className="text-sm font-semibold text-zinc-200">{t("account.coinbaseSendTitle") || "Invia ETH al tuo indirizzo Coinbase"}</p>
