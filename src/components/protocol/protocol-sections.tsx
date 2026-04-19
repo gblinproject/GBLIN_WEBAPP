@@ -346,6 +346,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
               <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
             </a>
+            <p className="mt-3 max-w-sm text-[11px] leading-5 text-zinc-600">{t('hero.aerodromeBotNote')}</p>
           </div>
           {/* KPI tiles */}
           <div className="grid grid-cols-2 gap-3 xl:w-[340px]">
@@ -367,6 +368,35 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
+      {/* DEFILLAMA TRACKED */}
+      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <a 
+              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
+                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
+                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
+              </div>
+            </a>
+            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
+              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FEATURE CARDS */}
       <section className="grid gap-3 md:grid-cols-3">
         <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
@@ -384,6 +414,7 @@ export function HomeView(props: HomeViewProps) {
           </div>
           <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.crashShieldTitle')}</p>
           <p className="text-sm leading-7 text-white/50">{t('core.crashShieldDesc')}</p>
+          <p className="mt-2 text-[11px] leading-5 text-amber-400/60">{t('core.crashShieldBotNote')}</p>
         </div>
         <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
@@ -441,35 +472,6 @@ export function HomeView(props: HomeViewProps) {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* DEFILLAMA TRACKED */}
-      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <a 
-              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-4"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                  <path d="M2 17l10 5 10-5"/>
-                  <path d="M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
-                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
-              </div>
-            </a>
-            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
-              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
-            </div>
           </div>
         </div>
       </section>

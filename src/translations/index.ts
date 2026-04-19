@@ -23,7 +23,8 @@ export const translations: Record<Language, any> = {
       cta: "ENTER THE VAULT",
       subtitle: "// The Autonomous Central Bank",
       aerodromeLabel: "BUY GBLIN ON AERODROME",
-      aerodromeHint: "DEX on Base · ETH → GBLIN"
+      aerodromeHint: "DEX on Base · ETH → GBLIN",
+      aerodromeBotNote: "A dedicated market-making bot performs periodic micro-transactions to maintain protocol liquidity until sufficient organic volume is established."
     },
     dashboard: {
       title: "Protocol Dashboard",
@@ -172,6 +173,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "Engineered for absolute resilience and mathematical appreciation.",
       crashShieldTitle: "Algorithmic Crash Shield",
       crashShieldDesc: "A dynamic rebalancing engine that protects the treasury during market contractions, ensuring geometric survival.",
+      crashShieldBotNote: "An automated rebalancing bot runs every Monday at 8:00 UTC, ensuring continuous portfolio alignment with target weights.",
       bankTitle: "Autonomous Central Bank",
       bankDesc: "No owners. No human bias. The protocol recalibrates itself via decentralized arbitrageurs and MEV bots.",
       appreciationTitle: "Guaranteed Appreciation",
@@ -230,7 +232,8 @@ export const translations: Record<Language, any> = {
       cta: "ENTRA NEL CAVEAU",
       subtitle: "// La Banca Centrale Autonoma",
       aerodromeLabel: "COMPRA GBLIN SU AERODROME",
-      aerodromeHint: "DEX su Base · ETH → GBLIN"
+      aerodromeHint: "DEX su Base · ETH → GBLIN",
+      aerodromeBotNote: "Un bot dedicato di market-making effettua micro-transazioni periodiche per mantenere attiva la liquidità del protocollo, fino al raggiungimento di un volume organico sufficiente."
     },
     dashboard: {
       title: "Dashboard del Protocollo",
@@ -379,6 +382,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "Progettato per la resilienza assoluta e l'apprezzamento matematico.",
       crashShieldTitle: "Scudo Anti-Crash Algoritmico",
       crashShieldDesc: "Un motore di ribilanciamento dinamico che protegge la tesoreria durante le contrazioni del mercato, garantendo la sopravvivenza geometrica.",
+      crashShieldBotNote: "Un bot automatico di ribilanciamento interviene ogni lunedì alle 8:00 UTC, garantendo il continuo allineamento del portafoglio ai pesi target.",
       bankTitle: "Banca Centrale Autonoma",
       bankDesc: "Senza proprietari. Senza pregiudizi umani. Il protocollo si ricalibra tramite arbitraggisti decentralizzati e bot MEV.",
       appreciationTitle: "Apprezzamento Garantito",
@@ -437,7 +441,8 @@ export const translations: Record<Language, any> = {
       cta: "ENTRAR EN LA BÓVEDA",
       subtitle: "// El Banco Central Autónomo",
       aerodromeLabel: "COMPRA GBLIN EN AERODROME",
-      aerodromeHint: "DEX en Base · ETH → GBLIN"
+      aerodromeHint: "DEX en Base · ETH → GBLIN",
+      aerodromeBotNote: "Un bot dedicado de creación de mercado realiza micro-transacciones periódicas para mantener la liquidez del protocolo activa hasta alcanzar un volumen orgánico suficiente."
     },
     dashboard: {
       title: "Panel del Protocolo",
@@ -539,6 +544,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "Diseñado para una resiliencia absoluta y apreciación matemática.",
       crashShieldTitle: "Escudo Algorítmico Anti-Crash",
       crashShieldDesc: "Un motor de reequilibrio dinámico que protege la tesorería durante las contracciones del mercado, asegurando la supervivencia geométrica.",
+      crashShieldBotNote: "Un bot automatizado de reequilibrio se ejecuta cada lunes a las 8:00 UTC, garantizando la alineación continua del portafolio con los pesos objetivo.",
       bankTitle: "Banco Central Autónomo",
       bankDesc: "Sin dueños. Sin sesgos humanos. El protocolo se recalibra a sí mismo a través de arbitradores descentralizados y bots MEV.",
       appreciationTitle: "Apreciación Garantizada",
@@ -597,7 +603,8 @@ export const translations: Record<Language, any> = {
       cta: "ENTRER DANS LE COFFRE",
       subtitle: "// La Banque Centrale Autonome",
       aerodromeLabel: "ACHETER GBLIN SUR AERODROME",
-      aerodromeHint: "DEX sur Base · ETH → GBLIN"
+      aerodromeHint: "DEX sur Base · ETH → GBLIN",
+      aerodromeBotNote: "Un bot dédié de tenue de marché effectue des micro-transactions périodiques pour maintenir la liquidité du protocole active jusqu'à l'établissement d'un volume organique suffisant."
     },
     dashboard: {
       title: "Tableau de Bord du Protocole",
@@ -699,6 +706,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "Conçue pour une résilience absolue et une appréciation mathématique.",
       crashShieldTitle: "Bouclier Algorithmique Anti-Crash",
       crashShieldDesc: "Un moteur de rééquilibrage dynamique qui protège la trésorerie lors des contractions du marché, assurant la survie géométrique.",
+      crashShieldBotNote: "Un bot automatisé de rééquilibrage s'exécute chaque lundi à 8h00 UTC, garantissant l'alignement continu du portefeuille avec les pondérations cibles.",
       bankTitle: "Banque Centrale Autonome",
       bankDesc: "Pas de propriétaires. Pas de biais humain. Le protocole se recalibre via des arbitres décentralisés et des bots MEV.",
       appreciationTitle: "Appréciation Garantie",
@@ -757,7 +765,8 @@ export const translations: Record<Language, any> = {
       cta: "TRESOR BETRETEN",
       subtitle: "// Die autonome Zentralbank",
       aerodromeLabel: "GBLIN AUF AERODROME KAUFEN",
-      aerodromeHint: "DEX auf Base · ETH → GBLIN"
+      aerodromeHint: "DEX auf Base · ETH → GBLIN",
+      aerodromeBotNote: "Ein dedizierter Market-Making-Bot führt regelmäßige Mikrotransaktionen durch, um die Protokollliquidität aufrechtzuerhalten, bis ein ausreichendes organisches Volumen erreicht ist."
     },
     dashboard: {
       title: "Protokoll-Dashboard",
@@ -859,6 +868,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "Entwickelt für absolute Resilienz und mathematische Aufwertung.",
       crashShieldTitle: "Algorithmischer Crash-Schutz",
       crashShieldDesc: "Eine dynamische Rebalancing-Engine, die das Schatzamt bei Marktkontraktionen schützt und das geometrische Überleben sichert.",
+      crashShieldBotNote: "Ein automatisierter Rebalancing-Bot wird jeden Montag um 8:00 UTC ausgeführt und gewährleistet die kontinuierliche Ausrichtung des Portfolios an den Zielgewichtungen.",
       bankTitle: "Autonome Zentralbank",
       bankDesc: "Keine Eigentümer. Keine menschliche Voreingenommenheit. Das Protokoll kalibriert sich selbst über dezentrale Arbitrageure und MEV-Bots.",
       appreciationTitle: "Garantierte Aufwertung",
@@ -917,7 +927,8 @@ export const translations: Record<Language, any> = {
       cta: "进入金库",
       subtitle: "// 自主中央银行",
       aerodromeLabel: "在 AERODROME 购买 GBLIN",
-      aerodromeHint: "Base 上的 DEX · ETH → GBLIN"
+      aerodromeHint: "Base 上的 DEX · ETH → GBLIN",
+      aerodromeBotNote: "专用做市机器人定期执行微交易，以维持协议流动性，直到建立足够的有机交易量。"
     },
     dashboard: {
       title: "协议仪表板",
@@ -1019,6 +1030,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "为绝对韧性和数学升值而设计。",
       crashShieldTitle: "算法崩溃护盾",
       crashShieldDesc: "一个动态再平衡引擎，在市场萎缩期间保护国库，确保几何级生存。",
+      crashShieldBotNote: "自动再平衡机器人每周一 8:00 UTC 执行，确保投资组合持续与目标权重保持一致。",
       bankTitle: "自主中央银行",
       bankDesc: "无所有者。无人为偏见。协议通过去中心化套利者和 MEV 机器人进行自我重新校准。",
       appreciationTitle: "保证升值",
@@ -1077,7 +1089,8 @@ export const translations: Record<Language, any> = {
       cta: "金庫に入る",
       subtitle: "// 自律型中央銀行",
       aerodromeLabel: "AERODROME で GBLIN を購入",
-      aerodromeHint: "Base 上の DEX · ETH → GBLIN"
+      aerodromeHint: "Base 上の DEX · ETH → GBLIN",
+      aerodromeBotNote: "専用のマーケットメイキングボットが定期的にマイクロトランザクションを実行し、十分なオーガニック取引量が確立されるまでプロトコルの流動性を維持します。"
     },
     dashboard: {
       title: "プロトコル・ダッシュボード",
@@ -1179,6 +1192,7 @@ export const translations: Record<Language, any> = {
       architectureDesc: "絶対的な回復力と数学的増価のために設計されています。",
       crashShieldTitle: "アルゴリズムによるクラッシュ・シールド",
       crashShieldDesc: "市場収縮時に財務局を保護し、幾何学的な生存を保証する動的リバランシング・エンジン。",
+      crashShieldBotNote: "自動リバランスボットが毎週月曜日 8:00 UTC に実行され、ポートフォリオの目標ウェイトとの継続的な整合を保証します。",
       bankTitle: "自律型中央銀行",
       bankDesc: "所有者なし。人間の偏見なし。プロトコルは、分散型アービトラージャーとMEVボットを介して自己再調整します。",
       appreciationTitle: "保証された増価",
