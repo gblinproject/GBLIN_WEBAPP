@@ -346,8 +346,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
               <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
             </a>
-            <div className="mt-2 max-w-sm rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-2.5">
-              <p className="text-[11px] leading-5 text-emerald-400/70">{t('hero.aerodromeBotNote')}</p>
+            <p className="mt-2 px-5 text-[10px] leading-5 text-emerald-400/50">{t('hero.aerodromeBotNote')}</p>
             </div>
           </div>
           {/* KPI tiles */}
