@@ -229,7 +229,7 @@ const GBLIN_TRANSACTION_SELECTOR_MAP = new Map<string, { name: string; type: Tra
 
 const formatAddressCell = (address?: string | null) => (address ? shortenAddress(address) : '--');
 
-const formatUnitValue = (value: bigint | number | string, decimals: number, symbol?: string, maxFractionDigits = 4) => {
+const formatUnitValue = (value: bigint | number | string, decimals: number, symbol?: string, maxFractionDigits = 6) => {
   try {
     const normalized = typeof value === 'bigint' ? value : BigInt(String(value || '0'));
     const formatted = formatTokenAmount(Number.parseFloat(ethers.formatUnits(normalized, decimals)), maxFractionDigits);
@@ -770,7 +770,7 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     const totalYieldDistributed = await fetchTotalYieldDistributed();
 
     return {
-      totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 4 }),
+      totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       nav: formatCurrency(nav),
       tvl,
       supplyNum: activeSupply,

@@ -447,7 +447,7 @@ export default function AccountPage() {
 
   // Input balance display (computed after balance is defined)
   const inputBalanceDisplay = useMemo(() => {
-    if (tradeMode === 'sell') return balance.toFixed(4);
+    if (tradeMode === 'sell') return balance.toFixed(6);
     return activeTradeToken?.isNative ? String(ethBalance) : tokenBalance;
   }, [activeTradeToken, balance, ethBalance, tokenBalance, tradeMode]);
 
@@ -1148,7 +1148,7 @@ export default function AccountPage() {
             </div>
             <p className="mt-2 text-lg text-zinc-400">
               {address
-                ? <>{balance.toLocaleString(undefined, { maximumFractionDigits: 4 })} GBLIN{gblinPriceUsd > 0 && <span className="ml-3 text-sm text-zinc-500">· {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}</span>}</>
+                ? <>{balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} GBLIN{gblinPriceUsd > 0 && <span className="ml-3 text-sm text-zinc-500">· {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}</span>}</>
                 : <span className="text-zinc-600">{t("account.loginHeadline") || "Connetti wallet per vedere il saldo"}</span>
               }
             </p>
@@ -1340,7 +1340,7 @@ export default function AccountPage() {
                         </div>
                         {hasAmount && (
                           <p className="mt-2 text-sm text-zinc-400">
-                            {t('account.youWillReceiveAbout')} <span className="font-semibold text-amber-300">{gblinQty.toFixed(4)} GBLIN</span>
+                            {t('account.youWillReceiveAbout')} <span className="font-semibold text-amber-300">{gblinQty.toFixed(6)} GBLIN</span>
                           </p>
                         )}
                       </div>
@@ -1406,7 +1406,7 @@ export default function AccountPage() {
                               </div>
                               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('account.gblinInWallet')}</p>
-                                <p className="mt-2 text-lg font-semibold text-white">{balance.toFixed(4)} GBLIN</p>
+                                <p className="mt-2 text-lg font-semibold text-white">{balance.toFixed(6)} GBLIN</p>
                                 <p className="mt-1 text-xs text-zinc-500">≈ ${(balance * gblinPriceUsd).toFixed(2)}</p>
                               </div>
                             </div>
@@ -1442,7 +1442,7 @@ export default function AccountPage() {
                                     const ethAmt = parseFloat(step3EthAmount) || 0;
                                     const usdVal = ethAmt * ethPriceUsd;
                                     const gblinEst = gblinPriceUsd > 0 ? (usdVal / gblinPriceUsd) : 0;
-                                    return ethAmt > 0 ? `≈ $${usdVal.toFixed(2)} · ≈ ${gblinEst.toFixed(4)} GBLIN` : '';
+                                    return ethAmt > 0 ? `≈ $${usdVal.toFixed(2)} · ≈ ${gblinEst.toFixed(6)} GBLIN` : '';
                                   })()}
                                 </span>
                               </div>
@@ -1666,7 +1666,7 @@ export default function AccountPage() {
                   tradeError={tradeError}
                   tradeTxHash={tradeTxHash}
                   ethBalance={String(ethBalance)}
-                  gblinBalance={balance.toFixed(4)}
+                  gblinBalance={balance.toFixed(6)}
                   inputBalance={inputBalanceDisplay}
                   isConnected={!!account}
                   address={address}
@@ -1751,10 +1751,10 @@ export default function AccountPage() {
                   <div className="mb-2 flex items-center justify-between">
                     <label className="text-sm font-medium text-zinc-300">{t("account.sellAmount")}</label>
                     <button
-                      onClick={() => setSellAmount(balance.toFixed(4))}
+                      onClick={() => setSellAmount(balance.toFixed(6))}
                       className="text-xs text-amber-400 hover:text-amber-300"
                     >
-                      Max: {balance.toFixed(2)} GBLIN
+                      Max: {balance.toFixed(4)} GBLIN
                     </button>
                   </div>
                   <div className="relative">
@@ -2001,8 +2001,8 @@ export default function AccountPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label className="text-sm font-medium text-zinc-300">{t("account.sendAmount")}</label>
-                  <button onClick={() => setTransferAmount(balance.toFixed(4))} className="text-xs text-amber-400 hover:text-amber-300">
-                    Max: {balance.toFixed(2)} GBLIN
+                  <button onClick={() => setTransferAmount(balance.toFixed(6))} className="text-xs text-amber-400 hover:text-amber-300">
+                    Max: {balance.toFixed(4)} GBLIN
                   </button>
                 </div>
                 <div className="relative">
