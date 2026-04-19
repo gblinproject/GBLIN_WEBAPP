@@ -89,16 +89,7 @@ export async function GET(request: Request) {
     ]);
 
     const availableWeth = wethBalance > stabilityFund ? wethBalance - stabilityFund : 0n;
-
-    // Check stability fund has enough for reward (0.0001 ETH)
-    const MIN_REWARD = ethers.parseEther('0.0001');
-    if (stabilityFund < MIN_REWARD) {
-      return NextResponse.json({
-        status: 'skipped',
-        reason: 'Stability fund too low for reward',
-        stabilityFund: ethers.formatEther(stabilityFund),
-      });
-    }
+    const hasReward = stabilityFund >= ethers.parseEther('0.0001');
 
     // Minimum swap: max(WETH_balance / 100, 0.01 ETH)
     let minSwapRequired = wethBalance / 100n;
@@ -227,6 +218,8 @@ export async function GET(request: Request) {
       status: 'completed',
       timestamp: new Date().toISOString(),
       botAddress: wallet.address,
+      hasReward,
+      stabilityFund: ethers.formatEther(stabilityFund),
       results,
     });
   } catch (err: any) {
