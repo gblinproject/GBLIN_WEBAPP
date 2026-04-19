@@ -11,7 +11,7 @@ import {
 import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
 import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
-import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check, Banknote } from "lucide-react";
+import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
@@ -1308,7 +1308,7 @@ export default function AccountPage() {
                     buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  <Banknote className="h-4 w-4" />
+                  <Coins className="h-4 w-4" />
                   {t('account.cardMode')}
                 </button>
               </div>
