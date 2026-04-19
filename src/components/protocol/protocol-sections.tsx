@@ -1296,7 +1296,122 @@ export function RebalanceView(props: RebalanceViewProps) {
           ) : null}
         </div>
       </section>
+
+      {/* COMMUNITY REBALANCE INFO + HISTORY */}
+      <CommunityRebalanceSection t={t} />
     </div>
+  );
+}
+
+function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/rebalance-history')
+      .then((res) => res.json())
+      .then((data) => {
+        setHistory(data.events || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <section className="space-y-6">
+      {/* Community info banner */}
+      <div className={`${shellCard} overflow-hidden`}>
+        <div className="border-b border-amber-500/20 bg-gradient-to-r from-amber-500/[0.08] to-transparent p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
+              <Zap className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">{t('rebalance.communityTitle')}</h3>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">{t('rebalance.communityDesc')}</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-px bg-white/5 sm:grid-cols-3">
+          <div className="bg-[#0A0A0A] p-5">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-400" />
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-emerald-400/70">Reward</p>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-white">{t('rebalance.communityReward')}</p>
+          </div>
+          <div className="bg-[#0A0A0A] p-5">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-400" />
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-blue-400/70">Schedule</p>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-white">{t('rebalance.communityBotSchedule')}</p>
+          </div>
+          <div className="bg-[#0A0A0A] p-5">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-amber-400" />
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-amber-400/70">Challenge</p>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-amber-300">{t('rebalance.communityCallToAction')}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Rebalance history table */}
+      <div className={`${shellCard} p-6 sm:p-8`}>
+        <div className="flex items-center gap-3 mb-6">
+          <Activity className="h-5 w-5 text-zinc-400" />
+          <h3 className="text-lg font-semibold text-white">{t('rebalance.historyTitle')}</h3>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-zinc-500">{t('rebalance.historyLoading')}</p>
+        ) : history.length === 0 ? (
+          <p className="text-sm text-zinc-500">{t('rebalance.historyEmpty')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                  <th className="pb-3 pr-4 text-left font-medium">{t('rebalance.historyDate')}</th>
+                  <th className="pb-3 pr-4 text-left font-medium">{t('rebalance.historyAsset')}</th>
+                  <th className="pb-3 pr-4 text-left font-medium">{t('rebalance.historyExecutor')}</th>
+                  <th className="pb-3 text-left font-medium">{t('rebalance.historyTx')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((event: any, i: number) => (
+                  <tr key={`${event.txHash}-${i}`} className="border-b border-white/5 last:border-0">
+                    <td className="py-3 pr-4 text-zinc-400">
+                      {event.date ? new Date(event.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-white">
+                        {event.tokenIn} <ArrowRight className="h-3 w-3 text-zinc-500" /> {event.tokenOut}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-xs text-zinc-500">
+                      {event.executor ? `${event.executor.slice(0, 6)}...${event.executor.slice(-4)}` : '--'}
+                    </td>
+                    <td className="py-3">
+                      <a
+                        href={`https://basescan.org/tx/${event.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
+                      >
+                        {event.txHash ? `${event.txHash.slice(0, 8)}...` : '--'}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
