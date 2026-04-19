@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
-const RPC_URL = 'https://mainnet.base.org';
+const RPC_URL = 'https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt';
 const CONTRACT_ADDRESS = '0x38DcDB3A381677239BBc652aed9811F2f8496345';
 const WETH = '0x4200000000000000000000000000000000000006';
 const cbBTC = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
