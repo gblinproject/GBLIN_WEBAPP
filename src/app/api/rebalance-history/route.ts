@@ -34,7 +34,7 @@ export async function GET() {
     ]);
 
     const events = await Promise.all(
-      logs.slice(-50).reverse().map(async (log) => {
+      logs.slice(-5).reverse().map(async (log) => {
         const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
         if (!parsed) return null;
 

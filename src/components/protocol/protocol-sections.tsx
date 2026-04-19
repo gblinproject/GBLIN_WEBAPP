@@ -1071,6 +1071,9 @@ export function RebalanceView(props: RebalanceViewProps) {
         <SectionHeading body={t('rebalance.desc')} eyebrow={t('rebalance.badge')} title={t('rebalance.title')} />
       </section>
 
+      {/* COMMUNITY REBALANCE INFO + HISTORY */}
+      <CommunityRebalanceSection t={t} />
+
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="grid gap-4">
           {rebalanceOverviewCards.map((card) => (
@@ -1297,8 +1300,6 @@ export function RebalanceView(props: RebalanceViewProps) {
         </div>
       </section>
 
-      {/* COMMUNITY REBALANCE INFO + HISTORY */}
-      <CommunityRebalanceSection t={t} />
     </div>
   );
 }
