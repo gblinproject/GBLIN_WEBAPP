@@ -52,3 +52,6 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .env
+
+# Internal strategy docs
+SOCIAL_STRATEGY.md
