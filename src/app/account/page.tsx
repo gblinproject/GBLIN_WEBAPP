@@ -11,7 +11,7 @@ import {
 import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
 import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
-import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
+import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check, Banknote } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
@@ -97,7 +97,7 @@ export default function AccountPage() {
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
 
   const [activeTab, setActiveTab] = useState<"overview" | "buy" | "sell" | "send">("overview");
-  const [buyMode, setBuyMode] = useState<"card" | "wallet">("card");
+  const [buyMode, setBuyMode] = useState<"card" | "wallet">("wallet");
   const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
@@ -1291,23 +1291,25 @@ export default function AccountPage() {
           return (
             <div className="space-y-5">
 
-              {/* ── Sub-tabs: Card vs Wallet ── */}
+              {/* ── Sub-tabs: Wallet vs Card ── */}
               <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
                 <button
-                  onClick={() => setBuyMode("card")}
-                  className={`flex-1 rounded-xl py-3 text-sm font-medium transition ${
-                    buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  {t('account.cardMode')}
-                </button>
-                <button
                   onClick={() => setBuyMode("wallet")}
-                  className={`flex-1 rounded-xl py-3 text-sm font-medium transition ${
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
                     buyMode === "wallet" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
+                  <Wallet className="h-4 w-4" />
                   {t('account.walletMode')}
+                </button>
+                <button
+                  onClick={() => setBuyMode("card")}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
+                    buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Banknote className="h-4 w-4" />
+                  {t('account.cardMode')}
                 </button>
               </div>
 
