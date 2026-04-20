@@ -22,7 +22,7 @@ export const translations: Record<Language, any> = {
       desc: "The first autonomous central bank on Base. Algorithmic wealth preservation backed by real-world crypto assets.",
       cta: "ENTER THE VAULT",
       subtitle: "// The Autonomous Central Bank",
-      aerodromeLabel: "BUY GBLIN ON AERODROME",
+      aerodromeLabel: "BUY GBLIN ON UNISWAP",
       aerodromeHint: "DEX on Base · ETH → GBLIN",
       aerodromeBotNote: "A dedicated market-making bot performs periodic micro-transactions to maintain protocol liquidity until sufficient organic volume is established."
     },
@@ -231,7 +231,7 @@ export const translations: Record<Language, any> = {
       desc: "La prima banca centrale autonoma su Base. Preservazione algoritmica della ricchezza supportata da crypto asset reali.",
       cta: "ENTRA NEL CAVEAU",
       subtitle: "// La Banca Centrale Autonoma",
-      aerodromeLabel: "COMPRA GBLIN SU AERODROME",
+      aerodromeLabel: "COMPRA GBLIN SU UNISWAP",
       aerodromeHint: "DEX su Base · ETH → GBLIN",
       aerodromeBotNote: "Un bot dedicato di market-making effettua micro-transazioni periodiche per mantenere attiva la liquidità del protocollo, fino al raggiungimento di un volume organico sufficiente."
     },
@@ -440,7 +440,7 @@ export const translations: Record<Language, any> = {
       desc: "El primer banco central autónomo en Base. Preservación de riqueza algorítmica respaldada por activos cripto reales.",
       cta: "ENTRAR EN LA BÓVEDA",
       subtitle: "// El Banco Central Autónomo",
-      aerodromeLabel: "COMPRA GBLIN EN AERODROME",
+      aerodromeLabel: "COMPRA GBLIN EN UNISWAP",
       aerodromeHint: "DEX en Base · ETH → GBLIN",
       aerodromeBotNote: "Un bot dedicado de creación de mercado realiza micro-transacciones periódicas para mantener la liquidez del protocolo activa hasta alcanzar un volumen orgánico suficiente."
     },
@@ -602,7 +602,7 @@ export const translations: Record<Language, any> = {
       desc: "La première banque centrale autonome sur Base. Préservation algorithmique de la richesse soutenue par des actifs crypto réels.",
       cta: "ENTRER DANS LE COFFRE",
       subtitle: "// La Banque Centrale Autonome",
-      aerodromeLabel: "ACHETER GBLIN SUR AERODROME",
+      aerodromeLabel: "ACHETER GBLIN SUR UNISWAP",
       aerodromeHint: "DEX sur Base · ETH → GBLIN",
       aerodromeBotNote: "Un bot dédié de tenue de marché effectue des micro-transactions périodiques pour maintenir la liquidité du protocole active jusqu'à l'établissement d'un volume organique suffisant."
     },
@@ -764,7 +764,7 @@ export const translations: Record<Language, any> = {
       desc: "Die erste autonome Zentralbank auf Base. Algorithmische Vermögenserhaltung, abgesichert durch reale Krypto-Assets.",
       cta: "TRESOR BETRETEN",
       subtitle: "// Die autonome Zentralbank",
-      aerodromeLabel: "GBLIN AUF AERODROME KAUFEN",
+      aerodromeLabel: "GBLIN AUF UNISWAP KAUFEN",
       aerodromeHint: "DEX auf Base · ETH → GBLIN",
       aerodromeBotNote: "Ein dedizierter Market-Making-Bot führt regelmäßige Mikrotransaktionen durch, um die Protokollliquidität aufrechtzuerhalten, bis ein ausreichendes organisches Volumen erreicht ist."
     },
@@ -926,7 +926,7 @@ export const translations: Record<Language, any> = {
       desc: "Base 上的首个自主中央银行。由现实世界加密资产支持的算法财富保值。",
       cta: "进入金库",
       subtitle: "// 自主中央银行",
-      aerodromeLabel: "在 AERODROME 购买 GBLIN",
+      aerodromeLabel: "在 UNISWAP 购买 GBLIN",
       aerodromeHint: "Base 上的 DEX · ETH → GBLIN",
       aerodromeBotNote: "专用做市机器人定期执行微交易，以维持协议流动性，直到建立足够的有机交易量。"
     },
@@ -1088,7 +1088,7 @@ export const translations: Record<Language, any> = {
       desc: "Base上の最初の自律型中央銀行。現実世界の暗号資産に裏打ちされたアルゴリズムによる資産保全。",
       cta: "金庫に入る",
       subtitle: "// 自律型中央銀行",
-      aerodromeLabel: "AERODROME で GBLIN を購入",
+      aerodromeLabel: "UNISWAP で GBLIN を購入",
       aerodromeHint: "Base 上の DEX · ETH → GBLIN",
       aerodromeBotNote: "専用のマーケットメイキングボットが定期的にマイクロトランザクションを実行し、十分なオーガニック取引量が確立されるまでプロトコルの流動性を維持します。"
     },

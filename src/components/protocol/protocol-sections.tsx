@@ -328,10 +328,10 @@ export function HomeView(props: HomeViewProps) {
               </button>
             </div>
 
-            {/* Aerodrome pool CTA */}
+            {/* Uniswap pool CTA */)}
             <div className="mt-5 w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]">
               <a
-                href="https://aerodrome.finance/swap?from=eth&to=0x38dcdb3a381677239bbc652aed9811f2f8496345&chain0=8453&chain1=8453"
+                href="https://app.uniswap.org/explore/pools/base/0x8fdDa852a7b106b08848da676b8793814D561617"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-between gap-3 px-5 py-3.5"
