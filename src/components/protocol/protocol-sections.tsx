@@ -328,7 +328,7 @@ export function HomeView(props: HomeViewProps) {
               </button>
             </div>
 
-            {/* Uniswap pool CTA */)}
+            {/* Uniswap pool CTA */}
             <div className="mt-5 w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]">
               <a
                 href="https://app.uniswap.org/explore/pools/base/0x8fdDa852a7b106b08848da676b8793814D561617"
