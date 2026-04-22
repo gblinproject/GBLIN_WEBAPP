@@ -96,8 +96,7 @@ export default function AccountPage() {
   const wallet = useActiveWallet();
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "buy" | "sell" | "send">("overview");
-  const [buyMode, setBuyMode] = useState<"card" | "wallet">("wallet");
+  const [activeTab, setActiveTab] = useState<"overview" | "buy" | "send">("overview");
   const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
@@ -922,8 +921,9 @@ export default function AccountPage() {
   }, []);
 
   // Auto-detect sell step: if user has ETH on Base, jump to off-ramp
+  // Sell tab removed from UI — effect kept inert to avoid large refactor of dependent state.
   useEffect(() => {
-    if (activeTab === "sell" && ethBalance > 0.0001) {
+    if (false && ethBalance > 0.0001) {
       setSellStep("offramp");
       setSellRedeemDone(true);
     }
@@ -945,7 +945,8 @@ export default function AccountPage() {
         fiatCurrency: params.get("fiatCurrency") || "EUR",
         network: params.get("network") || "BASE",
       });
-      setActiveTab("sell");
+      // Sell tab was removed from UI — keep Transak flow intact by redirecting to buy tab.
+      setActiveTab("buy");
       setSellStep("offramp");
       // Clean URL without reload
       window.history.replaceState({}, "", "/account");
@@ -1041,10 +1042,20 @@ export default function AccountPage() {
   }, [account, coinbaseAddress, coinbaseAmount, ethBalance, fetchEthBalance, t]);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
+  // Trade tab label maps to "Compra / Vendi" (IT) and equivalents per language
+  const tradeTabLabel = ({
+    it: "Compra / Vendi",
+    en: "Buy / Sell",
+    es: "Comprar / Vender",
+    fr: "Acheter / Vendre",
+    de: "Kaufen / Verkaufen",
+    zh: "买入 / 卖出",
+    ja: "購入 / 売却",
+  } as Record<Language, string>)[language] ?? "Buy / Sell";
+
   const tabs = [
     { key: "overview", label: t("account.tabOverview"), icon: Wallet },
-    { key: "buy",      label: t("account.tabBuy"),      icon: Coins },
-    { key: "sell",     label: t("account.tabSell"),     icon: TrendingUp },
+    { key: "buy",      label: tradeTabLabel,            icon: Coins },
     { key: "send",     label: t("account.tabSend"),     icon: ArrowRight },
   ] as const;
 
@@ -1058,14 +1069,14 @@ export default function AccountPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 backdrop-blur-xl">
-        <div className={`${shellContainer} flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8`}>
-          <Link className="flex items-center gap-3" href="/">
-            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40">
+        <div className={`${shellContainer} flex items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8`}>
+          <Link className="flex shrink-0 items-center gap-2 sm:gap-3" href="/">
+            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40 sm:h-10 sm:w-10">
               <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
             </span>
-            <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
+            <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-lg font-bold tracking-tight text-transparent sm:text-xl">GBLIN</p>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             {address ? (
               <>
                 <button
@@ -1096,15 +1107,19 @@ export default function AccountPage() {
                 }}
               />
             )}
-            <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-zinc-300 transition hover:bg-white/10" href="/">
+            <Link
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-zinc-300 transition hover:bg-white/10 sm:px-3 sm:py-2.5"
+              href="/"
+              aria-label={t('account.homeButton')}
+            >
               <ArrowRight className="h-4 w-4 rotate-180" />
-              <span>{t('account.homeButton')}</span>
+              <span className="hidden sm:inline">{t('account.homeButton')}</span>
             </Link>
           </div>
         </div>
       </header>
 
-      <main className={`${shellContainer} px-4 py-8 sm:px-6 lg:px-8`}>
+      <main className={`${shellContainer} px-3 py-6 sm:px-6 sm:py-8 lg:px-8`}>
 
         {/* ── CONNECT BANNER (not connected) ────────────────────────────────── */}
         {!address && (
@@ -1139,10 +1154,10 @@ export default function AccountPage() {
           <>
             {/* ── BALANCE HERO CARD ─────────────────────────────────────────── */}
         <div className={`${shellCard} mb-6 overflow-hidden`}>
-          <div className="bg-gradient-to-br from-amber-500/10 via-transparent to-transparent p-6 sm:p-10">
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">{t("account.yourBalance")}</p>
+          <div className="bg-gradient-to-br from-amber-500/10 via-transparent to-transparent p-5 sm:p-10">
+            <p className="text-xs uppercase tracking-[0.22em] text-zinc-500 sm:tracking-[0.28em]">{t("account.yourBalance")}</p>
             <div className="mt-3 flex items-end gap-3">
-              <h2 className={`text-5xl font-bold tabular-nums sm:text-6xl ${!address ? "text-zinc-600" : "text-white"}`}>
+              <h2 className={`break-all text-4xl font-bold tabular-nums sm:text-6xl ${!address ? "text-zinc-600" : "text-white"}`}>
                 {address ? formatLocal(balanceUsd) : "—"}
               </h2>
             </div>
@@ -1156,7 +1171,7 @@ export default function AccountPage() {
         </div>
 
         {/* ── TABS ──────────────────────────────────────────────────────────── */}
-        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mb-6 grid grid-cols-3 gap-2">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -1291,22 +1306,18 @@ export default function AccountPage() {
           return (
             <div className="space-y-5">
 
+              {/* Card purchase mode removed — wallet mode is the only path. */}
+              {false && (<>
               {/* ── Sub-tabs: Wallet vs Card ── */}
               <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
                 <button
-                  onClick={() => setBuyMode("wallet")}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
-                    buyMode === "wallet" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
-                  }`}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition`}
                 >
                   <Wallet className="h-4 w-4" />
                   {t('account.walletMode')}
                 </button>
                 <button
-                  onClick={() => setBuyMode("card")}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
-                    buyMode === "card" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
-                  }`}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition`}
                 >
                   <Coins className="h-4 w-4" />
                   {t('account.cardMode')}
@@ -1314,7 +1325,7 @@ export default function AccountPage() {
               </div>
 
               {/* ── CARD MODE: Simple 2-step for beginners ── */}
-              {buyMode === "card" && (
+              {false && (
                 <div className={`${shellCard} p-6 sm:p-8`}>
                   <div className="mb-6 text-center">
                     <h3 className="mb-2 text-2xl font-bold text-white">{t('account.buyWithCard')}</h3>
@@ -1649,9 +1660,10 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {/* ── WALLET MODE: Full buy-gblin interface for advanced users ── */}
-              {buyMode === "wallet" && (
-                <BuyView
+              </>)}
+
+              {/* ── WALLET MODE: only path now ── */}
+              <BuyView
                   t={t}
                   mode={tradeMode}
                   setMode={setTradeMode}
@@ -1698,13 +1710,12 @@ export default function AccountPage() {
                   setSelectedToken={setSelectedToken}
                   tokenBalance={tokenBalance}
                 />
-              )}
             </div>
           );
         })()}
 
         {/* ── SELL TAB ──────────────────────────────────────────────────────── */}
-        {activeTab === "sell" && (
+        {false && (
           <div className={`${shellCard} p-6 sm:p-8`}>
             <h3 className="mb-1 text-2xl font-bold text-white">{t("account.sellTitle")}</h3>
             <p className="mb-6 text-zinc-400">{t("account.sellDesc")}</p>

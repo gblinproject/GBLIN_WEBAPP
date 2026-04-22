@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,6 +44,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ClientContextProvider cookies={cookies}>{children}</ClientContextProvider>
+        <PWAInstallPrompt />
         <Analytics />
       </body>
     </html>
