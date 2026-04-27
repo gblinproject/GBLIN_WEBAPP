@@ -22,6 +22,11 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "GBLIN Protocol",
   },
+  other: {
+    // Base / Talent Protocol ownership verification
+    "talentapp:project_verification":
+      "cfe9f12693146835725d6e4bebc507e025969baf4fb1dcd2ba8f2a8206c76434e39aeddfe0470a97f98cabb9a7713b38fda0ed6830af7213ff0726178005a9f2",
+  },
 };
 
 export const viewport: Viewport = {
