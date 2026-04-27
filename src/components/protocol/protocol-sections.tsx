@@ -358,7 +358,7 @@ export function HomeView(props: HomeViewProps) {
               { label: t('dashboard.navTitle'), value: onChainData?.nav || '—', hint: t('dashboard.backing'), loading: isOnChainLoading, color: 'text-amber-400' },
               { label: t('dashboard.tvlTitle'), value: formatCurrency(onChainData?.tvl || 0), hint: t('dashboard.assetsInVault'), loading: isOnChainLoading, color: 'text-emerald-400' },
               { label: t('dashboard.supplyTitle'), value: onChainData?.totalSupply || '—', hint: t('dashboard.inCirculation'), loading: isOnChainLoading, color: 'text-white' },
-              { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
+              { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:border-amber-500/20 transition-colors">
                 <p className="text-[9px] font-mono uppercase tracking-[0.28em] text-zinc-600 mb-2">{kpi.label}</p>
@@ -690,7 +690,7 @@ export function DashboardView(props: DashboardViewProps) {
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('dashboard.totalYieldTitle')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
+                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
               </div>
             </div>
           </div>
