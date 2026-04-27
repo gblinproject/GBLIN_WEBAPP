@@ -2,8 +2,12 @@ import { createThirdwebClient } from "thirdweb";
 import { base } from "thirdweb/chains";
 import { createWallet } from "thirdweb/wallets";
 
-// Thirdweb Client ID - provided by user
-const CLIENT_ID = "1afe221d496acd6cddaa4fc7127898b6";
+// Thirdweb Client ID - public by design (safe to expose in browser bundle).
+// Configured via Vercel env var NEXT_PUBLIC_THIRDWEB_CLIENT_ID; fallback kept
+// for local dev convenience only.
+const CLIENT_ID =
+  process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID ??
+  "1afe221d496acd6cddaa4fc7127898b6";
 
 export const thirdwebClient = createThirdwebClient({
   clientId: CLIENT_ID,

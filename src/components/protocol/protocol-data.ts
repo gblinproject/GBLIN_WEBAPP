@@ -66,12 +66,19 @@ export interface TokenRouteQuote {
 
 export type RebalanceDirection = 'weth-to-asset' | 'asset-to-weth';
 
-export const RPC_URL = 'https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt';
+// Alchemy RPC URL is consumed from the browser, so the key must be exposed via
+// NEXT_PUBLIC_. Configure NEXT_PUBLIC_ALCHEMY_API_KEY in Vercel / .env.local.
+const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
+export const RPC_URL = ALCHEMY_KEY
+  ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
+  : 'https://mainnet.base.org'; // public RPC fallback (rate-limited)
 export const CONTRACT_ADDRESS = '0x38DcDB3A381677239BBc652aed9811F2f8496345';
 export const AERODROME_POOL = '0x8fdDa852a7b106b08848da676b8793814D561617';
 export const AERODROME_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481';
 export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
-export const MORALIS_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjNjZmE1NWI1LWUxZDYtNGRhOS1iNjE5LTRmZGI5MjMwMTBhMCIsIm9yZ0lkIjoiNTA3NzcxIiwidXNlcklkIjoiNTIyNDYyIiwidHlwZUlkIjoiYTc1MzFkNjctOWMwZS00Yjg3LWE2ZDgtMTQ3ZDU3MzQ1YjYyIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NzQ5ODE0ODgsImV4cCI6NDkzMDc0MTQ4OH0.ET2R55zvlleoauhaUcJYqaQkUafLTzzCwFFEb07YTC8';
+// Moralis JWT — currently consumed client-side, so it must be NEXT_PUBLIC_.
+// TODO(security): proxy Moralis calls through /api/moralis to keep JWT server-only.
+export const MORALIS_API_KEY = process.env.NEXT_PUBLIC_MORALIS_API_KEY ?? '';
 export const BASE_CHAIN_ID = 8453;
 export const WHITEPAPER_URL = 'https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V5.pdf';
 export const LOGO_URL = 'https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png';

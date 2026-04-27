@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
-const RPC_URL = 'https://base-mainnet.g.alchemy.com/v2/vmGhuXCFK00G8nr3RxRFt';
+// Server-side only: prefer the secret ALCHEMY_API_KEY, fall back to the public
+// one so the route still works if only the NEXT_PUBLIC_ var is configured.
+const ALCHEMY_KEY =
+  process.env.ALCHEMY_API_KEY ?? process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
+const RPC_URL = ALCHEMY_KEY
+  ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
+  : 'https://mainnet.base.org';
 // Blockscout Base (open-source, free, no block-range limit, decodes events for us).
 const BLOCKSCOUT_API = 'https://base.blockscout.com/api/v2';
 
