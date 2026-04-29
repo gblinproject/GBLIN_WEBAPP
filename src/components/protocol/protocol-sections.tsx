@@ -879,14 +879,14 @@ export function BuyView(props: BuyViewProps) {
           {/* Buy / Sell / In-Kind toggle */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
-              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'buy' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20'}`}
+              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'buy' ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.35)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-emerald-500/30'}`}
               onClick={() => setMode('buy')}
               type="button"
             >
               {t('trade.buyBtn')}
             </button>
             <button
-              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'sell' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20'}`}
+              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'sell' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.35)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-rose-500/30'}`}
               onClick={() => setMode('sell')}
               type="button"
             >
