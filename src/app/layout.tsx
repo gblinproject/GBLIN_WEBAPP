@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import FarcasterMiniAppReady from "@/components/FarcasterMiniAppReady";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -162,6 +163,7 @@ export default async function RootLayout({
       <body className={inter.className}>
         <ClientContextProvider cookies={cookies}>{children}</ClientContextProvider>
         <PWAInstallPrompt />
+        <FarcasterMiniAppReady />
         <Analytics />
       </body>
     </html>
