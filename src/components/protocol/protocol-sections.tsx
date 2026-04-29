@@ -841,7 +841,7 @@ export function BuyView(props: BuyViewProps) {
     <div className="space-y-8">
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         {/* ── Left info panel ── */}
-        <div className={`${shellCard} p-7 sm:p-8`}>
+        <div className={`${shellCard} p-7 sm:p-8 order-2 xl:order-1`}>
           <SectionHeading body={t('trade.desc')} eyebrow={t('trade.instant')} title={`${t('trade.title1')} ${t('trade.title2')}`} />
           <div className="mt-8 space-y-4">
             {[
@@ -874,7 +874,7 @@ export function BuyView(props: BuyViewProps) {
         </div>
 
         {/* ── Right trade widget ── */}
-        <div className={`${shellCard} p-7 sm:p-8`}>
+        <div className={`${shellCard} p-7 sm:p-8 order-1 xl:order-2`}>
 
           {/* Buy / Sell / In-Kind toggle */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
