@@ -328,44 +328,65 @@ export function HomeView(props: HomeViewProps) {
               </button>
             </div>
 
-            {/* Uniswap pool CTA */}
-            <div className="mt-5 w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]">
-              <a
-                href="https://app.uniswap.org/explore/pools/base/0x8fdDa852a7b106b08848da676b8793814D561617"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between gap-3 px-5 py-3.5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400">{t('hero.aerodromeLabel') || 'Compra GBLIN su Aerodrome'}</p>
-                    <p className="text-[10px] text-zinc-500">{t('hero.aerodromeHint') || 'DEX su Base · ETH → GBLIN'}</p>
+            {/* DEX pool CTAs — Aerodrome + Uniswap side by side */}
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 max-w-2xl">
+              {/* Aerodrome pool CTA */}
+              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/[0.07] transition hover:border-sky-500/60 hover:bg-sky-500/[0.12]">
+                <a
+                  href="https://aerodrome.finance/swap?from=eth&to=0x38dcdb3a381677239bbc652aed9811f2f8496345&chain0=8453&chain1=8453"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between gap-3 px-5 py-3.5"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-sky-400 truncate">{t('hero.aerodromeLabel')}</p>
+                      <p className="text-[10px] text-zinc-500 truncate">{t('hero.aerodromeHint')}</p>
+                    </div>
                   </div>
-                </div>
-                <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
-              </a>
-              <div className="border-t border-emerald-500/15 px-5 pb-3.5 pt-2.5">
-                <p className="text-[10px] leading-5 text-emerald-400/50">{t('hero.aerodromeBotNote')}</p>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-sky-500/60 group-hover:text-sky-400 transition-colors" />
+                </a>
+              </div>
+              {/* Uniswap pool CTA */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]">
+                <a
+                  href="https://app.uniswap.org/explore/pools/base/0x8fdDa852a7b106b08848da676b8793814D561617"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between gap-3 px-5 py-3.5"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400 truncate">{t('hero.uniswapLabel')}</p>
+                      <p className="text-[10px] text-zinc-500 truncate">{t('hero.uniswapHint')}</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
+                </a>
               </div>
             </div>
+            <p className="mt-3 max-w-2xl text-[10px] leading-5 text-emerald-400/50">{t('hero.uniswapBotNote')}</p>
           </div>
-          {/* KPI tiles */}
-          <div className="grid grid-cols-2 gap-3 xl:w-[340px]">
+          {/* KPI tiles — larger on desktop, responsive on mobile */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:w-[460px]">
             {[
               { label: t('dashboard.navTitle'), value: onChainData?.nav || '—', hint: t('dashboard.backing'), loading: isOnChainLoading, color: 'text-amber-400' },
               { label: t('dashboard.tvlTitle'), value: formatCurrency(onChainData?.tvl || 0), hint: t('dashboard.assetsInVault'), loading: isOnChainLoading, color: 'text-emerald-400' },
               { label: t('dashboard.supplyTitle'), value: onChainData?.totalSupply || '—', hint: t('dashboard.inCirculation'), loading: isOnChainLoading, color: 'text-white' },
               { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
             ].map(kpi => (
-              <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:border-amber-500/20 transition-colors">
-                <p className="text-[9px] font-mono uppercase tracking-[0.28em] text-zinc-600 mb-2">{kpi.label}</p>
-                <p className={`font-serif text-2xl leading-none tracking-tight ${kpi.color} ${kpi.loading ? 'animate-pulse opacity-50' : ''}`}>
+              <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 sm:p-6 hover:border-amber-500/20 transition-colors">
+                <p className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{kpi.label}</p>
+                <p className={`font-serif text-2xl sm:text-3xl xl:text-[2.5rem] leading-none tracking-tight ${kpi.color} ${kpi.loading ? 'animate-pulse opacity-50' : ''} break-words`}>
                   {kpi.loading ? '...' : kpi.value}
                 </p>
-                <p className="mt-2 text-[10px] text-zinc-600 leading-tight">{kpi.hint}</p>
+                <p className="mt-3 text-[11px] sm:text-xs text-zinc-500 leading-tight">{kpi.hint}</p>
               </div>
             ))}
           </div>

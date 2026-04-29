@@ -22,9 +22,11 @@ export const translations: Record<Language, any> = {
       desc: "The first autonomous central bank on Base. Algorithmic wealth preservation backed by real-world crypto assets.",
       cta: "ENTER THE VAULT",
       subtitle: "// The Autonomous Central Bank",
-      aerodromeLabel: "BUY GBLIN ON UNISWAP",
-      aerodromeHint: "DEX on Base · ETH → GBLIN",
-      aerodromeBotNote: "A dedicated market-making bot performs periodic micro-transactions to maintain protocol liquidity until sufficient organic volume is established."
+      uniswapLabel: "BUY GBLIN ON UNISWAP",
+      uniswapHint: "DEX on Base · ETH → GBLIN",
+      uniswapBotNote: "A dedicated market-making bot performs periodic micro-transactions to maintain protocol liquidity until sufficient organic volume is established.",
+      aerodromeLabel: "BUY GBLIN ON AERODROME",
+      aerodromeHint: "Base native DEX · ETH → GBLIN"
     },
     dashboard: {
       title: "Protocol Dashboard",
@@ -152,7 +154,7 @@ export const translations: Record<Language, any> = {
       step3Title: "3. NAV Appreciation",
       step3Desc: "Distribution activates when stability fund exceeds 0.05 ETH (min) + 7 days passed. Excess reserves are then absorbed into NAV.",
       accumulationTitle: "1. Accumulation (Stability Fee)",
-      accumulationDesc: "Every time a user buys GBLIN, the protocol applies a 0.1% institutional fee. Exactly half of this (0.05%, STABILITY_FEE_BPS) is accumulated in a protected reserve called the stabilityFund.",
+      accumulationDesc: "Every time a user buys GBLIN, the protocol applies a 0.1% institutional fee. Exactly half of this (0.05%, STABILITY_FEE_BPS) is accumulated in a protected reserve called stabilityFund.",
       mechanismTitle: "2. The Guaranteed Appreciation Mechanism",
       mechanismDesc: "The protocol never prints tokens out of thin air. The Net Asset Value (NAV) of GBLIN is calculated by dividing total vault assets by circulating supply. Distribution requires two inviolable conditions: Time (at least 7 days since last distribution) and Reserve (the stabilityFund must exceed a dynamic threshold equal to 0.1% of the total vault value, bounded by a floor of 0.05 ETH and a ceiling of 2 ETH).",
       actionTitle: "3. The Key Action (Mathematical Revaluation)",
@@ -231,9 +233,11 @@ export const translations: Record<Language, any> = {
       desc: "La prima banca centrale autonoma su Base. Preservazione algoritmica della ricchezza supportata da crypto asset reali.",
       cta: "ENTRA NEL CAVEAU",
       subtitle: "// La Banca Centrale Autonoma",
-      aerodromeLabel: "COMPRA GBLIN SU UNISWAP",
-      aerodromeHint: "DEX su Base · ETH → GBLIN",
-      aerodromeBotNote: "Un bot dedicato di market-making effettua micro-transazioni periodiche per mantenere attiva la liquidità del protocollo, fino al raggiungimento di un volume organico sufficiente."
+      uniswapLabel: "COMPRA GBLIN SU UNISWAP",
+      uniswapHint: "DEX su Base · ETH → GBLIN",
+      uniswapBotNote: "Un bot dedicato di market-making effettua micro-transazioni periodiche per mantenere attiva la liquidità del protocollo, fino al raggiungimento di un volume organico sufficiente.",
+      aerodromeLabel: "COMPRA GBLIN SU AERODROME",
+      aerodromeHint: "DEX nativo su Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Dashboard del Protocollo",
@@ -365,7 +369,7 @@ export const translations: Record<Language, any> = {
       mechanismTitle: "2. Meccanismo di Apprezzamento Garantito",
       mechanismDesc: "Il protocollo non stampa mai token dal nulla. Il valore patrimoniale netto (NAV) di GBLIN viene calcolato dividendo gli asset totali del caveau per l'offerta circolante. La distribuzione richiede due condizioni inviolabili: Tempo (almeno 7 giorni dall'ultima distribuzione) e Riserva (lo stabilityFund deve superare una soglia dinamica pari allo 0,1% del valore totale del caveau, con un minimo garantito di 0,05 ETH e un massimo di 2 ETH).",
       actionTitle: "3. L'Azione Chiave (Rivalutazione Matematica)",
-      actionDesc: "Se entrambe le condizioni sono soddisfatte, l'ETH in eccesso nel fondo viene rilasciato e assorbito nel NAV del contratto. Aggiungendo collaterale reale (ETH) senza coniare nuovi GBLIN, il prezzo matematico e intrinseco di ogni GBLIN esistente aumenta automaticamente.",
+      actionDesc: "Se entrambe le condizioni sono soddisfatte, l'ETH in eccesso nel fondo viene rilasciato e assorbito nel NAV del contratto. Aggiungendo collaterale reale (ETH) senza coniare nuovi GBLIN, il prezzo matematico e intrinseco di ogni GBLIN aumenta automaticamente.",
       automationTitle: "4. Automazione ed Efficienza (Senza Gas)",
       automationDesc: "Gli utenti non devono 'richiedere' nulla o pagare gas. La funzione _autoDistributeYield() è integrata nel cuore del protocollo e si attiva silenziosamente e automaticamente ad ogni operazione di acquisto (mint) o vendita (burn). Il protocollo si auto-aggiorna, garantendo un apprezzamento senza frizioni."
     },
@@ -440,9 +444,11 @@ export const translations: Record<Language, any> = {
       desc: "El primer banco central autónomo en Base. Preservación de riqueza algorítmica respaldada por activos cripto reales.",
       cta: "ENTRAR EN LA BÓVEDA",
       subtitle: "// El Banco Central Autónomo",
-      aerodromeLabel: "COMPRA GBLIN EN UNISWAP",
-      aerodromeHint: "DEX en Base · ETH → GBLIN",
-      aerodromeBotNote: "Un bot dedicado de creación de mercado realiza micro-transacciones periódicas para mantener la liquidez del protocolo activa hasta alcanzar un volumen orgánico suficiente."
+      uniswapLabel: "COMPRA GBLIN EN UNISWAP",
+      uniswapHint: "DEX en Base · ETH → GBLIN",
+      uniswapBotNote: "Un bot dedicado de creación de mercado realiza micro-transacciones periódicas para mantener la liquidez del protocolo activa hasta alcanzar un volumen orgánico suficiente.",
+      aerodromeLabel: "COMPRA GBLIN EN AERODROME",
+      aerodromeHint: "DEX nativo en Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Panel del Protocolo",
@@ -521,11 +527,11 @@ export const translations: Record<Language, any> = {
       step2Title: "2. Crecimiento de Reservas",
       step2Desc: "Las reservas de estabilidad crecen en WETH, actuando como un respaldo de liquidez permanente para todo el ecosistema.",
       step3Title: "3. Apreciación del NAV",
-      step3Desc: "La distribución se activa cuando el fondo supera 0,05 ETH (mín) + 7 días pasados. El exceso se absorbe en el NAV.",
+      step3Desc: "La distribución se activa cuando el fondo supera 0.05 ETH (mín) + 7 días pasados. El exceso se absorbe en el NAV.",
       accumulationTitle: "1. Acumulación (Comisión de Estabilidad)",
       accumulationDesc: "Cada vez que un usuario compra GBLIN, el protocolo aplica una comisión institucional del 0.1%. Exactamente la mitad de esto (0.05%) se acumula en una reserva protegida llamada stabilityFund.",
       mechanismTitle: "2. El Mecanismo de Apreciación Garantizada",
-      mechanismDesc: "El protocolo nunca imprime tokens de la nada. El Valor Activo Neto (NAV) de GBLIN se calcula dividiendo los activos totales de la bóveda por el suministro circulante. La distribución requiere dos condiciones inviolables: Tiempo (al menos 7 días desde la última distribución) y Reserva (el stabilityFund debe superar un umbral dinámico igual al 0,1% del valor total de la bóveda, con un mínimo garantizado de 0,05 ETH y un máximo de 2 ETH).",
+      mechanismDesc: "El protocolo nunca imprime tokens de la nada. El Valor Activo Neto (NAV) de GBLIN se calcula dividiendo los activos totales de la bóveda por el suministro circulante. La distribución requiere dos condiciones inviolables: Tiempo (al menos 7 días desde la última distribución) y Reserva (el stabilityFund debe superar un umbral dinámico igual al 0.1% del valor total de la bóveda, con un mínimo garantizado de 0.05 ETH y un máximo de 2 ETH).",
       actionTitle: "3. La Acción Clave (Revalorización Matemática)",
       actionDesc: "Si se cumplen ambas condiciones, el exceso de ETH en el fondo se libera y se absorbe en el NAV del contrato. Al agregar colateral real (ETH) sin acuñar nuevos GBLIN, el precio matemático e intrínseco de cada GBLIN existente aumenta automáticamente.",
       automationTitle: "4. Automatización y Eficiencia (Sin Gas)",
@@ -602,9 +608,11 @@ export const translations: Record<Language, any> = {
       desc: "La première banque centrale autonome sur Base. Préservation algorithmique de la richesse soutenue par des actifs crypto réels.",
       cta: "ENTRER DANS LE COFFRE",
       subtitle: "// La Banque Centrale Autonome",
-      aerodromeLabel: "ACHETER GBLIN SUR UNISWAP",
-      aerodromeHint: "DEX sur Base · ETH → GBLIN",
-      aerodromeBotNote: "Un bot dédié de tenue de marché effectue des micro-transactions périodiques pour maintenir la liquidité du protocole active jusqu'à l'établissement d'un volume organique suffisant."
+      uniswapLabel: "ACHETER GBLIN SUR UNISWAP",
+      uniswapHint: "DEX sur Base · ETH → GBLIN",
+      uniswapBotNote: "Un bot dédié de tenue de marché effectue des micro-transactions périodiques pour maintenir la liquidité du protocole active jusqu'à l'établissement d'un volume organique suffisant.",
+      aerodromeLabel: "ACHETER GBLIN SUR AERODROME",
+      aerodromeHint: "DEX natif sur Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Tableau de Bord du Protocole",
@@ -764,9 +772,11 @@ export const translations: Record<Language, any> = {
       desc: "Die erste autonome Zentralbank auf Base. Algorithmische Vermögenserhaltung, abgesichert durch reale Krypto-Assets.",
       cta: "TRESOR BETRETEN",
       subtitle: "// Die autonome Zentralbank",
-      aerodromeLabel: "GBLIN AUF UNISWAP KAUFEN",
-      aerodromeHint: "DEX auf Base · ETH → GBLIN",
-      aerodromeBotNote: "Ein dedizierter Market-Making-Bot führt regelmäßige Mikrotransaktionen durch, um die Protokollliquidität aufrechtzuerhalten, bis ein ausreichendes organisches Volumen erreicht ist."
+      uniswapLabel: "GBLIN AUF UNISWAP KAUFEN",
+      uniswapHint: "DEX auf Base · ETH → GBLIN",
+      uniswapBotNote: "Ein dedizierter Market-Making-Bot führt regelmäßige Mikrotransaktionen durch, um die Protokollliquidität aufrechtzuerhalten, bis ein ausreichendes organisches Volumen erreicht ist.",
+      aerodromeLabel: "GBLIN AUF AERODROME KAUFEN",
+      aerodromeHint: "Natives DEX auf Base · ETH → GBLIN"
     },
     dashboard: {
       title: "Protokoll-Dashboard",
@@ -926,9 +936,11 @@ export const translations: Record<Language, any> = {
       desc: "Base 上的首个自主中央银行。由现实世界加密资产支持的算法财富保值。",
       cta: "进入金库",
       subtitle: "// 自主中央银行",
-      aerodromeLabel: "在 UNISWAP 购买 GBLIN",
-      aerodromeHint: "Base 上的 DEX · ETH → GBLIN",
-      aerodromeBotNote: "专用做市机器人定期执行微交易，以维持协议流动性，直到建立足够的有机交易量。"
+      uniswapLabel: "在 UNISWAP 购买 GBLIN",
+      uniswapHint: "Base 上的 DEX · ETH → GBLIN",
+      uniswapBotNote: "专用做市机器人定期执行微交易，以维持协议流动性，直到建立足够的有机交易量。",
+      aerodromeLabel: "在 AERODROME 购买 GBLIN",
+      aerodromeHint: "Base 原生 DEX · ETH → GBLIN"
     },
     dashboard: {
       title: "协议仪表板",
@@ -1072,10 +1084,10 @@ export const translations: Record<Language, any> = {
       home: "ホーム",
       dashboard: "ダッシュボード",
       trade: "トレード",
-      buyGblin: "GBLINを購入",
+      buyGblin: "GBLIN を購入",
       manifesto: "マニフェスト",
       core: "GBLIN CORE",
-      agents: "AIエージェント",
+      agents: "AI エージェント",
       vault: "金庫",
       hub: "GBLIN HUB",
       hubCta: "購入 / ログイン",
@@ -1085,16 +1097,18 @@ export const translations: Record<Language, any> = {
     hero: {
       title1: "黄金の",
       title2: "金庫",
-      desc: "Base上の最初の自律型中央銀行。現実世界の暗号資産に裏打ちされたアルゴリズムによる資産保全。",
+      desc: "Base 上の最初の自律型中央銀行。現実世界の暗号資産に裏打ちされたアルゴリズムによる資産保全。",
       cta: "金庫に入る",
       subtitle: "// 自律型中央銀行",
-      aerodromeLabel: "UNISWAP で GBLIN を購入",
-      aerodromeHint: "Base 上の DEX · ETH → GBLIN",
-      aerodromeBotNote: "専用のマーケットメイキングボットが定期的にマイクロトランザクションを実行し、十分なオーガニック取引量が確立されるまでプロトコルの流動性を維持します。"
+      uniswapLabel: "UNISWAP で GBLIN を購入",
+      uniswapHint: "Base 上の DEX · ETH → GBLIN",
+      uniswapBotNote: "専用のマーケットメイキングボットが定期的にマイクロトランザクションを実行し、十分なオーガニック取引量が確立されるまでプロトコルの流動性を維持します。",
+      aerodromeLabel: "AERODROME で GBLIN を購入",
+      aerodromeHint: "Base ネイティブ DEX · ETH → GBLIN"
     },
     dashboard: {
       title: "プロトコル・ダッシュボード",
-      verified: "BASEメインネットで検証済み",
+      verified: "BASE メインネットで検証済み",
       lastUpdate: "最終更新",
       navTitle: "内在価値 (NAV)",
       backing: "裏付け",
