@@ -37,6 +37,9 @@ export async function GET() {
     console.error("[frame/image] failed to fetch stats", e);
   }
 
+  const bountyDisplay =
+    stats.stability > 0 ? `${fmt(stats.stability, stats.stability < 0.01 ? 6 : 4)} ETH` : "0 ETH";
+
   return new ImageResponse(
     (
       <div
@@ -45,19 +48,20 @@ export async function GET() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "space-between",
           background: "linear-gradient(135deg, #050505 0%, #1a1408 50%, #050505 100%)",
           color: "#f5d77a",
-          padding: "60px 70px",
+          padding: "44px 60px",
           fontFamily: "sans-serif",
         }}
       >
         {/* header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 64, fontWeight: 800, letterSpacing: -2, color: "#f5d77a" }}>
+            <div style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2, color: "#f5d77a", display: "flex" }}>
               GBLIN
             </div>
-            <div style={{ fontSize: 22, color: "#9a8a5c", marginTop: 4, letterSpacing: 1 }}>
+            <div style={{ fontSize: 20, color: "#9a8a5c", marginTop: 2, letterSpacing: 1, display: "flex" }}>
               AUTONOMOUS BASKET · LIVE ON BASE
             </div>
           </div>
@@ -66,40 +70,37 @@ export async function GET() {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              fontSize: 22,
+              fontSize: 20,
               color: "#7fdb8a",
               border: "1px solid #2d4a30",
               borderRadius: 999,
-              padding: "10px 20px",
+              padding: "8px 18px",
               background: "#0a1a0d",
             }}
           >
             <div style={{ width: 10, height: 10, borderRadius: 999, background: "#7fdb8a" }} />
-            on-chain
+            on-chain · live
           </div>
         </div>
 
-        {/* stats grid */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 24,
-            marginTop: 70,
-            flex: 1,
-          }}
-        >
-          <div style={{ display: "flex", gap: 24 }}>
-            <StatCard label="1 ETH BUYS" value={stats.gblinPerEth > 0 ? `${fmt(stats.gblinPerEth, 2)} GBLIN` : "—"} />
-            <StatCard label="TOTAL SUPPLY" value={stats.supply > 0 ? `${fmt(stats.supply, 2)} GBLIN` : "—"} />
-          </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            <StatCard
-              label="KEEPER BOUNTY POOL"
-              value={`${fmt(stats.stability, 4)} ETH`}
-              hint={`${stats.keeperPayouts} payouts ready · 0.0001 ETH each`}
-            />
-          </div>
+        {/* stats grid: 3 columns single row */}
+        <div style={{ display: "flex", gap: 18 }}>
+          <StatCard
+            label="1 ETH BUYS"
+            value={stats.gblinPerEth > 0 ? `${fmt(stats.gblinPerEth, 2)}` : "—"}
+            unit="GBLIN"
+          />
+          <StatCard
+            label="TOTAL SUPPLY"
+            value={stats.supply > 0 ? `${fmt(stats.supply, 2)}` : "—"}
+            unit="GBLIN"
+          />
+          <StatCard
+            label="KEEPER BOUNTY"
+            value={bountyDisplay.replace(" ETH", "")}
+            unit="ETH"
+            hint={`${stats.keeperPayouts} payouts ready`}
+          />
         </div>
 
         {/* footer */}
@@ -108,15 +109,14 @@ export async function GET() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            fontSize: 22,
+            fontSize: 20,
             color: "#9a8a5c",
             borderTop: "1px solid #2a2418",
-            paddingTop: 22,
-            marginTop: 30,
+            paddingTop: 16,
           }}
         >
           <div style={{ display: "flex" }}>cbBTC · WETH · USDC · 0 admin keys</div>
-          <div style={{ display: "flex" }}>gblin.digital</div>
+          <div style={{ display: "flex", color: "#f5d77a" }}>gblin.digital</div>
         </div>
       </div>
     ),
@@ -130,7 +130,17 @@ export async function GET() {
   );
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatCard({
+  label,
+  value,
+  unit,
+  hint,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  hint?: string;
+}) {
   return (
     <div
       style={{
@@ -139,15 +149,26 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
         flex: 1,
         background: "rgba(245, 215, 122, 0.06)",
         border: "1px solid rgba(245, 215, 122, 0.18)",
-        borderRadius: 18,
-        padding: "26px 30px",
+        borderRadius: 16,
+        padding: "22px 24px",
+        minHeight: 220,
+        justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: 20, color: "#9a8a5c", letterSpacing: 1.5 }}>{label}</div>
-      <div style={{ fontSize: 56, fontWeight: 700, color: "#f5d77a", marginTop: 8 }}>{value}</div>
-      {hint && (
-        <div style={{ fontSize: 18, color: "#7a6f4f", marginTop: 6, display: "flex" }}>{hint}</div>
-      )}
+      <div style={{ fontSize: 18, color: "#9a8a5c", letterSpacing: 1.5, display: "flex" }}>
+        {label}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <div style={{ fontSize: 52, fontWeight: 700, color: "#f5d77a", lineHeight: 1 }}>{value}</div>
+        {unit && (
+          <div style={{ fontSize: 22, color: "#9a8a5c", fontWeight: 600, display: "flex" }}>
+            {unit}
+          </div>
+        )}
+      </div>
+      <div style={{ fontSize: 16, color: "#7a6f4f", display: "flex", minHeight: 18 }}>
+        {hint ?? ""}
+      </div>
     </div>
   );
 }
