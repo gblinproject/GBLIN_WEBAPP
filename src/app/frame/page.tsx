@@ -2,10 +2,28 @@ import type { Metadata } from "next";
 
 const SITE_URL = "https://gblin.digital";
 const FRAME_IMAGE = `${SITE_URL}/api/frame/image`;
+const SPLASH_IMAGE =
+  "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
 const DASHBOARD_URL = "https://dune.com/gblin/dashboard";
 
-// Farcaster Frame v1 meta tags. Compatible with Warpcast and all major clients.
-// Buttons use the "link" action so no backend POST handler is needed.
+// Farcaster Frame v2 / Mini App embed.
+// Modern Warpcast renders this as an interactive embed with a launch button.
+// Reference: https://miniapps.farcaster.xyz/docs/specification#frame-embed
+const frameEmbed = {
+  version: "next",
+  imageUrl: FRAME_IMAGE,
+  button: {
+    title: "Open GBLIN",
+    action: {
+      type: "launch_frame",
+      name: "GBLIN",
+      url: SITE_URL,
+      splashImageUrl: SPLASH_IMAGE,
+      splashBackgroundColor: "#050505",
+    },
+  },
+};
+
 export const metadata: Metadata = {
   title: "GBLIN — Autonomous Basket on Base",
   description:
@@ -17,26 +35,10 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/frame`,
   },
   other: {
-    // Frame v1
-    "fc:frame": "vNext",
-    "fc:frame:image": FRAME_IMAGE,
-    "fc:frame:image:aspect_ratio": "1.91:1",
-
-    "fc:frame:button:1": "Buy GBLIN",
-    "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": `${SITE_URL}/buy-gblin`,
-
-    "fc:frame:button:2": "Trigger Rebalance",
-    "fc:frame:button:2:action": "link",
-    "fc:frame:button:2:target": `${SITE_URL}/rebalance`,
-
-    "fc:frame:button:3": "Live Dashboard",
-    "fc:frame:button:3:action": "link",
-    "fc:frame:button:3:target": DASHBOARD_URL,
-
-    "fc:frame:button:4": "Open App",
-    "fc:frame:button:4:action": "link",
-    "fc:frame:button:4:target": SITE_URL,
+    // Frame v2 / Mini App embed (modern Warpcast)
+    "fc:frame": JSON.stringify(frameEmbed),
+    // Mirror under fc:miniapp per the Mini App spec
+    "fc:miniapp": JSON.stringify(frameEmbed),
   },
 };
 
