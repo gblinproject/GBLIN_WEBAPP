@@ -290,7 +290,7 @@ export function HomeView(props: HomeViewProps) {
         <div className="absolute -right-20 top-0 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
         <div className="absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-amber-500/5 blur-[60px]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-        <div className="relative grid gap-10 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="relative grid grid-cols-1 gap-10 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-7">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-300">
