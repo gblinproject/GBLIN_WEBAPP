@@ -290,8 +290,8 @@ export function HomeView(props: HomeViewProps) {
         <div className="absolute -right-20 top-0 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
         <div className="absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-amber-500/5 blur-[60px]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-        <div className="relative grid gap-10 xl:grid-cols-[1fr_auto] xl:items-center">
-          <div>
+        <div className="relative grid gap-10 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-7">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -374,7 +374,7 @@ export function HomeView(props: HomeViewProps) {
             <p className="mt-3 max-w-2xl text-[10px] leading-5 text-emerald-400/50">{t('hero.uniswapBotNote')}</p>
           </div>
           {/* KPI tiles — larger on desktop, responsive on mobile */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:w-[460px]">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-3 sm:gap-4 xl:w-[460px]">
             {[
               { label: t('dashboard.navTitle'), value: onChainData?.nav || '—', hint: t('dashboard.backing'), loading: isOnChainLoading, color: 'text-amber-400' },
               { label: t('dashboard.tvlTitle'), value: formatCurrency(onChainData?.tvl || 0), hint: t('dashboard.assetsInVault'), loading: isOnChainLoading, color: 'text-emerald-400' },
