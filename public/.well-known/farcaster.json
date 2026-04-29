@@ -1,0 +1,21 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "GBLIN",
+    "iconUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "homeUrl": "https://gblin.digital",
+    "imageUrl": "https://gblin.digital/api/frame/image",
+    "buttonTitle": "Open GBLIN",
+    "splashImageUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "splashBackgroundColor": "#050505",
+    "subtitle": "Autonomous basket on Base",
+    "description": "Autonomous on-chain basket. cbBTC + WETH + USDC. No admin keys, no multisig. The contract pays 0.0001 ETH to anyone who triggers a rebalance.",
+    "primaryCategory": "finance",
+    "tags": ["defi", "etf", "base", "index", "autonomous"],
+    "heroImageUrl": "https://gblin.digital/api/frame/image",
+    "tagline": "0 admin keys. live on base.",
+    "ogTitle": "GBLIN — Autonomous Basket on Base",
+    "ogDescription": "Autonomous on-chain basket. cbBTC + WETH + USDC. No admin keys.",
+    "ogImageUrl": "https://gblin.digital/api/frame/image"
+  }
+}

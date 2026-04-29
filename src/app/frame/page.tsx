@@ -6,11 +6,26 @@ const SPLASH_IMAGE =
   "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
 const DASHBOARD_URL = "https://dune.com/gblin/dashboard";
 
-// Farcaster Frame v2 / Mini App embed.
-// Modern Warpcast renders this as an interactive embed with a launch button.
-// Reference: https://miniapps.farcaster.xyz/docs/specification#frame-embed
+// Farcaster Mini App embed (current spec).
+// Reference: https://miniapps.farcaster.xyz/docs/guides/sharing
+const miniappEmbed = {
+  version: "1",
+  imageUrl: FRAME_IMAGE,
+  button: {
+    title: "Open GBLIN",
+    action: {
+      type: "launch_miniapp",
+      name: "GBLIN",
+      url: SITE_URL,
+      splashImageUrl: SPLASH_IMAGE,
+      splashBackgroundColor: "#050505",
+    },
+  },
+};
+
+// Backward-compatible fc:frame embed for legacy Warpcast clients.
 const frameEmbed = {
-  version: "next",
+  version: "1",
   imageUrl: FRAME_IMAGE,
   button: {
     title: "Open GBLIN",
@@ -35,10 +50,10 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/frame`,
   },
   other: {
-    // Frame v2 / Mini App embed (modern Warpcast)
+    // Modern Mini App embed
+    "fc:miniapp": JSON.stringify(miniappEmbed),
+    // Legacy fallback
     "fc:frame": JSON.stringify(frameEmbed),
-    // Mirror under fc:miniapp per the Mini App spec
-    "fc:miniapp": JSON.stringify(frameEmbed),
   },
 };
 
