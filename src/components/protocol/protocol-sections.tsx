@@ -329,7 +329,7 @@ export function HomeView(props: HomeViewProps) {
             </div>
 
             {/* DEX pool CTAs — Aerodrome + Uniswap side by side */}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 max-w-2xl">
+            <div className="mt-5 grid w-full min-w-0 gap-3 sm:grid-cols-2 max-w-2xl">
               {/* Aerodrome pool CTA */}
               <div className="rounded-2xl border border-sky-500/30 bg-sky-500/[0.07] transition hover:border-sky-500/60 hover:bg-sky-500/[0.12]">
                 <a
