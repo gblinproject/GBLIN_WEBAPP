@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { Activity, ArrowRight, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
 import { CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
+import { WhaleDepositPanel } from './whale-deposit-panel';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -69,9 +70,9 @@ interface DashboardViewProps extends SharedViewProps {}
 interface BuyViewProps extends SharedViewProps {
   buyTokenOptions: string[];
   customTokenAddress: string;
-  mode: 'buy' | 'sell';
+  mode: 'buy' | 'sell' | 'inkind';
   inputBalance: string;
-  setMode: (mode: 'buy' | 'sell') => void;
+  setMode: (mode: 'buy' | 'sell' | 'inkind') => void;
   amount: string;
   setAmount: (value: string) => void;
   quoteAssetLabel: string;
@@ -875,17 +876,45 @@ export function BuyView(props: BuyViewProps) {
         {/* ── Right trade widget ── */}
         <div className={`${shellCard} p-7 sm:p-8`}>
 
-          {/* Buy / Sell toggle */}
-          <div className="flex flex-wrap gap-3">
-            <button className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${mode === 'buy' ? 'bg-amber-400 text-black' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10'}`} onClick={() => setMode('buy')} type="button">
+          {/* Buy / Sell / In-Kind toggle */}
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <button
+              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'buy' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20'}`}
+              onClick={() => setMode('buy')}
+              type="button"
+            >
               {t('trade.buyBtn')}
             </button>
-            <button className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${mode === 'sell' ? 'bg-amber-400 text-black' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10'}`} onClick={() => setMode('sell')} type="button">
+            <button
+              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'sell' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20'}`}
+              onClick={() => setMode('sell')}
+              type="button"
+            >
               {t('trade.sellBtn')}
+            </button>
+            <button
+              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'inkind' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-amber-500/20 bg-amber-500/5 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/40'}`}
+              onClick={() => setMode('inkind')}
+              type="button"
+              title={t('trade.inkindTitle')}
+            >
+              {t('trade.inkindBtn')}
             </button>
           </div>
 
+          {mode === 'inkind' ? (
+            <div className="mt-6">
+              <WhaleDepositPanel
+                t={t}
+                address={props.address}
+                isConnected={isConnected}
+                openWallet={openWallet}
+              />
+            </div>
+          ) : null}
+
           {/* Balances */}
+          {mode !== 'inkind' ? (
           <div className={`mt-6 grid gap-3 ${mode === 'buy' && selectedToken !== 'ETH' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">ETH {t('trade.balance')}</p>
@@ -902,7 +931,9 @@ export function BuyView(props: BuyViewProps) {
               </div>
             ) : null}
           </div>
+          ) : null}
 
+          {mode !== 'inkind' ? (
           <div className="mt-6 space-y-5">
 
             {/* ── Input mode selector (only in buy mode with ETH) ── */}
@@ -1063,13 +1094,13 @@ export function BuyView(props: BuyViewProps) {
 
             {/* CTA */}
             <button
-              className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] transition ${isTradeDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-amber-400 text-black hover:bg-amber-300 shadow-[0_0_24px_rgba(245,158,11,0.25)]'}`}
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-5 text-base font-bold uppercase tracking-[0.18em] transition ${isTradeDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-amber-400 text-black hover:bg-amber-300 shadow-[0_0_30px_rgba(245,158,11,0.3)]'}`}
               disabled={isTradeDisabled}
               onClick={isConnected ? executeTrade : openWallet}
               type="button"
             >
               {isTransacting ? t('trade.transacting') : isConnected ? mode === 'buy' ? t('trade.buyBtn') : t('trade.sellBtn') : t('trade.connectWallet')}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-5 w-5" />
             </button>
 
             {tradeError ? <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{tradeError}</div> : null}
@@ -1083,6 +1114,7 @@ export function BuyView(props: BuyViewProps) {
               </div>
             ) : null}
           </div>
+          ) : null}
         </div>
       </section>
     </div>

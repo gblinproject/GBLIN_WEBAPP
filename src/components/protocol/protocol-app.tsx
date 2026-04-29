@@ -101,7 +101,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [tokenBalance, setTokenBalance] = useState('0.0000');
   const [gblinBalance, setGblinBalance] = useState('0.0000');
 
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
+  const [mode, setMode] = useState<'buy' | 'sell' | 'inkind'>('buy');
   const [selectedToken, setSelectedToken] = useState('ETH');
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);

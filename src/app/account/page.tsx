@@ -139,7 +139,7 @@ export default function AccountPage() {
   const [coinbaseError, setCoinbaseError] = useState<string | null>(null);
 
   // Advanced trading states for BuyView
-  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell' | 'inkind'>('buy');
   const [selectedToken, setSelectedToken] = useState('ETH');
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
