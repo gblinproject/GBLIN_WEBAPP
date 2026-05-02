@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMwNjU2NDMsInR5cGUiOiJhdXRoIiwia2V5IjoiMHg0NUM4NUQxODg0ZTk5MkIxMWFkREU1MkIyNWQ0MDhkNjk1QkUyQjVkIn0",
+    "payload": "eyJkb21haW4iOiJnYmxpbi5kaWdpdGFsIn0",
+    "signature": "NwuktKwu10fGhfxX9g+Dw5uCJbDaeb1HcMGP1Li+E3ohYzJtmu2UdI0KeQnP12GaSjX4p+ymfPwhSq40NPCz+xw="
+  },
   "miniapp": {
     "version": "1",
     "name": "GBLIN",
