@@ -6,6 +6,7 @@ import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import FarcasterMiniAppReady from "@/components/FarcasterMiniAppReady";
+import FarcasterInstallBanner from "@/components/FarcasterInstallBanner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -164,6 +165,7 @@ export default async function RootLayout({
         <ClientContextProvider cookies={cookies}>{children}</ClientContextProvider>
         <PWAInstallPrompt />
         <FarcasterMiniAppReady />
+        <FarcasterInstallBanner />
         <Analytics />
       </body>
     </html>
