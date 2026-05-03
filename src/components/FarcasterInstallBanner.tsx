@@ -3,42 +3,47 @@
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
 
-interface FarcasterSdk {
-  actions: {
-    ready: () => Promise<void>;
-    addFrame: () => Promise<{ added: boolean }>;
-    subscribeToNotifications: () => Promise<{ subscribed: boolean }>;
-  };
-}
+type FarcasterSdk = import("@farcaster/miniapp-sdk").sdk;
 
 export default function FarcasterInstallBanner() {
   const [isFarcaster, setIsFarcaster] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [sdk, setSdk] = useState<FarcasterSdk | null>(null);
+  const [isNotifEnabled, setIsNotifEnabled] = useState(false);
+  const [sdkRef, setSdkRef] = useState<typeof FarcasterSdk | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const { sdk: farcasterSdk } = await import("@farcaster/miniapp-sdk");
+        const mod = await import("@farcaster/miniapp-sdk");
         if (cancelled) return;
 
-        setSdk(farcasterSdk as FarcasterSdk);
+        const farcasterSdk = mod.sdk;
+        const inApp = await farcasterSdk.isInMiniApp();
+        if (!inApp) return;
+
+        setSdkRef(farcasterSdk);
         setIsFarcaster(true);
 
-        // Chiama ready() per nascondere lo splash screen
+        // Nascondi splash screen
         await farcasterSdk.actions.ready();
 
-        // Mostra il banner dopo 1 secondo
+        // Ascolta evento notifiche abilitate
+        farcasterSdk.on("notificationsEnabled", () => {
+          setIsNotifEnabled(true);
+        });
+        farcasterSdk.on("miniAppAdded", () => {
+          setIsInstalled(true);
+        });
+
+        // Mostra banner dopo 1 secondo
         setTimeout(() => {
           if (!cancelled) setShowBanner(true);
         }, 1000);
       } catch {
         // Non siamo in Farcaster
-        setIsFarcaster(false);
       }
     })();
 
@@ -48,26 +53,11 @@ export default function FarcasterInstallBanner() {
   }, []);
 
   const handleAddFrame = async () => {
-    if (!sdk) return;
+    if (!sdkRef) return;
     try {
-      const result = await sdk.actions.addFrame();
-      if (result.added) {
-        setIsInstalled(true);
-      }
+      await sdkRef.actions.addFrame();
     } catch (err) {
       console.error("[farcaster] addFrame failed:", err);
-    }
-  };
-
-  const handleSubscribe = async () => {
-    if (!sdk) return;
-    try {
-      const result = await sdk.actions.subscribeToNotifications();
-      if (result.subscribed) {
-        setIsSubscribed(true);
-      }
-    } catch (err) {
-      console.error("[farcaster] subscribe failed:", err);
     }
   };
 
@@ -77,8 +67,7 @@ export default function FarcasterInstallBanner() {
 
   if (!isFarcaster || !showBanner) return null;
 
-  // Se tutto è già fatto, non mostrare nulla
-  if (isInstalled && isSubscribed) return null;
+  if (isInstalled) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-96">
@@ -98,34 +87,15 @@ export default function FarcasterInstallBanner() {
           </button>
         </div>
 
-        <div className="flex gap-2">
-          {!isInstalled && (
-            <button
-              onClick={handleAddFrame}
-              className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
-            >
-              <Download size={16} />
-              Installa nel Profilo
-            </button>
-          )}
+        <button
+          onClick={handleAddFrame}
+          className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
+        >
+          <Download size={16} />
+          Installa nel Profilo
+        </button>
 
-          {!isSubscribed && (
-            <button
-              onClick={handleSubscribe}
-              className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors border border-zinc-600"
-            >
-              <span className="text-lg">🔔</span>
-              Attiva Notifiche
-            </button>
-          )}
-        </div>
-
-        {isInstalled && (
-          <p className="text-green-400 text-xs mt-2 text-center">
-            ✓ Installato nel profilo
-          </p>
-        )}
-        {isSubscribed && (
+        {isNotifEnabled && (
           <p className="text-green-400 text-xs mt-2 text-center">
             ✓ Notifiche attive
           </p>
