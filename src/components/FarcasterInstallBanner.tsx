@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, BellRing, Download } from "lucide-react";
+import { X, Download } from "lucide-react";
 
 interface FarcasterSdk {
   actions: {
@@ -114,7 +114,7 @@ export default function FarcasterInstallBanner() {
               onClick={handleSubscribe}
               className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors border border-zinc-600"
             >
-              <BellRing size={16} />
+              <span className="text-lg">🔔</span>
               Attiva Notifiche
             </button>
           )}
