@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
 
-type FarcasterSdk = import("@farcaster/miniapp-sdk").sdk;
+type FarcasterSdk = typeof import("@farcaster/miniapp-sdk").sdk;
 
 export default function FarcasterInstallBanner() {
   const [isFarcaster, setIsFarcaster] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isNotifEnabled, setIsNotifEnabled] = useState(false);
-  const [sdkRef, setSdkRef] = useState<typeof FarcasterSdk | null>(null);
+  const [sdkRef, setSdkRef] = useState<FarcasterSdk | null>(null);
 
   useEffect(() => {
     let cancelled = false;
