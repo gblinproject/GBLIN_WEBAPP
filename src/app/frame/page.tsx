@@ -1,61 +1,87 @@
 import type { Metadata } from "next";
 
 const SITE_URL = "https://gblin.digital";
-const FRAME_IMAGE = `${SITE_URL}/api/frame/image`;
+const FRAME_IMAGE_BASE = `${SITE_URL}/api/frame/image`;
 const SPLASH_IMAGE =
   "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
 const DASHBOARD_URL = "https://dune.com/gblin/dashboard";
+const GAME_URL = `${SITE_URL}/game`;
 
-// Farcaster Mini App embed (current spec).
-// Reference: https://miniapps.farcaster.xyz/docs/guides/sharing
-const miniappEmbed = {
-  version: "1",
-  imageUrl: FRAME_IMAGE,
-  button: {
-    title: "Open GBLIN",
-    action: {
-      type: "launch_miniapp",
-      name: "GBLIN",
-      url: SITE_URL,
-      splashImageUrl: SPLASH_IMAGE,
-      splashBackgroundColor: "#050505",
-    },
-  },
+type FramePageProps = {
+  searchParams: Promise<{
+    holders?: string;
+    saved?: string;
+    crash?: string;
+  }>;
 };
 
-// Backward-compatible fc:frame embed for legacy Warpcast clients.
-const frameEmbed = {
-  version: "1",
-  imageUrl: FRAME_IMAGE,
-  button: {
-    title: "Open GBLIN",
-    action: {
-      type: "launch_frame",
-      name: "GBLIN",
-      url: SITE_URL,
-      splashImageUrl: SPLASH_IMAGE,
-      splashBackgroundColor: "#050505",
-    },
-  },
-};
+// Build the OG image URL, optionally personalised via query params for shared casts.
+// Spec: https://miniapps.farcaster.xyz/docs/guides/sharing#dynamic-embed-images
+function buildFrameImageUrl(params: {
+  holders?: string;
+  saved?: string;
+  crash?: string;
+}): string {
+  const qs = new URLSearchParams();
+  if (params.holders) qs.set("holders", params.holders);
+  if (params.saved) qs.set("saved", params.saved);
+  if (params.crash) qs.set("crash", params.crash);
+  const tail = qs.toString();
+  return tail ? `${FRAME_IMAGE_BASE}?${tail}` : FRAME_IMAGE_BASE;
+}
 
-export const metadata: Metadata = {
-  title: "GBLIN — Autonomous Basket on Base",
-  description:
-    "Live on-chain stats for GBLIN. Autonomous rebalances, transparent NAV, no admin keys.",
-  openGraph: {
+export async function generateMetadata({ searchParams }: FramePageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const frameImage = buildFrameImageUrl(params);
+
+  // Mini App embed — opens the dApp. Spec allows exactly one button.
+  const miniappEmbed = {
+    version: "1",
+    imageUrl: frameImage,
+    button: {
+      title: "Open GBLIN",
+      action: {
+        type: "launch_miniapp",
+        name: "GBLIN",
+        url: SITE_URL,
+        splashImageUrl: SPLASH_IMAGE,
+        splashBackgroundColor: "#050505",
+      },
+    },
+  };
+
+  // Legacy fc:frame embed for older Warpcast clients.
+  const frameEmbed = {
+    version: "1",
+    imageUrl: frameImage,
+    button: {
+      title: "Open GBLIN",
+      action: {
+        type: "launch_frame",
+        name: "GBLIN",
+        url: SITE_URL,
+        splashImageUrl: SPLASH_IMAGE,
+        splashBackgroundColor: "#050505",
+      },
+    },
+  };
+
+  return {
     title: "GBLIN — Autonomous Basket on Base",
-    description: "Autonomous on-chain basket. cbBTC + WETH + USDC. No admin keys.",
-    images: [{ url: FRAME_IMAGE, width: 1200, height: 630 }],
-    url: `${SITE_URL}/frame`,
-  },
-  other: {
-    // Modern Mini App embed
-    "fc:miniapp": JSON.stringify(miniappEmbed),
-    // Legacy fallback
-    "fc:frame": JSON.stringify(frameEmbed),
-  },
-};
+    description:
+      "Live on-chain stats for GBLIN. Autonomous rebalances, transparent NAV, no admin keys.",
+    openGraph: {
+      title: "GBLIN — Autonomous Basket on Base",
+      description: "Autonomous on-chain basket. cbBTC + WETH + USDC. No admin keys.",
+      images: [{ url: frameImage, width: 1200, height: 800 }],
+      url: `${SITE_URL}/frame`,
+    },
+    other: {
+      "fc:miniapp": JSON.stringify(miniappEmbed),
+      "fc:frame": JSON.stringify(frameEmbed),
+    },
+  };
+}
 
 export default function FramePage() {
   return (
@@ -93,6 +119,20 @@ export default function FramePage() {
           Buy GBLIN
         </a>
         <a
+          href={GAME_URL}
+          style={{
+            padding: "12px 22px",
+            background: "transparent",
+            color: "#f5d77a",
+            border: "1px solid #f5d77a",
+            borderRadius: 999,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          Play Crash Shield
+        </a>
+        <a
           href="/rebalance"
           style={{
             padding: "12px 22px",
@@ -124,7 +164,7 @@ export default function FramePage() {
         </a>
       </div>
       <img
-        src={FRAME_IMAGE}
+        src={FRAME_IMAGE_BASE}
         alt="GBLIN live stats"
         style={{
           marginTop: 40,

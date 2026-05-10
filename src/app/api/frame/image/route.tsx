@@ -29,7 +29,12 @@ async function fetchFrameStats() {
   return { gblinPerEth, supply, stability, keeperPayouts };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const holdersOverride = searchParams.get("holders");
+  const savedOverride = searchParams.get("saved");
+  const crashOverride = searchParams.get("crash");
+
   let stats = { gblinPerEth: 0, supply: 0, stability: 0, keeperPayouts: 0 };
   try {
     stats = await fetchFrameStats();
@@ -39,6 +44,14 @@ export async function GET() {
 
   const bountyDisplay =
     stats.stability > 0 ? `${fmt(stats.stability, stats.stability < 0.01 ? 6 : 4)} ETH` : "0 ETH";
+
+  // Optional personalisation: when reshared with ?saved=...&crash=... query params,
+  // the image gets a green "saved $X during {crash}" callout instead of the
+  // KEEPER BOUNTY card. This lets share casts deep-link to a personalised image.
+  const showSaved =
+    savedOverride !== null && savedOverride !== "" && !Number.isNaN(parseFloat(savedOverride));
+  const savedNumber = showSaved ? parseFloat(savedOverride!) : 0;
+  const crashLabel = crashOverride ? crashOverride.toUpperCase() : "";
 
   return new ImageResponse(
     (
@@ -91,16 +104,26 @@ export async function GET() {
             unit="GBLIN"
           />
           <StatCard
-            label="TOTAL SUPPLY"
-            value={stats.supply > 0 ? `${fmt(stats.supply, 2)}` : "—"}
-            unit="GBLIN"
+            label={holdersOverride ? "HOLDERS" : "TOTAL SUPPLY"}
+            value={
+              holdersOverride
+                ? holdersOverride
+                : stats.supply > 0
+                  ? `${fmt(stats.supply, 2)}`
+                  : "—"
+            }
+            unit={holdersOverride ? "on-chain" : "GBLIN"}
           />
-          <StatCard
-            label="KEEPER BOUNTY"
-            value={bountyDisplay.replace(" ETH", "")}
-            unit="ETH"
-            hint={`${stats.keeperPayouts} payouts ready`}
-          />
+          {showSaved ? (
+            <SavedCard saved={savedNumber} crashLabel={crashLabel} />
+          ) : (
+            <StatCard
+              label="KEEPER BOUNTY"
+              value={bountyDisplay.replace(" ETH", "")}
+              unit="ETH"
+              hint={`${stats.keeperPayouts} payouts ready`}
+            />
+          )}
         </div>
 
         {/* footer */}
@@ -115,7 +138,9 @@ export async function GET() {
             paddingTop: 16,
           }}
         >
-          <div style={{ display: "flex" }}>cbBTC · WETH · USDC · 0 admin keys</div>
+          <div style={{ display: "flex" }}>
+            cbBTC · WETH · USDC · 0 admin keys · try /game
+          </div>
           <div style={{ display: "flex", color: "#f5d77a" }}>gblin.digital</div>
         </div>
       </div>
@@ -127,6 +152,53 @@ export async function GET() {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
       },
     }
+  );
+}
+
+function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string }) {
+  const positive = saved > 0;
+  const formatted = saved.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        background: positive
+          ? "rgba(127, 219, 138, 0.10)"
+          : "rgba(245, 215, 122, 0.06)",
+        border: `1px solid ${positive ? "rgba(127,219,138,0.35)" : "rgba(245,215,122,0.18)"}`,
+        borderRadius: 16,
+        padding: "22px 24px",
+        minHeight: 220,
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ fontSize: 18, color: "#9a8a5c", letterSpacing: 1.5, display: "flex" }}>
+        SAVED VS DIRECT HOLD
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <div
+          style={{
+            fontSize: 52,
+            fontWeight: 700,
+            color: positive ? "#7fdb8a" : "#f5d77a",
+            lineHeight: 1,
+          }}
+        >
+          {positive ? "+" : ""}
+          {formatted}
+        </div>
+      </div>
+      <div style={{ fontSize: 16, color: "#7a6f4f", display: "flex", minHeight: 18 }}>
+        {crashLabel ? `during ${crashLabel}` : "crash shield backtest"}
+      </div>
+    </div>
   );
 }
 
