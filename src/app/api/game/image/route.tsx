@@ -14,12 +14,7 @@ const fmtUsd = (n: number) =>
 
 /**
  * Dynamic OG image for the Crash Shield game (1200x800).
- *
- * - No params:        hero CTA preview
- * - With ?crash=&saved=&direct=&gblin=  personalised result share image
- *
- * Style: warm dark gradient, bold typography, glassmorphism cards,
- * matches the in-app design system.
+ * 2026 palette: midnight base + vibrant blue/cyan/emerald mesh.
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -51,10 +46,15 @@ export async function GET(req: Request) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          // Multi-layer vibrant mesh on deep midnight
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,215,122,0.10) 0%, rgba(245,215,122,0) 60%), #050505",
-          color: "#f5d77a",
-          padding: "44px 56px",
+            "radial-gradient(45% 40% at 18% 18%, rgba(59,130,246,0.35) 0%, transparent 70%), " +
+            "radial-gradient(40% 35% at 82% 12%, rgba(168,85,247,0.28) 0%, transparent 70%), " +
+            "radial-gradient(50% 40% at 72% 82%, rgba(6,182,212,0.26) 0%, transparent 70%), " +
+            "radial-gradient(40% 35% at 20% 88%, rgba(16,185,129,0.20) 0%, transparent 70%), " +
+            "#0a0b14",
+          color: "#ffffff",
+          padding: "48px 60px",
           fontFamily: "sans-serif",
         }}
       >
@@ -91,22 +91,20 @@ function Header() {
         justifyContent: "space-between",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        {/* Shield-like brand mark */}
+      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
         <div
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            background:
-              "linear-gradient(135deg, rgba(245,215,122,0.25), rgba(245,215,122,0.04))",
-            border: "1px solid rgba(245,215,122,0.35)",
+            width: 60,
+            height: 60,
+            borderRadius: 16,
+            background: "linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 30,
-            color: "#f5d77a",
-            fontWeight: 700,
+            fontSize: 32,
+            color: "#ffffff",
+            fontWeight: 800,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
           }}
         >
           ⛨
@@ -114,10 +112,10 @@ function Header() {
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
             style={{
-              fontSize: 36,
-              fontWeight: 800,
-              letterSpacing: -1,
-              color: "#f5d77a",
+              fontSize: 40,
+              fontWeight: 900,
+              letterSpacing: -1.5,
+              color: "#ffffff",
               display: "flex",
               lineHeight: 1.05,
             }}
@@ -126,12 +124,13 @@ function Header() {
           </div>
           <div
             style={{
-              fontSize: 18,
-              color: "#9a8a5c",
+              fontSize: 17,
+              color: "#94a3b8",
               marginTop: 4,
               letterSpacing: 1.4,
               display: "flex",
               textTransform: "uppercase",
+              fontWeight: 600,
             }}
           >
             GBLIN Crash Shield · live backtest
@@ -142,24 +141,27 @@ function Header() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          fontSize: 16,
-          color: "#7fdb8a",
-          border: "1px solid rgba(127,219,138,0.35)",
+          gap: 10,
+          fontSize: 15,
+          color: "#a7f3d0",
+          border: "1px solid rgba(16,185,129,0.4)",
           borderRadius: 999,
-          padding: "8px 16px",
-          background: "rgba(10,26,13,0.6)",
+          padding: "8px 18px",
+          background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.05))",
+          fontWeight: 600,
+          letterSpacing: 0.6,
         }}
       >
         <div
           style={{
-            width: 8,
-            height: 8,
+            width: 9,
+            height: 9,
             borderRadius: 999,
-            background: "#7fdb8a",
+            background: "#10b981",
+            boxShadow: "0 0 12px #10b981",
           }}
         />
-        on-chain · live
+        ON-CHAIN · LIVE
       </div>
     </div>
   );
@@ -172,17 +174,17 @@ function FooterStrip() {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        fontSize: 16,
-        color: "#9a8a5c",
-        borderTop: "1px solid rgba(245,215,122,0.10)",
-        paddingTop: 14,
+        fontSize: 15,
+        color: "#94a3b8",
+        borderTop: "1px solid rgba(148,163,184,0.15)",
+        paddingTop: 16,
         letterSpacing: 0.6,
       }}
     >
       <div style={{ display: "flex" }}>
         cbBTC · WETH · USDC · autonomous rebalance · 0 admin keys
       </div>
-      <div style={{ display: "flex", color: "#f5d77a", fontWeight: 600 }}>
+      <div style={{ display: "flex", color: "#fbbf24", fontWeight: 700 }}>
         gblin.digital/game
       </div>
     </div>
@@ -196,19 +198,19 @@ function HeroBody() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        gap: 18,
+        gap: 20,
         flex: 1,
         marginTop: 8,
       }}
     >
       <div
         style={{
-          fontSize: 48,
-          color: "#f5d77a",
-          fontWeight: 700,
-          letterSpacing: -1.5,
-          lineHeight: 1.15,
-          maxWidth: 980,
+          fontSize: 52,
+          color: "#ffffff",
+          fontWeight: 800,
+          letterSpacing: -2,
+          lineHeight: 1.1,
+          maxWidth: 1000,
           display: "flex",
         }}
       >
@@ -217,8 +219,8 @@ function HeroBody() {
       <div
         style={{
           fontSize: 22,
-          color: "#9a8a5c",
-          maxWidth: 900,
+          color: "#cbd5e1",
+          maxWidth: 920,
           lineHeight: 1.5,
           display: "flex",
         }}
@@ -229,26 +231,31 @@ function HeroBody() {
       <div
         style={{
           display: "flex",
-          gap: 10,
-          marginTop: 10,
+          gap: 12,
+          marginTop: 12,
           flexWrap: "wrap",
         }}
       >
-        {["JAN 2026 · -28% / -34%", "MAY 2021 · -48% / -58%", "MAR 2020 · -50% / -45%"].map((tag) => (
+        {[
+          { label: "JAN 2026 · -28% / -34%", from: "rgba(244,63,94,0.18)", ring: "rgba(244,63,94,0.4)" },
+          { label: "MAY 2021 · -48% / -58%", from: "rgba(168,85,247,0.18)", ring: "rgba(168,85,247,0.4)" },
+          { label: "MAR 2020 · -50% / -45%", from: "rgba(59,130,246,0.18)", ring: "rgba(59,130,246,0.4)" },
+        ].map((tag) => (
           <div
-            key={tag}
+            key={tag.label}
             style={{
-              padding: "10px 18px",
+              padding: "10px 20px",
               borderRadius: 999,
-              background: "rgba(245,215,122,0.06)",
-              border: "1px solid rgba(245,215,122,0.18)",
-              color: "#f5d77a",
+              background: `linear-gradient(135deg, ${tag.from}, rgba(10,11,20,0.4))`,
+              border: `1px solid ${tag.ring}`,
+              color: "#ffffff",
               fontSize: 18,
               letterSpacing: 0.5,
               display: "flex",
+              fontWeight: 600,
             }}
           >
-            {tag}
+            {tag.label}
           </div>
         ))}
       </div>
@@ -268,7 +275,6 @@ function ResultBody({
   gblinLoss: number;
 }) {
   const positive = saved > 0;
-  const accent = positive ? "#7fdb8a" : "#f5d77a";
 
   return (
     <div
@@ -283,11 +289,11 @@ function ResultBody({
       <div
         style={{
           fontSize: 22,
-          color: "#9a8a5c",
-          letterSpacing: 1.4,
+          color: "#fda4af",
+          letterSpacing: 1.6,
           display: "flex",
           textTransform: "uppercase",
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         {crashLabel}
@@ -298,50 +304,59 @@ function ResultBody({
           label="DIRECT HOLD"
           subtitle="no rebalance"
           loss={directLoss}
-          accent="#e57676"
+          accent="#fb7185"
+          ring="rgba(244,63,94,0.32)"
+          from="rgba(244,63,94,0.14)"
+          to="rgba(244,63,94,0.02)"
         />
         <PortfolioCard
           label="GBLIN BASKET"
           subtitle="crash shield armed"
           loss={gblinLoss}
-          accent="#7fdb8a"
+          accent="#34d399"
+          ring="rgba(16,185,129,0.45)"
+          from="rgba(16,185,129,0.18)"
+          to="rgba(34,211,238,0.06)"
           highlight
         />
       </div>
 
       <div
         style={{
-          padding: "22px 26px",
-          borderRadius: 18,
+          padding: "24px 28px",
+          borderRadius: 20,
           background: positive
-            ? "linear-gradient(135deg, rgba(127,219,138,0.18), rgba(127,219,138,0.04))"
-            : "rgba(245,215,122,0.06)",
-          border: `1px solid ${positive ? "rgba(127,219,138,0.35)" : "rgba(245,215,122,0.18)"}`,
+            ? "linear-gradient(135deg, rgba(16,185,129,0.22) 0%, rgba(34,211,238,0.10) 50%, rgba(59,130,246,0.06) 100%)"
+            : "rgba(255,255,255,0.05)",
+          border: `1px solid ${positive ? "rgba(16,185,129,0.45)" : "rgba(148,163,184,0.2)"}`,
           display: "flex",
           flexDirection: "column",
+          boxShadow: positive
+            ? "0 0 0 1px rgba(16,185,129,0.18) inset"
+            : "none",
         }}
       >
         <div
           style={{
-            color: "#9a8a5c",
+            color: positive ? "#a7f3d0" : "#94a3b8",
             fontSize: 18,
-            letterSpacing: 1.2,
+            letterSpacing: 1.4,
             display: "flex",
             textTransform: "uppercase",
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           GBLIN saved you
         </div>
         <div
           style={{
-            fontSize: 60,
-            fontWeight: 800,
-            color: accent,
-            letterSpacing: -2,
+            fontSize: 66,
+            fontWeight: 900,
+            color: positive ? "#34d399" : "#ffffff",
+            letterSpacing: -2.5,
             display: "flex",
-            marginTop: 4,
-            lineHeight: 1.05,
+            marginTop: 6,
+            lineHeight: 1.0,
           }}
         >
           {positive ? "+" : ""}
@@ -349,10 +364,10 @@ function ResultBody({
         </div>
         <div
           style={{
-            color: "#9a8a5c",
+            color: "#94a3b8",
             fontSize: 16,
             display: "flex",
-            marginTop: 4,
+            marginTop: 6,
           }}
         >
           on a $10,000 starting basket
@@ -367,42 +382,50 @@ function PortfolioCard({
   subtitle,
   loss,
   accent,
+  ring,
+  from,
+  to,
   highlight = false,
 }: {
   label: string;
   subtitle: string;
   loss: number;
   accent: string;
+  ring: string;
+  from: string;
+  to: string;
   highlight?: boolean;
 }) {
   return (
     <div
       style={{
         flex: 1,
-        padding: "20px 24px",
-        borderRadius: 16,
-        background: highlight
-          ? "linear-gradient(135deg, rgba(127,219,138,0.10), rgba(127,219,138,0.02))"
-          : "rgba(245,215,122,0.04)",
-        border: `1px solid ${highlight ? "rgba(127,219,138,0.28)" : "rgba(245,215,122,0.15)"}`,
+        padding: "22px 26px",
+        borderRadius: 18,
+        background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
+        border: `1px solid ${ring}`,
         display: "flex",
         flexDirection: "column",
+        boxShadow: highlight
+          ? "0 0 0 1px rgba(16,185,129,0.16) inset"
+          : "none",
       }}
     >
       <div
         style={{
-          color: "#9a8a5c",
-          fontSize: 16,
-          letterSpacing: 1.2,
+          color: "#cbd5e1",
+          fontSize: 15,
+          letterSpacing: 1.4,
           display: "flex",
+          fontWeight: 700,
         }}
       >
         {label}
       </div>
       <div
         style={{
-          color: "#7a6f4f",
-          fontSize: 14,
+          color: "#94a3b8",
+          fontSize: 13,
           display: "flex",
           marginTop: 2,
         }}
@@ -411,13 +434,13 @@ function PortfolioCard({
       </div>
       <div
         style={{
-          fontSize: 52,
-          fontWeight: 800,
+          fontSize: 56,
+          fontWeight: 900,
           color: accent,
-          letterSpacing: -1.5,
+          letterSpacing: -1.8,
           display: "flex",
           marginTop: 14,
-          lineHeight: 1.05,
+          lineHeight: 1.0,
         }}
       >
         -{loss.toFixed(1)}%

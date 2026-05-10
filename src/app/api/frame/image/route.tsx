@@ -62,37 +62,91 @@ export async function GET(req: Request) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "linear-gradient(135deg, #050505 0%, #1a1408 50%, #050505 100%)",
-          color: "#f5d77a",
-          padding: "44px 60px",
+          background:
+            "radial-gradient(45% 40% at 18% 18%, rgba(59,130,246,0.32) 0%, transparent 70%), " +
+            "radial-gradient(40% 35% at 82% 12%, rgba(168,85,247,0.26) 0%, transparent 70%), " +
+            "radial-gradient(50% 40% at 72% 82%, rgba(6,182,212,0.24) 0%, transparent 70%), " +
+            "radial-gradient(40% 35% at 20% 88%, rgba(16,185,129,0.18) 0%, transparent 70%), " +
+            "#0a0b14",
+          color: "#ffffff",
+          padding: "48px 60px",
           fontFamily: "sans-serif",
         }}
       >
         {/* header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 56, fontWeight: 800, letterSpacing: -2, color: "#f5d77a", display: "flex" }}>
-              GBLIN
+          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+            <div
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: 20,
+                background: "linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                fontSize: 38,
+                fontWeight: 800,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+              }}
+            >
+              ⛨
             </div>
-            <div style={{ fontSize: 20, color: "#9a8a5c", marginTop: 2, letterSpacing: 1, display: "flex" }}>
-              AUTONOMOUS BASKET · LIVE ON BASE
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div
+                style={{
+                  fontSize: 64,
+                  fontWeight: 900,
+                  letterSpacing: -2.5,
+                  background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  display: "flex",
+                  lineHeight: 1,
+                }}
+              >
+                GBLIN
+              </div>
+              <div
+                style={{
+                  fontSize: 18,
+                  color: "#94a3b8",
+                  marginTop: 6,
+                  letterSpacing: 1.4,
+                  display: "flex",
+                  fontWeight: 600,
+                }}
+              >
+                AUTONOMOUS BASKET · LIVE ON BASE
+              </div>
             </div>
           </div>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 20,
-              color: "#7fdb8a",
-              border: "1px solid #2d4a30",
+              gap: 10,
+              fontSize: 16,
+              color: "#a7f3d0",
+              border: "1px solid rgba(16,185,129,0.4)",
               borderRadius: 999,
-              padding: "8px 18px",
-              background: "#0a1a0d",
+              padding: "9px 18px",
+              background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.05))",
+              fontWeight: 600,
+              letterSpacing: 0.8,
             }}
           >
-            <div style={{ width: 10, height: 10, borderRadius: 999, background: "#7fdb8a" }} />
-            on-chain · live
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                background: "#10b981",
+                boxShadow: "0 0 12px #10b981",
+              }}
+            />
+            ON-CHAIN · LIVE
           </div>
         </div>
 
@@ -132,16 +186,19 @@ export async function GET(req: Request) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            fontSize: 20,
-            color: "#9a8a5c",
-            borderTop: "1px solid #2a2418",
-            paddingTop: 16,
+            fontSize: 17,
+            color: "#94a3b8",
+            borderTop: "1px solid rgba(148,163,184,0.15)",
+            paddingTop: 18,
+            letterSpacing: 0.6,
           }}
         >
           <div style={{ display: "flex" }}>
             cbBTC · WETH · USDC · 0 admin keys · try /game
           </div>
-          <div style={{ display: "flex", color: "#f5d77a" }}>gblin.digital</div>
+          <div style={{ display: "flex", color: "#fbbf24", fontWeight: 700 }}>
+            gblin.digital
+          </div>
         </div>
       </div>
     ),
@@ -170,32 +227,48 @@ function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string })
         flexDirection: "column",
         flex: 1,
         background: positive
-          ? "rgba(127, 219, 138, 0.10)"
-          : "rgba(245, 215, 122, 0.06)",
-        border: `1px solid ${positive ? "rgba(127,219,138,0.35)" : "rgba(245,215,122,0.18)"}`,
-        borderRadius: 16,
+          ? "linear-gradient(135deg, rgba(16,185,129,0.20) 0%, rgba(34,211,238,0.06) 100%)"
+          : "rgba(255,255,255,0.04)",
+        border: `1px solid ${positive ? "rgba(16,185,129,0.45)" : "rgba(148,163,184,0.2)"}`,
+        borderRadius: 18,
         padding: "22px 24px",
         minHeight: 220,
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: 18, color: "#9a8a5c", letterSpacing: 1.5, display: "flex" }}>
+      <div
+        style={{
+          fontSize: 15,
+          color: positive ? "#a7f3d0" : "#cbd5e1",
+          letterSpacing: 1.4,
+          display: "flex",
+          fontWeight: 700,
+        }}
+      >
         SAVED VS DIRECT HOLD
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <div
           style={{
-            fontSize: 52,
-            fontWeight: 700,
-            color: positive ? "#7fdb8a" : "#f5d77a",
+            fontSize: 56,
+            fontWeight: 900,
+            color: positive ? "#34d399" : "#ffffff",
             lineHeight: 1,
+            letterSpacing: -1.8,
           }}
         >
           {positive ? "+" : ""}
           {formatted}
         </div>
       </div>
-      <div style={{ fontSize: 16, color: "#7a6f4f", display: "flex", minHeight: 18 }}>
+      <div
+        style={{
+          fontSize: 14,
+          color: "#94a3b8",
+          display: "flex",
+          minHeight: 18,
+        }}
+      >
         {crashLabel ? `during ${crashLabel}` : "crash shield backtest"}
       </div>
     </div>
@@ -219,26 +292,59 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         flex: 1,
-        background: "rgba(245, 215, 122, 0.06)",
-        border: "1px solid rgba(245, 215, 122, 0.18)",
-        borderRadius: 16,
+        background:
+          "linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(168,85,247,0.04) 100%)",
+        border: "1px solid rgba(148,163,184,0.18)",
+        borderRadius: 18,
         padding: "22px 24px",
         minHeight: 220,
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: 18, color: "#9a8a5c", letterSpacing: 1.5, display: "flex" }}>
+      <div
+        style={{
+          fontSize: 15,
+          color: "#cbd5e1",
+          letterSpacing: 1.4,
+          display: "flex",
+          fontWeight: 700,
+        }}
+      >
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <div style={{ fontSize: 52, fontWeight: 700, color: "#f5d77a", lineHeight: 1 }}>{value}</div>
+        <div
+          style={{
+            fontSize: 56,
+            fontWeight: 900,
+            color: "#ffffff",
+            lineHeight: 1,
+            letterSpacing: -1.8,
+          }}
+        >
+          {value}
+        </div>
         {unit && (
-          <div style={{ fontSize: 22, color: "#9a8a5c", fontWeight: 600, display: "flex" }}>
+          <div
+            style={{
+              fontSize: 20,
+              color: "#94a3b8",
+              fontWeight: 600,
+              display: "flex",
+            }}
+          >
             {unit}
           </div>
         )}
       </div>
-      <div style={{ fontSize: 16, color: "#7a6f4f", display: "flex", minHeight: 18 }}>
+      <div
+        style={{
+          fontSize: 14,
+          color: "#94a3b8",
+          display: "flex",
+          minHeight: 18,
+        }}
+      >
         {hint ?? ""}
       </div>
     </div>

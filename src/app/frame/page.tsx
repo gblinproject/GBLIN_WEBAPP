@@ -14,6 +14,19 @@ const FRAME_IMAGE_BASE = `${SITE_URL}/api/frame/image`;
 const SPLASH_IMAGE = `${SITE_URL}/LOGO_GBLIN.png`;
 const DASHBOARD_URL = "https://dune.com/gblin/dashboard";
 
+// 2026 palette
+const C = {
+  text: "#ffffff",
+  textDim: "#94a3b8",
+  textMute: "#64748b",
+  border: "rgba(148,163,184,0.14)",
+  blue: "#3b82f6",
+  cyan: "#06b6d4",
+  emerald: "#10b981",
+  amber: "#fbbf24",
+  violet: "#a855f7",
+};
+
 type FramePageProps = {
   searchParams: Promise<{
     holders?: string;
@@ -22,8 +35,6 @@ type FramePageProps = {
   }>;
 };
 
-// Build the OG image URL, optionally personalised via query params for shared casts.
-// Spec: https://miniapps.farcaster.xyz/docs/guides/sharing#dynamic-embed-images
 function buildFrameImageUrl(params: {
   holders?: string;
   saved?: string;
@@ -43,7 +54,6 @@ export async function generateMetadata({
   const params = await searchParams;
   const frameImage = buildFrameImageUrl(params);
 
-  // Mini App embed — opens the dApp. Spec allows exactly one button.
   const miniappEmbed = {
     version: "1",
     imageUrl: frameImage,
@@ -54,12 +64,11 @@ export async function generateMetadata({
         name: "GBLIN",
         url: SITE_URL,
         splashImageUrl: SPLASH_IMAGE,
-        splashBackgroundColor: "#050505",
+        splashBackgroundColor: "#0a0b14",
       },
     },
   };
 
-  // Legacy fc:frame embed for older Warpcast clients.
   const frameEmbed = {
     version: "1",
     imageUrl: frameImage,
@@ -70,7 +79,7 @@ export async function generateMetadata({
         name: "GBLIN",
         url: SITE_URL,
         splashImageUrl: SPLASH_IMAGE,
-        splashBackgroundColor: "#050505",
+        splashBackgroundColor: "#0a0b14",
       },
     },
   };
@@ -96,12 +105,11 @@ export async function generateMetadata({
 export default function FramePage() {
   return (
     <main
+      className="gblin-mesh"
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245,215,122,0.10) 0%, rgba(245,215,122,0) 60%), #050505",
-        color: "#f5d77a",
-        padding: "24px 16px 80px",
+        color: C.text,
+        padding: "32px 16px 80px",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
@@ -121,50 +129,78 @@ export default function FramePage() {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 16,
+            gap: 14,
             textAlign: "center",
-            paddingTop: 24,
+            paddingTop: 12,
           }}
         >
           <div
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              background:
-                "linear-gradient(135deg, rgba(245,215,122,0.25), rgba(245,215,122,0.06))",
-              border: "1px solid rgba(245,215,122,0.3)",
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: `linear-gradient(135deg, ${C.blue} 0%, ${C.violet} 100%)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 12px 32px -12px rgba(245,215,122,0.4)",
+              boxShadow:
+                "0 16px 40px -12px rgba(59,130,246,0.7), inset 0 1px 0 rgba(255,255,255,0.3)",
             }}
           >
-            <Shield size={30} strokeWidth={1.8} color="#f5d77a" />
+            <Shield size={34} strokeWidth={2.2} color="#ffffff" />
           </div>
           <h1
             style={{
-              fontSize: 38,
+              fontSize: 44,
               margin: 0,
-              letterSpacing: -1.2,
-              fontWeight: 800,
-              lineHeight: 1.1,
+              letterSpacing: -1.5,
+              fontWeight: 900,
+              lineHeight: 1.05,
+              color: C.text,
             }}
           >
-            GBLIN
+            <span className="gblin-grad-text-amber">GBLIN</span>
           </h1>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 12px",
+              borderRadius: 999,
+              background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))",
+              border: "1px solid rgba(16,185,129,0.35)",
+              fontSize: 11,
+              color: "#a7f3d0",
+              letterSpacing: 0.8,
+              fontWeight: 600,
+              textTransform: "uppercase",
+            }}
+          >
+            <span
+              className="gblin-blink"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: C.emerald,
+                boxShadow: `0 0 10px ${C.emerald}`,
+              }}
+            />
+            live on base · 0 admin keys
+          </div>
           <p
             style={{
-              color: "#9a8a5c",
+              color: C.textDim,
               margin: 0,
               maxWidth: 520,
-              fontSize: 14,
+              fontSize: 14.5,
               lineHeight: 1.6,
             }}
           >
             Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
             Crash Shield that rotates risk into stables when drawdowns exceed
-            20%. 0 admin keys, fully open source.
+            20%. Fully open source.
           </p>
         </section>
 
@@ -186,13 +222,13 @@ export default function FramePage() {
               width: "100%",
               borderRadius: 16,
               display: "block",
-              border: "1px solid rgba(245,215,122,0.10)",
+              border: `1px solid ${C.border}`,
             }}
           />
           <div
             style={{
               fontSize: 11,
-              color: "#7a6f4f",
+              color: C.textMute,
               textAlign: "center",
               letterSpacing: 0.5,
             }}
@@ -211,35 +247,75 @@ export default function FramePage() {
         >
           <ActionCard
             href="/buy-gblin"
-            icon={<Sparkles size={18} />}
+            icon={<Sparkles size={20} />}
             title="Mint GBLIN"
             subtitle="Buy the basket with ETH"
+            tone="amber"
             primary
           />
           <ActionCard
             href="/game"
-            icon={<Shield size={18} />}
+            icon={<Shield size={20} />}
             title="Play Crash Shield"
             subtitle="Backtest the autonomy"
+            tone="blue"
           />
           <ActionCard
             href="/rebalance"
-            icon={<Gauge size={18} />}
+            icon={<Gauge size={20} />}
             title="Trigger rebalance"
             subtitle="Earn keeper bounty"
+            tone="emerald"
           />
           <ActionCard
             href={DASHBOARD_URL}
             external
-            icon={<BarChart3 size={18} />}
+            icon={<BarChart3 size={20} />}
             title="Live dashboard"
             subtitle="On-chain analytics on Dune"
+            tone="violet"
           />
         </section>
       </div>
     </main>
   );
 }
+
+type Tone = "blue" | "emerald" | "amber" | "violet";
+
+const TONE_MAP: Record<
+  Tone,
+  { from: string; to: string; ring: string; icon: string; iconBg: string }
+> = {
+  blue: {
+    from: "rgba(59,130,246,0.18)",
+    to: "rgba(6,182,212,0.06)",
+    ring: "rgba(59,130,246,0.35)",
+    icon: "#60a5fa",
+    iconBg: "linear-gradient(135deg, rgba(59,130,246,0.25), rgba(6,182,212,0.10))",
+  },
+  emerald: {
+    from: "rgba(16,185,129,0.16)",
+    to: "rgba(34,211,238,0.06)",
+    ring: "rgba(16,185,129,0.35)",
+    icon: "#34d399",
+    iconBg: "linear-gradient(135deg, rgba(16,185,129,0.25), rgba(34,211,238,0.10))",
+  },
+  amber: {
+    from: "rgba(251,191,36,0.18)",
+    to: "rgba(244,63,94,0.06)",
+    ring: "rgba(251,191,36,0.4)",
+    icon: "#fbbf24",
+    iconBg: "linear-gradient(135deg, rgba(251,191,36,0.28), rgba(244,63,94,0.08))",
+  },
+  violet: {
+    from: "rgba(168,85,247,0.18)",
+    to: "rgba(59,130,246,0.06)",
+    ring: "rgba(168,85,247,0.35)",
+    icon: "#c084fc",
+    iconBg: "linear-gradient(135deg, rgba(168,85,247,0.25), rgba(59,130,246,0.10))",
+  },
+};
 
 function ActionCard({
   href,
@@ -248,6 +324,7 @@ function ActionCard({
   subtitle,
   external = false,
   primary = false,
+  tone,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -255,25 +332,28 @@ function ActionCard({
   subtitle: string;
   external?: boolean;
   primary?: boolean;
+  tone: Tone;
 }) {
+  const t = TONE_MAP[tone];
   const content = (
     <div
       style={{
-        ...glassCard,
         padding: "18px 16px",
+        borderRadius: 18,
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 12,
         height: "100%",
         textDecoration: "none",
         cursor: "pointer",
         transition: "transform 0.18s ease, border-color 0.18s ease",
-        border: primary
-          ? "1px solid rgba(245,215,122,0.35)"
-          : "1px solid rgba(245,215,122,0.12)",
-        background: primary
-          ? "linear-gradient(180deg, rgba(245,215,122,0.10) 0%, rgba(245,215,122,0.02) 100%)"
-          : "linear-gradient(180deg, rgba(245,215,122,0.04) 0%, rgba(245,215,122,0.015) 100%)",
+        border: `1px solid ${primary ? t.ring : C.border}`,
+        background: `linear-gradient(135deg, ${t.from} 0%, ${t.to} 100%)`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        boxShadow: primary
+          ? `0 0 0 1px ${t.ring}, 0 16px 40px -16px ${t.ring}`
+          : "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 16px 40px -24px rgba(0,0,0,0.6)",
       }}
     >
       <div
@@ -285,29 +365,30 @@ function ActionCard({
       >
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "rgba(245,215,122,0.10)",
-            border: "1px solid rgba(245,215,122,0.18)",
-            color: "#f5d77a",
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: t.iconBg,
+            border: `1px solid ${t.ring}`,
+            color: t.icon,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10)",
           }}
         >
           {icon}
         </div>
         {external ? (
-          <ExternalLink size={14} color="#9a8a5c" />
+          <ExternalLink size={14} color={C.textMute} />
         ) : (
-          <ArrowRight size={14} color="#9a8a5c" />
+          <ArrowRight size={14} color={C.textMute} />
         )}
       </div>
       <div>
         <div
           style={{
-            color: "#f5d77a",
+            color: C.text,
             fontSize: 15,
             fontWeight: 700,
             letterSpacing: -0.2,
@@ -315,7 +396,7 @@ function ActionCard({
         >
           {title}
         </div>
-        <div style={{ color: "#9a8a5c", fontSize: 12, marginTop: 4 }}>
+        <div style={{ color: C.textDim, fontSize: 12, marginTop: 3 }}>
           {subtitle}
         </div>
       </div>
@@ -342,12 +423,12 @@ function ActionCard({
 }
 
 const glassCard: React.CSSProperties = {
-  borderRadius: 18,
+  borderRadius: 22,
   background:
-    "linear-gradient(180deg, rgba(245,215,122,0.04) 0%, rgba(245,215,122,0.015) 100%)",
-  border: "1px solid rgba(245,215,122,0.12)",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+    "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
+  border: `1px solid ${C.border}`,
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
   boxShadow:
-    "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 24px 48px -24px rgba(0,0,0,0.6)",
+    "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 24px 60px -28px rgba(0,0,0,0.7)",
 };
