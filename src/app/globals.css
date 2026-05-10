@@ -63,3 +63,74 @@ html {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* Crash Shield game animations */
+@keyframes gblin-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gblin-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(127, 219, 138, 0.35); }
+  50%      { box-shadow: 0 0 0 14px rgba(127, 219, 138, 0); }
+}
+
+@keyframes gblin-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gblin-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gblin-fade-up {
+  animation: gblin-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gblin-pulse-glow {
+  animation: gblin-pulse-glow 2.4s ease-out infinite;
+}
+
+.gblin-shimmer {
+  background: linear-gradient(90deg, rgba(245,215,122,0.04) 0%, rgba(245,215,122,0.14) 50%, rgba(245,215,122,0.04) 100%);
+  background-size: 200% 100%;
+  animation: gblin-shimmer 1.4s linear infinite;
+}
+
+.gblin-spin {
+  animation: gblin-spin 0.9s linear infinite;
+}
+
+/* Hide the default range slider thumb on mobile webkit, replace with branded look */
+input[type="range"].gblin-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(245, 215, 122, 0.12);
+  outline: none;
+}
+input[type="range"].gblin-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #f5d77a;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(245, 215, 122, 0.18);
+  border: 2px solid #050505;
+  transition: transform 0.12s ease;
+}
+input[type="range"].gblin-slider::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}
+input[type="range"].gblin-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #f5d77a;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(245, 215, 122, 0.18);
+  border: 2px solid #050505;
+}

@@ -26,4 +26,13 @@ declare module 'lucide-react' {
   export const Cpu: any;
   export const Download: any;
   export const Coins: any;
+  // Icons added for the Crash Shield game UI redesign
+  export const ArrowLeft: any;
+  export const Info: any;
+  export const RotateCcw: any;
+  export const Share2: any;
+  export const ShieldCheck: any;
+  export const Sparkles: any;
+  export const TrendingDown: any;
+  export const Gauge: any;
 }

@@ -13,14 +13,13 @@ const fmtUsd = (n: number) =>
   });
 
 /**
- * Dynamic OG image for the Crash Shield game.
+ * Dynamic OG image for the Crash Shield game (1200x800).
  *
- * Modes:
- *   - No params           → "Survive the Crash" hero (CTA preview).
- *   - ?crash=jan2026&saved=1390&direct=25.8&gblin=11.9
- *                         → personalised result image (used in share embed).
+ * - No params:        hero CTA preview
+ * - With ?crash=&saved=&direct=&gblin=  personalised result share image
  *
- * Image is 1200x800 to match the rest of the GBLIN frame imagery.
+ * Style: warm dark gradient, bold typography, glassmorphism cards,
+ * matches the in-app design system.
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -53,70 +52,13 @@ export async function GET(req: Request) {
           flexDirection: "column",
           justifyContent: "space-between",
           background:
-            "linear-gradient(135deg, #050505 0%, #1a1408 50%, #050505 100%)",
+            "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,215,122,0.10) 0%, rgba(245,215,122,0) 60%), #050505",
           color: "#f5d77a",
-          padding: "44px 60px",
+          padding: "44px 56px",
           fontFamily: "sans-serif",
         }}
       >
-        {/* header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div
-              style={{
-                fontSize: 48,
-                fontWeight: 800,
-                letterSpacing: -1.5,
-                color: "#f5d77a",
-                display: "flex",
-              }}
-            >
-              SURVIVE THE CRASH
-            </div>
-            <div
-              style={{
-                fontSize: 20,
-                color: "#9a8a5c",
-                marginTop: 4,
-                letterSpacing: 1.5,
-                display: "flex",
-              }}
-            >
-              GBLIN CRASH SHIELD · BACKTEST
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 18,
-              color: "#7fdb8a",
-              border: "1px solid #2d4a30",
-              borderRadius: 999,
-              padding: "8px 16px",
-              background: "#0a1a0d",
-            }}
-          >
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 999,
-                background: "#7fdb8a",
-              }}
-            />
-            on-chain · live
-          </div>
-        </div>
-
-        {/* body */}
+        <Header />
         {hasResult ? (
           <ResultBody
             crashLabel={crash.label}
@@ -127,24 +69,7 @@ export async function GET(req: Request) {
         ) : (
           <HeroBody />
         )}
-
-        {/* footer */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 18,
-            color: "#9a8a5c",
-            borderTop: "1px solid #2a2418",
-            paddingTop: 14,
-          }}
-        >
-          <div style={{ display: "flex" }}>
-            cbBTC · WETH · USDC · autonomous rebalance · 0 admin keys
-          </div>
-          <div style={{ display: "flex", color: "#f5d77a" }}>gblin.digital/game</div>
-        </div>
+        <FooterStrip />
       </div>
     ),
     {
@@ -157,45 +82,175 @@ export async function GET(req: Request) {
   );
 }
 
+function Header() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {/* Shield-like brand mark */}
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 14,
+            background:
+              "linear-gradient(135deg, rgba(245,215,122,0.25), rgba(245,215,122,0.04))",
+            border: "1px solid rgba(245,215,122,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 30,
+            color: "#f5d77a",
+            fontWeight: 700,
+          }}
+        >
+          ⛨
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              fontSize: 36,
+              fontWeight: 800,
+              letterSpacing: -1,
+              color: "#f5d77a",
+              display: "flex",
+              lineHeight: 1.05,
+            }}
+          >
+            Survive the Crash
+          </div>
+          <div
+            style={{
+              fontSize: 18,
+              color: "#9a8a5c",
+              marginTop: 4,
+              letterSpacing: 1.4,
+              display: "flex",
+              textTransform: "uppercase",
+            }}
+          >
+            GBLIN Crash Shield · live backtest
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontSize: 16,
+          color: "#7fdb8a",
+          border: "1px solid rgba(127,219,138,0.35)",
+          borderRadius: 999,
+          padding: "8px 16px",
+          background: "rgba(10,26,13,0.6)",
+        }}
+      >
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            background: "#7fdb8a",
+          }}
+        />
+        on-chain · live
+      </div>
+    </div>
+  );
+}
+
+function FooterStrip() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: 16,
+        color: "#9a8a5c",
+        borderTop: "1px solid rgba(245,215,122,0.10)",
+        paddingTop: 14,
+        letterSpacing: 0.6,
+      }}
+    >
+      <div style={{ display: "flex" }}>
+        cbBTC · WETH · USDC · autonomous rebalance · 0 admin keys
+      </div>
+      <div style={{ display: "flex", color: "#f5d77a", fontWeight: 600 }}>
+        gblin.digital/game
+      </div>
+    </div>
+  );
+}
+
 function HeroBody() {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
         justifyContent: "center",
-        textAlign: "center",
-        gap: 12,
+        gap: 18,
+        flex: 1,
+        marginTop: 8,
       }}
     >
       <div
         style={{
-          fontSize: 28,
+          fontSize: 48,
           color: "#f5d77a",
-          maxWidth: 900,
+          fontWeight: 700,
+          letterSpacing: -1.5,
+          lineHeight: 1.15,
+          maxWidth: 980,
           display: "flex",
-          textAlign: "center",
         }}
       >
-        Pick a historical crash. See what GBLIN&apos;s autonomous Crash Shield
-        would have done to your portfolio.
+        How would your portfolio survive a real crypto crash?
+      </div>
+      <div
+        style={{
+          fontSize: 22,
+          color: "#9a8a5c",
+          maxWidth: 900,
+          lineHeight: 1.5,
+          display: "flex",
+        }}
+      >
+        Pick an allocation. Run it through the Jan 2026, May 2021 or Mar 2020
+        cascade. See what GBLIN&apos;s autonomous Crash Shield would have done.
       </div>
       <div
         style={{
           display: "flex",
-          gap: 24,
-          marginTop: 14,
-          color: "#9a8a5c",
-          fontSize: 18,
-          letterSpacing: 1,
+          gap: 10,
+          marginTop: 10,
+          flexWrap: "wrap",
         }}
       >
-        <span style={{ display: "flex" }}>JAN 2026</span>
-        <span style={{ display: "flex" }}>·</span>
-        <span style={{ display: "flex" }}>MAY 2021</span>
-        <span style={{ display: "flex" }}>·</span>
-        <span style={{ display: "flex" }}>MAR 2020</span>
+        {["JAN 2026 · -28% / -34%", "MAY 2021 · -48% / -58%", "MAR 2020 · -50% / -45%"].map((tag) => (
+          <div
+            key={tag}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 999,
+              background: "rgba(245,215,122,0.06)",
+              border: "1px solid rgba(245,215,122,0.18)",
+              color: "#f5d77a",
+              fontSize: 18,
+              letterSpacing: 0.5,
+              display: "flex",
+            }}
+          >
+            {tag}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -212,27 +267,33 @@ function ResultBody({
   directLoss: number;
   gblinLoss: number;
 }) {
-  const savedColor = saved > 0 ? "#7fdb8a" : "#f5d77a";
+  const positive = saved > 0;
+  const accent = positive ? "#7fdb8a" : "#f5d77a";
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 20,
+        gap: 18,
+        flex: 1,
+        marginTop: 6,
       }}
     >
       <div
         style={{
           fontSize: 22,
           color: "#9a8a5c",
-          letterSpacing: 1.2,
+          letterSpacing: 1.4,
           display: "flex",
+          textTransform: "uppercase",
+          fontWeight: 600,
         }}
       >
-        {crashLabel.toUpperCase()}
+        {crashLabel}
       </div>
 
-      <div style={{ display: "flex", gap: 18 }}>
+      <div style={{ display: "flex", gap: 16 }}>
         <PortfolioCard
           label="DIRECT HOLD"
           subtitle="no rebalance"
@@ -244,18 +305,18 @@ function ResultBody({
           subtitle="crash shield armed"
           loss={gblinLoss}
           accent="#7fdb8a"
+          highlight
         />
       </div>
 
       <div
         style={{
-          padding: "20px 24px",
-          borderRadius: 14,
-          background:
-            saved > 0
-              ? "rgba(127, 219, 138, 0.08)"
-              : "rgba(245,215,122,0.06)",
-          border: `1px solid ${saved > 0 ? "rgba(127,219,138,0.3)" : "rgba(245,215,122,0.18)"}`,
+          padding: "22px 26px",
+          borderRadius: 18,
+          background: positive
+            ? "linear-gradient(135deg, rgba(127,219,138,0.18), rgba(127,219,138,0.04))"
+            : "rgba(245,215,122,0.06)",
+          border: `1px solid ${positive ? "rgba(127,219,138,0.35)" : "rgba(245,215,122,0.18)"}`,
           display: "flex",
           flexDirection: "column",
         }}
@@ -263,27 +324,37 @@ function ResultBody({
         <div
           style={{
             color: "#9a8a5c",
-            fontSize: 16,
+            fontSize: 18,
             letterSpacing: 1.2,
             display: "flex",
+            textTransform: "uppercase",
+            fontWeight: 600,
           }}
         >
-          GBLIN SAVED
+          GBLIN saved you
         </div>
         <div
           style={{
-            fontSize: 48,
+            fontSize: 60,
             fontWeight: 800,
-            color: savedColor,
-            letterSpacing: -1.5,
+            color: accent,
+            letterSpacing: -2,
+            display: "flex",
+            marginTop: 4,
+            lineHeight: 1.05,
+          }}
+        >
+          {positive ? "+" : ""}
+          {fmtUsd(saved)}
+        </div>
+        <div
+          style={{
+            color: "#9a8a5c",
+            fontSize: 16,
             display: "flex",
             marginTop: 4,
           }}
         >
-          {saved > 0 ? "+" : ""}
-          {fmtUsd(saved)}
-        </div>
-        <div style={{ color: "#9a8a5c", fontSize: 14, display: "flex", marginTop: 4 }}>
           on a $10,000 starting basket
         </div>
       </div>
@@ -296,20 +367,24 @@ function PortfolioCard({
   subtitle,
   loss,
   accent,
+  highlight = false,
 }: {
   label: string;
   subtitle: string;
   loss: number;
   accent: string;
+  highlight?: boolean;
 }) {
   return (
     <div
       style={{
         flex: 1,
-        padding: "18px 22px",
-        borderRadius: 14,
-        background: "rgba(245,215,122,0.04)",
-        border: "1px solid rgba(245,215,122,0.15)",
+        padding: "20px 24px",
+        borderRadius: 16,
+        background: highlight
+          ? "linear-gradient(135deg, rgba(127,219,138,0.10), rgba(127,219,138,0.02))"
+          : "rgba(245,215,122,0.04)",
+        border: `1px solid ${highlight ? "rgba(127,219,138,0.28)" : "rgba(245,215,122,0.15)"}`,
         display: "flex",
         flexDirection: "column",
       }}
@@ -324,17 +399,25 @@ function PortfolioCard({
       >
         {label}
       </div>
-      <div style={{ color: "#7a6f4f", fontSize: 14, display: "flex", marginTop: 2 }}>
+      <div
+        style={{
+          color: "#7a6f4f",
+          fontSize: 14,
+          display: "flex",
+          marginTop: 2,
+        }}
+      >
         {subtitle}
       </div>
       <div
         style={{
-          fontSize: 48,
-          fontWeight: 700,
+          fontSize: 52,
+          fontWeight: 800,
           color: accent,
-          letterSpacing: -1,
+          letterSpacing: -1.5,
           display: "flex",
-          marginTop: 12,
+          marginTop: 14,
+          lineHeight: 1.05,
         }}
       >
         -{loss.toFixed(1)}%
