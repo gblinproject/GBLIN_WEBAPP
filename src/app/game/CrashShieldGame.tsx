@@ -23,14 +23,17 @@ import {
   type Allocation,
 } from "@/lib/crash-simulator";
 import {
+  BASE_ALLOCATION,
   CRASH_LIST,
   getCrashById,
+  getCorrectAllocation,
   type CrashScenario,
 } from "@/lib/historical-crashes";
 
 const SITE_URL = "https://gblin.digital";
 const STARTING_USD = 10_000;
-const DEFAULT_ALLOCATION: Allocation = { cbBTC: 0.45, weth: 0.45, usdc: 0.10 };
+const DEFAULT_ALLOCATION: Allocation = BASE_ALLOCATION;
+const WIN_TOLERANCE = 12; // ±12% per asset to win
 
 // 2026 palette
 const C = {
@@ -60,7 +63,7 @@ const fmtUsd = (n: number, digits = 0) =>
 
 const fmtPct = (n: number, digits = 1) => `${(n * 100).toFixed(digits)}%`;
 
-type Step = "setup" | "result";
+type Step = "setup" | "result" | "victory";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Top-level component
@@ -73,6 +76,7 @@ export default function CrashShieldGame() {
   const [pctETH, setPctETH] = useState(45);
   const [pctUSDC, setPctUSDC] = useState(10);
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [isWinner, setIsWinner] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -98,17 +102,25 @@ export default function CrashShieldGame() {
   const isAllocationValid = total === 100;
 
   const result = useMemo(() => {
-    const raw: Allocation = {
-      cbBTC: pctBTC / 100,
-      weth: pctETH / 100,
-      usdc: pctUSDC / 100,
-    };
-    const allocation = normaliseAllocation(raw) ?? DEFAULT_ALLOCATION;
-    const direct = simulateDirect(STARTING_USD, allocation, crash.trajectory);
-    const gblin = simulateGblin(STARTING_USD, allocation, crash.trajectory);
+    // Simulate always using the GBLIN base allocation (protocol defaults)
+    // regardless of what the user guessed — the simulation is fixed.
+    const direct = simulateDirect(STARTING_USD, DEFAULT_ALLOCATION, crash.trajectory);
+    const gblin = simulateGblin(STARTING_USD, DEFAULT_ALLOCATION, crash.trajectory);
     const saved = gblin.finalValue - direct.finalValue;
-    return { allocation, direct, gblin, saved };
-  }, [pctBTC, pctETH, pctUSDC, crash]);
+    // Correct answer: what GBLIN actually ends up at after crash
+    const correct = getCorrectAllocation(crash);
+    return { direct, gblin, saved, correct };
+  }, [crash]);
+
+  const checkWin = () => {
+    const { correct } = result;
+    const won =
+      Math.abs(pctBTC - correct.cbBTC) <= WIN_TOLERANCE &&
+      Math.abs(pctETH - correct.weth) <= WIN_TOLERANCE &&
+      Math.abs(pctUSDC - correct.usdc) <= WIN_TOLERANCE;
+    setIsWinner(won);
+    setStep("result");
+  };
 
   const dismissOnboarding = () => {
     setShowOnboarding(false);
@@ -210,7 +222,7 @@ export default function CrashShieldGame() {
       {step === "setup" && (
         <SetupCard
           crash={crash}
-          setCrash={setCrash}
+          setCrash={(c) => { setCrash(c); setIsWinner(false); }}
           pctBTC={pctBTC}
           setPctBTC={setPctBTC}
           pctETH={pctETH}
@@ -219,7 +231,7 @@ export default function CrashShieldGame() {
           setPctUSDC={setPctUSDC}
           total={total}
           isValid={isAllocationValid}
-          onRun={() => setStep("result")}
+          onRun={checkWin}
         />
       )}
 
@@ -232,7 +244,10 @@ export default function CrashShieldGame() {
           directDrawdown={result.direct.drawdownPct}
           gblinDrawdown={result.gblin.drawdownPct}
           saved={result.saved}
-          onRetry={() => setStep("setup")}
+          isWinner={isWinner}
+          correctAllocation={result.correct}
+          userAllocation={{ cbBTC: pctBTC, weth: pctETH, usdc: pctUSDC }}
+          onRetry={() => { setStep("setup"); setIsWinner(false); }}
         />
       )}
 
@@ -291,9 +306,9 @@ function OnboardingHint({ onDismiss }: { onDismiss: () => void }) {
             lineHeight: 1.55,
           }}
         >
-          GBLIN auto-rotates risk assets into stables when a drawdown crosses
-          20%. Pick an allocation, pick a real crash, and see what would have
-          happened with vs without the Crash Shield.
+          GBLIN auto-rotates into stables when a drawdown crosses 20%.
+          Guess how GBLIN reallocated during a real crash (±12% tolerance).
+          If you guess right → you win. Share the result on Farcaster every Sunday for a chance to win $10.
         </div>
       </div>
       <button
@@ -432,7 +447,7 @@ function SetupCard(p: SetupProps) {
           cursor: p.isValid ? "pointer" : "not-allowed",
         }}
       >
-        Run backtest
+        Submit my guess
         <ArrowRight size={16} strokeWidth={2.5} />
       </button>
     </section>
@@ -610,6 +625,9 @@ type ResultProps = {
   directDrawdown: number;
   gblinDrawdown: number;
   saved: number;
+  isWinner: boolean;
+  correctAllocation: { cbBTC: number; weth: number; usdc: number };
+  userAllocation: { cbBTC: number; weth: number; usdc: number };
   onRetry: () => void;
 };
 
@@ -621,17 +639,19 @@ function ResultCard(r: ResultProps) {
   const directLossPct = -r.directDrawdown * 100;
   const gblinLossPct = -r.gblinDrawdown * 100;
 
-  const shareEmbed = `${SITE_URL}/game?crash=${r.crash.id}&saved=${savedRounded}&direct=${directLossPct.toFixed(1)}&gblin=${gblinLossPct.toFixed(1)}`;
+  const shareEmbed = `${SITE_URL}/game?crash=${r.crash.id}&saved=${savedRounded}&direct=${directLossPct.toFixed(1)}&gblin=${gblinLossPct.toFixed(1)}${r.isWinner ? "&won=true" : ""}`;
 
-  const shareText =
-    r.saved > 0
-      ? `just survived the ${r.crash.shortLabel} crash with GBLIN.\n\n` +
-        `direct portfolio: ${fmtPct(r.directDrawdown)} (${fmtUsd(r.directFinal - r.startingUsd)})\n` +
-        `with GBLIN crash shield: ${fmtPct(r.gblinDrawdown)} (${fmtUsd(r.gblinFinal - r.startingUsd)})\n\n` +
-        `saved ${fmtUsd(r.saved)} on a ${fmtUsd(r.startingUsd)} basket. autonomous, on Base.`
+  const shareText = r.isWinner
+    ? `I just won the GBLIN Crash Shield challenge!\n\n` +
+      `I correctly predicted how GBLIN would reallocate during the ${r.crash.shortLabel} crash.\n` +
+      `GBLIN saved ${fmtUsd(r.saved)} on a ${fmtUsd(r.startingUsd)} basket vs direct hold.\n\n` +
+      `Try it yourself → gblin.digital/game\nEvery Sunday the creator picks a random winner for $10.`
+    : r.saved > 0
+      ? `just ran the ${r.crash.shortLabel} crash test on GBLIN.\n\n` +
+        `direct portfolio: ${fmtPct(r.directDrawdown)} | with Crash Shield: ${fmtPct(r.gblinDrawdown)}\n` +
+        `GBLIN saved ${fmtUsd(r.saved)} on a ${fmtUsd(r.startingUsd)} basket. autonomous, on Base.`
       : `ran the ${r.crash.shortLabel} crash test on the GBLIN basket.\n\n` +
-        `direct: ${fmtPct(r.directDrawdown)}\n` +
-        `with crash shield: ${fmtPct(r.gblinDrawdown)}`;
+        `direct: ${fmtPct(r.directDrawdown)} | with crash shield: ${fmtPct(r.gblinDrawdown)}`;
 
   const onShare = async () => {
     setShareState("loading");
@@ -657,6 +677,52 @@ function ResultCard(r: ResultProps) {
 
   return (
     <section className="gblin-fade-up" style={glassCard}>
+      {/* Win / Loss banner */}
+      {r.isWinner ? (
+        <div style={{
+          padding: "14px 18px",
+          borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(251,191,36,0.22), rgba(16,185,129,0.12))",
+          border: "1px solid rgba(251,191,36,0.5)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 16,
+          boxShadow: "0 0 0 1px rgba(251,191,36,0.15), 0 12px 32px -12px rgba(251,191,36,0.4)",
+        }}>
+          <Sparkles size={20} color="#fbbf24" strokeWidth={2.2} />
+          <div>
+            <div style={{ color: "#fbbf24", fontWeight: 800, fontSize: 15, letterSpacing: -0.2 }}>
+              You nailed it! Correct allocation guessed.
+            </div>
+            <div style={{ color: C.textDim, fontSize: 12, marginTop: 2 }}>
+              Share on Farcaster every Sunday for a chance to win $10
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          padding: "12px 16px",
+          borderRadius: 14,
+          background: "rgba(244,63,94,0.08)",
+          border: "1px solid rgba(244,63,94,0.25)",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          marginBottom: 16,
+        }}>
+          <TrendingDown size={16} color="#fb7185" style={{ marginTop: 1, flexShrink: 0 }} />
+          <div>
+            <div style={{ color: "#fb7185", fontWeight: 700, fontSize: 13 }}>
+              Not quite — correct answer: cbBTC {r.correctAllocation.cbBTC}% / WETH {r.correctAllocation.weth}% / USDC {r.correctAllocation.usdc}%
+            </div>
+            <div style={{ color: C.textMute, fontSize: 11, marginTop: 2 }}>
+              Your guess: cbBTC {r.userAllocation.cbBTC}% / WETH {r.userAllocation.weth}% / USDC {r.userAllocation.usdc}%
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -739,11 +805,26 @@ function ResultCard(r: ResultProps) {
           marginTop: 22,
         }}
       >
-        <button type="button" onClick={onShare} style={primaryBtn}>
+        <button
+          type="button"
+          onClick={onShare}
+          style={{
+            ...primaryBtn,
+            ...(r.isWinner ? {
+              background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 12px 32px -10px rgba(251,191,36,0.6)",
+            } : {}),
+          }}
+        >
           {shareState === "loading" ? (
             <>
               <span className="gblin-spin" style={spinnerStyle} />
               Opening composer…
+            </>
+          ) : r.isWinner ? (
+            <>
+              <Sparkles size={16} strokeWidth={2.6} color="#0a0b14" />
+              <span style={{ color: "#0a0b14" }}>Share win — enter the $10 draw</span>
             </>
           ) : (
             <>

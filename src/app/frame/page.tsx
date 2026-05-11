@@ -252,6 +252,120 @@ export default function FramePage() {
           {/* Divider */}
           <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
 
+          {/* Weekly challenge banner */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 16,
+              background:
+                "linear-gradient(135deg, rgba(251,191,36,0.14) 0%, rgba(244,63,94,0.06) 100%)",
+              border: "1px solid rgba(251,191,36,0.35)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              boxShadow:
+                "0 0 0 1px rgba(251,191,36,0.10) inset, 0 12px 28px -12px rgba(251,191,36,0.3)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "rgba(251,191,36,0.22)",
+                    border: "1px solid rgba(251,191,36,0.4)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Sparkles size={14} color="#fbbf24" />
+                </div>
+                <span
+                  style={{
+                    color: "#fbbf24",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  Sunday Challenge — Win $10
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: C.textMute,
+                  letterSpacing: 0.6,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  background: "rgba(148,163,184,0.10)",
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                }}
+              >
+                weekly
+              </span>
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: C.textDim,
+                lineHeight: 1.6,
+              }}
+            >
+              Play the Crash Shield game, guess how GBLIN reallocated during a
+              real crypto crash, and{" "}
+              <span style={{ color: C.text, fontWeight: 600 }}>
+                share your winning result on Farcaster.
+              </span>{" "}
+              Every Sunday the GBLIN creator picks one random winner and deposits{" "}
+              <span style={{ color: "#fbbf24", fontWeight: 700 }}>$10</span>{" "}
+              directly into their wallet.
+            </p>
+            <Link
+              href="/game"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                padding: "11px",
+                borderRadius: 12,
+                background:
+                  "linear-gradient(135deg, rgba(251,191,36,0.22) 0%, rgba(251,191,36,0.10) 100%)",
+                border: "1px solid rgba(251,191,36,0.45)",
+                color: "#fbbf24",
+                fontWeight: 700,
+                fontSize: 13,
+                textDecoration: "none",
+                letterSpacing: 0.2,
+              }}
+            >
+              <Shield size={14} />
+              Play &amp; Win
+            </Link>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
+
           {/* Action grid */}
           <div
             style={{

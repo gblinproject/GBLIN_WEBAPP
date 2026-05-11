@@ -22,6 +22,7 @@ export async function GET(req: Request) {
   const savedRaw = searchParams.get("saved");
   const directRaw = searchParams.get("direct");
   const gblinRaw = searchParams.get("gblin");
+  const won = searchParams.get("won") === "true";
 
   const crash = getCrashById(crashId);
   const saved = savedRaw ? parseFloat(savedRaw) : null;
@@ -59,7 +60,12 @@ export async function GET(req: Request) {
         }}
       >
         <Header />
-        {hasResult ? (
+        {hasResult && won ? (
+          <VictoryBody
+            crashLabel={crash.label}
+            saved={saved}
+          />
+        ) : hasResult ? (
           <ResultBody
             crashLabel={crash.label}
             saved={saved}
@@ -371,6 +377,122 @@ function ResultBody({
           }}
         >
           on a $10,000 starting basket
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VictoryBody({
+  crashLabel,
+  saved,
+}: {
+  crashLabel: string;
+  saved: number;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+        flex: 1,
+        marginTop: 6,
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 20,
+          color: "#fda4af",
+          letterSpacing: 1.6,
+          display: "flex",
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
+      >
+        {crashLabel}
+      </div>
+
+      <div
+        style={{
+          padding: "32px 36px",
+          borderRadius: 24,
+          background:
+            "linear-gradient(135deg, rgba(251,191,36,0.26) 0%, rgba(16,185,129,0.14) 50%, rgba(59,130,246,0.08) 100%)",
+          border: "1px solid rgba(251,191,36,0.55)",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 0 0 1px rgba(251,191,36,0.18) inset, 0 24px 60px -20px rgba(251,191,36,0.45)",
+        }}
+      >
+        <div
+          style={{
+            color: "#fbbf24",
+            fontSize: 20,
+            letterSpacing: 1.6,
+            display: "flex",
+            textTransform: "uppercase",
+            fontWeight: 800,
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: "rgba(251,191,36,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+            }}
+          >
+            ★
+          </div>
+          CORRECT ALLOCATION GUESSED
+        </div>
+        <div
+          style={{
+            fontSize: 72,
+            fontWeight: 900,
+            color: "#fbbf24",
+            letterSpacing: -3,
+            display: "flex",
+            marginTop: 10,
+            lineHeight: 1.0,
+          }}
+        >
+          +{fmtUsd(saved)}
+        </div>
+        <div
+          style={{
+            color: "#94a3b8",
+            fontSize: 18,
+            display: "flex",
+            marginTop: 8,
+          }}
+        >
+          saved vs direct hold on a $10,000 basket
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "14px 20px",
+          borderRadius: 14,
+          background: "rgba(251,191,36,0.08)",
+          border: "1px solid rgba(251,191,36,0.25)",
+        }}
+      >
+        <div style={{ fontSize: 22 }}>🎰</div>
+        <div style={{ color: "#e2e8f0", fontSize: 18, display: "flex" }}>
+          Every Sunday the GBLIN creator picks a random winner for $10
         </div>
       </div>
     </div>
