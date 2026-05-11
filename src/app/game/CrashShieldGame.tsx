@@ -33,7 +33,7 @@ import {
 const SITE_URL = "https://gblin.digital";
 const STARTING_USD = 10_000;
 const DEFAULT_ALLOCATION: Allocation = BASE_ALLOCATION;
-const WIN_TOLERANCE = 12; // ±12% per asset to win
+const WIN_TOLERANCE = 0; // exact match required to win
 
 // 2026 palette
 const C = {
