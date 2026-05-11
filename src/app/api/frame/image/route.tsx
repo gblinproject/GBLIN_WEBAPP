@@ -259,24 +259,60 @@ export async function GET(req: Request) {
           )}
         </div>
 
-        {/* footer */}
+        {/* challenge footer banner */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            fontSize: 17,
-            color: "#94a3b8",
-            borderTop: "1px solid rgba(148,163,184,0.15)",
-            paddingTop: 18,
-            letterSpacing: 0.6,
+            justifyContent: "space-between",
+            padding: "18px 28px",
+            borderRadius: 18,
+            background:
+              "linear-gradient(135deg, rgba(251,191,36,0.18) 0%, rgba(244,63,94,0.08) 100%)",
+            border: "1px solid rgba(251,191,36,0.40)",
+            boxShadow: "0 0 0 1px rgba(251,191,36,0.12) inset",
           }}
         >
-          <div style={{ display: "flex" }}>
-            cbBTC · WETH · USDC · 0 admin keys · try /game
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div
+              style={{
+                fontSize: 26,
+                fontWeight: 900,
+                color: "#fbbf24",
+                letterSpacing: -0.5,
+                display: "flex",
+              }}
+            >
+              Can you guess how GBLIN survived this crash?
+            </div>
+            <div
+              style={{
+                fontSize: 17,
+                color: "#cbd5e1",
+                display: "flex",
+                letterSpacing: 0.2,
+              }}
+            >
+              Play the Crash Shield game every Sunday · win $10 · gblin.digital/game
+            </div>
           </div>
-          <div style={{ display: "flex", color: "#fbbf24", fontWeight: 700 }}>
-            gblin.digital
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "14px 28px",
+              borderRadius: 14,
+              background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+              color: "#0a0b14",
+              fontWeight: 900,
+              fontSize: 20,
+              letterSpacing: -0.3,
+              flexShrink: 0,
+              boxShadow: "0 8px 24px -8px rgba(251,191,36,0.6)",
+            }}
+          >
+            Win $10
           </div>
         </div>
       </div>
