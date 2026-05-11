@@ -16,7 +16,7 @@
     "subtitle": "Autonomous basket on Base",
     "description": "Algorithmic basket of cbBTC, WETH and USDC on Base. Autonomous Crash Shield protected your portfolio in the Jan 2026 cascade. Try the backtest game.",
     "ogTitle": "GBLIN \u2014 Survive the Crash",
-    "ogDescription": "Autonomous on-chain basket. cbBTC + WETH + USDC. Crash Shield. No admin keys.",
+    "ogDescription": "Autonomous on-chain basket with cbBTC, WETH and USDC. Crash Shield active. No admin keys.",
     "ogImageUrl": "https://gblin.digital/api/frame/image",
     "primaryCategory": "finance",
     "tags": ["defi", "index", "base", "autonomous", "backtest"],
