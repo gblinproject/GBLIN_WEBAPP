@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, GBLIN_ABI, RPC_URL } from "@/components/protocol/protocol-data";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
