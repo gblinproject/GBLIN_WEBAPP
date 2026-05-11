@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -136,18 +137,28 @@ export default function FramePage() {
         >
           <div
             style={{
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              background: `linear-gradient(135deg, ${C.blue} 0%, ${C.violet} 100%)`,
+              width: 96,
+              height: 96,
+              borderRadius: 24,
+              background:
+                "linear-gradient(135deg, rgba(251,191,36,0.18) 0%, rgba(244,63,94,0.10) 100%)",
+              border: "1px solid rgba(251,191,36,0.32)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               boxShadow:
-                "0 16px 40px -12px rgba(59,130,246,0.7), inset 0 1px 0 rgba(255,255,255,0.3)",
+                "0 16px 40px -12px rgba(251,191,36,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+              padding: 12,
             }}
           >
-            <Shield size={34} strokeWidth={2.2} color="#ffffff" />
+            <Image
+              src="/LOGO_GBLIN.png"
+              alt="GBLIN logo"
+              width="72"
+              height="72"
+              priority
+              style={{ objectFit: "contain" }}
+            />
           </div>
           <h1
             style={{
@@ -214,15 +225,18 @@ export default function FramePage() {
             gap: 10,
           }}
         >
+          {/* Use relative path so the preview works on both localhost and prod. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={FRAME_IMAGE_BASE}
+            src="/api/frame/image"
             alt="GBLIN live stats — cast embed preview"
             style={{
               width: "100%",
               borderRadius: 16,
               display: "block",
               border: `1px solid ${C.border}`,
+              aspectRatio: "3 / 2",
+              background: "rgba(255,255,255,0.03)",
             }}
           />
           <div
