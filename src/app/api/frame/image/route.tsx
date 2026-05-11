@@ -1,31 +1,89 @@
 import { ImageResponse } from "next/og";
-import { ethers } from "ethers";
-import { CONTRACT_ADDRESS, GBLIN_ABI, RPC_URL } from "@/components/protocol/protocol-data";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
+const CONTRACT_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
+const RPC_URL = "https://mainnet.base.org";
+
+// Precomputed 4-byte function selectors (keccak256 first 4 bytes)
+const SELECTORS = {
+  totalSupply: "0x18160ddd",
+  stabilityFund: "0xa60265fe",
+  quoteBuyGBLIN: "0x38ae0605",
+} as const;
+
+// Strip "0x" prefix from selector when concatenating with params
+function buildCallData(selector: string, paddedParams = ""): string {
+  return selector + paddedParams;
+}
+
 const fmt = (n: number, digits = 2) =>
   n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
-async function fetchFrameStats() {
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+function toUint256Hex(value: bigint): string {
+  return value.toString(16).padStart(64, "0");
+}
 
-  const oneEth = ethers.parseEther("1");
-  const [supplyRaw, stabilityRaw, quoteRaw] = await Promise.all([
-    contract.totalSupply().catch(() => 0n),
-    contract.stabilityFund().catch(() => 0n),
-    contract.quoteBuyGBLIN(oneEth).catch(() => null),
+function hexToBigInt(hex: string): bigint {
+  if (!hex || hex === "0x" || hex === "0x0") return 0n;
+  return BigInt(hex);
+}
+
+function formatEther(wei: bigint): number {
+  // Avoid precision issues for large values by splitting
+  const intPart = wei / 10n ** 18n;
+  const fracPart = wei % 10n ** 18n;
+  return Number(intPart) + Number(fracPart) / 1e18;
+}
+
+async function ethCall(data: string): Promise<string> {
+  const res = await fetch(RPC_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_call",
+      params: [{ to: CONTRACT_ADDRESS, data }, "latest"],
+    }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`RPC ${res.status}`);
+  const json = (await res.json()) as { result?: string; error?: { message: string } };
+  if (json.error) throw new Error(json.error.message);
+  return json.result || "0x";
+}
+
+async function safeCall(data: string): Promise<string> {
+  try {
+    return await ethCall(data);
+  } catch {
+    return "0x";
+  }
+}
+
+async function fetchFrameStats() {
+  const oneEthHex = toUint256Hex(10n ** 18n);
+  const [supplyHex, stabilityHex, quoteHex] = await Promise.all([
+    safeCall(SELECTORS.totalSupply),
+    safeCall(SELECTORS.stabilityFund),
+    safeCall(buildCallData(SELECTORS.quoteBuyGBLIN, oneEthHex)),
   ]);
 
-  const gblinOut = quoteRaw && quoteRaw[0] ? quoteRaw[0] : 0n;
-  const gblinPerEth = Number(ethers.formatEther(gblinOut));
-  const supply = Number(ethers.formatEther(supplyRaw));
-  const stability = Number(ethers.formatEther(stabilityRaw));
-  const keeperPayouts = stability > 0 ? Math.floor(stability / 0.0001) : 0;
+  const supply = formatEther(hexToBigInt(supplyHex));
+  const stability = formatEther(hexToBigInt(stabilityHex));
 
+  // quoteBuyGBLIN returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)
+  // First 32-byte word is gblinOut
+  let gblinPerEth = 0;
+  if (quoteHex && quoteHex.length >= 66) {
+    const firstWord = "0x" + quoteHex.slice(2, 66);
+    gblinPerEth = formatEther(hexToBigInt(firstWord));
+  }
+
+  const keeperPayouts = stability > 0 ? Math.floor(stability / 0.0001) : 0;
   return { gblinPerEth, supply, stability, keeperPayouts };
 }
 
