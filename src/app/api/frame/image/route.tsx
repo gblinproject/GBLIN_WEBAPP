@@ -120,12 +120,12 @@ export async function GET(req: Request) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background:
+          backgroundColor: "#0a0b14",
+          backgroundImage:
             "radial-gradient(45% 40% at 18% 18%, rgba(59,130,246,0.32) 0%, transparent 70%), " +
             "radial-gradient(40% 35% at 82% 12%, rgba(168,85,247,0.26) 0%, transparent 70%), " +
             "radial-gradient(50% 40% at 72% 82%, rgba(6,182,212,0.24) 0%, transparent 70%), " +
-            "radial-gradient(40% 35% at 20% 88%, rgba(16,185,129,0.18) 0%, transparent 70%), " +
-            "#0a0b14",
+            "radial-gradient(40% 35% at 20% 88%, rgba(16,185,129,0.18) 0%, transparent 70%)",
           color: "#ffffff",
           padding: "48px 60px",
           fontFamily: "sans-serif",
