@@ -148,7 +148,7 @@ export async function GET(req: Request) {
             "radial-gradient(50% 40% at 72% 82%, rgba(6,182,212,0.24) 0%, transparent 70%), " +
             "radial-gradient(40% 35% at 20% 88%, rgba(16,185,129,0.18) 0%, transparent 70%)",
           color: "#ffffff",
-          padding: "36px 52px",
+          padding: "48px 60px",
           fontFamily: "sans-serif",
         }}
       >
@@ -230,7 +230,7 @@ export async function GET(req: Request) {
         </div>
 
         {/* stats grid: 3 columns single row */}
-        <div style={{ display: "flex", gap: 14 }}>
+        <div style={{ display: "flex", gap: 18 }}>
           <StatCard
             label="1 ETH BUYS"
             value={stats.gblinPerEth > 0 ? `${fmt(stats.gblinPerEth, 2)}` : "—"}
@@ -257,14 +257,6 @@ export async function GET(req: Request) {
               hint={`${stats.keeperPayouts} payouts ready`}
             />
           )}
-        </div>
-
-        {/* action buttons row */}
-        <div style={{ display: "flex", gap: 12 }}>
-          <ActionBtn label="✦ Mint GBLIN" color="#fbbf24" bg="rgba(251,191,36,0.14)" border="rgba(251,191,36,0.40)" />
-          <ActionBtn label="⬡ Crash Shield" color="#60a5fa" bg="rgba(59,130,246,0.14)" border="rgba(59,130,246,0.35)" />
-          <ActionBtn label="⟳ Rebalance" color="#34d399" bg="rgba(16,185,129,0.14)" border="rgba(16,185,129,0.35)" />
-          <ActionBtn label="↗ Dashboard" color="#c084fc" bg="rgba(168,85,247,0.14)" border="rgba(168,85,247,0.35)" />
         </div>
 
         {/* footer */}
@@ -317,9 +309,9 @@ function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string })
           ? "linear-gradient(135deg, rgba(16,185,129,0.20) 0%, rgba(34,211,238,0.06) 100%)"
           : "rgba(255,255,255,0.04)",
         border: `1px solid ${positive ? "rgba(16,185,129,0.45)" : "rgba(148,163,184,0.2)"}`,
-        borderRadius: 16,
-        padding: "18px 20px",
-        minHeight: 160,
+        borderRadius: 18,
+        padding: "22px 24px",
+        minHeight: 220,
         justifyContent: "space-between",
       }}
     >
@@ -382,9 +374,9 @@ function StatCard({
         background:
           "linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(168,85,247,0.04) 100%)",
         border: "1px solid rgba(148,163,184,0.18)",
-        borderRadius: 16,
-        padding: "18px 20px",
-        minHeight: 160,
+        borderRadius: 18,
+        padding: "22px 24px",
+        minHeight: 220,
         justifyContent: "space-between",
       }}
     >
@@ -434,39 +426,6 @@ function StatCard({
       >
         {hint ?? ""}
       </div>
-    </div>
-  );
-}
-
-function ActionBtn({
-  label,
-  color,
-  bg,
-  border,
-}: {
-  label: string;
-  color: string;
-  bg: string;
-  border: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        background: bg,
-        border: `1px solid ${border}`,
-        borderRadius: 14,
-        padding: "14px 10px",
-        color,
-        fontSize: 17,
-        fontWeight: 700,
-        letterSpacing: 0.3,
-      }}
-    >
-      {label}
     </div>
   );
 }
