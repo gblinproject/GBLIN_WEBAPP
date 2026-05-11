@@ -222,36 +222,6 @@ export default function FramePage() {
           {/* Divider */}
           <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
 
-          {/* OG image preview */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/api/frame/image"
-              alt="GBLIN live stats — cast embed preview"
-              style={{
-                width: "100%",
-                borderRadius: 12,
-                display: "block",
-                border: `1px solid ${C.border}`,
-                aspectRatio: "3 / 2",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            />
-            <div
-              style={{
-                fontSize: 10,
-                color: C.textMute,
-                textAlign: "center",
-                letterSpacing: 0.4,
-              }}
-            >
-              This is what the embed looks like when this URL is cast on Warpcast.
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
-
           {/* Weekly challenge banner */}
           <div
             style={{
@@ -361,6 +331,36 @@ export default function FramePage() {
               <Shield size={14} />
               Play &amp; Win
             </Link>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
+
+          {/* OG image preview */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/api/frame/image"
+              alt="GBLIN live stats — cast embed preview"
+              style={{
+                width: "100%",
+                borderRadius: 12,
+                display: "block",
+                border: `1px solid ${C.border}`,
+                aspectRatio: "3 / 2",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            />
+            <div
+              style={{
+                fontSize: 10,
+                color: C.textMute,
+                textAlign: "center",
+                letterSpacing: 0.4,
+              }}
+            >
+              This is what the embed looks like when this URL is cast on Warpcast.
+            </div>
           </div>
 
           {/* Divider */}
