@@ -147,7 +147,7 @@ export default function CrashShieldGame() {
         className="gblin-fade-up"
       >
         <Link
-          href="/"
+          href="/frame"
           style={{
             color: C.textDim,
             fontSize: 12,
@@ -160,7 +160,7 @@ export default function CrashShieldGame() {
           }}
         >
           <ArrowLeft size={14} />
-          gblin.digital
+          gblin.digital/frame
         </Link>
         <div
           style={{

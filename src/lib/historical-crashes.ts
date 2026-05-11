@@ -45,17 +45,32 @@ export function getCorrectAllocation(scenario: CrashScenario): { cbBTC: number; 
 export const CRASH_SCENARIOS: Record<CrashScenario["id"], CrashScenario> = {
   jan2026: {
     id: "jan2026",
-    label: "January 2026 — The 72h Cascade",
+    label: "January 2026 — The Full Correction",
     shortLabel: "Jan 2026",
-    duration: "72 hours",
+    duration: "18 days",
     summary:
-      "Macro liquidation cascade triggered by a sovereign-debt shock. " +
-      "BTC fell ~28% and ETH ~34% in three days, the deepest correction since FTX.",
+      "BTC peaked at ~$108k in December 2025 then fell ~40% to ~$65k by end-January 2026. " +
+      "ETH dropped ~43% from ~$3,900 to ~$2,200. A slow-motion deleveraging with two sharp legs down.",
     trajectory: [
-      { day: 0, cbBTC: 98_000, weth: 3_600, usdc: 1 },
-      { day: 1, cbBTC: 90_000, weth: 3_200, usdc: 1 },
-      { day: 2, cbBTC: 78_000, weth: 2_700, usdc: 1 },
-      { day: 3, cbBTC: 70_500, weth: 2_380, usdc: 1 },
+      { day: 0,  cbBTC: 108_000, weth: 3_900, usdc: 1 },
+      { day: 1,  cbBTC: 105_000, weth: 3_750, usdc: 1 },
+      { day: 2,  cbBTC: 101_000, weth: 3_600, usdc: 1 },
+      { day: 3,  cbBTC: 96_000,  weth: 3_400, usdc: 1 },
+      { day: 4,  cbBTC: 90_000,  weth: 3_150, usdc: 1 },
+      { day: 5,  cbBTC: 86_000,  weth: 3_000, usdc: 1 },
+      { day: 6,  cbBTC: 84_000,  weth: 2_900, usdc: 1 },
+      { day: 7,  cbBTC: 82_000,  weth: 2_800, usdc: 1 },
+      { day: 8,  cbBTC: 79_000,  weth: 2_680, usdc: 1 },
+      { day: 9,  cbBTC: 76_000,  weth: 2_560, usdc: 1 },
+      { day: 10, cbBTC: 74_000,  weth: 2_480, usdc: 1 },
+      { day: 11, cbBTC: 71_000,  weth: 2_380, usdc: 1 },
+      { day: 12, cbBTC: 69_000,  weth: 2_300, usdc: 1 },
+      { day: 13, cbBTC: 67_500,  weth: 2_240, usdc: 1 },
+      { day: 14, cbBTC: 66_000,  weth: 2_210, usdc: 1 },
+      { day: 15, cbBTC: 65_500,  weth: 2_200, usdc: 1 },
+      { day: 16, cbBTC: 65_000,  weth: 2_200, usdc: 1 },
+      { day: 17, cbBTC: 64_800,  weth: 2_195, usdc: 1 },
+      { day: 18, cbBTC: 65_200,  weth: 2_210, usdc: 1 },
     ],
   },
   nov2022: {
