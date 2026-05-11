@@ -1,25 +1,33 @@
 {
+  "frame": {
+    "name": "gblin.digital",
+    "version": "1",
+    "iconUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "homeUrl": "https://gblin.digital/frame",
+    "subtitle": "Autonomous basket on Base",
+    "description": "Algorithmic basket of cbBTC, WETH and USDC on Base. Autonomous Crash Shield protected your portfolio in the Jan 2026 cascade. Try the backtest game.",
+    "primaryCategory": "finance",
+    "imageUrl": "https://gblin.digital/api/frame/image",
+    "heroImageUrl": "https://gblin.digital/api/frame/image",
+    "splashImageUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "splashBackgroundColor": "#050505",
+    "tags": [
+      "defi",
+      "index",
+      "base",
+      "autonomous",
+      "backtest"
+    ],
+    "tagline": "0 admin keys, live on base.",
+    "buttonTitle": "Open GBLIN",
+    "ogTitle": "GBLIN - Survive the Crash",
+    "ogDescription": "Autonomous on-chain basket with cbBTC, WETH and USDC. Crash Shield active. No admin keys.",
+    "ogImageUrl": "https://gblin.digital/api/frame/image",
+    "castShareUrl": "https://warpcast.com/~/compose?text=Check%20out%20GBLIN%20-%20autonomous%20on-chain%20basket%20on%20Base&embeds[]=https://gblin.digital/frame"
+  },
   "accountAssociation": {
     "header": "eyJmaWQiOjMwNjU2NDMsInR5cGUiOiJhdXRoIiwia2V5IjoiMHg0NUM4NUQxODg0ZTk5MkIxMWFkREU1MkIyNWQ0MDhkNjk1QkUyQjVkIn0",
     "payload": "eyJkb21haW4iOiJnYmxpbi5kaWdpdGFsIn0",
     "signature": "NwuktKwu10fGhfxX9g+Dw5uCJbDaeb1HcMGP1Li+E3ohYzJtmu2UdI0KeQnP12GaSjX4p+ymfPwhSq40NPCz+xw="
-  },
-  "miniapp": {
-    "version": "1",
-    "name": "GBLIN",
-    "iconUrl": "https://gblin.digital/LOGO_GBLIN.png",
-    "homeUrl": "https://gblin.digital/frame",
-    "splashImageUrl": "https://gblin.digital/LOGO_GBLIN.png",
-    "splashBackgroundColor": "#050505",
-    "subtitle": "Autonomous basket on Base",
-    "description": "Algorithmic basket of cbBTC, WETH and USDC on Base. Autonomous Crash Shield protected your portfolio in the Jan 2026 cascade. Try the backtest game.",
-    "ogTitle": "GBLIN - Survive the Crash",
-    "ogDescription": "Autonomous on-chain basket with cbBTC, WETH and USDC. Crash Shield active. No admin keys.",
-    "ogImageUrl": "https://gblin.digital/api/frame/image",
-    "heroImageUrl": "https://gblin.digital/api/frame/image",
-    "primaryCategory": "finance",
-    "tags": ["defi", "index", "base", "autonomous", "backtest"],
-    "tagline": "0 admin keys. live on base.",
-    "requiredChains": ["eip155:8453"]
   }
 }
