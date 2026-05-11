@@ -109,185 +109,188 @@ export default function FramePage() {
       style={{
         minHeight: "100vh",
         color: C.text,
-        padding: "32px 16px 80px",
+        padding: "20px 14px 32px",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
       <div
         style={{
-          maxWidth: 720,
+          maxWidth: 680,
           margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 22,
         }}
       >
-        {/* Hero */}
+        {/* Single unified card */}
         <section
           className="gblin-fade-up"
           style={{
+            ...glassCard,
+            padding: "22px 18px 18px",
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
-            gap: 14,
-            textAlign: "center",
-            paddingTop: 12,
+            gap: 16,
           }}
         >
+          {/* Hero */}
           <div
             style={{
-              width: 96,
-              height: 96,
-              borderRadius: 24,
-              background:
-                "linear-gradient(135deg, rgba(251,191,36,0.18) 0%, rgba(244,63,94,0.10) 100%)",
-              border: "1px solid rgba(251,191,36,0.32)",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              boxShadow:
-                "0 16px 40px -12px rgba(251,191,36,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
-              padding: 12,
+              gap: 10,
+              textAlign: "center",
             }}
           >
+            <div
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 18,
+                background:
+                  "linear-gradient(135deg, rgba(251,191,36,0.18) 0%, rgba(244,63,94,0.10) 100%)",
+                border: "1px solid rgba(251,191,36,0.32)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow:
+                  "0 12px 28px -10px rgba(251,191,36,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+                padding: 9,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png"
+                alt="GBLIN logo"
+                width={50}
+                height={50}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+            <h1
+              style={{
+                fontSize: 32,
+                margin: 0,
+                letterSpacing: -1,
+                fontWeight: 900,
+                lineHeight: 1.05,
+              }}
+            >
+              <span className="gblin-grad-text-amber">GBLIN</span>
+            </h1>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))",
+                border: "1px solid rgba(16,185,129,0.35)",
+                fontSize: 10,
+                color: "#a7f3d0",
+                letterSpacing: 0.8,
+                fontWeight: 600,
+                textTransform: "uppercase",
+              }}
+            >
+              <span
+                className="gblin-blink"
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 999,
+                  background: C.emerald,
+                  boxShadow: `0 0 8px ${C.emerald}`,
+                }}
+              />
+              live on base · 0 admin keys
+            </div>
+            <p
+              style={{
+                color: C.textDim,
+                margin: 0,
+                fontSize: 12.5,
+                lineHeight: 1.55,
+                maxWidth: 480,
+              }}
+            >
+              Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
+              Crash Shield that rotates risk into stables when drawdowns exceed 20%.
+              Fully open source.
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
+
+          {/* OG image preview */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png"
-              alt="GBLIN logo"
-              width={72}
-              height={72}
-              style={{ objectFit: "contain" }}
-            />
-          </div>
-          <h1
-            style={{
-              fontSize: 44,
-              margin: 0,
-              letterSpacing: -1.5,
-              fontWeight: 900,
-              lineHeight: 1.05,
-              color: C.text,
-            }}
-          >
-            <span className="gblin-grad-text-amber">GBLIN</span>
-          </h1>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "5px 12px",
-              borderRadius: 999,
-              background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))",
-              border: "1px solid rgba(16,185,129,0.35)",
-              fontSize: 11,
-              color: "#a7f3d0",
-              letterSpacing: 0.8,
-              fontWeight: 600,
-              textTransform: "uppercase",
-            }}
-          >
-            <span
-              className="gblin-blink"
+              src="/api/frame/image"
+              alt="GBLIN live stats — cast embed preview"
               style={{
-                width: 6,
-                height: 6,
-                borderRadius: 999,
-                background: C.emerald,
-                boxShadow: `0 0 10px ${C.emerald}`,
+                width: "100%",
+                borderRadius: 12,
+                display: "block",
+                border: `1px solid ${C.border}`,
+                aspectRatio: "3 / 2",
+                background: "rgba(255,255,255,0.03)",
               }}
             />
-            live on base · 0 admin keys
+            <div
+              style={{
+                fontSize: 10,
+                color: C.textMute,
+                textAlign: "center",
+                letterSpacing: 0.4,
+              }}
+            >
+              This is what the embed looks like when this URL is cast on Warpcast.
+            </div>
           </div>
-          <p
-            style={{
-              color: C.textDim,
-              margin: 0,
-              maxWidth: 520,
-              fontSize: 14.5,
-              lineHeight: 1.6,
-            }}
-          >
-            Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
-            Crash Shield that rotates risk into stables when drawdowns exceed
-            20%. Fully open source.
-          </p>
-        </section>
 
-        {/* Frame OG preview */}
-        <section
-          style={{
-            ...glassCard,
-            padding: 12,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          {/* Use relative path so the preview works on both localhost and prod. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/api/frame/image"
-            alt="GBLIN live stats — cast embed preview"
-            style={{
-              width: "100%",
-              borderRadius: 16,
-              display: "block",
-              border: `1px solid ${C.border}`,
-              aspectRatio: "3 / 2",
-              background: "rgba(255,255,255,0.03)",
-            }}
-          />
+          {/* Divider */}
+          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
+
+          {/* Action grid */}
           <div
             style={{
-              fontSize: 11,
-              color: C.textMute,
-              textAlign: "center",
-              letterSpacing: 0.5,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 9,
             }}
           >
-            This is what the embed looks like when this URL is cast on Warpcast.
+            <ActionCard
+              href="/buy-gblin"
+              icon={<Sparkles size={16} />}
+              title="Mint GBLIN"
+              subtitle="Buy the basket with ETH"
+              tone="amber"
+              primary
+            />
+            <ActionCard
+              href="/game"
+              icon={<Shield size={16} />}
+              title="Play Crash Shield"
+              subtitle="Backtest the autonomy"
+              tone="blue"
+            />
+            <ActionCard
+              href="/rebalance"
+              icon={<Gauge size={16} />}
+              title="Trigger rebalance"
+              subtitle="Earn keeper bounty"
+              tone="emerald"
+            />
+            <ActionCard
+              href={DASHBOARD_URL}
+              external
+              icon={<BarChart3 size={16} />}
+              title="Live dashboard"
+              subtitle="On-chain analytics on Dune"
+              tone="violet"
+            />
           </div>
-        </section>
-
-        {/* Action grid */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-          }}
-        >
-          <ActionCard
-            href="/buy-gblin"
-            icon={<Sparkles size={20} />}
-            title="Mint GBLIN"
-            subtitle="Buy the basket with ETH"
-            tone="amber"
-            primary
-          />
-          <ActionCard
-            href="/game"
-            icon={<Shield size={20} />}
-            title="Play Crash Shield"
-            subtitle="Backtest the autonomy"
-            tone="blue"
-          />
-          <ActionCard
-            href="/rebalance"
-            icon={<Gauge size={20} />}
-            title="Trigger rebalance"
-            subtitle="Earn keeper bounty"
-            tone="emerald"
-          />
-          <ActionCard
-            href={DASHBOARD_URL}
-            external
-            icon={<BarChart3 size={20} />}
-            title="Live dashboard"
-            subtitle="On-chain analytics on Dune"
-            tone="violet"
-          />
         </section>
       </div>
     </main>
@@ -351,11 +354,11 @@ function ActionCard({
   const content = (
     <div
       style={{
-        padding: "18px 16px",
-        borderRadius: 18,
+        padding: "12px 12px",
+        borderRadius: 14,
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: 8,
         height: "100%",
         textDecoration: "none",
         cursor: "pointer",
@@ -365,8 +368,8 @@ function ActionCard({
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         boxShadow: primary
-          ? `0 0 0 1px ${t.ring}, 0 16px 40px -16px ${t.ring}`
-          : "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 16px 40px -24px rgba(0,0,0,0.6)",
+          ? `0 0 0 1px ${t.ring}, 0 12px 28px -14px ${t.ring}`
+          : "0 1px 0 0 rgba(255,255,255,0.04) inset",
       }}
     >
       <div
@@ -378,38 +381,37 @@ function ActionCard({
       >
         <div
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
+            width: 32,
+            height: 32,
+            borderRadius: 9,
             background: t.iconBg,
             border: `1px solid ${t.ring}`,
             color: t.icon,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10)",
           }}
         >
           {icon}
         </div>
         {external ? (
-          <ExternalLink size={14} color={C.textMute} />
+          <ExternalLink size={12} color={C.textMute} />
         ) : (
-          <ArrowRight size={14} color={C.textMute} />
+          <ArrowRight size={12} color={C.textMute} />
         )}
       </div>
       <div>
         <div
           style={{
             color: C.text,
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: 700,
-            letterSpacing: -0.2,
+            letterSpacing: -0.1,
           }}
         >
           {title}
         </div>
-        <div style={{ color: C.textDim, fontSize: 12, marginTop: 3 }}>
+        <div style={{ color: C.textDim, fontSize: 11, marginTop: 2 }}>
           {subtitle}
         </div>
       </div>
