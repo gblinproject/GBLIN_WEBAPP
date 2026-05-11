@@ -12,7 +12,7 @@
     "splashImageUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
     "splashBackgroundColor": "#0a0b14",
     "subtitle": "Autonomous basket on Base",
-    "description": "On-chain basket of cbBTC, WETH and USDC on Base. Crash Shield active. Play the backtest game and win $10 every Sunday.",
+    "description": "On-chain basket of cbBTC, WETH and USDC on Base. Crash Shield active. Play the backtest game and win 10 USD every Sunday.",
     "primaryCategory": "finance",
     "tags": [
       "defi",
@@ -24,7 +24,7 @@
     "tagline": "0 admin keys, live on base.",
     "heroImageUrl": "https://gblin.digital/api/frame/og",
     "ogTitle": "GBLIN - Survive the Crash",
-    "ogDescription": "Autonomous on-chain basket. Crash Shield active. Guess the allocation and win $10.",
+    "ogDescription": "Autonomous on-chain basket. Crash Shield active. Guess the allocation and win 10 USD.",
     "ogImageUrl": "https://gblin.digital/api/frame/og"
   }
 }
