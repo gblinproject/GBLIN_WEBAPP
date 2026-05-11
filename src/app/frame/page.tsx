@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -151,12 +150,12 @@ export default function FramePage() {
               padding: 12,
             }}
           >
-            <Image
-              src="/LOGO_GBLIN.png"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png"
               alt="GBLIN logo"
-              width="72"
-              height="72"
-              priority
+              width={72}
+              height={72}
               style={{ objectFit: "contain" }}
             />
           </div>

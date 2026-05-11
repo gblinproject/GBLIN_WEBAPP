@@ -81,17 +81,17 @@ export async function GET(req: Request) {
                 width: 76,
                 height: 76,
                 borderRadius: 20,
-                background: "linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)",
+                background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#ffffff",
-                fontSize: 38,
-                fontWeight: 800,
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                color: "#0a0b14",
+                fontSize: 40,
+                fontWeight: 900,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
               }}
             >
-              ⛨
+              G
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div
