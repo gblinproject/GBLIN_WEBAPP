@@ -83,11 +83,13 @@ export function simulateDirect(
 /**
  * Simulate the GBLIN basket with Crash Shield enabled.
  *
- * Each day: refreshWeights() is computed, then the portfolio is instantly
- * rebalanced to the new dynamicWeight target (no fees / slippage in sim).
+ * Intraday rebalance model: within each day the simulator interpolates the
+ * exact price at which the 20% drawdown threshold is first crossed and fires
+ * the rebalance at that moment — not at end-of-day. This mirrors the real
+ * protocol where any keeper can call refreshWeights() multiple times per day
+ * the moment the threshold is breached.
  *
- * The user-supplied `allocation` is treated as the protocol's `baseWeight`
- * (the immutable target). `dynamicWeight` is what shifts during slashes.
+ * The user-supplied `allocation` is treated as the protocol's `baseWeight`.
  */
 export function simulateGblin(
   initialUsd: number,
@@ -110,49 +112,99 @@ export function simulateGblin(
     weth: first.weth,
   };
 
+  // Track whether each asset has already been slashed (persists across days)
+  const slashState = { cbBTC: false, weth: false };
+
   const path: number[] = [];
   const weightsLog: NonNullable<SimulationResult["weights"]> = [];
 
-  for (const p of trajectory) {
-    // 1) Update peak prices: ratchet up, decay slowly downward.
+  for (let i = 0; i < trajectory.length; i++) {
+    const prev = i > 0 ? trajectory[i - 1] : trajectory[0];
+    const p = trajectory[i];
+
+    // 1) Update peak prices (ratchet up, decay slowly downward).
     peakPrices.cbBTC = Math.max(peakPrices.cbBTC * (1 - PEAK_DECAY_PER_DAY), p.cbBTC);
-    peakPrices.weth = Math.max(peakPrices.weth * (1 - PEAK_DECAY_PER_DAY), p.weth);
+    peakPrices.weth  = Math.max(peakPrices.weth  * (1 - PEAK_DECAY_PER_DAY), p.weth);
 
-    // 2) Compute drawdowns from current peak.
-    const ddBTC = peakPrices.cbBTC > 0
-      ? (peakPrices.cbBTC - p.cbBTC) / peakPrices.cbBTC
-      : 0;
-    const ddETH = peakPrices.weth > 0
-      ? (peakPrices.weth - p.weth) / peakPrices.weth
-      : 0;
+    // 2) Intraday check: for each asset not yet slashed, find if/when the
+    //    threshold is crossed during this day and rebalance at that price.
+    const triggerBTC = peakPrices.cbBTC * (1 - CRASH_THRESHOLD);
+    const triggerETH = peakPrices.weth  * (1 - CRASH_THRESHOLD);
 
-    // 3) Compute dynamicWeights (refreshWeights logic).
-    const dw = { cbBTC: allocation.cbBTC, weth: allocation.weth, usdc: allocation.usdc };
-    let slashed = 0;
+    const btcTriggersToday = !slashState.cbBTC && prev.cbBTC > triggerBTC && p.cbBTC <= triggerBTC;
+    const ethTriggersToday = !slashState.weth  && prev.weth  > triggerETH && p.weth  <= triggerETH;
 
-    if (ddBTC > CRASH_THRESHOLD) {
-      const newWeight = allocation.cbBTC * SLASH_RETENTION;
-      slashed += allocation.cbBTC - newWeight;
-      dw.cbBTC = newWeight;
+    if (btcTriggersToday || ethTriggersToday) {
+      // Interpolate the intraday fraction at which the first trigger fires.
+      let tBTC = btcTriggersToday && prev.cbBTC !== p.cbBTC
+        ? (prev.cbBTC - triggerBTC) / (prev.cbBTC - p.cbBTC)
+        : Infinity;
+      let tETH = ethTriggersToday && prev.weth !== p.weth
+        ? (prev.weth - triggerETH) / (prev.weth - p.weth)
+        : Infinity;
+
+      // Fire rebalances in the order they would occur intraday.
+      const events: Array<{ asset: "cbBTC" | "weth"; t: number }> = [];
+      if (btcTriggersToday) events.push({ asset: "cbBTC", t: tBTC });
+      if (ethTriggersToday) events.push({ asset: "weth",  t: tETH });
+      events.sort((a, b) => a.t - b.t);
+
+      for (const ev of events) {
+        // Price at trigger moment (linear interpolation).
+        const trigP = {
+          cbBTC: prev.cbBTC + (p.cbBTC - prev.cbBTC) * ev.t,
+          weth:  prev.weth  + (p.weth  - prev.weth)  * ev.t,
+        };
+
+        // Mark slashed.
+        slashState[ev.asset] = true;
+
+        // Compute current dynamic weights.
+        const dw = {
+          cbBTC: slashState.cbBTC ? allocation.cbBTC * SLASH_RETENTION : allocation.cbBTC,
+          weth:  slashState.weth  ? allocation.weth  * SLASH_RETENTION : allocation.weth,
+          usdc:  allocation.usdc,
+        };
+        const slashed =
+          (slashState.cbBTC ? allocation.cbBTC * (1 - SLASH_RETENTION) : 0) +
+          (slashState.weth  ? allocation.weth  * (1 - SLASH_RETENTION) : 0);
+        dw.usdc += slashed;
+
+        // Rebalance at trigger price.
+        const usdAtTrigger =
+          holdings.cbBTC * trigP.cbBTC + holdings.weth * trigP.weth + holdings.usdc;
+        const tw = dw.cbBTC + dw.weth + dw.usdc;
+        if (tw > 0 && usdAtTrigger > 0) {
+          holdings = {
+            cbBTC: trigP.cbBTC > 0 ? (usdAtTrigger * dw.cbBTC / tw) / trigP.cbBTC : 0,
+            weth:  trigP.weth  > 0 ? (usdAtTrigger * dw.weth  / tw) / trigP.weth  : 0,
+            usdc:  (usdAtTrigger * dw.usdc) / tw,
+          };
+        }
+      }
     }
-    if (ddETH > CRASH_THRESHOLD) {
-      const newWeight = allocation.weth * SLASH_RETENTION;
-      slashed += allocation.weth - newWeight;
-      dw.weth = newWeight;
-    }
-    dw.usdc += slashed;
 
-    // 4) Compute current portfolio USD value at today's prices.
-    const usdValue =
-      holdings.cbBTC * p.cbBTC + holdings.weth * p.weth + holdings.usdc;
+    // 3) Compute end-of-day dynamic weights (for assets already slashed).
+    const dw = {
+      cbBTC: slashState.cbBTC ? allocation.cbBTC * SLASH_RETENTION : allocation.cbBTC,
+      weth:  slashState.weth  ? allocation.weth  * SLASH_RETENTION : allocation.weth,
+      usdc:  allocation.usdc,
+    };
+    const slashedTotal =
+      (slashState.cbBTC ? allocation.cbBTC * (1 - SLASH_RETENTION) : 0) +
+      (slashState.weth  ? allocation.weth  * (1 - SLASH_RETENTION) : 0);
+    dw.usdc += slashedTotal;
 
-    // 5) Rebalance to dynamic weights (instant, lossless in sim).
+    // 4) End-of-day portfolio value.
+    const usdValue = holdings.cbBTC * p.cbBTC + holdings.weth * p.weth + holdings.usdc;
+
+    // 5) Daily rebalance to dynamic weights (keeper can always call this).
     const totalWeight = dw.cbBTC + dw.weth + dw.usdc;
     if (totalWeight > 0 && usdValue > 0) {
       holdings = {
         cbBTC: p.cbBTC > 0 ? (usdValue * dw.cbBTC / totalWeight) / p.cbBTC : 0,
-        weth: p.weth > 0 ? (usdValue * dw.weth / totalWeight) / p.weth : 0,
-        usdc: (usdValue * dw.usdc) / totalWeight,
+        weth:  p.weth  > 0 ? (usdValue * dw.weth  / totalWeight) / p.weth  : 0,
+        usdc:  (usdValue * dw.usdc) / totalWeight,
       };
     }
 
