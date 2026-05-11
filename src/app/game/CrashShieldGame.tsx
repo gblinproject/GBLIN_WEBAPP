@@ -515,7 +515,7 @@ function AllocSlider({
         className="gblin-slider"
         min={0}
         max={100}
-        step={5}
+        step={1}
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
         style={{
