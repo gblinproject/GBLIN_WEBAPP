@@ -1,11 +1,18 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const revalidate = 60;
+export const revalidate = 30;
 
 const CONTRACT_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
-const RPC_URL = "https://mainnet.base.org";
+const ALCHEMY_KEY =
+  process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+const RPC_URLS = [
+  ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : "",
+  "https://mainnet.base.org",
+  "https://base.publicnode.com",
+  "https://base.llamarpc.com",
+].filter(Boolean);
 
 // Precomputed 4-byte function selectors (keccak256 first 4 bytes)
 const SELECTORS = {
@@ -38,30 +45,44 @@ function formatEther(wei: bigint): number {
   return Number(intPart) + Number(fracPart) / 1e18;
 }
 
-async function ethCall(data: string): Promise<string> {
-  const res = await fetch(RPC_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_call",
-      params: [{ to: CONTRACT_ADDRESS, data }, "latest"],
-    }),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`RPC ${res.status}`);
-  const json = (await res.json()) as { result?: string; error?: { message: string } };
-  if (json.error) throw new Error(json.error.message);
-  return json.result || "0x";
+async function ethCallOne(url: string, data: string, timeoutMs = 3500): Promise<string> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_call",
+        params: [{ to: CONTRACT_ADDRESS, data }, "latest"],
+      }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`RPC ${res.status}`);
+    const json = (await res.json()) as {
+      result?: string;
+      error?: { message: string };
+    };
+    if (json.error) throw new Error(json.error.message);
+    return json.result || "0x";
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function safeCall(data: string): Promise<string> {
-  try {
-    return await ethCall(data);
-  } catch {
-    return "0x";
+  for (const url of RPC_URLS) {
+    try {
+      const r = await ethCallOne(url, data);
+      if (r && r !== "0x") return r;
+    } catch (e) {
+      console.warn(`[frame/image] RPC fail ${url}:`, (e as Error).message);
+    }
   }
+  return "0x";
 }
 
 async function fetchFrameStats() {

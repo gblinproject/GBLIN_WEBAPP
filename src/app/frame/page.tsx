@@ -62,7 +62,7 @@ export async function generateMetadata({
       action: {
         type: "launch_miniapp",
         name: "GBLIN",
-        url: SITE_URL,
+        url: `${SITE_URL}/frame`,
         splashImageUrl: SPLASH_IMAGE,
         splashBackgroundColor: "#0a0b14",
       },
@@ -77,7 +77,7 @@ export async function generateMetadata({
       action: {
         type: "launch_frame",
         name: "GBLIN",
-        url: SITE_URL,
+        url: `${SITE_URL}/frame`,
         splashImageUrl: SPLASH_IMAGE,
         splashBackgroundColor: "#0a0b14",
       },
