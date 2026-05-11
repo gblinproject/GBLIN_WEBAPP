@@ -714,10 +714,10 @@ function ResultCard(r: ResultProps) {
           <TrendingDown size={16} color="#fb7185" style={{ marginTop: 1, flexShrink: 0 }} />
           <div>
             <div style={{ color: "#fb7185", fontWeight: 700, fontSize: 13 }}>
-              Not quite — correct answer: cbBTC {r.correctAllocation.cbBTC}% / WETH {r.correctAllocation.weth}% / USDC {r.correctAllocation.usdc}%
+              Wrong guess — try again.
             </div>
             <div style={{ color: C.textMute, fontSize: 11, marginTop: 2 }}>
-              Your guess: cbBTC {r.userAllocation.cbBTC}% / WETH {r.userAllocation.weth}% / USDC {r.userAllocation.usdc}%
+              GBLIN would have saved you {r.saved > 0 ? `$${Math.round(r.saved).toLocaleString("en-US")}` : "$0"} on a $10,000 basket. Can you guess how?
             </div>
           </div>
         </div>
