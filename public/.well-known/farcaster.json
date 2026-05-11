@@ -22,8 +22,7 @@
     "buttonTitle": "Open GBLIN",
     "ogTitle": "GBLIN - Survive the Crash",
     "ogDescription": "Autonomous on-chain basket with cbBTC, WETH and USDC. Crash Shield active. No admin keys.",
-    "ogImageUrl": "https://gblin.digital/api/frame/image",
-    "castShareUrl": "https://warpcast.com/~/compose?text=Check%20out%20GBLIN%20-%20autonomous%20on-chain%20basket%20on%20Base&embeds[]=https://gblin.digital/frame"
+    "ogImageUrl": "https://gblin.digital/api/frame/image"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjMwNjU2NDMsInR5cGUiOiJhdXRoIiwia2V5IjoiMHg0NUM4NUQxODg0ZTk5MkIxMWFkREU1MkIyNWQ0MDhkNjk1QkUyQjVkIn0",
