@@ -405,16 +405,18 @@ export function HomeView(props: HomeViewProps) {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">Weekly Challenge</p>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">Every Sunday</span>
+                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('sundayChallenge.eyebrow')}</p>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">{t('sundayChallenge.badge')}</span>
               </div>
               <h3 className="font-serif text-xl tracking-tight text-white sm:text-2xl">
-                Crash Shield Game — Win $10
+                {t('sundayChallenge.title')}
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-7 text-white/50">
-                Guess exactly how GBLIN reallocated during a real crash (Jan 2026, FTX, May 2021, Mar 2020).
-                If you win, <span className="font-semibold text-white/80">share the result tagging @gblin on Farcaster or @GBLIN_Protocol on X.</span>{" "}
-                Every Sunday one winner is drawn at random and receives <span className="font-bold text-amber-400">$10</span> directly in their wallet.
+                {t('sundayChallenge.body')}{' '}
+                <span className="font-semibold text-white/80">{t('sundayChallenge.bodyBold')}</span>{' '}
+                {t('sundayChallenge.bodyEnd')}{' '}
+                <span className="font-bold text-amber-400">{t('sundayChallenge.amount')}</span>{' '}
+                {t('sundayChallenge.bodyTail')}
               </p>
             </div>
           </div>
@@ -423,7 +425,7 @@ export function HomeView(props: HomeViewProps) {
             className="shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.3)] sm:self-center"
           >
             <Shield className="h-4 w-4" />
-            Play the Game
+            {t('sundayChallenge.cta')}
           </Link>
         </div>
       </section>

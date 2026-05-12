@@ -307,7 +307,7 @@ function OnboardingHint({ onDismiss }: { onDismiss: () => void }) {
           }}
         >
           GBLIN auto-rotates into stables when a drawdown crosses 20%. Guess the exact reallocation during a real crash.
-          If you guess right → post your win tagging @gblin on Farcaster or X.
+          If you guess right → post your win tagging @gblin on Farcaster or @GBLIN_Protocol on X.
           Every Sunday one winner is drawn at random and receives $10 directly in their wallet.
         </div>
       </div>
@@ -646,7 +646,7 @@ function ResultCard(r: ResultProps) {
       `I guessed the exact reallocation GBLIN made during the ${r.crash.shortLabel} crash.\n` +
       `GBLIN saved ${fmtUsd(r.saved)} on a ${fmtUsd(r.startingUsd)} basket vs direct hold.\n\n` +
       `Every Sunday one winner is drawn at random and gets $10 in their wallet.\n` +
-      `Can you guess it too? → gblin.digital/game\n\n@gblin`
+      `Can you guess it too? → gblin.digital/game\n\n@gblin @GBLIN_Protocol`
     : r.saved > 0
       ? `just ran the ${r.crash.shortLabel} crash test on GBLIN.\n\n` +
         `direct portfolio: ${fmtPct(r.directDrawdown)} | with Crash Shield: ${fmtPct(r.gblinDrawdown)}\n` +
@@ -697,7 +697,7 @@ function ResultCard(r: ResultProps) {
               You nailed it! Correct allocation guessed.
             </div>
             <div style={{ color: C.textDim, fontSize: 12, marginTop: 2 }}>
-              Post this win tagging @gblin on Farcaster or X to enter the Sunday draw
+              Post this win tagging @gblin on Farcaster or @GBLIN_Protocol on X to enter the Sunday draw
             </div>
           </div>
         </div>

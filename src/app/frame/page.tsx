@@ -286,7 +286,7 @@ export default function FramePage() {
             >
               Guess how GBLIN reallocated during a real crash. If you win,{" "}
               <span style={{ color: C.text, fontWeight: 600 }}>
-                post your result tagging @gblin on Farcaster or X.
+                post your result tagging @gblin on Farcaster or @GBLIN_Protocol on X.
               </span>{" "}
               Every Sunday one winner is drawn at random and receives{" "}
               <span style={{ color: "#fbbf24", fontWeight: 700 }}>$10</span>{" "}

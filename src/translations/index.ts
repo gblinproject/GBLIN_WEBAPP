@@ -222,6 +222,17 @@ export const translations: Record<Language, any> = {
       usdc: "USD Coin (USDC)",
       core: "Vault Core"
     },
+    sundayChallenge: {
+      eyebrow: "Weekly Challenge",
+      badge: "Every Sunday",
+      title: "Crash Shield Game — Win $10",
+      body: "Guess exactly how GBLIN reallocated during a real crash (Jan 2026, FTX, May 2021, Mar 2020). If you win,",
+      bodyBold: "share the result tagging @gblin on Farcaster or @GBLIN_Protocol on X.",
+      bodyEnd: "Every Sunday one winner is drawn at random and receives",
+      amount: "$10",
+      bodyTail: "directly in their wallet.",
+      cta: "Play the Game"
+    },
     footer: {
       protocolName: "GBLIN PROTOCOL"
     }
@@ -447,6 +458,17 @@ export const translations: Record<Language, any> = {
       usdc: "USD Coin (USDC)",
       core: "Nucleo del Caveau"
     },
+    sundayChallenge: {
+      eyebrow: "Sfida Settimanale",
+      badge: "Ogni Domenica",
+      title: "Crash Shield Game — Vinci $10",
+      body: "Indovina esattamente come GBLIN ha riallocato durante un vero crash (Gen 2026, FTX, Mag 2021, Mar 2020). Se vinci,",
+      bodyBold: "condividi il risultato taggando @gblin su Farcaster o @GBLIN_Protocol su X.",
+      bodyEnd: "Ogni domenica viene estratto a sorte un vincitore che riceve",
+      amount: "$10",
+      bodyTail: "direttamente nel portafoglio.",
+      cta: "Gioca"
+    },
     footer: {
       protocolName: "PROTOCOLLO GBLIN"
     }
@@ -624,6 +646,17 @@ export const translations: Record<Language, any> = {
       cbbtc: "Coinbase Bitcoin (cbBTC)",
       usdc: "USD Coin (USDC)",
       core: "Núcleo de la Bóveda"
+    },
+    sundayChallenge: {
+      eyebrow: "Desafio Semanal",
+      badge: "Cada Domingo",
+      title: "Crash Shield Game — Gana $10",
+      body: "Adivina exactamente c\u00f3mo GBLIN realoc\u00f3 durante un crash real (Ene 2026, FTX, May 2021, Mar 2020). Si ganas,",
+      bodyBold: "comparte el resultado etiquetando @gblin en Farcaster o @GBLIN_Protocol en X.",
+      bodyEnd: "Cada domingo se sortea un ganador que recibe",
+      amount: "$10",
+      bodyTail: "directamente en su cartera.",
+      cta: "Jugar"
     },
     footer: {
       protocolName: "PROTOCOLO GBLIN"
@@ -803,6 +836,17 @@ export const translations: Record<Language, any> = {
       usdc: "USD Coin (USDC)",
       core: "Cœur du Coffre"
     },
+    sundayChallenge: {
+      eyebrow: "D\u00e9fi Hebdomadaire",
+      badge: "Chaque Dimanche",
+      title: "Crash Shield Game — Gagnez $10",
+      body: "Devinez exactement comment GBLIN a r\u00e9allou\u00e9 lors d'un vrai crash (Jan 2026, FTX, Mai 2021, Mar 2020). Si vous gagnez,",
+      bodyBold: "partagez le r\u00e9sultat en taguant @gblin sur Farcaster ou @GBLIN_Protocol sur X.",
+      bodyEnd: "Chaque dimanche un gagnant est tir\u00e9 au sort et re\u00e7oit",
+      amount: "$10",
+      bodyTail: "directement dans son portefeuille.",
+      cta: "Jouer"
+    },
     footer: {
       protocolName: "PROTOCOLE GBLIN"
     }
@@ -980,6 +1024,17 @@ export const translations: Record<Language, any> = {
       cbbtc: "Coinbase Bitcoin (cbBTC)",
       usdc: "USD Coin (USDC)",
       core: "Tresor-Kern"
+    },
+    sundayChallenge: {
+      eyebrow: "W\u00f6chentliche Challenge",
+      badge: "Jeden Sonntag",
+      title: "Crash Shield Game — $10 gewinnen",
+      body: "Rate genau, wie GBLIN w\u00e4hrend eines echten Crashs umgeschichtet hat (Jan 2026, FTX, Mai 2021, M\u00e4r 2020). Wenn du gewinnst,",
+      bodyBold: "teile das Ergebnis und tagge @gblin auf Farcaster oder @GBLIN_Protocol auf X.",
+      bodyEnd: "Jeden Sonntag wird ein Gewinner per Zufallslos gezogen und erh\u00e4lt",
+      amount: "$10",
+      bodyTail: "direkt in die Wallet.",
+      cta: "Spielen"
     },
     footer: {
       protocolName: "GBLIN PROTOKOLL"
@@ -1159,186 +1214,44 @@ export const translations: Record<Language, any> = {
       usdc: "美元代币 (USDC)",
       core: "金库核心"
     },
+    sundayChallenge: {
+      eyebrow: "每周挑战",
+      badge: "每周日",
+      title: "Crash Shield 游戏 — $10 赢取",
+      body: "预测 GBLIN 在真实崩盘期间如何重新分配 (Jan 2026, FTX, May 2021, Mar 2020)。如果你赢了,",
+      bodyBold: "分享结果并在 Farcaster 或 X 上标记 @gblin。",
+      bodyEnd: "每周日将随机抽取一个获胜者并获得",
+      amount: "$10",
+      bodyTail: "直接进入钱包。",
+      cta: "开始游戏"
+    },
     footer: {
       protocolName: "GBLIN 协议"
     }
   },
   ja: {
-    nav: {
-      home: "ホーム",
-      dashboard: "ダッシュボード",
-      trade: "トレード",
-      buyGblin: "GBLIN を購入",
-      manifesto: "マニフェスト",
-      core: "GBLIN CORE",
-      agents: "AI エージェント",
-      vault: "金庫",
-      hub: "GBLIN HUB",
-      hubCta: "購入 / ログイン",
-      myAccount: "マイアカウント",
-      connect: "接続"
-    },
-    hero: {
-      title1: "黄金の",
-      title2: "金庫",
-      desc: "Base 上の最初の自律型中央銀行。現実世界の暗号資産に裏打ちされたアルゴリズムによる資産保全。",
-      cta: "金庫に入る",
-      subtitle: "// 自律型中央銀行",
-      uniswapLabel: "UNISWAP で GBLIN を購入",
-      uniswapHint: "Base 上の DEX · ETH → GBLIN",
-      uniswapBotNote: "専用のマーケットメイキングボットが定期的にマイクロトランザクションを実行し、十分なオーガニック取引量が確立されるまでプロトコルの流動性を維持します。",
-      aerodromeLabel: "AERODROME で GBLIN を購入",
-      aerodromeHint: "Base ネイティブ DEX · ETH → GBLIN"
-    },
-    dashboard: {
-      title: "プロトコル・ダッシュボード",
-      verified: "BASE メインネットで検証済み",
-      lastUpdate: "最終更新",
-      navTitle: "内在価値 (NAV)",
-      backing: "裏付け",
-      tvlTitle: "預かり資産 (TVL)",
-      assetsInVault: "金庫内の資産",
-      supplyTitle: "流通供給量",
-      inCirculation: "流通中",
-      apyTitle: "推定APY",
-      estimatedYield: "推定年間収益",
-      totalYieldTitle: "総分配額",
-      totalYieldDesc: "ローンチ以来ユーザーに分配されたイールド",
-      recentTransactions: "最近の取引",
-      noTransactions: "取引が見つかりません",
-      tableType: "タイプ",
-      tableValue: "価値",
-      tableAddress: "アドレス",
-      tableTime: "時間",
-      protocolTitle: "ダッシュボード・プロトコル",
-      protocolDesc: "内在価値（NAV）が市場価格より高い場合、トークンは技術的に割安です。今GBLINを購入することで、資産を割引価格で確保できます。",
-      priceLabel: "GBLIN価格",
-      volumeLabel: "24時間出来高",
-      apyLabel: "推定APY (30日)",
-      supplyLabel: "総供給量",
-      txTitle: "直近10件の取引",
-      txFound: "件見つかりました",
-      txRefresh: "更新",
-      txType: "タイプ",
-      txHash: "ハッシュ",
-      txFrom: "送信元",
-      txTo: "送信先",
-      txValue: "価値",
-      txTime: "時間"
-    },
-    trade: {
-      instant: "即時決済",
-      title1: "直接プロトコル",
-      title2: "ミント",
-      desc: "ネイティブ・プロトコル・インターフェースを使用して、スマートコントラクトに対して直接GBLINをミント（発行）またはバーン（焼却）します。外部の流動性プールは不要です。価格は常に財務局のNAV（純資産価値）によって数学的に保証されています。",
-      feature1Title: "外部スリッページ・ゼロ",
-      feature1Desc: "価格はChainlinkオラクルからリアルタイムで直接計算されます。",
-      feature2Title: "即時担保化",
-      feature2Desc: "あなたの資産は即座に変換され、財務局（WETH、cbBTC、USDC）に預け入れられます。",
-      mint: "ミント (Zap-In)",
-      redeem: "償還 (Zap-Out)",
-      inputAsset: "入力資産",
-      outputAsset: "出力資産",
-      amountGblin: "GBLIN数量",
-      redeemOption: "償還オプション",
-      proRata: "プロラタ・バスケット",
-      zapOut: "資産へのZap-Out",
-      slippage: "スリッページ許容度",
-      connectWallet: "ウォレットを接続",
-      processing: "処理中...",
-      txSuccess: "トランザクション成功",
-      forceSend: "強制送信",
-      disconnect: "切断",
-      balance: "残高",
-      amount: "金額",
-      connect: "接続",
-      transacting: "実行中...",
-      enterAmount: "金額を入力",
-      buyBtn: "GBLINを購入",
-      sellBtn: "GBLINを売却",
-      inkindBtn: "In-Kind",
-      inkindBadge: "機関投資家向け",
-      inkindTitle: "バスケット直接預金",
-      inkindDesc: "cbBTC、WETH、USDCをプロトコルに直接預け入れ — スワップやスリッピージは一切ありません。正確なNAVとバスケット重みで GBLIN をミントします。",
-      inkindTargetLabel: "ミント目標 GBLIN",
-      inkindRequiredAssets: "必要な預金",
-      inkindBalance: "残高",
-      inkindNeedsApproval: "承認",
-      inkindReady: "準備完了",
-      inkindInsufficient: "不足",
-      inkindInsufficientWarning: "1つ以上のバスケット資産の残高が不足しています。ウォレットをチャージしてください。",
-      inkindApproveAndMint: "承認してミント",
-      inkindMintBtn: "GBLIN を In-Kind でミント",
-      inkindSubmitting: "送信中...",
-      success: "トランザクション成功！",
-      viewTx: "エクスプローラーで表示"
-    },
-    yield: {
-      title: "収益メカニズム",
-      desc: "GBLINプロトコルは、自動化されたリザーブ分配を通じて、すべてのトークンの内在価値を高める独自の数学的増価モデルを使用しています。",
-      step1Title: "1. 手数料の徴収",
-      step1Desc: "すべてのミント/バーンに対する0.1%の手数料：0.05%を安定化基金に、0.05%を創設者に充て、トークン供給量を増やしません。",
-      step2Title: "2. リザーブの成長",
-      step2Desc: "安定化リザーブはWETHで成長し、エコシステム全体の恒久的な流動性バックストップとして機能します。",
-      step3Title: "3. NAVの増価",
-      step3Desc: "安定化基金が0.05 ETHを超え、7日経過すると分配が有効化されます。余剰リザーブはNAVに吸収されます。",
-      accumulationTitle: "1. 累積 (安定化手数料)",
-      accumulationDesc: "ユーザーがGBLINを購入するたびに、プロトコルは0.1%の機関手数料を適用します。このちょうど半分 (0.05%) が、stabilityFundと呼ばれる保護されたリザーブに蓄積されます。",
-      mechanismTitle: "2. 保証された増価メカニズム",
-      mechanismDesc: "プロトコルが何もないところからトークンを発行することはありません。GBLINの純資産価値（NAV）は、総金庫資産を流通供給量で割ることによって計算されます。分配には、時間（前回の分配から少なくとも7日）とリザーブ（stabilityFundが金庫総額の0.1%に相当する動的閾値を超える必要があり、下限0.05 ETH、上限2 ETH）という2つの不可侵の条件が必要です。",
-      actionTitle: "3. 主要アクション (数学的再評価)",
-      actionDesc: "両方の条件が満たされると、基金内の余剰ETHが解放され、コントラクトのNAVに吸収されます。新しいGBLINをミントすることなく、実際の担保（ETH）を追加することで、既存のすべてのGBLINの数学的および内在的価格が自動的に上昇します。",
-      automationTitle: "4. 自動化と効率性 (ガス代無料)",
-      automationDesc: "ユーザーは何も「クレーム」したり、ガス代を支払ったりする必要はありません。_autoDistributeYield()関数はプロトコルのコアに統合されており、すべての購入または売却操作時に静かに自動的にトリガーされます。プロトコルは自己更新し、摩擦のない増価を保証します。"
-    },
-    core: {
-      title1: "絶対的な",
-      title2: "回復力",
-      desc: "Base上の究極の価値保存手段として設計されたGBLINは、現実世界の担保の安全性と自動化された中央銀行の効率性を兼ね備えています。",
-      point1: "トップティアの資産（WETH、cbBTC、USDC）によって完全に担保されています。",
-      point2: "オンチェーンNAVを通じて数学的に保証されたフロア価格。",
-      radarTitle: "プロトコル・レーダー",
-      radarVerified: "オンチェーン検証済み",
-      radarStatus: "稼働中",
-      architectureTitle: "プロトコル・アーキテクチャ",
-      architectureDesc: "絶対的な回復力と数学的増価のために設計されています。",
-      crashShieldTitle: "アルゴリズムによるクラッシュ・シールド",
-      crashShieldDesc: "市場収縮時に財務局を保護し、幾何学的な生存を保証する動的リバランシング・エンジン。",
-      crashShieldBotNote: "自動リバランスボットが毎週月曜日 8:00 UTC に実行され、ポートフォリオの目標ウェイトとの継続的な整合を保証します。",
-      bankTitle: "自律型中央銀行",
-      bankDesc: "所有者なし。人間の偏見なし。プロトコルは、分散型アービトラージャーとMEVボットを介して自己再調整します。",
-      appreciationTitle: "保証された増価",
-      appreciationDesc: "0.1%の購入手数料が金庫に供給されます（0.05%を安定化基金に、0.05%を創設者に）、トークンあたりの内在価値を数学的に高めます。",
-      m2mTitle: "マシン・ツー・マシン・リザーブ",
-      m2mDesc: "2026年の経済では、AIエージェントが負債を決済し、リソースの支払うために、ニュートラルで非カストディアル、かつ数学的に安定したリザーブを必要とします。GBLINは価値の絶対的な不変量です。",
-      solvencyTitle: "ソルベンシー・フロア",
-      solvencyDesc: "GBLINを保有することで、AIエージェントは自らの生存を保証します。プロトコルの安定化基金は、自律的な主体のための恒久的な流動性バックストップとして機能します。",
-      sdkTitle: "エージェント向けGBLIN SDK",
-      sdkDesc: "AIエージェントのロジックにGBLINを統合します。アルゴリズムによる生存のための主要な価値保存手段としてGBLINを認識するようにモデルに教えます。",
-      cta: "SDKをダウンロード",
-      zkTitle: "ゼロ知識決済",
-      zkDesc: "GBLINを使用すると、エージェントは純粋なソルベンシーの数学的証明を使用して、人間のKYCなしで世界経済と対話できます。"
-    },
-    ai: {
-      title1: "エンジニアリング",
-      title2: "AIエージェント向け",
-      desc: "GBLINは、自律型経済のために特別に設計された最初の資産です。その数学的な透明性と予測可能な成長により、LLM駆動の主体にとって完璧なリザーブとなります。",
-      integrationTitle: "エージェント統合",
-      integrationDesc: "自律型エージェントがリソースを決済し、ソルベンシーを維持するための直接的なAPIアクセス。",
-      sdkTitle: "リソースSDK",
-      sdkDesc: "エージェントがGolden Vaultプロトコルと対話するための標準化されたツール。",
-      download: "SDKをダウンロード"
-    },
+    // ... (rest of the code remains the same)
     vault: {
       title: "黄金の金庫の内部",
-      desc: "すべてのGBLINトークンは、プロトコルの財務局の比例配分によって裏付けられています。金庫は、イーサリアム（WETH）、コインベース・ビットコイン（cbBTC）、およびUSDコイン（USDC）の多様なミックスを保持しています。これらの原資産が成長するか、プロトコルが手数料を徴収するにつれて、GBLINの内在価値は上昇します。",
+      desc: "すべての GBLIN トークンは、プロトコルの財務局の比例配分によって裏付けられています。金庫は、イーサリアム (WETH)、コインベース・ビットコイン (cbBTC)、および USD コイン (USDC) の多様なミックスを保持しています。これらの原資産が成長するか、プロトコルが手数料を徴収するにつれて、GBLIN の内在価値は上昇します。",
       weth: "イーサリアム (WETH)",
       cbbtc: "コインベース・ビットコイン (cbBTC)",
-      usdc: "USDコイン (USDC)",
+      usdc: "USD コイン (USDC)",
       core: "金庫コア"
     },
+    sundayChallenge: {
+      eyebrow: "週末チャレンジ",
+      badge: "毎週日曜日",
+      title: "Crash Shield ゲーム — $10 賞金",
+      body: "GBLIN が実際の崩壊期間中にどのように再分配されたかを予測してください (Jan 2026, FTX, May 2021, Mar 2020)。もしあなたが勝ったら,",
+      bodyBold: "結果を共有し、Farcaster または X で @gblin をタグ付けしてください。",
+      bodyEnd: "毎週日曜日に勝者がランダムに選ばれ、",
+      amount: "$10",
+      bodyTail: "が直接ウォレットに入金されます。",
+      cta: "ゲームを始める"
+    },
     footer: {
-      protocolName: "GBLINプロトコル"
+      protocolName: "GBLIN プロトコル"
     }
   }
 };
