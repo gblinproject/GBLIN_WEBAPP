@@ -204,25 +204,9 @@ export default function FramePage() {
               />
               live on base · 0 admin keys
             </div>
-            <p
-              style={{
-                color: C.textDim,
-                margin: 0,
-                fontSize: 12.5,
-                lineHeight: 1.55,
-                maxWidth: 480,
-              }}
-            >
-              Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
-              Crash Shield that rotates risk into stables when drawdowns exceed 20%.
-              Fully open source.
-            </p>
           </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
-
-          {/* Weekly challenge banner */}
+          {/* Weekly challenge banner — moved above description for max visibility */}
           <div
             style={{
               padding: "14px 16px",
@@ -331,6 +315,21 @@ export default function FramePage() {
               Play &amp; Win
             </Link>
           </div>
+
+          {/* Description */}
+          <p
+            style={{
+              color: C.textDim,
+              margin: 0,
+              fontSize: 12.5,
+              lineHeight: 1.55,
+              textAlign: "center",
+            }}
+          >
+            Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
+            Crash Shield that rotates risk into stables when drawdowns exceed 20%.
+            Fully open source.
+          </p>
 
           {/* Divider */}
           <div style={{ height: 1, background: C.border, margin: "0 -4px" }} />
