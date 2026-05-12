@@ -394,6 +394,40 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
+      {/* SUNDAY CHALLENGE BANNER */}
+      <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] via-[#080808] to-rose-500/[0.04]">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-500/10 blur-[60px]" />
+        <div className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/15 text-amber-300">
+              <Shield className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">Weekly Challenge</p>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">Every Sunday</span>
+              </div>
+              <h3 className="font-serif text-xl tracking-tight text-white sm:text-2xl">
+                Crash Shield Game — Win $10
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-7 text-white/50">
+                Guess exactly how GBLIN reallocated during a real crash (Jan 2026, FTX, May 2021, Mar 2020).
+                If you win, <span className="font-semibold text-white/80">share the result tagging @gblin on Farcaster or @GBLIN_Protocol on X.</span>{" "}
+                Every Sunday one winner is drawn at random and receives <span className="font-bold text-amber-400">$10</span> directly in their wallet.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/game"
+            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.3)] sm:self-center"
+          >
+            <Shield className="h-4 w-4" />
+            Play the Game
+          </Link>
+        </div>
+      </section>
+
       {/* DEFILLAMA TRACKED */}
       <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
         <div className="p-6 sm:p-8">
