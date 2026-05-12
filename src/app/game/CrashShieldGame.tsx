@@ -306,9 +306,9 @@ function OnboardingHint({ onDismiss }: { onDismiss: () => void }) {
             lineHeight: 1.55,
           }}
         >
-          GBLIN auto-rotates into stables when a drawdown crosses 20%.
-          Guess how GBLIN reallocated during a real crash (±12% tolerance).
-          If you guess right → you win. Share the result on Farcaster every Sunday for a chance to win $10.
+          GBLIN auto-rotates into stables when a drawdown crosses 20%. Guess the exact reallocation during a real crash.
+          If you guess right → post your win tagging @gblin on Farcaster or X.
+          Every Sunday one winner is drawn at random and receives $10 directly in their wallet.
         </div>
       </div>
       <button
@@ -642,10 +642,11 @@ function ResultCard(r: ResultProps) {
   const shareEmbed = `${SITE_URL}/game?crash=${r.crash.id}&saved=${savedRounded}&direct=${directLossPct.toFixed(1)}&gblin=${gblinLossPct.toFixed(1)}${r.isWinner ? "&won=true" : ""}`;
 
   const shareText = r.isWinner
-    ? `I just won the GBLIN Crash Shield challenge!\n\n` +
-      `I correctly predicted how GBLIN would reallocate during the ${r.crash.shortLabel} crash.\n` +
+    ? `I just cracked the GBLIN Crash Shield challenge!\n\n` +
+      `I guessed the exact reallocation GBLIN made during the ${r.crash.shortLabel} crash.\n` +
       `GBLIN saved ${fmtUsd(r.saved)} on a ${fmtUsd(r.startingUsd)} basket vs direct hold.\n\n` +
-      `Try it yourself → gblin.digital/game\nEvery Sunday the creator picks a random winner for $10.`
+      `Every Sunday one winner is drawn at random and gets $10 in their wallet.\n` +
+      `Can you guess it too? → gblin.digital/game\n\n@gblin`
     : r.saved > 0
       ? `just ran the ${r.crash.shortLabel} crash test on GBLIN.\n\n` +
         `direct portfolio: ${fmtPct(r.directDrawdown)} | with Crash Shield: ${fmtPct(r.gblinDrawdown)}\n` +
@@ -696,7 +697,7 @@ function ResultCard(r: ResultProps) {
               You nailed it! Correct allocation guessed.
             </div>
             <div style={{ color: C.textDim, fontSize: 12, marginTop: 2 }}>
-              Share on Farcaster every Sunday for a chance to win $10
+              Post this win tagging @gblin on Farcaster or X to enter the Sunday draw
             </div>
           </div>
         </div>
@@ -824,7 +825,7 @@ function ResultCard(r: ResultProps) {
           ) : r.isWinner ? (
             <>
               <Sparkles size={16} strokeWidth={2.6} color="#0a0b14" />
-              <span style={{ color: "#0a0b14" }}>Share win — enter the $10 draw</span>
+              <span style={{ color: "#0a0b14" }}>Share on Farcaster — enter the $10 draw</span>
             </>
           ) : (
             <>
@@ -833,6 +834,25 @@ function ResultCard(r: ResultProps) {
             </>
           )}
         </button>
+        {r.isWinner && (
+          <button
+            type="button"
+            onClick={() => {
+              const xText = encodeURIComponent(shareText);
+              window.open(`https://x.com/intent/tweet?text=${xText}`, "_blank", "noopener,noreferrer");
+            }}
+            style={{
+              ...ghostBtn,
+              border: "1px solid rgba(148,163,184,0.25)",
+              padding: "12px",
+              gap: 7,
+              fontSize: 13,
+            }}
+          >
+            <Share2 size={14} strokeWidth={2.4} />
+            Share on X — tag @GBLIN_Protocol
+          </button>
+        )}
         {shareState === "error" && (
           <div style={{ fontSize: 12, color: C.rose, textAlign: "center" }}>
             Share failed. Try again or copy the link manually.

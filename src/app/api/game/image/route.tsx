@@ -231,8 +231,7 @@ function HeroBody() {
           display: "flex",
         }}
       >
-        Pick an allocation. Run it through the Jan 2026, May 2021 or Mar 2020
-        cascade. See what GBLIN&apos;s autonomous Crash Shield would have done.
+        Pick an allocation. Run it through 4 real crashes. See what GBLIN&apos;s autonomous Crash Shield would have done.
       </div>
       <div
         style={{
@@ -243,7 +242,8 @@ function HeroBody() {
         }}
       >
         {[
-          { label: "JAN 2026 · -28% / -34%", from: "rgba(244,63,94,0.18)", ring: "rgba(244,63,94,0.4)" },
+          { label: "JAN 2026 · -40% / -43%", from: "rgba(244,63,94,0.18)", ring: "rgba(244,63,94,0.4)" },
+          { label: "NOV 2022 · -26% / -32%", from: "rgba(251,191,36,0.18)", ring: "rgba(251,191,36,0.4)" },
           { label: "MAY 2021 · -48% / -58%", from: "rgba(168,85,247,0.18)", ring: "rgba(168,85,247,0.4)" },
           { label: "MAR 2020 · -50% / -45%", from: "rgba(59,130,246,0.18)", ring: "rgba(59,130,246,0.4)" },
         ].map((tag) => (

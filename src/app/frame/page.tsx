@@ -300,14 +300,13 @@ export default function FramePage() {
                 lineHeight: 1.6,
               }}
             >
-              Play the Crash Shield game, guess how GBLIN reallocated during a
-              real crypto crash, and{" "}
+              Guess how GBLIN reallocated during a real crash. If you win,{" "}
               <span style={{ color: C.text, fontWeight: 600 }}>
-                share your winning result on Farcaster.
+                post your result tagging @gblin on Farcaster or X.
               </span>{" "}
-              Every Sunday the GBLIN creator picks one random winner and deposits{" "}
+              Every Sunday one winner is drawn at random and receives{" "}
               <span style={{ color: "#fbbf24", fontWeight: 700 }}>$10</span>{" "}
-              directly into their wallet.
+              directly in their wallet.
             </p>
             <Link
               href="/game"
