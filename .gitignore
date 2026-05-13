@@ -61,3 +61,5 @@ game-test.png
 game-img.png
 next-start*.log
 
+# Smart contract source (maintained in separate repository)
+contracts/
