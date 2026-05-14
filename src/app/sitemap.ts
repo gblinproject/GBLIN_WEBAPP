@@ -25,12 +25,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/buy-gblin`,
-      lastModified,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
       url: `${BASE_URL}/rebalance`,
       lastModified,
       changeFrequency: 'daily',

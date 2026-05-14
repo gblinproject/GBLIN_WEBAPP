@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description:
     'Mint GBLIN by depositing ETH on Base. Your ETH is automatically converted into a 45% cbBTC + 45% WETH + 10% USDC basket. Audited smart contract, no team allocation, no presale.',
   alternates: { canonical: 'https://gblin.digital/buy-gblin' },
+  robots: { index: false },
 };
 
 export default function BuyGblinPage() {
