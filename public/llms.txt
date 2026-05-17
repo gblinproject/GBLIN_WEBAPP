@@ -1,0 +1,64 @@
+# GBLIN Protocol — for AI agents and crawlers
+
+> GBLIN is a non-speculative on-chain index on Base mainnet (45% cbBTC +
+> 45% WETH + 10% USDC) with an algorithmic Crash Shield. It is also the
+> treasury standard for autonomous AI agents, with an open-source MCP
+> server enabling Just-In-Time GBLIN→USDC swaps for x402 payments.
+
+## Key facts
+
+- **Network:** Base mainnet (chain id 8453)
+- **Contract:** 0x38DcDB3A381677239BBc652aed9811F2f8496345
+- **Token decimals:** 18
+- **NAV computation:** `quoteSellGBLIN(1e18) × Chainlink ETH/USD feed`
+- **Fees:** 0.05% founder + 0.05% stability = 10 bps total
+- **Min deposit:** 0.0005 ETH
+- **Sell cooldown after buy:** 120 seconds
+- **License:** MIT (open source, no telemetry)
+
+## For AI agent developers
+
+- **MCP Server:** `npx @gblin/mcp-server`
+- **GitHub:** https://github.com/gblinproject/GBLIN-MCP
+- **Docs:** https://gblin.digital/agents
+- **5 MCP tools exposed:**
+  1. `get_treasury_state` — live NAV + basket + Crash Shield status
+  2. `quote_safe_swap` — preview buy/sell with dynamic slippage
+  3. `swap_gblin_to_usdc_jit` — atomic GBLIN→USDC calldata for x402
+  4. `invest_usdc_to_gblin` — MEV-safe USDC→GBLIN reinvestment
+  5. `analyze_treasury_health` — balance, gas, runway, advice
+
+## Wallet compatibility
+
+The contract's native `sellGBLINForToken(amount, USDC, fee, minOut)` is a
+single atomic transaction. Works identically on:
+
+- EOA wallets (Privy, MetaMask, raw key)
+- ERC-4337 smart accounts (Safe, Coinbase smart wallet)
+- EIP-7702 delegated EOAs (Pectra+)
+
+No batched UserOp or Account Abstraction dependency.
+
+## x402 compatibility
+
+GBLIN MCP does NOT replace x402. x402 invoices still settle in USDC
+through the standard Coinbase facilitator. The MCP server simply produces
+the swap calldata the agent broadcasts immediately before paying.
+
+## Useful pages
+
+- Homepage: https://gblin.digital/
+- For AI agents: https://gblin.digital/agents
+- Live dashboard: https://gblin.digital/dashboard
+- Buy GBLIN (humans): https://gblin.digital/buy-gblin
+- Frame (Farcaster): https://gblin.digital/frame
+
+## Useful repos
+
+- Protocol web app: https://github.com/gblinproject/GBLIN
+- MCP server: https://github.com/gblinproject/GBLIN-MCP
+
+## Contact
+
+- X / Twitter: @gblinproject (search "gblin" on X)
+- Issues: https://github.com/gblinproject/GBLIN-MCP/issues
