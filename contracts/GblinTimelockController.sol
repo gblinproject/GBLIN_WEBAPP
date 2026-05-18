@@ -50,6 +50,16 @@ contract GblinTimelockController is TimelockController {
     /// @notice Thrown when the constructor receives an empty cancellers array.
     error NoCancellers();
 
+    /// @notice Thrown when address(0) is passed in `proposers` or `cancellers`.
+    /// @dev Granting a role to address(0) would make it an "open role" (anyone),
+    ///      which would defeat the purpose of separation of powers.
+    error ZeroAddressInRoles();
+
+    /// @notice Thrown when an address is supplied in both `proposers` and `cancellers`.
+    /// @param account The conflicting address.
+    /// @dev Power separation invariant: a canceller must NOT also be a proposer.
+    error ProposerCannotBeCanceller(address account);
+
     // --- CONSTRUCTOR ---
 
     /**
@@ -75,6 +85,16 @@ contract GblinTimelockController is TimelockController {
         if (proposers.length == 0) revert NoProposers();
         if (cancellers.length == 0) revert NoCancellers();
 
+        // Hardening #1: reject zero-address in any role array.
+        // A role granted to address(0) becomes an "open role" (anyone), which
+        // would silently destroy the security model.
+        for (uint256 i = 0; i < proposers.length; i++) {
+            if (proposers[i] == address(0)) revert ZeroAddressInRoles();
+        }
+        for (uint256 j = 0; j < cancellers.length; j++) {
+            if (cancellers[j] == address(0)) revert ZeroAddressInRoles();
+        }
+
         // OZ TimelockController grants CANCELLER_ROLE to every proposer by default.
         // We explicitly revoke it and re-grant it only to the dedicated cancellers,
         // enforcing strict power separation (proposer != canceller).
@@ -82,8 +102,15 @@ contract GblinTimelockController is TimelockController {
         for (uint256 i = 0; i < proposers.length; i++) {
             _revokeRole(cancellerRole, proposers[i]);
         }
-        for (uint256 i = 0; i < cancellers.length; i++) {
-            _grantRole(cancellerRole, cancellers[i]);
+
+        // Hardening #2: reject overlap between proposers and cancellers.
+        // An address with both roles defeats the separation-of-powers invariant
+        // (a single key compromise would yield full control over the timelock).
+        for (uint256 j = 0; j < cancellers.length; j++) {
+            if (hasRole(PROPOSER_ROLE, cancellers[j])) {
+                revert ProposerCannotBeCanceller(cancellers[j]);
+            }
+            _grantRole(cancellerRole, cancellers[j]);
         }
     }
 
