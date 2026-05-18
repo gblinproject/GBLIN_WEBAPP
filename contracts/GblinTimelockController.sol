@@ -1,6 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════════════╗
+ * ║                        GBLIN TIMELOCK CONTROLLER                               ║
+ * ║                         DEPLOYED INSTANCE METADATA                             ║
+ * ╚══════════════════════════════════════════════════════════════════════════════╝
+ *
+ * @deployedAt     0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
+ * @chain          Base mainnet (chainId: 8453)
+ * @deployedOn     Block 46159695, txIndex 51
+ * @deployedBy     0x9FFa542E369C53af62380296092EC669f329a9ee
+ * @transaction    0xb0583d0bb74009f683e69222c25a7b9d11bffa4e8aba045cbcbc50f8ef5d8ffd
+ * @verifiedOn     Etherscan/BaseScan
+ *
+ * PROPOSERS (schedule ops):
+ *   - 0x9FFa542E369C53af62380296092EC669f329a9ee
+ *
+ * CANCELLERS (veto guardian):
+ *   - 0x30590c0D05c26562d7296CE3D927d3418d2e6dcA
+ *
+ * EXECUTORS (open to anyone):
+ *   - 0x0000000000000000000000000000000000000000
+ *
+ * ADMIN: Self-administered (timelock itself)
+ *
+ * @notice  This instance is LIVE and owns GBLIN_V5. Transfer ownership
+ *          via `gblin.transferOwnership(0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd)`.
+ */
+
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 /**
