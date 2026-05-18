@@ -19,7 +19,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "thirdweb": "5.119.4",
-    "viem": "^2.22.17"
+    "viem": "^2.22.17",
+    "x402-next": "^1.2.0"
   },
   "overrides": {
     "@walletconnect/sign-client": "^2.23.9",
