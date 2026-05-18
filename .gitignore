@@ -62,5 +62,5 @@ game-test.png
 game-img.png
 next-start*.log
 
-# Smart contract source (maintained in separate repository)
-contracts/
+# Bot logic (kept private)
+contracts/GBLIN_BOT
