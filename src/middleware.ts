@@ -35,6 +35,7 @@ import { paymentProxy } from "@x402/next";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+import { createFacilitatorConfig } from "@coinbase/x402";
 
 const PAY_TO = (process.env.X402_PAY_TO_WALLET ?? "") as Address;
 
@@ -52,17 +53,26 @@ if (
   );
 }
 
-const FACILITATOR_URL =
-  process.env.X402_FACILITATOR_URL ?? "https://x402.org/facilitator";
-
 // CAIP-2 identifier required by x402 v2 — Base mainnet.
 const NETWORK = "eip155:8453" as const;
 
-// One resource server, registered once per scheme/network pair. Re-used across
-// every route via `paymentProxy(routes, server)`.
-const facilitatorClient = new HTTPFacilitatorClient({
-  url: FACILITATOR_URL as `${string}://${string}`,
-});
+// Facilitator selection — auto-detect:
+//   1. If CDP_API_KEY_ID + CDP_API_KEY_SECRET are set → use Coinbase CDP
+//      facilitator (signed requests, free tier 1k tx/mo, official Bazaar listing).
+//   2. Else if X402_FACILITATOR_URL is set → use that (e.g. PayAI).
+//   3. Else → fall back to the public https://x402.org/facilitator.
+// The `@coinbase/x402` package builds an authenticated FacilitatorConfig that
+// signs every verify/settle call with our CDP key — required by CDP.
+const cdpKeyId = process.env.CDP_API_KEY_ID;
+const cdpKeySecret = process.env.CDP_API_KEY_SECRET;
+const facilitatorClient = new HTTPFacilitatorClient(
+  cdpKeyId && cdpKeySecret
+    ? createFacilitatorConfig(cdpKeyId, cdpKeySecret)
+    : {
+        url: (process.env.X402_FACILITATOR_URL ??
+          "https://x402.org/facilitator") as `${string}://${string}`,
+      }
+);
 const server = new x402ResourceServer(facilitatorClient).register(
   NETWORK,
   new ExactEvmScheme()
