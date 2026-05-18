@@ -169,15 +169,12 @@ contract GblinTimelockController is TimelockController {
     // --- OVERRIDES: SECURITY ENFORCEMENT ---
 
     /**
-     * @dev Disabilita nativamente la funzione updateDelay di OpenZeppelin.
-     * Il delay minimo di GBLIN e hardcoded a 48h in modo permanente per
-     * garantire massima sicurezza istituzionale.
-     *
-     * Razionale: previene attacchi "rug-then-attack" (un admin malevolo che
-     * propone l azzeramento del delay e, successivamente, altera l oracle
-     * all istante). Se mai servisse un delay differente, la prassi corretta
-     * e migrare verso un nuovo contratto Timelock via 48h delay, non
-     * modificare a caldo una variabile critica.
+     * @notice Permanently disabled. The minimum delay is fixed at 48 hours.
+     * @dev Overrides OZ {TimelockController-updateDelay} to revert unconditionally.
+     *      Mitigates rug-then-attack scenarios where an admin lowers the delay and
+     *      immediately exploits a previously-restricted function. To change the
+     *      delay, a new Timelock must be deployed and ownership migrated via the
+     *      existing 48h-delayed `transferOwnership` flow.
      */
     function updateDelay(uint256) public pure override {
         revert("GblinTimelock: delay is strictly immutable");
