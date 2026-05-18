@@ -121,7 +121,7 @@ export default function FramePage() {
       >
         {/* Single unified card */}
         <section
-          className="gblin-fade-up"
+          className="gblin-fade-up gblin-glass"
           style={{
             ...glassCard,
             padding: "22px 18px 18px",
@@ -465,6 +465,7 @@ function ActionCard({
   const t = TONE_MAP[tone];
   const content = (
     <div
+      className="gblin-glass"
       style={{
         padding: "12px 12px",
         borderRadius: 14,
@@ -477,8 +478,6 @@ function ActionCard({
         transition: "transform 0.18s ease, border-color 0.18s ease",
         border: `1px solid ${primary ? t.ring : C.border}`,
         background: `linear-gradient(135deg, ${t.from} 0%, ${t.to} 100%)`,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
         boxShadow: primary
           ? `0 0 0 1px ${t.ring}, 0 12px 28px -14px ${t.ring}`
           : "0 1px 0 0 rgba(255,255,255,0.04) inset",
@@ -549,13 +548,14 @@ function ActionCard({
   );
 }
 
+// NOTE: backdrop-filter is applied via the `gblin-glass` className (see globals.css)
+// instead of inline, so it can be disabled on mobile / foldables where it triggers
+// GPU compositing crashes in Samsung Internet on Galaxy Z Fold.
 const glassCard: React.CSSProperties = {
   borderRadius: 22,
   background:
     "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
   border: `1px solid ${C.border}`,
-  backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
   boxShadow:
     "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 24px 60px -28px rgba(0,0,0,0.7)",
 };
