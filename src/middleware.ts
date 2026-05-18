@@ -98,8 +98,34 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
+          method: "GET",
           input: {},
           inputSchema: { type: "object", properties: {}, required: [] },
+          output: {
+            example: {
+              nav_usd: 1.234567,
+              eth_price_usd: 3450.12,
+              crash_shield_active: false,
+              slippage_buffer_pct: 2.5,
+              slippage_reason: "normal",
+              basket: [
+                {
+                  token: "0x4200000000000000000000000000000000000006",
+                  is_stable: false,
+                  base_weight_pct: 50,
+                  dynamic_weight_pct: 50,
+                  slashed: false,
+                  pool_fee_bps: 500,
+                },
+              ],
+              meta: {
+                contract: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+                chain: "base",
+                chain_id: 8453,
+                as_of_unix: 1747600000,
+              },
+            },
+          },
         }),
       },
     },
@@ -110,6 +136,7 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
+          method: "GET",
           input: { direction: "buy", amount: "0.01" },
           inputSchema: {
             type: "object",
@@ -126,6 +153,23 @@ export const middleware = paymentProxy(
             },
             required: ["direction", "amount"],
           },
+          output: {
+            example: {
+              direction: "buy",
+              amount_in_eth: "0.01",
+              expected_gblin_out: "27.853214",
+              safe_min_gblin_out: "27.156885",
+              fees: {
+                founder_eth: "0.000005",
+                stability_eth: "0.000005",
+                total_fee_bps: 10,
+              },
+              slippage_buffer_bps: 250,
+              slippage_reason: "normal",
+              next_step:
+                "Call contract.buyGBLIN(safe_min_gblin_out) with msg.value = amount_in_eth.",
+            },
+          },
         }),
       },
     },
@@ -136,7 +180,8 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          input: { usdc: "0.50", wallet: "0x0000000000000000000000000000000000000000" },
+          method: "GET",
+          input: { usdc: "0.50", wallet: "0x0000000000000000000000000000000000000001" },
           inputSchema: {
             type: "object",
             properties: {
@@ -151,6 +196,28 @@ export const middleware = paymentProxy(
             },
             required: ["usdc", "wallet"],
           },
+          output: {
+            example: {
+              action: "single_atomic_tx",
+              target_contract: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+              calldata: "0x5d2e1ca7…",
+              value: "0",
+              params: {
+                gblin_amount: "0.412345",
+                target_token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                pool_fee: 500,
+                min_usdc_out: "0.487500",
+              },
+              expected: {
+                usdc_out: "0.500000",
+                nav_used_usd: 1.234567,
+                slippage_buffer_pct: 2.5,
+                slippage_reason: "normal",
+              },
+              compatibility: { eoa: true, erc4337: true, eip7702: true },
+              gas_hint: 600000,
+            },
+          },
         }),
       },
     },
@@ -161,6 +228,7 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
+          method: "GET",
           input: { usdc: "10" },
           inputSchema: {
             type: "object",
@@ -172,6 +240,37 @@ export const middleware = paymentProxy(
             },
             required: ["usdc"],
           },
+          output: {
+            example: {
+              action: "sequential_txs",
+              steps: [
+                {
+                  step: 1,
+                  description: "Approve GBLIN contract to spend USDC",
+                  target: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                  calldata: "0x095ea7b3…",
+                  value: "0",
+                },
+                {
+                  step: 2,
+                  description:
+                    "Buy GBLIN with USDC via native contract function",
+                  target: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+                  calldata: "0x4f5d3a7b…",
+                  value: "0",
+                },
+              ],
+              expected: {
+                usdc_in: "10",
+                weth_min: "0.002824",
+                gblin_expected: "8.121345",
+                gblin_min: "7.918310",
+                slippage_buffer_pct: 2.5,
+                slippage_reason: "normal",
+              },
+              security: { mev_protected: true, min_outs_set: true },
+            },
+          },
         }),
       },
     },
@@ -182,7 +281,11 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          input: { wallet: "0x0000000000000000000000000000000000000000", daily_burn: "1.5" },
+          method: "GET",
+          input: {
+            wallet: "0x0000000000000000000000000000000000000001",
+            daily_burn: "1.5",
+          },
           inputSchema: {
             type: "object",
             properties: {
@@ -197,6 +300,38 @@ export const middleware = paymentProxy(
             },
             required: ["wallet"],
           },
+          output: {
+            example: {
+              wallet: "0x0000000000000000000000000000000000000001",
+              balances: {
+                gblin: "42.123456",
+                gblin_value_usd: 51.987654,
+                usdc: "3.500000",
+                eth: "0.001234",
+                eth_value_usd: 4.2562,
+                total_usd: 59.7438,
+              },
+              ratios: { gblin_pct: 87.02, usdc_pct: 5.86 },
+              gas_health: {
+                status: "sufficient",
+                eth_balance: "0.001234",
+                warning: null,
+              },
+              cooldown: {
+                active: false,
+                seconds_remaining: 0,
+                last_deposit_unix: 1747500000,
+              },
+              recommendation: {
+                target_gblin_pct: 90,
+                target_usdc_pct: 10,
+                action: "hold",
+                runway_days: 2,
+                reasoning:
+                  "Low burn rate ($1.5/day): maximize GBLIN exposure (90%) for treasury yield. JIT-swap on demand.",
+              },
+            },
+          },
         }),
       },
     },
@@ -207,8 +342,33 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
+          method: "GET",
           input: {},
           inputSchema: { type: "object", properties: {}, required: [] },
+          output: {
+            example: {
+              gblin_v5: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+              owner: "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
+              owner_is_timelock: true,
+              owner_is_renounced: false,
+              founder_wallet: "0x0000000000000000000000000000000000000002",
+              trust_summary:
+                "Ownership held by the 48h Timelock. All admin actions are delay-enforced on-chain.",
+              timelock: {
+                address: "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
+                min_delay_seconds: 172800,
+                min_delay_hours: 48,
+                min_delay_matches_expected: true,
+                expected_min_delay_seconds: 172800,
+              },
+              verification: {
+                gblin_v5_basescan:
+                  "https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345#readContract",
+                timelock_basescan:
+                  "https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd#readContract",
+              },
+            },
+          },
         }),
       },
     },
