@@ -98,7 +98,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: {},
           inputSchema: { type: "object", properties: {}, required: [] },
           output: {
@@ -136,7 +135,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: { direction: "buy", amount: "0.01" },
           inputSchema: {
             type: "object",
@@ -180,7 +178,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: { usdc: "0.50", wallet: "0x0000000000000000000000000000000000000001" },
           inputSchema: {
             type: "object",
@@ -228,7 +225,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: { usdc: "10" },
           inputSchema: {
             type: "object",
@@ -281,7 +277,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: {
             wallet: "0x0000000000000000000000000000000000000001",
             daily_burn: "1.5",
@@ -342,7 +337,6 @@ export const middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          method: "GET",
           input: {},
           inputSchema: { type: "object", properties: {}, required: [] },
           output: {
