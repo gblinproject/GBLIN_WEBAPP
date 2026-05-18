@@ -152,7 +152,7 @@ contract GblinTimelockController is TimelockController {
      * e migrare verso un nuovo contratto Timelock via 48h delay, non
      * modificare a caldo una variabile critica.
      */
-    function updateDelay(uint256) external pure override {
+    function updateDelay(uint256) public pure override {
         revert("GblinTimelock: delay is strictly immutable");
     }
 }
