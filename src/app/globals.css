@@ -146,6 +146,41 @@ html {
   pointer-events: none;
 }
 
+/* Glass-morphism utility — backdrop-filter is GPU-expensive and crashes
+   Samsung Internet on Galaxy Z Fold when combined with the animated
+   .gblin-mesh background and rapid input events (e.g. range sliders).
+   Apply via className alongside inline styles instead of inlining
+   backdrop-filter, so we can disable it cleanly on mobile. */
+.gblin-glass {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@media (max-width: 768px) {
+  /* Stop the heavy GPU compositing storm on phones / foldables */
+  .gblin-mesh::before {
+    animation: none;
+    filter: blur(20px);
+  }
+  .gblin-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Respect users who prefer reduced motion (also disables the mesh drift) */
+@media (prefers-reduced-motion: reduce) {
+  .gblin-mesh::before {
+    animation: none;
+  }
+  .gblin-fade-up,
+  .gblin-pulse-glow,
+  .gblin-blink,
+  .gblin-spin {
+    animation: none;
+  }
+}
+
 /* Gradient text — used for hero numbers and emphasis */
 .gblin-grad-text {
   background: linear-gradient(135deg, #60a5fa 0%, #22d3ee 50%, #34d399 100%);

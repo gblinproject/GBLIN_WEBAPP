@@ -351,7 +351,7 @@ type SetupProps = {
 
 function SetupCard(p: SetupProps) {
   return (
-    <section className="gblin-fade-up" style={glassCard}>
+    <section className="gblin-fade-up gblin-glass" style={glassCard}>
       <SectionHeader
         icon={<Coins size={14} />}
         title="01 · Allocate"
@@ -677,7 +677,7 @@ function ResultCard(r: ResultProps) {
   };
 
   return (
-    <section className="gblin-fade-up" style={glassCard}>
+    <section className="gblin-fade-up gblin-glass" style={glassCard}>
       {/* Win / Loss banner */}
       {r.isWinner ? (
         <div style={{
@@ -1184,6 +1184,9 @@ function SectionHeader({
 // Style atoms
 // ─────────────────────────────────────────────────────────────────────────────
 
+// NOTE: backdrop-filter is applied via the `gblin-glass` className (see globals.css)
+// instead of inline, so it can be disabled on mobile / foldables where it triggers
+// GPU compositing crashes in Samsung Internet on Galaxy Z Fold.
 const glassCard: React.CSSProperties = {
   maxWidth: 720,
   margin: "0 auto",
@@ -1192,8 +1195,6 @@ const glassCard: React.CSSProperties = {
   background:
     "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
   border: `1px solid ${C.border}`,
-  backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
   boxShadow:
     "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 24px 60px -28px rgba(0,0,0,0.7)",
 };
