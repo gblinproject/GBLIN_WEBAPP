@@ -18,7 +18,7 @@
 
 ## For AI agent developers
 
-- **MCP Server:** `npx @gblin/mcp-server`
+- **MCP Server:** `npx @gblin-protocol/mcp-server`
 - **GitHub:** https://github.com/gblinproject/GBLIN-MCP
 - **Docs:** https://gblin.digital/agents
 - **5 MCP tools exposed:**

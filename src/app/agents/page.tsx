@@ -66,7 +66,7 @@ const FRAMEWORKS = [
   "mcpServers": {
     "gblin": {
       "command": "npx",
-      "args": ["-y", "@gblin/mcp-server"]
+      "args": ["-y", "@gblin-protocol/mcp-server"]
     }
   }
 }`,
@@ -78,7 +78,7 @@ const FRAMEWORKS = [
   "mcpServers": {
     "gblin": {
       "command": "npx",
-      "args": ["-y", "@gblin/mcp-server"],
+      "args": ["-y", "@gblin-protocol/mcp-server"],
       "env": {
         "GBLIN_RPC_URL": "https://base-rpc.publicnode.com"
       }
@@ -94,7 +94,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 const transport = new StdioClientTransport({
   command: "npx",
-  args: ["-y", "@gblin/mcp-server"],
+  args: ["-y", "@gblin-protocol/mcp-server"],
 });
 const mcp = new MCPClient({ name: "my-agent", version: "1.0" });
 await mcp.connect(transport);`,
@@ -131,13 +131,13 @@ const FAQS = [
 const JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: '@gblin/mcp-server',
+  name: '@gblin-protocol/mcp-server',
   applicationCategory: 'DeveloperApplication',
   applicationSubCategory: 'AI Agent Tooling',
   operatingSystem: 'Cross-platform (Node.js 20+)',
   description: PAGE_DESCRIPTION,
   url: `${SITE_URL}/agents`,
-  downloadUrl: 'https://www.npmjs.com/package/@gblin/mcp-server',
+  downloadUrl: 'https://www.npmjs.com/package/@gblin-protocol/mcp-server',
   codeRepository: 'https://github.com/gblinproject/GBLIN-MCP',
   license: 'https://opensource.org/licenses/MIT',
   programmingLanguage: 'TypeScript',
@@ -189,7 +189,7 @@ export default function AgentsPage() {
             View on GitHub
           </a>
           <a
-            href="https://www.npmjs.com/package/@gblin/mcp-server"
+            href="https://www.npmjs.com/package/@gblin-protocol/mcp-server"
             target="_blank"
             rel="noopener noreferrer"
             className="px-5 py-2.5 rounded-lg border border-white/20 text-sm hover:bg-white/5 transition"
@@ -207,7 +207,7 @@ export default function AgentsPage() {
         </div>
 
         <pre className="mt-10 p-4 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 overflow-x-auto">
-          <code>npx @gblin/mcp-server</code>
+          <code>npx @gblin-protocol/mcp-server</code>
         </pre>
       </section>
 
@@ -386,7 +386,7 @@ const hash = await wallet.sendTransaction({
               GitHub
             </a>
             <a
-              href="https://www.npmjs.com/package/@gblin/mcp-server"
+              href="https://www.npmjs.com/package/@gblin-protocol/mcp-server"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white transition"
