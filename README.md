@@ -26,6 +26,28 @@ Properties enforced at the contract level (see `contracts/GblinTimelockControlle
 
 AI-agent integrators can verify all of this on-chain in one call via the `get_governance_state` MCP tool. See the [GBLIN MCP repo](https://github.com/gblinproject/GBLIN-MCP).
 
+## x402 — Pay-per-call API for AI Agents
+
+GBLIN ships **6 paid HTTP endpoints** under [`/api/x402/*`](https://gblin.digital/api/x402/llms.txt) that any autonomous agent can consume by paying USDC on Base mainnet. No API keys, no signups, no account: agents pay per call via the [x402 protocol v2](https://x402.org), settle through the Coinbase CDP facilitator, and receive the response in the same HTTP round-trip.
+
+| Endpoint | Price (USDC) | Returns |
+|---|---|---|
+| `GET /api/x402/treasury-state` | $0.001 | Live NAV, basket weights, Crash Shield status |
+| `GET /api/x402/quote` | $0.001 | Buy/sell preview with MEV-safe `minOut` and dynamic slippage |
+| `GET /api/x402/governance` | $0.001 | Owner, timelock parameters, trust summary |
+| `GET /api/x402/health` | $0.002 | Wallet GBLIN/USDC/ETH balances, gas runway, rebalance hint |
+| `GET /api/x402/invest` | $0.002 | USDC→GBLIN sequential calldata (approve + buy) |
+| `GET /api/x402/jit` | $0.005 | Just-In-Time GBLIN→USDC atomic-swap calldata |
+
+**Properties:**
+
+- **Gasless on the buyer side** — agents sign an EIP-3009 `transferWithAuthorization`; the facilitator pays the on-chain gas in ETH, the agent only spends USDC.
+- **Listed in the [Coinbase Bazaar](https://docs.cdp.coinbase.com/x402/bazaar)** — discoverable from any x402-aware client without manual configuration.
+- **Strict input validation + JSON Schemas** — every endpoint exposes `info.input` / `info.output` examples so agents can synthesize correct calls from metadata alone.
+- **Public discovery manifest** at [`/api/x402/llms.txt`](https://gblin.digital/api/x402/llms.txt) — kept free for crawlers and LLMs.
+
+The middleware is a single file: [`src/middleware.ts`](src/middleware.ts). Each route handler lives in `src/app/api/x402/<name>/route.ts` and contains zero payment logic — the paywall is enforced upstream by `paymentProxy` from `@x402/next`.
+
 ## Run Locally
 
 **Prerequisites:** Node.js

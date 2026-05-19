@@ -35,6 +35,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@x402/fetch": "^2.12.0",
+    "dotenv": "^16.6.1",
     "eslint": "^10.1.0",
     "postcss": "^8",
     "tailwindcss": "^4.2.2",

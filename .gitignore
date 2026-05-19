@@ -64,3 +64,6 @@ next-start*.log
 
 # Bot logic (kept private)
 contracts/GBLIN_BOT
+
+# Local-only x402 utility scripts (use private key, never commit)
+scripts/x402-baptize.mjs
