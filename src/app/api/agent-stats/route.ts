@@ -17,7 +17,12 @@
 
 export const runtime = "nodejs";
 
-const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY ?? "";
+// Etherscan V2 unified multichain API (BaseScan V1 was deprecated Aug 2024).
+// Get a free key at https://etherscan.io/myapikey — it works on all chains
+// including Base (chainid 8453).
+const ETHERSCAN_API_KEY =
+  process.env.ETHERSCAN_API_KEY ?? process.env.BASESCAN_API_KEY ?? "";
+const BASE_CHAIN_ID = "8453";
 const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const FEE_WALLET = "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -44,7 +49,13 @@ interface BaseScanTokenTx {
 }
 
 async function fetchAgentStats(): Promise<AgentStats> {
-  const url = new URL("https://api.basescan.org/api");
+  if (!ETHERSCAN_API_KEY) {
+    throw new Error(
+      "ETHERSCAN_API_KEY env var is required (free key at https://etherscan.io/myapikey)"
+    );
+  }
+  const url = new URL("https://api.etherscan.io/v2/api");
+  url.searchParams.set("chainid", BASE_CHAIN_ID);
   url.searchParams.set("module", "account");
   url.searchParams.set("action", "tokentx");
   url.searchParams.set("contractaddress", USDC);
@@ -54,7 +65,7 @@ async function fetchAgentStats(): Promise<AgentStats> {
   url.searchParams.set("startblock", "0");
   url.searchParams.set("endblock", "99999999");
   url.searchParams.set("sort", "asc");
-  if (BASESCAN_API_KEY) url.searchParams.set("apikey", BASESCAN_API_KEY);
+  url.searchParams.set("apikey", ETHERSCAN_API_KEY);
 
   const res = await fetch(url.toString(), {
     headers: { accept: "application/json" },
