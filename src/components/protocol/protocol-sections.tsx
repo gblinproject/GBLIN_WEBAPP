@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { Activity, ArrowRight, Bot, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
+import { Activity, ArrowRight, Cpu, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
 import { CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
@@ -327,7 +327,7 @@ function AgentStatsSection({ t }: { t: (key: string) => string }) {
       <div className="p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300">
-            <Bot className="h-5 w-5" />
+            <Cpu className="h-5 w-5" />
           </div>
           <div>
             <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('agentStats.eyebrow') || 'On-chain · Base Mainnet'}</p>
