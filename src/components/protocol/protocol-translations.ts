@@ -232,6 +232,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       trackedOn: 'Tracked on DefiLlama',
       desc: 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'
     },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'AI Agents using GBLIN',
+      uniqueAgents: 'AI Agents',
+      uniqueAgentsHint: 'Unique wallets connected',
+      paidCalls: 'Paid API Calls',
+      paidCallsHint: 'x402 micropayments verified',
+      usdcEarned: 'USDC Earned',
+      usdcEarnedHint: 'Paid to protocol on Base',
+      sourceNote: 'Data read directly from Base mainnet USDC Transfer events · Refreshed every 5 min'
+    },
     security: {
       eyebrow: 'Transparency is our Infrastructure',
       title: 'Security & Transparency',
@@ -481,6 +492,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
     defillama: {
       trackedOn: 'Tracciato su DefiLlama',
       desc: 'GBLIN è tracciato ufficialmente come Index Protocol autonomo sulla rete Base, classificato accanto a leader del settore come Index Coop e Reserve. Nessun template preimpostato—solo pura infrastruttura on-chain trasparente e verificabile.'
+    },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'Agenti AI che usano GBLIN',
+      uniqueAgents: 'Agenti AI',
+      uniqueAgentsHint: 'Wallet unici connessi',
+      paidCalls: 'Chiamate API pagate',
+      paidCallsHint: 'Micropagamenti x402 verificati',
+      usdcEarned: 'USDC guadagnati',
+      usdcEarnedHint: 'Pagati al protocollo su Base',
+      sourceNote: 'Dati letti direttamente dagli eventi Transfer USDC su Base mainnet · Aggiornati ogni 5 min'
     },
     security: {
       eyebrow: 'La Trasparenza è la nostra Infrastruttura',
@@ -732,6 +754,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       trackedOn: 'Rastreado en DefiLlama',
       desc: 'GBLIN está oficialmente rastreado como Protocolo de Índice autónomo en la red Base, clasificado junto a líderes de la industria como Index Coop y Reserve. Sin plantillas preestablecidas—solo infraestructura pura on-chain transparente y verificable.'
     },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'Agentes de IA usando GBLIN',
+      uniqueAgents: 'Agentes IA',
+      uniqueAgentsHint: 'Billeteras únicas conectadas',
+      paidCalls: 'Llamadas API pagadas',
+      paidCallsHint: 'Micropagos x402 verificados',
+      usdcEarned: 'USDC Ganados',
+      usdcEarnedHint: 'Pagados al protocolo en Base',
+      sourceNote: 'Datos leídos directamente de eventos Transfer USDC en Base mainnet · Actualizado cada 5 min'
+    },
     security: {
       eyebrow: 'La Transparencia es nuestra Infraestructura',
       title: 'Seguridad & Transparencia',
@@ -981,6 +1014,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
     defillama: {
       trackedOn: 'Suivi sur DefiLlama',
       desc: 'GBLIN est officiellement suivi comme Protocole d\'Index autonome sur le réseau Base, classé aux côtés de leaders de l\'industrie comme Index Coop et Reserve. Pas de modèles prédéfinis—juste une infrastructure pure on-chain transparente et vérifiable.'
+    },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'Agents IA utilisant GBLIN',
+      uniqueAgents: 'Agents IA',
+      uniqueAgentsHint: 'Portefeuilles uniques connectés',
+      paidCalls: 'Appels API payés',
+      paidCallsHint: 'Micropaiements x402 vérifiés',
+      usdcEarned: 'USDC Gagnés',
+      usdcEarnedHint: 'Payés au protocole sur Base',
+      sourceNote: 'Données lues directement depuis les événements Transfer USDC sur Base mainnet · Mis à jour toutes les 5 min'
     },
     security: {
       eyebrow: 'La Transparence est notre Infrastructure',
@@ -1232,6 +1276,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       trackedOn: 'Verfolgt auf DefiLlama',
       desc: 'GBLIN wird offiziell als autonomes Index-Protokoll im Base-Netzwerk verfolgt, klassifiziert neben Branchenführern wie Index Coop und Reserve. Keine voreingestellten Vorlagen—nur reine on-chain transparente und überprüfbare Infrastruktur.'
     },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'KI-Agenten, die GBLIN nutzen',
+      uniqueAgents: 'KI-Agenten',
+      uniqueAgentsHint: 'Einzigartige verbundene Wallets',
+      paidCalls: 'Bezahlte API-Aufrufe',
+      paidCallsHint: 'Verifizierte x402-Mikrozahlungen',
+      usdcEarned: 'USDC Verdient',
+      usdcEarnedHint: 'An das Protokoll auf Base gezahlt',
+      sourceNote: 'Daten direkt aus Base mainnet USDC Transfer-Ereignissen · Alle 5 Min. aktualisiert'
+    },
     security: {
       eyebrow: 'Transparenz ist unsere Infrastruktur',
       title: 'Sicherheit & Transparenz',
@@ -1482,6 +1537,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       trackedOn: '追踪于 DefiLlama',
       desc: 'GBLIN 在 Base 网络上被正式追踪为自主指数协议，与 Index Coop 和 Reserve 等行业领导者并列。没有预设模板——只有纯粹的链上透明和可验证的基础设施。'
     },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: '使用 GBLIN 的 AI 智能体',
+      uniqueAgents: 'AI 智能体',
+      uniqueAgentsHint: '已连接的唯一钱包',
+      paidCalls: '已付费 API 调用',
+      paidCallsHint: '已验证的 x402 微支付',
+      usdcEarned: '已赚取 USDC',
+      usdcEarnedHint: '已支付给 Base 上的协议',
+      sourceNote: '数据直接从 Base 主网 USDC Transfer 事件读取 · 每 5 分钟刷新'
+    },
     security: {
       eyebrow: '透明度是我们的基础设施',
       title: '安全与透明',
@@ -1731,6 +1797,17 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
     defillama: {
       trackedOn: 'DefiLlama で追跡',
       desc: 'GBLIN は Base ネットワーク上の自律型インデックス・プロトコルとして公式に追跡されており、Index Coop や Reserve などの業界リーダーと並んで分類されています。プリセットされたテンプレートはなく、純粋なオンチェーンで透明かつ検証可能なインフラストラクチャのみです。'
+    },
+    agentStats: {
+      eyebrow: 'On-chain · Base Mainnet',
+      title: 'GBLINを使用するAIエージェント',
+      uniqueAgents: 'AIエージェント',
+      uniqueAgentsHint: '接続されたユニークウォレット',
+      paidCalls: '有料APIコール',
+      paidCallsHint: '検証済みx402マイクロペイメント',
+      usdcEarned: '獲得USDC',
+      usdcEarnedHint: 'Baseのプロトコルに支払済み',
+      sourceNote: 'データはBase mainnet USDCトランスファーイベントから直接読取 · 5分ごとに更新'
     },
     security: {
       eyebrow: '透明性が私たちのインフラストラクチャ',
