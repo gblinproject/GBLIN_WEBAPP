@@ -48,6 +48,10 @@ GBLIN ships **6 paid HTTP endpoints** under [`/api/x402/*`](https://gblin.digita
 
 The middleware is a single file: [`src/middleware.ts`](src/middleware.ts). Each route handler lives in `src/app/api/x402/<name>/route.ts` and contains zero payment logic — the paywall is enforced upstream by `paymentProxy` from `@x402/next`.
 
+## ElizaOS Integration
+
+For agents running on **ElizaOS**, the [`plugin-gblin`](https://www.npmjs.com/package/plugin-gblin) ([repo](https://github.com/gblinproject/GBLIN_PLUGIN)) consumes these x402 endpoints natively. It exposes 3 Actions (`CHECK_GBLIN_TREASURY_HEALTH`, `INVEST_IDLE_USDC_GBLIN`, `RESCUE_USDC_FROM_GBLIN`) and 1 Provider (`GBLIN_TREASURY_CONTEXT`) — install via `npm install plugin-gblin`.
+
 ## Run Locally
 
 **Prerequisites:** Node.js
