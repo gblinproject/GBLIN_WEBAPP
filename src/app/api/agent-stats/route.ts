@@ -46,19 +46,29 @@ export interface AgentStats {
   total_usdc_earned: number; // in USDC (human-readable)
 }
 
-async function fetchAgentStats(): Promise<AgentStats> {
-  // getLogs supports up to ~100k blocks per call on most public RPCs.
-  // Base ~2s block time → 100k blocks ≈ 55h. We paginate in 90k-block chunks
-  // from block 0 (genesis) to get the full history.
-  const latestBlock = await client.getBlockNumber();
+// Base mainnet block time is ~2s, so:
+//   1 day  ≈  43_200 blocks
+//   90 days ≈ 3_888_000 blocks
+// The x402 fee wallet was first used around May 18 2026 — scanning 90 days
+// of history is generous and keeps RPC load bounded.
+const DEFAULT_LOOKBACK_BLOCKS = 4_000_000n;
+const LOOKBACK_BLOCKS = process.env.GBLIN_STATS_LOOKBACK_BLOCKS
+  ? BigInt(process.env.GBLIN_STATS_LOOKBACK_BLOCKS)
+  : DEFAULT_LOOKBACK_BLOCKS;
 
-  const CHUNK = 90_000n;
-  let fromBlock = 0n;
+// Most public Base RPCs cap getLogs at ~10k blocks per request.
+const CHUNK = 9_500n;
+
+async function fetchAgentStats(): Promise<AgentStats> {
+  const latestBlock = await client.getBlockNumber();
+  const startBlock =
+    latestBlock > LOOKBACK_BLOCKS ? latestBlock - LOOKBACK_BLOCKS : 0n;
 
   const uniqueAgents = new Set<string>();
   let totalCalls = 0;
   let totalUsdc = 0n;
 
+  let fromBlock = startBlock;
   while (fromBlock <= latestBlock) {
     const toBlock =
       fromBlock + CHUNK - 1n < latestBlock

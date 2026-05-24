@@ -292,9 +292,18 @@ function AgentStatsSection({ t }: { t: (key: string) => string }) {
   useEffect(() => {
     fetch('/api/agent-stats')
       .then(r => r.json())
-      .then((data: AgentStats) => { setStats(data); setLoading(false); })
+      .then((data: AgentStats) => {
+        if (typeof data?.total_unique_agents === 'number') {
+          setStats(data);
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
+
+  const usdcEarned = typeof stats?.total_usdc_earned === 'number'
+    ? Number(stats.total_usdc_earned.toFixed(4))
+    : 0;
 
   const kpis = [
     {
@@ -313,7 +322,7 @@ function AgentStatsSection({ t }: { t: (key: string) => string }) {
     },
     {
       label: t('agentStats.usdcEarned') || 'USDC Earned',
-      value: stats ? Number(stats.total_usdc_earned.toFixed(4)) : 0,
+      value: usdcEarned,
       suffix: ' USDC',
       hint: t('agentStats.usdcEarnedHint') || 'Paid to protocol on Base',
       color: 'text-white',
