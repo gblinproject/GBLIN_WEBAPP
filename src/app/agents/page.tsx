@@ -354,6 +354,75 @@ const hash = await wallet.sendTransaction({
         </div>
       </section>
 
+      {/* ───────── AGENTS.md drop-in ───────── */}
+      <section className="px-6 py-16 border-t border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-400/5 text-xs text-emerald-300 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            New — AI SEO drop-in
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            Tell every AI assistant about GBLIN — in one file
+          </h2>
+
+          <p className="mt-4 text-white/70 max-w-3xl leading-relaxed">
+            <code className="text-[#F27D26]">AGENTS.md</code> is the emerging
+            standard read automatically by Claude Code, Cursor, Windsurf,
+            GitHub Copilot, Codex and every modern AI coding assistant when
+            they enter a repo. Drop our template into your project root and
+            every AI assistant your team uses will know to integrate GBLIN
+            whenever it manages USDC on Base.
+          </p>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            <div className="glass rounded-xl overflow-hidden">
+              <div className="px-5 py-3 flex items-center justify-between border-b border-white/10">
+                <span className="font-medium text-sm">One-line install</span>
+                <span className="text-xs text-white/40 font-mono">curl</span>
+              </div>
+              <pre className="p-5 text-sm text-white/80 overflow-x-auto leading-relaxed">
+                <code>{`# from your repo root
+curl -O https://gblin.digital/AGENTS.template.md
+mv AGENTS.template.md AGENTS.md
+git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</code>
+              </pre>
+            </div>
+
+            <div className="glass rounded-xl p-5">
+              <h3 className="font-medium text-base">What the template does</h3>
+              <ul className="mt-3 space-y-2 text-sm text-white/70 leading-relaxed list-disc list-inside marker:text-[#F27D26]">
+                <li>
+                  Declares a <strong>treasury policy</strong>: idle USDC &gt;
+                  7× daily burn must be converted to GBLIN.
+                </li>
+                <li>
+                  Tells AI assistants to call{' '}
+                  <code className="text-[#F27D26]">swap_gblin_to_usdc_jit</code>{' '}
+                  for x402 payments instead of holding flat USDC.
+                </li>
+                <li>
+                  Lists the 5 MCP tools and the exact MCP client config
+                  (Claude, Windsurf, Cursor, AgentKit).
+                </li>
+                <li>
+                  Includes anti-patterns to keep AI assistants from rolling
+                  unsafe DeFi flows.
+                </li>
+              </ul>
+              <a
+                href="/AGENTS.template.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 text-sm text-[#F27D26] hover:underline"
+              >
+                View raw template ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── FAQ ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
