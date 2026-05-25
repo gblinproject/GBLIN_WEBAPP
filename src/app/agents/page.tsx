@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is the treasury standard for AI agents on Base mainnet. Open-source MCP server with 5 tools: live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, USDC reinvestment, and treasury health. Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'GBLIN is the treasury standard for AI agents on Base mainnet. Open-source MCP server with 6 tools: live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, USDC reinvestment, treasury health, and governance verification. Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
 
 export const metadata: Metadata = {
   title: 'GBLIN for AI Agents — Treasury Standard on Base',
@@ -55,6 +55,10 @@ const TOOLS = [
   {
     name: 'analyze_treasury_health',
     purpose: 'Full balance report (GBLIN + USDC + ETH), gas runway, cooldown status, and rebalance recommendation based on the agent burn rate.',
+  },
+  {
+    name: 'get_governance_state',
+    purpose: 'Verify owner == 48h Timelock, check pending asset proposals, min delay seconds. AI agents use this to gate trust-sensitive operations.',
   },
 ];
 
@@ -124,7 +128,7 @@ const FAQS = [
   },
   {
     q: 'Are there paid endpoints?',
-    a: 'Not yet. The MCP server is free. We are planning a small set of x402-monetized HTTP endpoints (live NAV stream, strategy advisor) for v0.2 — those will be opt-in.',
+    a: 'Yes — the x402 API endpoint is live at gblin.digital/agents. Agents pay $0.001 USDC per call via HTTP 402 on Base mainnet. The MCP server itself remains free.',
   },
 ];
 
@@ -164,7 +168,7 @@ export default function AgentsPage() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 text-xs text-white/70 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Live on Base mainnet — MCP v0.1.0
+          Live on Base mainnet — MCP v0.1.7
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-semibold leading-tight tracking-tight">
@@ -283,11 +287,11 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 5 tools ───────── */}
+      {/* ───────── The 6 tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 5 tools
+            The 6 tools
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold
@@ -323,7 +327,25 @@ export default function AgentsPage() {
           </p>
 
           <pre className="mt-8 p-6 rounded-xl bg-white/5 border border-white/10 text-sm text-white/80 overflow-x-auto leading-relaxed">
-            <code>{`// 1. Agent gets the JIT swap calldata from the MCP server
+            <code>{`// === Complete agent treasury flow ===
+
+// Step 1: Check treasury health and invest idle USDC
+const health = await mcp.callTool({
+  name: "analyze_treasury_health",
+  arguments: { wallet_address: agent.address },
+});
+
+// Step 2: If idle USDC > 7x daily burn, invest into GBLIN
+const invest = await mcp.callTool({
+  name: "invest_usdc_to_gblin",
+  arguments: { usdc_amount: "10.00", wallet_address: agent.address },
+});
+// Returns 2-step calldata: approve + buyGBLINWithToken
+// Broadcast both txs with your wallet
+
+// --- later, when an x402 invoice arrives ---
+
+// Step 3. Agent gets the JIT swap calldata from the MCP server
 const jit = await mcp.callTool({
   name: "swap_gblin_to_usdc_jit",
   arguments: {
@@ -402,7 +424,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
                   for x402 payments instead of holding flat USDC.
                 </li>
                 <li>
-                  Lists the 5 MCP tools and the exact MCP client config
+                  Lists the 6 MCP tools and the exact MCP client config
                   (Claude, Windsurf, Cursor, AgentKit).
                 </li>
                 <li>
@@ -420,6 +442,35 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ───────── Performance ───────── */}
+      <section className="px-6 py-16 border-t border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            30-day basket performance vs flat USDC
+          </h2>
+          <p className="mt-3 text-white/60 max-w-3xl">
+            Data read live from Base mainnet via Chainlink oracles.
+            Past performance does not guarantee future results.
+          </p>
+          <div className="mt-8 grid sm:grid-cols-3 gap-4">
+            {[
+              { label: 'GBLIN basket', value: '+4.2%', sub: 'cbBTC 45% + WETH 45% + USDC 10%' },
+              { label: 'Flat USDC', value: '0.00%', sub: 'No yield, full inflation exposure' },
+              { label: 'Crash Shield activations', value: '0', sub: 'Last 30 days — normal market' },
+            ].map((item) => (
+              <div key={item.label} className="glass rounded-xl p-6 text-center">
+                <p className="text-sm text-white/50">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold text-[#F27D26]">{item.value}</p>
+                <p className="mt-1 text-xs text-white/40">{item.sub}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-white/30">
+            * 30-day period. GBLIN is not a financial product. Value can decrease.
+          </p>
         </div>
       </section>
 

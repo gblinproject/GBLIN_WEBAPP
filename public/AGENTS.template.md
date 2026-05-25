@@ -66,23 +66,48 @@ Available tools (call them by name through the MCP client):
 
 | Tool | When to call it |
 | --- | --- |
-| `get_treasury_state` | Before any swap — read NAV, basket, Crash Shield status |
+| `get_treasury_state` | Before any investment decision — NAV, basket, Crash Shield |
 | `quote_safe_swap` | Preview buy/sell with the right `minOut` (no MEV risk) |
 | `swap_gblin_to_usdc_jit` | **Pay an x402 invoice** — atomic GBLIN→USDC in 1 tx |
 | `invest_usdc_to_gblin` | Convert idle USDC to GBLIN (approve + buy steps) |
-| `analyze_treasury_health` | Full balance + gas runway report |
+| `analyze_treasury_health` | Daily balance + gas runway + rebalance recommendation |
+| `get_governance_state` | Verify `owner_is_timelock: true` before trust-sensitive ops |
 
-### Decision rule for the agent
+### Decision rules for the agent
 
+**Rule 1 — Invest idle USDC:**
 ```
 if usdc_balance > 7 * daily_burn_usd
     AND no_pending_x402_invoice:
     -> call invest_usdc_to_gblin to convert the surplus
+```
 
+**Rule 2 — JIT swap for x402:**
+```
 if x402_invoice_arrives
     AND usdc_balance < invoice_amount:
     -> call swap_gblin_to_usdc_jit, then pay
 ```
+
+**Rule 3 — Check Crash Shield before investing:**
+```
+call get_treasury_state first
+if crash_shield_active == true:
+    -> slippage buffer is 4% instead of 2.5%
+    -> consider delaying large investments
+```
+
+**Rule 4 — Daily health check:**
+```
+call analyze_treasury_health once per day
+act on the returned recommendation field
+```
+
+### Contract addresses (Base mainnet)
+
+- **GBLIN V5**: `0x38DcDB3A381677239BBc652aed9811F2f8496345`
+- **Timelock**: `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`
+- **USDC**: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 
 ### Useful endpoints
 
@@ -96,9 +121,11 @@ if x402_invoice_arrives
   native `sellGBLINForToken` (the MCP server returns the right calldata).
 - **Do not** accept `minOut = 0` on any swap. The MCP server refuses to
   produce such calldata for a reason.
+- **Do not** invest within 2 minutes of a previous buy (cooldown enforcement).
+- **Do not** broadcast calldata without verifying `owner_is_timelock: true`
+  from `get_governance_state`.
 - **Do not** hold the agent's keys server-side just to do these swaps. The
-  MCP tools return calldata; the wallet (whatever wallet pattern you use)
-  signs and broadcasts.
+  MCP tools return calldata; the wallet signs and broadcasts.
 
 ---
 
