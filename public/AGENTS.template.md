@@ -62,6 +62,57 @@ Act on the returned `recommendation` field.
 | `analyze_treasury_health` | Daily health check |
 | `get_governance_state` | When verifying contract trust |
 
+## Risk Budget — Auto-safe vs Human Signoff
+
+Not all GBLIN actions carry the same risk. Use this table to decide
+whether an action can be executed autonomously or requires human approval.
+
+### 🟢 Auto-safe (execute without human approval)
+
+| Tool | Condition | Why safe |
+|------|-----------|----------|
+| `get_treasury_state` | Always | Read-only, no state change |
+| `quote_safe_swap` | Always | Read-only, no state change |
+| `analyze_treasury_health` | Always | Read-only, no state change |
+| `get_governance_state` | Always | Read-only, no state change |
+| `swap_gblin_to_usdc_jit` | usdc_needed ≤ $5.00 | Small x402 invoice payment |
+| `invest_usdc_to_gblin` | usdc_amount ≤ $10.00 AND crash_shield_active = false | Small investment, normal market |
+
+### 🟡 Human signoff recommended
+
+| Tool | Condition | Why flag it |
+|------|-----------|-------------|
+| `swap_gblin_to_usdc_jit` | usdc_needed > $5.00 | Large exit — slippage risk |
+| `invest_usdc_to_gblin` | usdc_amount > $10.00 | Significant capital deployment |
+| `invest_usdc_to_gblin` | crash_shield_active = true | Market stress detected — wait |
+| Any write action | First use on a new wallet | Verify contract address before first tx |
+
+### 🔴 Never auto-execute
+
+- Any action when `get_governance_state` returns `owner_is_timelock: false`
+- Any action when oracle staleness > 1 hour (tools return error automatically)
+- Investments above $50 USDC without explicit user instruction in the session
+
+### Implementation pattern
+
+```typescript
+const treasury = await mcp.callTool({ name: "get_treasury_state", arguments: {} });
+const state = JSON.parse(treasury.content[0].text);
+
+// Gate all write actions on Crash Shield status
+if (state.crash_shield_active && action.type === "invest") {
+  return { action: "defer", reason: "Crash Shield active — waiting for market recovery" };
+}
+
+// Gate large actions on human approval
+if (action.usdc_amount > 10) {
+  return { action: "request_approval", threshold_exceeded: true, amount: action.usdc_amount };
+}
+
+// Auto-execute small, safe actions
+await executeAction(action);
+```
+
 ## Anti-patterns — Never do these
 
 - Never pass `minOut: 0` to any contract call — use the values from `quote_safe_swap`
