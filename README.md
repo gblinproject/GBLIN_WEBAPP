@@ -54,10 +54,12 @@ For agents running on **ElizaOS**, the [`plugin-gblin`](https://www.npmjs.com/pa
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:** Node.js 20+
 
 1. Install dependencies: `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app: `npm run dev`
+2. Copy the example env file: `cp .env.example .env.local`
+3. Fill in `MORALIS_API_KEY`, `X402_PAY_TO_WALLET`, and optionally `CDP_API_KEY_*` in `.env.local`
+4. Run the dev server: `npm run dev`
+5. Open [http://localhost:3000](http://localhost:3000)
 
-View the app in AI Studio: https://ai.studio/apps/dceff8c2-051b-45f0-b65e-73e904fcb211
+To build for production: `npm run build`
