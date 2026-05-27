@@ -1,12 +1,14 @@
 /**
- * GET /api/x402/invest?usdc=10
+ * GET /api/x402/invest?usdc=10&wallet=0x...
  *
- * Treasury accumulation: converts USDC earnings into GBLIN. Returns two
- * sequential transactions:
- *   1. approve USDC to GBLIN_V5
- *   2. buyGBLINWithToken(path, amountIn, minWethOut, minGblinOut)
+ * Treasury accumulation: converts USDC earnings into GBLIN. Returns four
+ * sequential transactions (bypasses broken exactInput in contract):
+ *   1. approve USDC to SwapRouter02
+ *   2. swap USDC→WETH via exactInputSingle
+ *   3. approve WETH to GBLIN_V5
+ *   4. buyGBLINWithToken with WETH as tokenIn
  *
- * Both transactions have non-zero minOut values to prevent MEV sandwich.
+ * All transactions have non-zero minOut values to prevent MEV sandwich.
  *
  * Paywall: $0.002 USDC per call.
  */
@@ -25,6 +27,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const usdc = searchParams.get("usdc");
+    const wallet = searchParams.get("wallet");
 
     if (!usdc || !/^\d+(\.\d+)?$/.test(usdc)) {
       return jsonResponse(
@@ -33,29 +36,21 @@ export async function GET(req: Request) {
       );
     }
 
+    if (!wallet || !/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+      return jsonResponse(
+        { error: "Invalid 'wallet' query param. Must be a valid Ethereum address." },
+        400
+      );
+    }
+
     const [calldata, slippage] = await Promise.all([
-      buildInvestCalldata(usdc),
+      buildInvestCalldata(usdc, wallet as `0x${string}`),
       getDynamicSlippage(),
     ]);
 
     return jsonResponse({
       action: "sequential_txs",
-      steps: [
-        {
-          step: 1,
-          description: "Approve GBLIN contract to spend USDC",
-          target: USDC,
-          calldata: calldata.approveCalldata,
-          value: "0",
-        },
-        {
-          step: 2,
-          description: "Buy GBLIN with USDC via native contract function",
-          target: GBLIN_V5,
-          calldata: calldata.buyCalldata,
-          value: "0",
-        },
-      ],
+      steps: calldata.steps,
       expected: {
         usdc_in: usdc,
         weth_min: calldata.minWethOut,

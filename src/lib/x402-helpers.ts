@@ -34,6 +34,7 @@ export const GBLIN_TIMELOCK: Address = "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5
 export const ETH_USD_FEED: Address = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
 export const EXPECTED_MIN_DELAY_SECONDS = 172_800n;
 export const WETH_USDC_POOL_FEE = 500;
+export const SWAP_ROUTER_02: Address = "0x2626664c2603336E57B271c5C0b26F421741e481";
 
 // ─── Protocol Constants ─────────────────────────────────────────────────────
 export const MIN_DEPOSIT_WEI = 500_000_000_000_000n;
@@ -91,6 +92,30 @@ export const CHAINLINK_AGGREGATOR_ABI = [
       { name: "updatedAt", type: "uint256" },
       { name: "answeredInRound", type: "uint80" },
     ],
+  },
+] as const;
+
+export const SWAP_ROUTER_ABI = [
+  {
+    name: "exactInputSingle",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "recipient", type: "address" },
+          { name: "amountIn", type: "uint256" },
+          { name: "amountOutMinimum", type: "uint256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+    ],
+    outputs: [{ name: "amountOut", type: "uint256" }],
   },
 ] as const;
 
@@ -441,12 +466,22 @@ export function buildJitCalldata(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// INVEST CALLDATA — USDC → GBLIN (2 sequential txs: approve + buy)
+// INVEST CALLDATA — USDC → GBLIN (4 sequential txs: bypass broken exactInput)
 // ───────────────────────────────────────────────────────────────────────────
 
-export async function buildInvestCalldata(usdcAmountStr: string): Promise<{
-  approveCalldata: `0x${string}`;
-  buyCalldata: `0x${string}`;
+export interface InvestStep {
+  step: number;
+  description: string;
+  target: Address;
+  calldata: `0x${string}`;
+  value: string;
+}
+
+export async function buildInvestCalldata(
+  usdcAmountStr: string,
+  walletAddress: Address
+): Promise<{
+  steps: InvestStep[];
   expectedGblinOut: string;
   minGblinOut: string;
   minWethOut: string;
@@ -477,26 +512,56 @@ export async function buildInvestCalldata(usdcAmountStr: string): Promise<{
   });
   const minGblinOut = applySlippageBuffer(gblinExpected, slippage.bps);
 
-  const path = encodePacked(
-    ["address", "uint24", "address"],
-    [USDC, WETH_USDC_POOL_FEE, WETH]
-  );
-
-  const approveCalldata = encodeFunctionData({
+  // Step 1: Approve USDC to SwapRouter02
+  const approveRouterCalldata = encodeFunctionData({
     abi: ERC20_ABI,
     functionName: "approve",
-    args: [GBLIN_V5, usdcUnits],
+    args: [SWAP_ROUTER_02, usdcUnits],
   });
+
+  // Step 2: Swap USDC→WETH via exactInputSingle
+  const swapCalldata = encodeFunctionData({
+    abi: SWAP_ROUTER_ABI,
+    functionName: "exactInputSingle",
+    args: [
+      {
+        tokenIn: USDC,
+        tokenOut: WETH,
+        fee: WETH_USDC_POOL_FEE,
+        recipient: walletAddress,
+        amountIn: usdcUnits,
+        amountOutMinimum: minWethOut,
+        sqrtPriceLimitX96: 0n,
+      },
+    ],
+  });
+
+  // Step 3: Approve WETH to GBLIN
+  const approveWethCalldata = encodeFunctionData({
+    abi: ERC20_ABI,
+    functionName: "approve",
+    args: [GBLIN_V5, minWethOut],
+  });
+
+  // Step 4: Buy GBLIN with WETH (WETH path skips broken Uniswap call)
+  const gblinPath = encodePacked(
+    ["address", "uint24", "address"],
+    [WETH, 0, WETH] // fee=0 dummy path, contract skips when tokenIn==WETH
+  );
 
   const buyCalldata = encodeFunctionData({
     abi: GBLIN_ABI,
     functionName: "buyGBLINWithToken",
-    args: [path, usdcUnits, minWethOut, minGblinOut],
+    args: [gblinPath, minWethOut, 0n, minGblinOut],
   });
 
   return {
-    approveCalldata,
-    buyCalldata,
+    steps: [
+      { step: 1, description: "Approve USDC to SwapRouter02 for WETH swap", target: USDC, calldata: approveRouterCalldata, value: "0" },
+      { step: 2, description: "Swap USDC→WETH via SwapRouter02 exactInputSingle", target: SWAP_ROUTER_02, calldata: swapCalldata, value: "0" },
+      { step: 3, description: "Approve WETH to GBLIN contract", target: WETH, calldata: approveWethCalldata, value: "0" },
+      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN_V5, calldata: buyCalldata, value: "0" },
+    ],
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),
     minWethOut: formatUnits(minWethOut, 18),
