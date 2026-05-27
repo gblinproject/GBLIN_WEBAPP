@@ -158,6 +158,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="base:app_id" content="6a16deb1f4a52373ee3e7762" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
