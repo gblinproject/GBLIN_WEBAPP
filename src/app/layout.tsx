@@ -93,6 +93,8 @@ export const metadata: Metadata = {
     // Base / Talent Protocol ownership verification
     "talentapp:project_verification":
       "cfe9f12693146835725d6e4bebc507e025969baf4fb1dcd2ba8f2a8206c76434e39aeddfe0470a97f98cabb9a7713b38fda0ed6830af7213ff0726178005a9f2",
+    // Base App Registry verification
+    "base:app_id": "6a16deb1f4a52373ee3e7762",
   },
 };
 
