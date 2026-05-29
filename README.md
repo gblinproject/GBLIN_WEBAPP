@@ -1,5 +1,9 @@
 # GBLIN Protocol — Web App
 
+[![Base MCP Plugin](https://img.shields.io/badge/Base%20MCP-PR%20%2356-blue)](https://github.com/base/skills/pull/56)
+[![x402 Manifest](https://img.shields.io/badge/x402-manifest-green)](https://gblin.digital/.well-known/x402)
+[![Base Mainnet](https://img.shields.io/badge/Base-Mainnet%20Live-0052FF)](https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345)
+
 Front-end and dApp for **GBLIN**, an on-chain index on Base mainnet (45% cbBTC + 45% WETH + 10% USDC) with an algorithmic Crash Shield and AI-agent-native treasury tooling.
 
 ## Trust & Governance
@@ -59,3 +63,30 @@ For agents running on **ElizaOS**, the [`plugin-gblin`](https://www.npmjs.com/pa
 5. Open [http://localhost:3000](http://localhost:3000)
 
 To build for production: `npm run build`
+
+## x402 Protocol Discovery
+
+GBLIN exposes its x402 payment manifest at:
+
+`https://gblin.digital/.well-known/x402`
+
+This endpoint follows the x402 protocol discovery standard and returns a JSON manifest with:
+- Chain ID and currency address (USDC on Base)
+- Facilitator URL
+- All available x402 endpoints with their prices
+- Contract address and verification links
+
+AI agents (Base MCP, ElizaOS, custom agents) can read this file to:
+1. Auto-discover GBLIN's payment-protected endpoints
+2. Verify the protocol before initiating payment flows
+3. Get the canonical contract address for the GBLIN token
+
+The file is served as `application/json` via Next.js header config (see `next.config.js`).
+
+## Base MCP Integration
+
+GBLIN is integrated into the official Base MCP skill at:
+- Plugin file: `skills/base-mcp/plugins/gblin.md`
+- PR: https://github.com/base/skills/pull/56
+
+The plugin teaches Base MCP agents how to invest USDC into GBLIN via 4-step atomic batch, JIT-redeem for x402 payments, and check treasury health.
