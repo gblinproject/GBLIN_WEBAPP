@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "protocol": "x402",
+  "chain": "base",
+  "chainId": 8453,
+  "currency": "USDC",
+  "currencyAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "facilitator": "https://x402.org/facilitator",
+  "endpoints": [
+    {
+      "path": "/api/x402/treasury-state",
+      "method": "GET",
+      "price": "0.001",
+      "description": "NAV, basket composition, Crash Shield status"
+    },
+    {
+      "path": "/api/x402/health",
+      "method": "GET",
+      "price": "0.002",
+      "description": "Wallet-specific balances, cooldown status"
+    },
+    {
+      "path": "/api/x402/quote",
+      "method": "GET",
+      "price": "0.001",
+      "description": "Quote USDC→GBLIN with fees"
+    },
+    {
+      "path": "/api/x402/invest",
+      "method": "GET",
+      "price": "0.002",
+      "description": "4-step unsigned calldata for USDC→GBLIN"
+    },
+    {
+      "path": "/api/x402/jit",
+      "method": "GET",
+      "price": "0.005",
+      "description": "JIT unsigned calldata for GBLIN→USDC"
+    },
+    {
+      "path": "/api/x402/governance",
+      "method": "GET",
+      "price": "0.001",
+      "description": "Timelock state and governance info"
+    }
+  ],
+  "contact": "info@gblin.digital",
+  "website": "https://gblin.digital",
+  "docs": "https://gblin.digital/agents",
+  "contract": "0x38DcDB3A381677239BBc652aed9811F2f8496345"
+}
