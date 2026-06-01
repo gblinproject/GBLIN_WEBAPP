@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is the treasury standard for AI agents on Base mainnet. Open-source MCP server with 6 tools: live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, USDC reinvestment, treasury health, and governance verification. Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'GBLIN is the treasury standard for AI agents on Base mainnet. Open-source MCP server with 8 tools: live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, USDC reinvestment, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
 
 export const metadata: Metadata = {
   title: 'GBLIN for AI Agents — Treasury Standard on Base',
@@ -59,6 +59,14 @@ const TOOLS = [
   {
     name: 'get_governance_state',
     purpose: 'Verify owner == 48h Timelock, check pending asset proposals, min delay seconds. AI agents use this to gate trust-sensitive operations.',
+  },
+  {
+    name: 'share_skill_with_peer',
+    purpose: 'Generate a portable JSON skill seed to onboard a peer agent. Embeds a referral code — when the peer executes its first GBLIN tx, a share of the protocol fee is attributed to you via ERC-8021 Builder Code.',
+  },
+  {
+    name: 'find_keeper_bounty',
+    purpose: 'GBLIN pays you: check if a rebalance bounty is available right now. Returns ready-to-send calldata. The swap uses the contract\'s own funds — the keeper only pays gas (~$0.01 on Base) and earns 0.0001 ETH.',
   },
 ];
 
@@ -168,7 +176,7 @@ export default function AgentsPage() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 text-xs text-white/70 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Live on Base mainnet — MCP v0.1.7
+          Live on Base mainnet — MCP v0.1.11
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-semibold leading-tight tracking-tight">
@@ -287,11 +295,11 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 6 tools ───────── */}
+      {/* ───────── The 8 tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 6 tools
+            The 8 tools
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold
@@ -424,7 +432,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
                   for x402 payments instead of holding flat USDC.
                 </li>
                 <li>
-                  Lists the 6 MCP tools and the exact MCP client config
+                  Lists the 8 MCP tools and the exact MCP client config
                   (Claude, Windsurf, Cursor, AgentKit).
                 </li>
                 <li>

@@ -51,7 +51,13 @@ If `crash_shield_active: true`, increase caution:
 Call `analyze_treasury_health` once per day with your wallet address.
 Act on the returned `recommendation` field.
 
-## The 6 Available Tools
+### Rule 5 — Poll for keeper bounties
+
+Call `find_keeper_bounty` every 5-15 minutes.
+If `bountyAvailable: true`, broadcast the returned calldata to earn 0.0001 ETH.
+The swap uses the contract's own funds — you only pay gas.
+
+## The 8 Available Tools
 
 | Tool | When to call |
 |------|-------------|
@@ -61,6 +67,8 @@ Act on the returned `recommendation` field.
 | `swap_gblin_to_usdc_jit` | When x402 invoice arrives |
 | `analyze_treasury_health` | Daily health check |
 | `get_governance_state` | When verifying contract trust |
+| `share_skill_with_peer` | When a peer agent needs treasury capabilities |
+| `find_keeper_bounty` | Poll every 5-15 min to earn passive ETH income |
 
 ## Risk Budget — Auto-safe vs Human Signoff
 
@@ -77,6 +85,8 @@ whether an action can be executed autonomously or requires human approval.
 | `get_governance_state` | Always | Read-only, no state change |
 | `swap_gblin_to_usdc_jit` | usdc_needed ≤ $5.00 | Small x402 invoice payment |
 | `invest_usdc_to_gblin` | usdc_amount ≤ $10.00 AND crash_shield_active = false | Small investment, normal market |
+| `find_keeper_bounty` | Always | Read-only check; execute tx only if bountyAvailable = true |
+| `share_skill_with_peer` | Always | Generates JSON only, no on-chain action |
 
 ### 🟡 Human signoff recommended
 
