@@ -1,22 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPublicClient, http, parseAbiItem, formatEther } from 'viem';
-import { base } from 'viem/chains';
+import { ethers } from 'ethers';
+import { CONTRACT_ADDRESS, MORALIS_API_KEY } from '@/components/protocol/protocol-data';
 
-const GBLIN = '0x38DcDB3A381677239BBc652aed9811F2f8496345' as const;
 const REWARD_ETH = 0.0001;
-// Imposta al blocco di deploy reale del V5. Fallback prudente: restringere il range.
-const DEPLOY_BLOCK = 0n;
 
-const REBALANCED_EVENT = parseAbiItem(
-  'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)'
-);
+// Selector di incentivizedRebalance(uint256,bool,uint256)
+const REBALANCE_SELECTOR = ethers.id('incentivizedRebalance(uint256,bool,uint256)').slice(0, 10).toLowerCase();
 
 interface KeeperRow {
   executor: string;
   rebalances: number;
   earnedEth: number;
+}
+
+interface MoralisTx {
+  hash: string;
+  from_address: string;
+  to_address: string;
+  input: string;
+  block_timestamp: string;
 }
 
 export default function KeepersPage() {
@@ -28,27 +32,54 @@ export default function KeepersPage() {
   useEffect(() => {
     async function load() {
       try {
-        const client = createPublicClient({
-          chain: base,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://base-rpc.publicnode.com'),
-        });
+        if (!MORALIS_API_KEY) {
+          throw new Error('MORALIS_API_KEY not configured');
+        }
 
-        const latest = await client.getBlockNumber();
-        // Query a bounded window to stay within public RPC limits
-        const fromBlock = DEPLOY_BLOCK > 0n ? DEPLOY_BLOCK : (latest > 500000n ? latest - 500000n : 0n);
+        const headers = {
+          accept: 'application/json',
+          'X-API-Key': MORALIS_API_KEY,
+        };
 
-        const logs = await client.getLogs({
-          address: GBLIN,
-          event: REBALANCED_EVENT,
-          fromBlock,
-          toBlock: latest,
-        });
+        // Fetch transactions to the GBLIN contract
+        // We fetch multiple pages to get a reasonable history
+        const allTxs: MoralisTx[] = [];
+        let cursor: string | null = null;
+        const MAX_PAGES = 5;
 
+        for (let page = 0; page < MAX_PAGES; page++) {
+          const url = new URL(`https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}`);
+          url.searchParams.set('chain', 'base');
+          url.searchParams.set('order', 'DESC');
+          url.searchParams.set('limit', '100');
+          if (cursor) url.searchParams.set('cursor', cursor);
+
+          const res = await fetch(url.toString(), { headers });
+          if (!res.ok) {
+            throw new Error(`Moralis HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          const txs: MoralisTx[] = data.result || [];
+          allTxs.push(...txs);
+
+          if (!data.cursor || txs.length < 100) break;
+          cursor = data.cursor;
+        }
+
+        // Filter for incentivizedRebalance calls
         const tally: Record<string, number> = {};
-        for (const log of logs) {
-          const executor = (log.args as any).executor as string;
-          if (!executor) continue;
-          tally[executor] = (tally[executor] || 0) + 1;
+        let rebalanceCount = 0;
+
+        for (const tx of allTxs) {
+          const selector = tx.input?.slice(0, 10)?.toLowerCase();
+          if (selector === REBALANCE_SELECTOR) {
+            const executor = tx.from_address;
+            if (executor) {
+              tally[executor] = (tally[executor] || 0) + 1;
+              rebalanceCount++;
+            }
+          }
         }
 
         const ranked: KeeperRow[] = Object.entries(tally)
@@ -60,7 +91,7 @@ export default function KeepersPage() {
           .sort((a, b) => b.rebalances - a.rebalances);
 
         setRows(ranked);
-        setTotalRebalances(logs.length);
+        setTotalRebalances(rebalanceCount);
         setLoading(false);
       } catch (e: any) {
         setError(e?.message || 'Failed to load keeper data');
