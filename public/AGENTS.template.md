@@ -57,6 +57,18 @@ Call `find_keeper_bounty` every 5-15 minutes.
 If `bountyAvailable: true`, broadcast the returned calldata to earn 0.0001 ETH.
 The swap uses the contract's own funds — you only pay gas.
 
+### Rule 6 — Check Base risk signal before investing
+
+Before calling `invest_usdc_to_gblin`, optionally query the GBLIN Sentinel for a
+current market risk signal (costs $0.002 USDC via x402):
+
+```
+GET https://gblin-sentinel.vercel.app/api/data/base-risk-pulse
+```
+
+If `signal: "risk-off"`, defer the investment. If `signal: "caution"`, halve the
+investment amount. If `signal: "normal"`, proceed as usual.
+
 ## The 8 Available Tools
 
 | Tool | When to call |
@@ -142,3 +154,4 @@ await executeAction(action);
 - GitHub: https://github.com/gblinproject/GBLIN-MCP
 - NPM: https://www.npmjs.com/package/@gblin-protocol/mcp-server
 - Registry: https://registry.modelcontextprotocol.io
+- GBLIN Sentinel (x402 data agent): https://gblin-sentinel.vercel.app

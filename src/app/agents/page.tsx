@@ -453,6 +453,81 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
         </div>
       </section>
 
+      {/* ───────── GBLIN Sentinel ───────── */}
+      <section className="px-6 py-16 border-t border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-400/5 text-xs text-emerald-300 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live on Base mainnet
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            GBLIN Sentinel — buy on-chain data with x402
+          </h2>
+          <p className="mt-4 text-white/70 max-w-3xl leading-relaxed">
+            An open-source autonomous agent that <strong>sells</strong> real-time
+            Base DeFi risk signals via x402 micropayments. Any agent with a USDC
+            wallet on Base can call these endpoints — no API key, no account,
+            pay-per-request.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                path: '/api/data/base-risk-pulse',
+                price: '$0.002',
+                desc: 'Chainlink risk signal: normal / caution / risk-off for ETH, BTC, USDC on Base',
+              },
+              {
+                path: '/api/data/gblin-analytics',
+                price: '$0.001',
+                desc: 'GBLIN treasury state: supply, basket weights, stability fund, keeper availability',
+              },
+              {
+                path: '/api/data/keeper-opps',
+                price: '$0.001',
+                desc: 'Live keeper bounty check — includes MCP tool reference for execution',
+              },
+            ].map((ep) => (
+              <div key={ep.path} className="glass rounded-xl p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <code className="text-xs text-[#F27D26] font-mono break-all">{ep.path}</code>
+                  <span className="ml-3 text-xs text-white/40 whitespace-nowrap">{ep.price} USDC</span>
+                </div>
+                <p className="text-sm text-white/60 leading-relaxed">{ep.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-4 text-sm">
+            <a
+              href="https://gblin-sentinel.vercel.app/.well-known/x402"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F27D26] hover:underline"
+            >
+              x402 manifest ↗
+            </a>
+            <a
+              href="https://gblin-sentinel.vercel.app/llms.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F27D26] hover:underline"
+            >
+              llms.txt ↗
+            </a>
+            <a
+              href="https://github.com/gblinproject/gblin-sentinel"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F27D26] hover:underline"
+            >
+              Source on GitHub ↗
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── Performance ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
