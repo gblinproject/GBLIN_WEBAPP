@@ -21,12 +21,15 @@
 - **MCP Server:** `npx @gblin-protocol/mcp-server`
 - **GitHub:** https://github.com/gblinproject/GBLIN-MCP
 - **Docs:** https://gblin.digital/agents
-- **5 MCP tools exposed:**
+- **8 MCP tools exposed:**
   1. `get_treasury_state` — live NAV + basket + Crash Shield status
   2. `quote_safe_swap` — preview buy/sell with dynamic slippage
   3. `swap_gblin_to_usdc_jit` — atomic GBLIN→USDC calldata for x402
   4. `invest_usdc_to_gblin` — MEV-safe USDC→GBLIN reinvestment
   5. `analyze_treasury_health` — balance, gas, runway, advice
+  6. `get_governance_state` — verify 48h timelock ownership + pending ops
+  7. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding
+  8. `find_keeper_bounty` — check rebalance bounty availability, earn 0.0001 ETH
 
 ## Wallet compatibility
 
@@ -53,10 +56,23 @@ the swap calldata the agent broadcasts immediately before paying.
 - Buy GBLIN (humans): https://gblin.digital/buy-gblin
 - Frame (Farcaster): https://gblin.digital/frame
 
+## GBLIN Sentinel — x402 data agent
+
+An open-source autonomous agent that sells real-time Base DeFi risk signals
+via x402 micropayments. Any agent with USDC on Base can query it.
+
+- Live: https://gblin-sentinel.vercel.app
+- x402 manifest: https://gblin-sentinel.vercel.app/.well-known/x402
+- LLM reference: https://gblin-sentinel.vercel.app/llms.txt
+- Source: https://github.com/gblinproject/gblin-sentinel
+
+Endpoints: base-risk-pulse ($0.002), gblin-analytics ($0.001), keeper-opps ($0.001)
+
 ## Useful repos
 
 - Protocol web app: https://github.com/gblinproject/GBLIN
 - MCP server: https://github.com/gblinproject/GBLIN-MCP
+- x402 data agent: https://github.com/gblinproject/gblin-sentinel
 
 ## Contact
 
