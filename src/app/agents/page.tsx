@@ -176,7 +176,7 @@ export default function AgentsPage() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 text-xs text-white/70 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Live on Base mainnet — MCP v0.1.11
+          Live on Base mainnet — MCP v0.1.13
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-semibold leading-tight tracking-tight">

@@ -48,5 +48,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'hourly',
       priority: 0.6,
     },
+    {
+      url: `${BASE_URL}/buy-gblin`,
+      lastModified,
+      changeFrequency: 'daily',
+      priority: 0.85,
+    },
+    {
+      url: `${BASE_URL}/keepers`,
+      lastModified,
+      changeFrequency: 'hourly',
+      priority: 0.75,
+    },
+    {
+      url: `${BASE_URL}/game`,
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    },
   ];
 }
