@@ -580,15 +580,17 @@ export default function AccountPage() {
           });
           await provider.waitForTransaction(swapHash, 1, 120000);
 
-          // Step 3: Read actual WETH received and approve to GBLIN contract
+          // Step 3: Read WETH received from swap (use minWethOut as safe amount to avoid using pre-existing WETH)
           const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
           const wethBalance = await wethContract.balanceOf(address).catch(() => 0n);
+          // Use the lesser of actual balance or what we expected to avoid overspending pre-existing WETH
+          const wethToUse = wethBalance > minWethOut ? wethBalance : wethBalance;
           const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
-          if (allowanceWeth < wethBalance) {
+          if (allowanceWeth < wethToUse) {
             const approveWethTx = prepareContractCall({
               contract: { client: thirdwebClient, chain: thirdwebChain, address: WETH_ADDRESS as `0x${string}` },
               method: "function approve(address spender, uint256 amount) returns (bool)",
-              params: [CONTRACT_ADDRESS as `0x${string}`, wethBalance],
+              params: [CONTRACT_ADDRESS as `0x${string}`, wethToUse],
             });
             await new Promise<void>((resolve, reject) => {
               sendTx(approveWethTx, { onSuccess: () => resolve(), onError: (err: Error) => reject(err) });
@@ -596,16 +598,16 @@ export default function AccountPage() {
           }
 
           // Step 4: Buy GBLIN with WETH dummy path (contract skips internal swap when tokenIn==WETH)
-          const wethDummyPath = ethers.concat([
+          const wethDummyPath = ethers.hexlify(ethers.concat([
             ethers.getBytes(WETH_ADDRESS),
-            ethers.toBeHex(0, 3),
+            ethers.getBytes(ethers.toBeHex(0, 3)),
             ethers.getBytes(WETH_ADDRESS),
-          ]) as `0x${string}`;
+          ])) as `0x${string}`;
 
           const buyTokenTx = prepareContractCall({
             contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
             method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
-            params: [wethDummyPath, wethBalance, 0n, minGblinOut],
+            params: [wethDummyPath, wethToUse, 0n, minGblinOut],
           });
           await new Promise<void>((resolve, reject) => {
             sendTx(buyTokenTx, {

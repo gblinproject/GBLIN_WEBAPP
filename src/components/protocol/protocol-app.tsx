@@ -888,11 +888,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           }
 
           // Step 4: Buy GBLIN with WETH using dummy path (contract skips internal swap when tokenIn==WETH)
-          const wethDummyPath = ethers.concat([
+          const wethDummyPath = ethers.hexlify(ethers.concat([
             ethers.getBytes(WETH_ADDRESS),
-            ethers.toBeHex(0, 3),
+            ethers.getBytes(ethers.toBeHex(0, 3)),
             ethers.getBytes(WETH_ADDRESS),
-          ]) as `0x${string}`;
+          ])) as `0x${string}`;
 
           addLog(`Buying GBLIN with WETH...`);
           const buyTokenTx = prepareContractCall({
