@@ -318,7 +318,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setEthBalance(parseFloat(ethers.formatEther(ethBal)).toFixed(4));
       setGblinBalance(parseFloat(ethers.formatEther(gblinBal)).toFixed(4));
 
-      if (mode === 'buy' && activeTradeToken && !activeTradeToken.isNative) {
+      if (activeTradeToken && !activeTradeToken.isNative) {
         const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
         const tokenBal = await tokenContract.balanceOf(address).catch(() => 0n);
         setTokenBalance(parseFloat(ethers.formatUnits(tokenBal, activeTradeToken.decimals)).toFixed(4));
