@@ -762,6 +762,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             });
           });
         } else {
+          // WORKAROUND: buyGBLINWithToken uses ISwapRouter (v1) interface with `deadline` field
+          // but the deployed router (SwapRouter02) uses IV3SwapRouter without `deadline`.
+          // This ABI mismatch causes exactInput to revert for non-WETH tokens.
+          // Fix: swap token→WETH externally via SwapRouter02, then call buyGBLINWithToken with WETH directly.
+          const SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
           const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
           const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
 
@@ -772,13 +777,13 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           const quotedGblinOut = await quoteMintFromWeth(routeQuote.amountOut);
           const minGblinOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
           const minWethOut = (routeQuote.amountOut * (10000n - slippageBps)) / 10000n;
+
+          // Step 1: Approve token to SwapRouter02 (not to GBLIN contract)
           const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
-          const allowance = await tokenContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
+          const allowanceRouter = await tokenContract.allowance(address, SWAP_ROUTER_02).catch(() => 0n);
 
-          if (allowance < amountIn) {
-            addLog(`Approval required for ${activeTradeToken.symbol}.`);
-
-            // Thirdweb: Approve token
+          if (allowanceRouter < amountIn) {
+            addLog(`Approval required for ${activeTradeToken.symbol} → SwapRouter02.`);
             const approveTx = prepareContractCall({
               contract: {
                 client: thirdwebClient,
@@ -786,26 +791,110 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
                 address: activeTradeToken.address as `0x${string}`,
               },
               method: "function approve(address spender, uint256 amount) returns (bool)",
-              params: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
+              params: [SWAP_ROUTER_02 as `0x${string}`, amountIn],
             });
-            
             let approvalHash = '';
             await new Promise<void>((resolve, reject) => {
               sendTx(approveTx, {
-                onSuccess: (data) => {
-                  approvalHash = data.transactionHash;
-                  resolve();
-                },
+                onSuccess: (data) => { approvalHash = data.transactionHash; resolve(); },
                 onError: (err: Error) => reject(err),
               });
             });
-
             addLog(`Approval sent: ${shortenAddress(approvalHash)}`);
             await provider.waitForTransaction(approvalHash, 1, 120000);
             addLog(`Approval confirmed: ${shortenAddress(approvalHash)}`);
           }
 
-          // Thirdweb: Buy GBLIN with token
+          // Step 2: Swap token→WETH via SwapRouter02 externally
+          // Use single-hop if direct pool exists, otherwise multi-hop via exactInput (no deadline field in SwapRouter02)
+          addLog(`Swapping ${activeTradeToken.symbol} → WETH via SwapRouter02...`);
+          let swapTx;
+          if (routeQuote.fees.length === 1) {
+            // Single hop: use exactInputSingle (no deadline, matches SwapRouter02)
+            swapTx = prepareContractCall({
+              contract: {
+                client: thirdwebClient,
+                chain: base,
+                address: SWAP_ROUTER_02 as `0x${string}`,
+              },
+              method: "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut)",
+              params: [{
+                tokenIn: activeTradeToken.address as `0x${string}`,
+                tokenOut: WETH_ADDRESS as `0x${string}`,
+                fee: routeQuote.fees[0],
+                recipient: address as `0x${string}`,
+                amountIn,
+                amountOutMinimum: minWethOut,
+                sqrtPriceLimitX96: 0n,
+              }],
+            });
+          } else {
+            // Multi-hop: use exactInput (SwapRouter02 version — no deadline field)
+            swapTx = prepareContractCall({
+              contract: {
+                client: thirdwebClient,
+                chain: base,
+                address: SWAP_ROUTER_02 as `0x${string}`,
+              },
+              method: "function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum) params) returns (uint256 amountOut)",
+              params: [{
+                path: routeQuote.path,
+                recipient: address as `0x${string}`,
+                amountIn,
+                amountOutMinimum: minWethOut,
+              }],
+            });
+          }
+
+          let swapHash = '';
+          await new Promise<void>((resolve, reject) => {
+            sendTx(swapTx, {
+              onSuccess: (data) => { swapHash = data.transactionHash; resolve(); },
+              onError: (err: Error) => reject(err),
+            });
+          });
+          addLog(`Swap sent: ${shortenAddress(swapHash)}`);
+          await provider.waitForTransaction(swapHash, 1, 120000);
+          addLog(`Swap confirmed: ${shortenAddress(swapHash)}`);
+
+          // Read actual WETH received after swap
+          const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
+          const wethBalance = await wethContract.balanceOf(address).catch(() => 0n);
+          const wethToUse = wethBalance < minWethOut ? wethBalance : wethBalance;
+
+          // Step 3: Approve WETH to GBLIN contract
+          const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
+          if (allowanceWeth < wethToUse) {
+            addLog(`Approval required for WETH → GBLIN contract.`);
+            const approveWethTx = prepareContractCall({
+              contract: {
+                client: thirdwebClient,
+                chain: base,
+                address: WETH_ADDRESS as `0x${string}`,
+              },
+              method: "function approve(address spender, uint256 amount) returns (bool)",
+              params: [CONTRACT_ADDRESS as `0x${string}`, wethToUse],
+            });
+            let approveWethHash = '';
+            await new Promise<void>((resolve, reject) => {
+              sendTx(approveWethTx, {
+                onSuccess: (data) => { approveWethHash = data.transactionHash; resolve(); },
+                onError: (err: Error) => reject(err),
+              });
+            });
+            addLog(`WETH approval sent: ${shortenAddress(approveWethHash)}`);
+            await provider.waitForTransaction(approveWethHash, 1, 120000);
+            addLog(`WETH approval confirmed: ${shortenAddress(approveWethHash)}`);
+          }
+
+          // Step 4: Buy GBLIN with WETH using dummy path (contract skips internal swap when tokenIn==WETH)
+          const wethDummyPath = ethers.concat([
+            ethers.getBytes(WETH_ADDRESS),
+            ethers.toBeHex(0, 3),
+            ethers.getBytes(WETH_ADDRESS),
+          ]) as `0x${string}`;
+
+          addLog(`Buying GBLIN with WETH...`);
           const buyTokenTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
@@ -813,15 +902,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
             method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
-            params: [routeQuote.path, amountIn, minWethOut, minGblinOut],
+            params: [wethDummyPath, wethToUse, 0n, minGblinOut],
           });
-          
+
           await new Promise<void>((resolve, reject) => {
             sendTx(buyTokenTx, {
-              onSuccess: (data) => {
-                hash = data.transactionHash;
-                resolve();
-              },
+              onSuccess: (data) => { hash = data.transactionHash; resolve(); },
               onError: (err: Error) => reject(err),
             });
           });
