@@ -857,10 +857,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           await provider.waitForTransaction(swapHash, 1, 120000);
           addLog(`Swap confirmed: ${shortenAddress(swapHash)}`);
 
-          // Read actual WETH received after swap
+          // Read actual WETH balance after confirmed swap
           const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
-          const wethBalance = await wethContract.balanceOf(address).catch(() => 0n);
-          const wethToUse = wethBalance < minWethOut ? wethBalance : wethBalance;
+          const wethToUse = await wethContract.balanceOf(address).catch(() => 0n);
 
           // Step 3: Approve WETH to GBLIN contract
           const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);

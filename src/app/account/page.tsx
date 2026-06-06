@@ -546,9 +546,11 @@ export default function AccountPage() {
               method: "function approve(address spender, uint256 amount) returns (bool)",
               params: [SWAP_ROUTER_02 as `0x${string}`, amountIn],
             });
+            let approveHash = '';
             await new Promise<void>((resolve, reject) => {
-              sendTx(approveTx, { onSuccess: () => resolve(), onError: (err: Error) => reject(err) });
+              sendTx(approveTx, { onSuccess: (data) => { approveHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
             });
+            await provider.waitForTransaction(approveHash, 1, 60000);
           }
 
           // Step 2: Swap token→WETH via SwapRouter02
@@ -580,11 +582,9 @@ export default function AccountPage() {
           });
           await provider.waitForTransaction(swapHash, 1, 120000);
 
-          // Step 3: Read WETH received from swap (use minWethOut as safe amount to avoid using pre-existing WETH)
+          // Step 3: Read actual WETH balance after confirmed swap
           const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
-          const wethBalance = await wethContract.balanceOf(address).catch(() => 0n);
-          // Use the lesser of actual balance or what we expected to avoid overspending pre-existing WETH
-          const wethToUse = wethBalance > minWethOut ? wethBalance : wethBalance;
+          const wethToUse = await wethContract.balanceOf(address).catch(() => 0n);
           const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
           if (allowanceWeth < wethToUse) {
             const approveWethTx = prepareContractCall({
@@ -592,9 +592,11 @@ export default function AccountPage() {
               method: "function approve(address spender, uint256 amount) returns (bool)",
               params: [CONTRACT_ADDRESS as `0x${string}`, wethToUse],
             });
+            let approveWethHash = '';
             await new Promise<void>((resolve, reject) => {
-              sendTx(approveWethTx, { onSuccess: () => resolve(), onError: (err: Error) => reject(err) });
+              sendTx(approveWethTx, { onSuccess: (data) => { approveWethHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
             });
+            await provider.waitForTransaction(approveWethHash, 1, 60000);
           }
 
           // Step 4: Buy GBLIN with WETH dummy path (contract skips internal swap when tokenIn==WETH)
