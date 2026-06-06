@@ -23,7 +23,10 @@ import {
   LOGO_URL,
   TRADE_TOKEN_OPTIONS,
   GBLIN_ABI,
+  ERC20_ABI,
   RPC_URL,
+  WETH_ADDRESS,
+  quoteTokenToWeth,
   type TradeTokenOption,
 } from "@/components/protocol/protocol-data";
 import { BuyView } from "@/components/protocol/protocol-sections";
@@ -246,6 +249,19 @@ export default function AccountPage() {
     return TRADE_TOKEN_OPTIONS.find((token) => token.symbol === selectedToken) ?? null;
   }, [resolvedCustomToken, selectedToken]);
 
+  // Fetch token balance when selected token changes
+  useEffect(() => {
+    if (!address || !activeTradeToken || activeTradeToken.isNative) {
+      setTokenBalance('0.0000');
+      return;
+    }
+    const provider = getProvider();
+    const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
+    tokenContract.balanceOf(address)
+      .then((bal: bigint) => setTokenBalance(parseFloat(ethers.formatUnits(bal, activeTradeToken.decimals)).toFixed(4)))
+      .catch(() => setTokenBalance('0.0000'));
+  }, [address, activeTradeToken, getProvider]);
+
   // Quote asset label
   const quoteAssetLabel = useMemo(() => {
     if (tradeMode === 'buy') return 'GBLIN';
@@ -406,9 +422,21 @@ export default function AccountPage() {
             setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
             setUsdValue(`$${(Number.parseFloat(amount) * ethPriceUsd).toFixed(2)}`);
           } else {
-            setQuote('Use ETH for trading');
-            setRawQuote(0n);
-            setUsdValue('$0.00');
+            // Non-ETH token: quote via quoteTokenToWeth then quoteMintFromWeth
+            const provider = getProvider();
+            const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
+            const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
+            if (!routeQuote || routeQuote.amountOut <= 0n) {
+              setQuote('No route');
+              setRawQuote(0n);
+              setUsdValue('$0.00');
+            } else {
+              const effectiveGblinOut = await quoteMintFromWeth(routeQuote.amountOut);
+              setRawQuote(effectiveGblinOut);
+              setQuote(parseFloat(ethers.formatEther(effectiveGblinOut)).toFixed(4));
+              const wethValue = parseFloat(ethers.formatEther(routeQuote.amountOut)) * ethPriceUsd;
+              setUsdValue(`$${wethValue.toFixed(2)}`);
+            }
           }
         } else {
           // Sell mode
@@ -477,34 +505,115 @@ export default function AccountPage() {
 
     try {
       if (tradeMode === 'buy') {
-        if (!activeTradeToken?.isNative) {
-          throw new Error('Only ETH is supported for buy');
-        }
+        const SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
 
-        const ethAmount = ethers.parseEther(amount);
-        const quotedGblinOut = await quoteMintFromWeth(ethAmount);
-        const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
+        if (activeTradeToken?.isNative) {
+          // ETH buy: direct buyGBLIN
+          const ethAmount = ethers.parseEther(amount);
+          const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+          const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
 
-        const buyTx = prepareContractCall({
-          contract: {
-            client: thirdwebClient,
-            chain: thirdwebChain,
-            address: CONTRACT_ADDRESS as `0x${string}`,
-          },
-          method: "function buyGBLIN(uint256 minGblinOut) payable",
-          params: [minAmountOut],
-          value: ethAmount,
-        });
-
-        await new Promise<void>((resolve, reject) => {
-          sendTx(buyTx, {
-            onSuccess: (data) => {
-              setTradeTxHash(data.transactionHash);
-              resolve();
-            },
-            onError: (err: Error) => reject(err),
+          const buyTx = prepareContractCall({
+            contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
+            method: "function buyGBLIN(uint256 minGblinOut) payable",
+            params: [minAmountOut],
+            value: ethAmount,
           });
-        });
+
+          await new Promise<void>((resolve, reject) => {
+            sendTx(buyTx, {
+              onSuccess: (data) => { setTradeTxHash(data.transactionHash); resolve(); },
+              onError: (err: Error) => reject(err),
+            });
+          });
+        } else {
+          // Non-ETH buy (USDC, cbBTC, etc.) — 4-step workaround for SwapRouter02 ABI mismatch
+          if (!activeTradeToken) throw new Error('Select a valid token');
+          const provider = getProvider();
+          const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
+          const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
+          if (!routeQuote || routeQuote.amountOut <= 0n) throw new Error('No swap route found');
+
+          const minGblinOut = (rawQuote * (10000n - slippageBps)) / 10000n;
+          const minWethOut = (routeQuote.amountOut * (10000n - slippageBps)) / 10000n;
+
+          // Step 1: Approve token to SwapRouter02
+          const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
+          const allowanceRouter = await tokenContract.allowance(address, SWAP_ROUTER_02).catch(() => 0n);
+          if (allowanceRouter < amountIn) {
+            const approveTx = prepareContractCall({
+              contract: { client: thirdwebClient, chain: thirdwebChain, address: activeTradeToken.address as `0x${string}` },
+              method: "function approve(address spender, uint256 amount) returns (bool)",
+              params: [SWAP_ROUTER_02 as `0x${string}`, amountIn],
+            });
+            await new Promise<void>((resolve, reject) => {
+              sendTx(approveTx, { onSuccess: () => resolve(), onError: (err: Error) => reject(err) });
+            });
+          }
+
+          // Step 2: Swap token→WETH via SwapRouter02
+          let swapTx;
+          if (routeQuote.fees.length === 1) {
+            swapTx = prepareContractCall({
+              contract: { client: thirdwebClient, chain: thirdwebChain, address: SWAP_ROUTER_02 as `0x${string}` },
+              method: "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut)",
+              params: [{
+                tokenIn: activeTradeToken.address as `0x${string}`,
+                tokenOut: WETH_ADDRESS as `0x${string}`,
+                fee: routeQuote.fees[0],
+                recipient: address as `0x${string}`,
+                amountIn,
+                amountOutMinimum: minWethOut,
+                sqrtPriceLimitX96: 0n,
+              }],
+            });
+          } else {
+            swapTx = prepareContractCall({
+              contract: { client: thirdwebClient, chain: thirdwebChain, address: SWAP_ROUTER_02 as `0x${string}` },
+              method: "function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum) params) returns (uint256 amountOut)",
+              params: [{ path: routeQuote.path, recipient: address as `0x${string}`, amountIn, amountOutMinimum: minWethOut }],
+            });
+          }
+          let swapHash = '';
+          await new Promise<void>((resolve, reject) => {
+            sendTx(swapTx, { onSuccess: (data) => { swapHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
+          });
+          await provider.waitForTransaction(swapHash, 1, 120000);
+
+          // Step 3: Read actual WETH received and approve to GBLIN contract
+          const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
+          const wethBalance = await wethContract.balanceOf(address).catch(() => 0n);
+          const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
+          if (allowanceWeth < wethBalance) {
+            const approveWethTx = prepareContractCall({
+              contract: { client: thirdwebClient, chain: thirdwebChain, address: WETH_ADDRESS as `0x${string}` },
+              method: "function approve(address spender, uint256 amount) returns (bool)",
+              params: [CONTRACT_ADDRESS as `0x${string}`, wethBalance],
+            });
+            await new Promise<void>((resolve, reject) => {
+              sendTx(approveWethTx, { onSuccess: () => resolve(), onError: (err: Error) => reject(err) });
+            });
+          }
+
+          // Step 4: Buy GBLIN with WETH dummy path (contract skips internal swap when tokenIn==WETH)
+          const wethDummyPath = ethers.concat([
+            ethers.getBytes(WETH_ADDRESS),
+            ethers.toBeHex(0, 3),
+            ethers.getBytes(WETH_ADDRESS),
+          ]) as `0x${string}`;
+
+          const buyTokenTx = prepareContractCall({
+            contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
+            method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
+            params: [wethDummyPath, wethBalance, 0n, minGblinOut],
+          });
+          await new Promise<void>((resolve, reject) => {
+            sendTx(buyTokenTx, {
+              onSuccess: (data) => { setTradeTxHash(data.transactionHash); resolve(); },
+              onError: (err: Error) => reject(err),
+            });
+          });
+        }
       } else {
         // Sell mode - v3 FIX 2024-01-12: Use sellGBLINForEth (swaps to ETH) instead of sellGBLIN (basket)
         const gblinAmount = ethers.parseEther(amount);
