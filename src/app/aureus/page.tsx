@@ -37,6 +37,7 @@ function fmtUsd(n: number) {
 
 export default async function AureusPage() {
   const s = await getStats();
+  const allocated = s?.open_positions?.reduce((sum, p) => sum + (p.size_usd || 0), 0) ?? 0;
 
   return (
     <main className="max-w-2xl mx-auto px-5 py-12 font-sans text-gray-200">
@@ -62,8 +63,10 @@ export default async function AureusPage() {
         </div>
       ) : (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
             <Stat label="Capitale" value={`$${s.capital_usd.toFixed(0)}`} />
+            <Stat label="Allocato" value={`$${allocated.toFixed(0)} / $${s.capital_usd.toFixed(0)}`}
+              tone={allocated >= s.capital_usd ? 'neg' : undefined} />
             <Stat label="P&L realizzato"
               value={fmtUsd(s.realized_pnl_usd)}
               tone={s.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
@@ -88,7 +91,7 @@ export default async function AureusPage() {
                     </div>
                     <div className="flex justify-between items-center mt-2 text-sm text-gray-400">
                       <span>Entry ${p.entry_price.toLocaleString()}</span>
-                      <span>Size ${p.size_usd.toFixed(2)}</span>
+                      <span>Collaterale ${p.size_usd.toFixed(0)} / ${s.capital_usd.toFixed(0)}</span>
                       <span>Conv {(p.conviction * 100).toFixed(0)}%</span>
                     </div>
                     {p.catalyst && (
