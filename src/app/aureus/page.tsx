@@ -1,12 +1,15 @@
 export const dynamic = 'force-dynamic';
 
-type Trade = { asset: string; pnl_usd: number; verified?: boolean };
+type Trade = { asset: string; pnl_usd: number; direction?: string; commit_hash?: string; verified?: boolean; closed_at?: number };
+type OpenPosition = { asset: string; direction: string; entry_price: number; size_usd: number; catalyst: string; conviction: number; commit_hash: string; opened_at: number };
 type Stats = {
   updated: number;
   dry_run: boolean;
   capital_usd: number;
   realized_pnl_usd: number;
+  lifetime_pnl_usd: number;
   open_count: number;
+  open_positions: OpenPosition[];
   closed_count: number;
   win_rate: number;
   top_trades: Trade[];
@@ -68,6 +71,40 @@ export default async function AureusPage() {
             <Stat label="Posizioni aperte" value={`${s.open_count}`} />
           </section>
 
+          {s.open_positions && s.open_positions.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-lg font-semibold mb-3">Posizioni aperte</h2>
+              <div className="space-y-2">
+                {s.open_positions.map((p, i) => (
+                  <div key={i}
+                    className="border border-gray-800 rounded-lg px-4 py-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{p.asset}</span>
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                        p.direction === 'long'
+                          ? 'bg-emerald-900/40 text-emerald-400'
+                          : 'bg-red-900/40 text-red-400'
+                      }`}>{p.direction}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-sm text-gray-400">
+                      <span>Entry ${p.entry_price.toLocaleString()}</span>
+                      <span>Size ${p.size_usd.toFixed(2)}</span>
+                      <span>Conv {(p.conviction * 100).toFixed(0)}%</span>
+                    </div>
+                    {p.catalyst && (
+                      <p className="mt-1.5 text-xs text-gray-500 italic truncate">{p.catalyst}</p>
+                    )}
+                    {p.commit_hash && (
+                      <p className="mt-1 text-[10px] text-gray-600 font-mono truncate">
+                        commit: {p.commit_hash.slice(0, 18)}...
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">Migliori trade (chiusi)</h2>
             {s.top_trades.length === 0 ? (
@@ -94,8 +131,8 @@ export default async function AureusPage() {
 
           <p className="text-xs text-gray-600">
             {s.closed_count} trade chiusi · aggiornato{' '}
-            {new Date(s.updated * 1000).toLocaleString()}. Le posizioni aperte non
-            sono mostrate in dettaglio in tempo reale (anti-front-running).
+            {new Date(s.updated * 1000).toLocaleString()}.
+            {s.lifetime_pnl_usd !== undefined && ` P&L lifetime: ${fmtUsd(s.lifetime_pnl_usd)}.`}
           </p>
         </>
       )}
