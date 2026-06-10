@@ -71,19 +71,20 @@ export default function AureusPage() {
 
   const allocated = s?.open_positions?.reduce((sum, p) => sum + (p.size_usd || 0), 0) ?? 0;
 
+  const tradeSource = s?.all_trades?.length ? s.all_trades : (s?.top_trades ?? []);
+
   const filteredTrades = useMemo(() => {
-    if (!s?.all_trades) return [];
+    if (!tradeSource.length) return [];
     const now = Date.now() / 1000;
     const days = filter === 'today' ? 1 : filter === '7d' ? 7 : filter === '30d' ? 30 : 36500;
-    return s.all_trades
-      .filter((t) => t.closed_at && (now - t.closed_at) < days * 86400)
-      .sort((a, b) => (b.closed_at || 0) - (a.closed_at || 0));
-  }, [s?.all_trades, filter]);
+    const filtered = tradeSource.filter((t) => !t.closed_at || (now - t.closed_at) < days * 86400);
+    return filtered.sort((a, b) => (b.closed_at || 0) - (a.closed_at || 0));
+  }, [tradeSource, filter]);
 
   const hallOfFame = useMemo(() => {
-    if (!s?.all_trades?.length) return [];
+    if (!tradeSource.length) return [];
     const byAsset = new Map<string, Trade[]>();
-    s.all_trades.forEach((t) => {
+    tradeSource.forEach((t) => {
       if (!byAsset.has(t.asset)) byAsset.set(t.asset, []);
       byAsset.get(t.asset)!.push(t);
     });
