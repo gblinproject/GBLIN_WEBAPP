@@ -169,18 +169,6 @@ export default function AgentsPage() {
 
       {/* ───────── Hero ───────── */}
       <section className="px-6 pt-20 pb-16 sm:pt-28 sm:pb-24 max-w-5xl mx-auto">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition mb-12"
-        >
-          ← Back to GBLIN Protocol
-        </Link>
-
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 text-xs text-white/70 mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          Live on Base mainnet — MCP v0.1.15
-        </div>
-
         <h1 className="text-4xl sm:text-6xl font-semibold leading-tight tracking-tight">
           The treasury standard for{' '}
           <span className="text-gradient">AI agents</span>
