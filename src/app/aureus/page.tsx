@@ -16,7 +16,21 @@ type Trade = {
   catalyst?: string;
   conviction?: number;
 };
-type OpenPosition = { asset: string; direction: string; entry_price: number; size_usd: number; catalyst: string; conviction: number; commit_hash: string; opened_at: number };
+type OpenPosition = {
+  asset: string;
+  direction: string;
+  kind: string;
+  delta_neutral: boolean;
+  entry_price: number;
+  current_price: number | null;
+  size_usd: number;
+  leverage: number;
+  unrealized_pnl: number | null;
+  catalyst: string;
+  conviction: number;
+  commit_hash: string;
+  opened_at: number;
+};
 type Stats = {
   updated: number;
   dry_run: boolean;
@@ -24,6 +38,7 @@ type Stats = {
   realized_pnl_usd: number;
   lifetime_pnl_usd: number;
   open_count: number;
+  total_unrealized_pnl: number;
   open_positions: OpenPosition[];
   closed_count: number;
   win_rate: number;
@@ -41,8 +56,14 @@ async function getStats(): Promise<Stats | null> {
   }
 }
 
-function fmtUsd(n: number) {
-  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2);
+function fmtUsd(n: number | null | undefined, decimals = 2) {
+  if (n === null || n === undefined) return '—';
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(decimals);
+}
+
+function pnlColor(n: number | null | undefined) {
+  if (n === null || n === undefined) return 'text-gray-400';
+  return n >= 0 ? 'text-emerald-400' : 'text-red-400';
 }
 
 function formatDuration(seconds: number): string {
@@ -139,36 +160,73 @@ export default function AureusPage() {
           </section>
 
           {s.open_positions && s.open_positions.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-lg font-semibold mb-3">Posizioni aperte</h2>
-              <div className="space-y-2">
-                {s.open_positions.map((p, i) => (
-                  <div key={i}
-                    className="border border-gray-800 rounded-lg px-4 py-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{p.asset}</span>
-                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
-                        p.direction === 'long'
-                          ? 'bg-emerald-900/40 text-emerald-400'
-                          : 'bg-red-900/40 text-red-400'
-                      }`}>{p.direction}</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-2 text-sm text-gray-400">
-                      <span>Entry ${p.entry_price.toLocaleString()}</span>
-                      <span>Collaterale ${p.size_usd.toFixed(0)} / ${s.capital_usd.toFixed(0)}</span>
-                      <span>Conv {(p.conviction * 100).toFixed(0)}%</span>
-                    </div>
-                    {p.catalyst && (
-                      <p className="mt-1.5 text-xs text-gray-500 italic truncate">{p.catalyst}</p>
-                    )}
-                    {p.commit_hash && (
-                      <p className="mt-1 text-[10px] text-gray-600 font-mono truncate">
-                        commit: {p.commit_hash.slice(0, 18)}...
-                      </p>
-                    )}
-                  </div>
-                ))}
+            <section className="mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Posizioni aperte ({s.open_count})</h2>
+                <span className={`text-sm font-bold ${pnlColor(s.total_unrealized_pnl)}`}>
+                  P&L non realizzato: {fmtUsd(s.total_unrealized_pnl, 4)}
+                </span>
               </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
+                      <th className="pb-2 pr-4">Asset</th>
+                      <th className="pb-2 pr-4">Tipo</th>
+                      <th className="pb-2 pr-4">Dir</th>
+                      <th className="pb-2 pr-4">Size · Lev</th>
+                      <th className="pb-2 pr-4">Entry</th>
+                      <th className="pb-2 pr-4">Prezzo</th>
+                      <th className="pb-2 pr-4">P&L</th>
+                      <th className="pb-2">Conv</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.open_positions.map((p, i) => (
+                      <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <td className="py-3 pr-4 font-medium">{p.asset}</td>
+                        <td className="py-3 pr-4">
+                          {p.delta_neutral ? (
+                            <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-800">
+                              carry · coperto
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">{p.kind || 'directional'}</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                            p.direction === 'long' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'
+                          }`}>{p.direction}</span>
+                        </td>
+                        <td className="py-3 pr-4 text-gray-300">
+                          ${p.size_usd.toFixed(0)} · {p.leverage}x
+                        </td>
+                        <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
+                          {p.entry_price.toLocaleString()}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
+                          {p.delta_neutral ? '—' : (p.current_price?.toLocaleString() ?? '—')}
+                        </td>
+                        <td className={`py-3 pr-4 font-bold ${pnlColor(p.unrealized_pnl)}`}>
+                          {fmtUsd(p.unrealized_pnl, 4)}
+                          {p.delta_neutral && p.unrealized_pnl !== null && (
+                            <span className="ml-1 text-[10px] text-blue-400 font-normal">(funding)</span>
+                          )}
+                        </td>
+                        <td className="py-3 text-gray-400 text-xs">
+                          {(p.conviction * 100).toFixed(0)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-600 mt-3">
+                Le posizioni <span className="text-blue-400">carry · coperto</span> sono delta-neutral:
+                il P&L mostrato è il funding incassato, non un movimento di prezzo.
+                Aggiornato a ogni ciclo (~5 min).
+              </p>
             </section>
           )}
 
