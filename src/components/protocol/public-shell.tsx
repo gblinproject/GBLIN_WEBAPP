@@ -7,6 +7,7 @@ import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
 import { LANGUAGES } from './protocol-data';
 import { ProtocolShell } from './protocol-shell';
+import { I18nContext } from './i18n-context';
 
 function isSupportedLanguage(value: string | null): value is Language {
   return LANGUAGES.some((item) => item.code === value);
@@ -73,7 +74,9 @@ export function PublicShell({ children }: PublicShellProps) {
       t={t}
       view="home"
     >
-      {children}
+      <I18nContext.Provider value={{ t, language }}>
+        {children}
+      </I18nContext.Provider>
     </ProtocolShell>
   );
 }

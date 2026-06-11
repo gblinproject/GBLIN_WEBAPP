@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { PublicShell } from '@/components/protocol/public-shell';
+import { useT } from '@/components/protocol/i18n-context';
 
 type Trade = {
   asset: string;
@@ -123,15 +124,16 @@ function KpiCard({
 }
 
 function EquityCurve({
-  curve, peak,
+  curve, peak, emptyLabel,
 }: {
   curve: EquityPoint[];
   peak: number | undefined;
+  emptyLabel: string;
 }) {
   if (!curve || curve.length < 2) {
     return (
       <div className="h-28 flex items-center justify-center text-xs text-gray-600">
-        Curva disponibile dopo i primi trade chiusi.
+        {emptyLabel}
       </div>
     );
   }
@@ -168,6 +170,15 @@ function EquityCurve({
 }
 
 export default function AureusPage() {
+  return (
+    <PublicShell>
+      <AureusContent />
+    </PublicShell>
+  );
+}
+
+function AureusContent() {
+  const { t } = useT();
   const [s, setStats] = useState<Stats | null>(null);
   const [filter, setFilter] = useState<'today' | '7d' | '30d' | 'all'>('today');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -213,31 +224,27 @@ export default function AureusPage() {
   }, [s?.all_trades]);
 
   return (
-    <PublicShell>
       <main className="max-w-7xl mx-auto px-6 py-8 font-sans text-gray-200">
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-3xl font-bold">GBLIN Aureus</h1>
+        <h1 className="text-3xl font-bold">{t('aureus.title')}</h1>
         {s && (
           <span className={`text-xs px-2 py-1 rounded ${s.dry_run
             ? 'bg-amber-900/40 text-amber-400 border border-amber-800'
             : 'bg-emerald-900/40 text-emerald-400 border border-emerald-800'}`}>
-            {s.dry_run ? 'DRY-RUN (simulazione)' : 'LIVE'}
+            {s.dry_run ? t('aureus.dryRun') : t('aureus.live')}
           </span>
         )}
       </div>
-      <p className="text-gray-400 mb-10 leading-relaxed">
-        Autonomous catalyst &amp; rotation agent on Base. Every thesis is committed
-        on-chain before acting — performance you can verify, not screenshot.
-      </p>
+      <p className="text-gray-400 mb-10 leading-relaxed">{t('aureus.description')}</p>
 
       {loading && (
         <div className="border border-gray-800 rounded-lg p-8 text-gray-400 text-center">
-          Caricamento dati...
+          {t('aureus.loading')}
         </div>
       )}
       {!s && !loading && (
         <div className="border border-gray-800 rounded-lg p-8 text-gray-400 text-center">
-          Nessun dato ancora. L&apos;agente pubblica le statistiche qui appena gira.
+          {t('aureus.noData')}
         </div>
       )}
       {s && (
@@ -246,47 +253,47 @@ export default function AureusPage() {
             <div className="mb-6 flex items-center gap-3 bg-red-950/60 border border-red-700 rounded-xl px-5 py-4">
               <span className="text-red-400 text-xl">&#9888;</span>
               <div>
-                <p className="text-sm font-bold text-red-400 uppercase tracking-wide">Agente in HALT</p>
+                <p className="text-sm font-bold text-red-400 uppercase tracking-wide">{t('aureus.haltedTitle')}</p>
                 {s.halt_reason && <p className="text-xs text-red-300 mt-0.5">{s.halt_reason}</p>}
               </div>
             </div>
           )}
 
           <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <Stat label="Capitale" value={`$${s.capital_usd.toFixed(0)}`} />
-            <Stat label="Allocato" value={`$${allocated.toFixed(0)} / $${s.capital_usd.toFixed(0)}`}
+            <Stat label={t('aureus.capital')} value={`$${s.capital_usd.toFixed(0)}`} />
+            <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(0)} / $${s.capital_usd.toFixed(0)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
-            <Stat label="P&L realizzato"
+            <Stat label={t('aureus.realizedPnl')}
               value={fmtUsd(s.realized_pnl_usd)}
               tone={s.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
-            <Stat label="Win rate" value={`${(s.win_rate * 100).toFixed(0)}%`} />
-            <Stat label="Posizioni aperte" value={`${s.open_count}`} />
-            <Stat label="Trade chiusi" value={`${s.closed_count}`} />
+            <Stat label={t('aureus.winRate')} value={`${(s.win_rate * 100).toFixed(0)}%`} />
+            <Stat label={t('aureus.openPositionsLabel')} value={`${s.open_count}`} />
+            <Stat label={t('aureus.closedTrades')} value={`${s.closed_count}`} />
           </section>
 
           {s.metrics && (
             <section className="mb-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <KpiCard
-                  label="Profit Factor"
+                  label={t('aureus.profitFactor')}
                   value={s.metrics.profit_factor}
                   good={(v) => (v as number) > 1.3}
                   warn={(v) => (v as number) >= 1.0}
                 />
                 <KpiCard
-                  label="Sharpe / trade"
+                  label={t('aureus.sharpe')}
                   value={s.metrics.sharpe_per_trade}
                   good={(v) => (v as number) > 0.5}
                   warn={(v) => (v as number) >= 0}
                 />
                 <KpiCard
-                  label="Max Drawdown"
+                  label={t('aureus.maxDrawdown')}
                   value={s.metrics.max_drawdown_pct != null ? `${(s.metrics.max_drawdown_pct * 100).toFixed(1)}%` : null}
                   good={() => (s.metrics!.max_drawdown_pct ?? 1) < 0.05}
                   warn={() => (s.metrics!.max_drawdown_pct ?? 1) < 0.10}
                 />
                 <KpiCard
-                  label="Liquidazioni &#9888;"
+                  label={`${t('aureus.liquidations')} ⚠`}
                   value={s.metrics.liquidations}
                   good={(v) => v === 0}
                   warn={() => false}
@@ -296,7 +303,7 @@ export default function AureusPage() {
               {(s.drawdown_from_peak_pct != null) && (
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Drawdown dal picco — auto-halt al 10%</span>
+                    <span>{t('aureus.drawdownFromPeak')}</span>
                     <span className={(
                       (s.drawdown_from_peak_pct ?? 0) >= 0.10 ? 'text-red-400' :
                       (s.drawdown_from_peak_pct ?? 0) >= 0.05 ? 'text-amber-400' :
@@ -321,10 +328,10 @@ export default function AureusPage() {
               {s.metrics.equity_curve && s.metrics.equity_curve.length >= 2 && (
                 <div className="mt-5 bg-white/5 border border-gray-800 rounded-xl p-4">
                   <div className="flex justify-between items-center mb-3">
-                    <p className="text-xs uppercase tracking-wider text-gray-500">Equity Curve</p>
+                    <p className="text-xs uppercase tracking-wider text-gray-500">{t('aureus.equityCurve')}</p>
                     {s.equity_peak_usd != null && (
                       <p className="text-xs text-gray-600">
-                        picco <span className="text-gray-400">${s.equity_peak_usd.toFixed(2)}</span>
+                        {t('aureus.peakLabel')} <span className="text-gray-400">${s.equity_peak_usd.toFixed(2)}</span>
                         {' — '}
                         <span className="text-gray-400">
                           {s.equity_mtm_usd != null ? `MTM $${s.equity_mtm_usd.toFixed(2)}` : ''}
@@ -332,9 +339,9 @@ export default function AureusPage() {
                       </p>
                     )}
                   </div>
-                  <EquityCurve curve={s.metrics.equity_curve} peak={s.equity_peak_usd} />
+                  <EquityCurve curve={s.metrics.equity_curve} peak={s.equity_peak_usd} emptyLabel={t('aureus.loading')} />
                   <p className="text-[10px] text-gray-700 mt-2">
-                    Linea tratteggiata = picco equity. {s.metrics.equity_curve.length} punti.
+                    {t('aureus.dashedLineNote')} {s.metrics.equity_curve.length} {t('aureus.points')}.
                   </p>
                 </div>
               )}
@@ -344,23 +351,23 @@ export default function AureusPage() {
           {s.open_positions && s.open_positions.length > 0 && (
             <section className="mb-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Posizioni aperte ({s.open_count})</h2>
+                <h2 className="text-xl font-semibold">{t('aureus.openPositionsHeading')} ({s.open_count})</h2>
                 <span className={`text-sm font-bold ${pnlColor(s.total_unrealized_pnl)}`}>
-                  P&L non realizzato: {fmtUsd(s.total_unrealized_pnl, 4)}
+                  {t('aureus.unrealizedPnl')} {fmtUsd(s.total_unrealized_pnl, 4)}
                 </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
-                      <th className="pb-2 pr-4">Asset</th>
-                      <th className="pb-2 pr-4">Tipo</th>
-                      <th className="pb-2 pr-4">Dir</th>
-                      <th className="pb-2 pr-4">Size · Lev</th>
-                      <th className="pb-2 pr-4">Entry</th>
-                      <th className="pb-2 pr-4">Prezzo</th>
-                      <th className="pb-2 pr-4">P&L</th>
-                      <th className="pb-2">Conv</th>
+                      <th className="pb-2 pr-4">{t('aureus.colAsset')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colType')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colDir')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colSizeLev')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colEntry')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colPrice')}</th>
+                      <th className="pb-2 pr-4">{t('aureus.colPnl')}</th>
+                      <th className="pb-2">{t('aureus.colConv')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -370,7 +377,7 @@ export default function AureusPage() {
                         <td className="py-3 pr-4">
                           {p.delta_neutral ? (
                             <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-800">
-                              carry · coperto
+                              {t('aureus.carryCovered')}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-400">{p.kind || 'directional'}</span>
@@ -393,7 +400,7 @@ export default function AureusPage() {
                         <td className={`py-3 pr-4 font-bold ${pnlColor(p.unrealized_pnl)}`}>
                           {fmtUsd(p.unrealized_pnl, 4)}
                           {p.delta_neutral && p.unrealized_pnl !== null && (
-                            <span className="ml-1 text-[10px] text-blue-400 font-normal">(funding)</span>
+                            <span className="ml-1 text-[10px] text-blue-400 font-normal">{t('aureus.funding')}</span>
                           )}
                         </td>
                         <td className="py-3 text-gray-400 text-xs">
@@ -404,17 +411,13 @@ export default function AureusPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-600 mt-3">
-                Le posizioni <span className="text-blue-400">carry · coperto</span> sono delta-neutral:
-                il P&L mostrato è il funding incassato, non un movimento di prezzo.
-                Aggiornato a ogni ciclo (~5 min).
-              </p>
+              <p className="text-xs text-gray-600 mt-3">{t('aureus.carryNote')}</p>
             </section>
           )}
 
           {hallOfFame.length > 0 && (
             <section className="mb-10">
-              <h2 className="text-xl font-semibold mb-4">Hall of Fame — Migliori per Asset</h2>
+              <h2 className="text-xl font-semibold mb-4">{t('aureus.hallOfFame')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {hallOfFame.map(({ asset, best, totalTrades, totalPnl }) => (
                   <div
@@ -429,11 +432,11 @@ export default function AureusPage() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-400 space-y-1">
-                      <p>{totalTrades} trade totali · P&L: {fmtUsd(totalPnl)}</p>
-                      <p className="text-gray-500">Best: {best.direction} @ ${best.entry_price?.toFixed(2)}</p>
+                      <p>{totalTrades} {t('aureus.totalTrades')} · P&L: {fmtUsd(totalPnl)}</p>
+                      <p className="text-gray-500">{t('aureus.best')} {best.direction} @ ${best.entry_price?.toFixed(2)}</p>
                     </div>
                     {best.verified && (
-                      <span className="inline-block mt-2 text-[10px] text-emerald-500">✓ verificato</span>
+                      <span className="inline-block mt-2 text-[10px] text-emerald-500">✓ {t('aureus.verified')}</span>
                     )}
                   </div>
                 ))}
@@ -443,7 +446,7 @@ export default function AureusPage() {
 
           <section className="mb-10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <h2 className="text-xl font-semibold">Storico Trade</h2>
+              <h2 className="text-xl font-semibold">{t('aureus.history')}</h2>
               <div className="flex gap-2">
                 {(['today', '7d', '30d', 'all'] as const).map((f) => (
                   <button
@@ -455,14 +458,14 @@ export default function AureusPage() {
                         : 'bg-transparent text-gray-400 border-gray-700 hover:border-gray-500'
                     }`}
                   >
-                    {f === 'today' ? 'Oggi' : f === '7d' ? '7 giorni' : f === '30d' ? '30 giorni' : 'Tutti'}
+                    {f === 'today' ? t('aureus.today') : f === '7d' ? t('aureus.days7') : f === '30d' ? t('aureus.days30') : t('aureus.all')}
                   </button>
                 ))}
               </div>
             </div>
 
             {filteredTrades.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessun trade nel periodo selezionato.</p>
+              <p className="text-sm text-gray-500">{t('aureus.noTradesPeriod')}</p>
             ) : (
               <div className="space-y-2">
                 {filteredTrades.map((t, i) => (
@@ -502,9 +505,9 @@ export default function AureusPage() {
               </div>
             )}
             <p className="text-xs text-gray-600 mt-3">
-              {filteredTrades.length} trade visualizzati · aggiornato{' '}
+              {filteredTrades.length} {t('aureus.tradesShown')}{' '}
               {new Date(s.updated * 1000).toLocaleString()}
-              {s.lifetime_pnl_usd !== undefined && ` · P&L lifetime: ${fmtUsd(s.lifetime_pnl_usd)}`}
+              {s.lifetime_pnl_usd !== undefined && ` · ${t('aureus.lifetimePnl')} ${fmtUsd(s.lifetime_pnl_usd)}`}
             </p>
           </section>
         </>
@@ -536,13 +539,13 @@ export default function AureusPage() {
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">P&L</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.pnlLabel')}</p>
                 <p className={`text-xl font-bold ${selectedTrade.pnl_usd >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {fmtUsd(selectedTrade.pnl_usd)}
                 </p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">Return</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.returnLabel')}</p>
                 <p className="text-xl font-bold text-gray-200">
                   {selectedTrade.entry_price && selectedTrade.exit_price
                     ? `${((selectedTrade.exit_price / selectedTrade.entry_price - 1) * (selectedTrade.direction === 'short' ? -1 : 1) * 100).toFixed(2)}%`
@@ -550,19 +553,19 @@ export default function AureusPage() {
                 </p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">Entry</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.entryLabel')}</p>
                 <p className="text-lg font-semibold">${selectedTrade.entry_price?.toFixed(4) || '-'}</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">Exit</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.exitLabel')}</p>
                 <p className="text-lg font-semibold">${selectedTrade.exit_price?.toFixed(4) || '-'}</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">Size</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.sizeLabel')}</p>
                 <p className="text-lg font-semibold">${selectedTrade.size_usd?.toFixed(2) || '-'}</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-[11px] uppercase text-gray-500 mb-1">Durata</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-1">{t('aureus.durationLabel')}</p>
                 <p className="text-lg font-semibold">
                   {selectedTrade.opened_at && selectedTrade.closed_at
                     ? formatDuration(selectedTrade.closed_at - selectedTrade.opened_at)
@@ -573,14 +576,14 @@ export default function AureusPage() {
 
             {selectedTrade.catalyst && (
               <div className="mb-4">
-                <p className="text-[11px] uppercase text-gray-500 mb-2">Catalyst</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-2">{t('aureus.catalystLabel')}</p>
                 <p className="text-sm text-gray-300 bg-white/5 rounded-lg p-3">{selectedTrade.catalyst}</p>
               </div>
             )}
 
             {selectedTrade.conviction !== undefined && (
               <div className="mb-4">
-                <p className="text-[11px] uppercase text-gray-500 mb-2">Conviction</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-2">{t('aureus.convictionLabel')}</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-gray-800 rounded-full h-2">
                     <div
@@ -595,15 +598,15 @@ export default function AureusPage() {
 
             {selectedTrade.commit_hash && (
               <div className="mb-4">
-                <p className="text-[11px] uppercase text-gray-500 mb-2">Commit Hash</p>
+                <p className="text-[11px] uppercase text-gray-500 mb-2">{t('aureus.commitHashLabel')}</p>
                 <p className="text-xs font-mono text-gray-400 break-all">{selectedTrade.commit_hash}</p>
               </div>
             )}
 
             {selectedTrade.opened_at && selectedTrade.closed_at && (
               <div className="text-xs text-gray-500 grid grid-cols-2 gap-2 pt-4 border-t border-gray-800">
-                <span>Aperto: {new Date(selectedTrade.opened_at * 1000).toLocaleString()}</span>
-                <span>Chiuso: {new Date(selectedTrade.closed_at * 1000).toLocaleString()}</span>
+                <span>{t('aureus.opened')} {new Date(selectedTrade.opened_at * 1000).toLocaleString()}</span>
+                <span>{t('aureus.closedAt')} {new Date(selectedTrade.closed_at * 1000).toLocaleString()}</span>
               </div>
             )}
           </div>
@@ -611,10 +614,9 @@ export default function AureusPage() {
       )}
 
       <footer className="text-xs text-gray-600 pt-10 mt-10 border-t border-gray-800">
-        Powered by GBLIN Protocol · Base mainnet
+        {t('aureus.poweredBy')}
       </footer>
       </main>
-    </PublicShell>
   );
 }
 
