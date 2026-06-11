@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { MinimalTopNav } from '@/components/protocol/minimal-top-nav';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
@@ -159,6 +160,8 @@ const JSON_LD = {
 
 export default function AgentsPage() {
   return (
+    <>
+      <MinimalTopNav />
     <main className="min-h-screen bg-[#050505] text-white">
       <script
         type="application/ld+json"
@@ -603,5 +606,6 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
         </div>
       </footer>
     </main>
+    </>
   );
 }
