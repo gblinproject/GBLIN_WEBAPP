@@ -31,7 +31,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import type { Address } from "viem";
 import { paymentProxy } from "@x402/next";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
@@ -372,34 +371,10 @@ const x402Middleware = paymentProxy(
   server
 );
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  // Aureus password protection — skip the login page and the auth API itself
-  if (
-    pathname.startsWith("/aureus") &&
-    !pathname.startsWith("/aureus/login") &&
-    !pathname.startsWith("/api/aureus/auth")
-  ) {
-    const expected = process.env.AUREUS_PASSWORD;
-    if (expected) {
-      const cookie = req.cookies.get("aureus_session")?.value;
-      if (cookie !== expected) {
-        const loginUrl = req.nextUrl.clone();
-        loginUrl.pathname = "/aureus/login";
-        return NextResponse.redirect(loginUrl);
-      }
-    }
-  }
-
-  // x402 paywall for all other matched routes
-  return x402Middleware(req);
-}
+export const middleware = x402Middleware;
 
 export const config = {
   matcher: [
-    "/aureus",
-    "/aureus/((?!login).*)",
     "/api/x402/treasury-state",
     "/api/x402/quote",
     "/api/x402/jit",

@@ -402,6 +402,13 @@ export function HomeView(props: HomeViewProps) {
                 {t('nav.dashboard')}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
+              <Link
+                className="group inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12] hover:-translate-y-0.5"
+                href="/aureus"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Aureus Agent
+              </Link>
               <button
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-transparent px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-400"
                 onClick={copyContract}
