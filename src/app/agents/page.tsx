@@ -518,35 +518,6 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
         </div>
       </section>
 
-      {/* ───────── Performance ───────── */}
-      <section className="px-6 py-16 border-t border-white/10">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            30-day basket performance vs flat USDC
-          </h2>
-          <p className="mt-3 text-white/60 max-w-3xl">
-            Data read live from Base mainnet via Chainlink oracles.
-            Past performance does not guarantee future results.
-          </p>
-          <div className="mt-8 grid sm:grid-cols-3 gap-4">
-            {[
-              { label: 'GBLIN basket', value: '+4.2%', sub: 'cbBTC 45% + WETH 45% + USDC 10%' },
-              { label: 'Flat USDC', value: '0.00%', sub: 'No yield, full inflation exposure' },
-              { label: 'Crash Shield activations', value: '0', sub: 'Last 30 days — normal market' },
-            ].map((item) => (
-              <div key={item.label} className="glass rounded-xl p-6 text-center">
-                <p className="text-sm text-white/50">{item.label}</p>
-                <p className="mt-2 text-3xl font-semibold text-[#F27D26]">{item.value}</p>
-                <p className="mt-1 text-xs text-white/40">{item.sub}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-4 text-xs text-white/30">
-            * 30-day period. GBLIN is not a financial product. Value can decrease.
-          </p>
-        </div>
-      </section>
-
       {/* ───────── FAQ ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">

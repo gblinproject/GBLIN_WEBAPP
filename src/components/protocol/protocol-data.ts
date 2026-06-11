@@ -80,7 +80,7 @@ export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
 // TODO(security): proxy Moralis calls through /api/moralis to keep JWT server-only.
 export const MORALIS_API_KEY = process.env.NEXT_PUBLIC_MORALIS_API_KEY ?? '';
 export const BASE_CHAIN_ID = 8453;
-export const WHITEPAPER_URL = 'https://raw.githubusercontent.com/gblinproject/Whitepaper/main/GBLIN_WHITE_PAPER_V5.pdf';
+export const WHITEPAPER_URL = 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/README.md';
 export const LOGO_URL = 'https://raw.githubusercontent.com/rubbe89/gblin-assets/main/LOGO_GBLIN.png';
 export const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 export const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
