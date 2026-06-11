@@ -30,6 +30,8 @@
  * Pricing: micropayments calibrated for autonomous agent budgets.
  */
 
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import type { Address } from "viem";
 import { paymentProxy } from "@x402/next";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
@@ -89,7 +91,7 @@ const accepts = (price: `$${string}`) => [
   },
 ];
 
-export const middleware = paymentProxy(
+const x402Middleware = paymentProxy(
   {
     "/api/x402/treasury-state": {
       accepts: accepts("$0.001"),
@@ -370,10 +372,34 @@ export const middleware = paymentProxy(
   server
 );
 
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Aureus password protection — skip the login page and the auth API itself
+  if (
+    pathname.startsWith("/aureus") &&
+    !pathname.startsWith("/aureus/login") &&
+    !pathname.startsWith("/api/aureus/auth")
+  ) {
+    const expected = process.env.AUREUS_PASSWORD;
+    if (expected) {
+      const cookie = req.cookies.get("aureus_session")?.value;
+      if (cookie !== expected) {
+        const loginUrl = req.nextUrl.clone();
+        loginUrl.pathname = "/aureus/login";
+        return NextResponse.redirect(loginUrl);
+      }
+    }
+  }
+
+  // x402 paywall for all other matched routes
+  return x402Middleware(req);
+}
+
 export const config = {
-  // Match every paid endpoint under /api/x402/* but exclude the public
-  // discovery manifest at /api/x402/llms.txt (must remain free for crawlers).
   matcher: [
+    "/aureus",
+    "/aureus/((?!login).*)",
     "/api/x402/treasury-state",
     "/api/x402/quote",
     "/api/x402/jit",
