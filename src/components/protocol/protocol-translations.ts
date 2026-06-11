@@ -4,6 +4,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   en: {
     nav: {
       rebalance: 'REBALANCE',
+      aureus: 'AUREUS',
+      agents: 'AGENTS',
       myAccount: 'My Account',
       accountShort: 'Account'
     },
@@ -265,6 +267,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   it: {
     nav: {
       rebalance: 'REBALANCE',
+      aureus: 'AUREUS',
+      agents: 'AGENTS',
       myAccount: 'Il Mio Account',
       accountShort: 'Account'
     },
@@ -526,6 +530,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   es: {
     nav: {
       rebalance: 'REEQUILIBRIO',
+      aureus: 'AUREUS',
+      agents: 'AGENTES',
       myAccount: 'Mi Cuenta',
       accountShort: 'Cuenta'
     },
@@ -787,6 +793,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   fr: {
     nav: {
       rebalance: 'RÉÉQUILIBRAGE',
+      aureus: 'AUREUS',
+      agents: 'AGENTS',
       myAccount: 'Mon Compte',
       accountShort: 'Compte'
     },
@@ -1048,6 +1056,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   de: {
     nav: {
       rebalance: 'REBALANCING',
+      aureus: 'AUREUS',
+      agents: 'AGENTS',
       myAccount: 'Mein Konto',
       accountShort: 'Konto'
     },
@@ -1309,6 +1319,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   zh: {
     nav: {
       rebalance: '再平衡',
+      aureus: 'AUREUS',
+      agents: '代理',
       myAccount: '我的账户',
       accountShort: '账户'
     },
@@ -1570,6 +1582,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   ja: {
     nav: {
       rebalance: '再平衡',
+      aureus: 'AUREUS',
+      agents: 'エージェント',
       myAccount: 'マイアカウント',
       accountShort: 'アカウント'
     },

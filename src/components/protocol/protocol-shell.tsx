@@ -22,11 +22,13 @@ interface ProtocolShellProps {
   children: ReactNode;
 }
 
-const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault'; href: string; view: ProtocolView }> = [
+const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents'; href: string; view: ProtocolView | null }> = [
   { key: 'home', href: '/', view: 'home' },
   { key: 'dashboard', href: '/dashboard', view: 'dashboard' },
   { key: 'rebalance', href: '/rebalance', view: 'rebalance' },
-  { key: 'vault', href: '/vault', view: 'vault' }
+  { key: 'vault', href: '/vault', view: 'vault' },
+  { key: 'aureus', href: '/aureus', view: null },
+  { key: 'agents', href: '/agents', view: null }
 ];
 
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
