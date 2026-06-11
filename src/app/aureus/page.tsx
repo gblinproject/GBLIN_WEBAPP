@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { MinimalTopNav } from '@/components/protocol/minimal-top-nav';
+import { PublicShell } from '@/components/protocol/public-shell';
 
 type Trade = {
   asset: string;
@@ -213,8 +213,7 @@ export default function AureusPage() {
   }, [s?.all_trades]);
 
   return (
-    <>
-      <MinimalTopNav />
+    <PublicShell>
       <main className="max-w-7xl mx-auto px-6 py-8 font-sans text-gray-200">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-3xl font-bold">GBLIN Aureus</h1>
@@ -615,7 +614,7 @@ export default function AureusPage() {
         Powered by GBLIN Protocol · Base mainnet
       </footer>
       </main>
-    </>
+    </PublicShell>
   );
 }
 
