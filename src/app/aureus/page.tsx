@@ -260,8 +260,8 @@ function AureusContent() {
           )}
 
           <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <Stat label={t('aureus.capital')} value={`$${s.capital_usd.toFixed(0)}`} />
-            <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(0)} / $${s.capital_usd.toFixed(0)}`}
+            <Stat label={t('aureus.capital')} value={`$${s.capital_usd.toFixed(2)}`} />
+            <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(2)} / $${s.capital_usd.toFixed(2)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
             <Stat label={t('aureus.realizedPnl')}
               value={fmtUsd(s.realized_pnl_usd)}
