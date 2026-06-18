@@ -264,8 +264,8 @@ function AureusContent() {
             <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(2)} / $${s.capital_usd.toFixed(2)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
             <Stat label={t('aureus.realizedPnl')}
-              value={fmtUsd(s.realized_pnl_usd)}
-              tone={s.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
+              value={fmtUsd(s.lifetime_pnl_usd ?? s.realized_pnl_usd)}
+              tone={(s.lifetime_pnl_usd ?? s.realized_pnl_usd) >= 0 ? 'pos' : 'neg'} />
             <Stat label={t('aureus.winRate')} value={`${(s.win_rate * 100).toFixed(0)}%`} />
             <Stat label={t('aureus.openPositionsLabel')} value={`${s.open_count}`} />
             <Stat label={t('aureus.closedTrades')} value={`${s.closed_count}`} />
