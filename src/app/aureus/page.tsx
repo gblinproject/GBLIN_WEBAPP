@@ -56,6 +56,7 @@ type Stats = {
   drawdown_from_peak_pct?: number;
   realized_pnl_usd: number;
   lifetime_pnl_usd: number;
+  net_pnl_usd?: number;
   open_count: number;
   total_unrealized_pnl: number;
   open_positions: OpenPosition[];
@@ -264,8 +265,8 @@ function AureusContent() {
             <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(2)} / $${s.capital_usd.toFixed(2)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
             <Stat label={t('aureus.realizedPnl')}
-              value={fmtUsd(s.lifetime_pnl_usd ?? s.realized_pnl_usd)}
-              tone={(s.lifetime_pnl_usd ?? s.realized_pnl_usd) >= 0 ? 'pos' : 'neg'} />
+              value={fmtUsd(s.net_pnl_usd ?? s.lifetime_pnl_usd ?? s.realized_pnl_usd)}
+              tone={(s.net_pnl_usd ?? s.lifetime_pnl_usd ?? s.realized_pnl_usd) >= 0 ? 'pos' : 'neg'} />
             <Stat label={t('aureus.winRate')} value={`${(s.win_rate * 100).toFixed(0)}%`} />
             <Stat label={t('aureus.openPositionsLabel')} value={`${s.open_count}`} />
             <Stat label={t('aureus.closedTrades')} value={`${s.closed_count}`} />
