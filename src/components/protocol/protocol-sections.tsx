@@ -505,7 +505,7 @@ export function HomeView(props: HomeViewProps) {
             </div>
           </div>
           <Link
-            href="/game"
+            href="/account"
             className="shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.3)] sm:self-center"
           >
             <Shield className="h-4 w-4" />

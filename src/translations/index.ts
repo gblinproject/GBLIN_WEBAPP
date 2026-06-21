@@ -223,15 +223,15 @@ export const translations: Record<Language, any> = {
       core: "Vault Core"
     },
     sundayChallenge: {
-      eyebrow: "Weekly Challenge",
-      badge: "Every Sunday",
-      title: "Crash Shield Game — Win $10",
-      body: "Guess exactly how GBLIN reallocated during a real crash (Jan 2026, FTX, May 2021, Mar 2020). If you win,",
-      bodyBold: "share the result tagging @gblin on Farcaster or @GBLIN_Protocol on X.",
-      bodyEnd: "Every Sunday one winner is drawn at random and receives",
-      amount: "$10",
-      bodyTail: "directly in their wallet.",
-      cta: "Play the Game"
+      eyebrow: "Protocol Update",
+      badge: "GBLIN V6",
+      title: "We've upgraded to GBLIN V6",
+      body: "We migrated GBLIN to a new, improved contract (V6) — stronger crash shield, adaptive slippage and lower-risk design. Your V5 tokens still work, but to move to the new contract just use the",
+      bodyBold: "Migrate to V6 button in the Buy / Sell panel.",
+      bodyEnd: "It redeems your V5 and re-buys V6 for you in",
+      amount: "two clicks",
+      bodyTail: "directly on-chain.",
+      cta: "Migrate now"
     },
     footer: {
       protocolName: "GBLIN PROTOCOL"
@@ -459,15 +459,15 @@ export const translations: Record<Language, any> = {
       core: "Nucleo del Caveau"
     },
     sundayChallenge: {
-      eyebrow: "Sfida Settimanale",
-      badge: "Ogni Domenica",
-      title: "Crash Shield Game — Vinci $10",
-      body: "Indovina esattamente come GBLIN ha riallocato durante un vero crash (Gen 2026, FTX, Mag 2021, Mar 2020). Se vinci,",
-      bodyBold: "condividi il risultato taggando @gblin su Farcaster o @GBLIN_Protocol su X.",
-      bodyEnd: "Ogni domenica viene estratto a sorte un vincitore che riceve",
-      amount: "$10",
-      bodyTail: "direttamente nel portafoglio.",
-      cta: "Gioca"
+      eyebrow: "Aggiornamento Protocollo",
+      badge: "GBLIN V6",
+      title: "Siamo passati a GBLIN V6",
+      body: "Abbiamo migrato GBLIN a un contratto nuovo e migliorato (V6) — crash shield più forte, slippage adattivo e design a minor rischio. I tuoi token V5 funzionano ancora, ma per passare al nuovo contratto basta usare il",
+      bodyBold: "tasto Migrate to V6 nel pannello Buy / Sell.",
+      bodyEnd: "Riscatta il tuo V5 e ricompra il V6 per te in",
+      amount: "due click",
+      bodyTail: "direttamente on-chain.",
+      cta: "Migra ora"
     },
     footer: {
       protocolName: "PROTOCOLLO GBLIN"
@@ -648,15 +648,15 @@ export const translations: Record<Language, any> = {
       core: "Núcleo de la Bóveda"
     },
     sundayChallenge: {
-      eyebrow: "Desafio Semanal",
-      badge: "Cada Domingo",
-      title: "Crash Shield Game — Gana $10",
-      body: "Adivina exactamente c\u00f3mo GBLIN realoc\u00f3 durante un crash real (Ene 2026, FTX, May 2021, Mar 2020). Si ganas,",
-      bodyBold: "comparte el resultado etiquetando @gblin en Farcaster o @GBLIN_Protocol en X.",
-      bodyEnd: "Cada domingo se sortea un ganador que recibe",
-      amount: "$10",
-      bodyTail: "directamente en su cartera.",
-      cta: "Jugar"
+      eyebrow: "Actualizacion del Protocolo",
+      badge: "GBLIN V6",
+      title: "Hemos actualizado a GBLIN V6",
+      body: "Migramos GBLIN a un contrato nuevo y mejorado (V6) con crash shield mas fuerte, slippage adaptativo y menor riesgo. Para pasar tus tokens al nuevo contrato usa el",
+      bodyBold: "boton Migrate to V6 en el panel Buy / Sell.",
+      bodyEnd: "Reembolsa tu V5 y vuelve a comprar V6 por ti en",
+      amount: "dos clics",
+      bodyTail: "directamente on-chain.",
+      cta: "Migrar ahora"
     },
     footer: {
       protocolName: "PROTOCOLO GBLIN"
@@ -837,15 +837,15 @@ export const translations: Record<Language, any> = {
       core: "Cœur du Coffre"
     },
     sundayChallenge: {
-      eyebrow: "D\u00e9fi Hebdomadaire",
-      badge: "Chaque Dimanche",
-      title: "Crash Shield Game — Gagnez $10",
-      body: "Devinez exactement comment GBLIN a r\u00e9allou\u00e9 lors d'un vrai crash (Jan 2026, FTX, Mai 2021, Mar 2020). Si vous gagnez,",
-      bodyBold: "partagez le r\u00e9sultat en taguant @gblin sur Farcaster ou @GBLIN_Protocol sur X.",
-      bodyEnd: "Chaque dimanche un gagnant est tir\u00e9 au sort et re\u00e7oit",
-      amount: "$10",
-      bodyTail: "directement dans son portefeuille.",
-      cta: "Jouer"
+      eyebrow: "Mise a jour du Protocole",
+      badge: "GBLIN V6",
+      title: "Nous sommes passes a GBLIN V6",
+      body: "Nous avons migre GBLIN vers un contrat ameliore (V6) avec un crash shield plus fort, slippage adaptatif et moindre risque. Pour passer vos tokens au nouveau contrat, utilisez le",
+      bodyBold: "bouton Migrate to V6 dans le panneau Buy / Sell.",
+      bodyEnd: "Il rachete votre V5 et rachete le V6 pour vous en",
+      amount: "deux clics",
+      bodyTail: "directement on-chain.",
+      cta: "Migrer"
     },
     footer: {
       protocolName: "PROTOCOLE GBLIN"
@@ -1026,15 +1026,15 @@ export const translations: Record<Language, any> = {
       core: "Tresor-Kern"
     },
     sundayChallenge: {
-      eyebrow: "W\u00f6chentliche Challenge",
-      badge: "Jeden Sonntag",
-      title: "Crash Shield Game — $10 gewinnen",
-      body: "Rate genau, wie GBLIN w\u00e4hrend eines echten Crashs umgeschichtet hat (Jan 2026, FTX, Mai 2021, M\u00e4r 2020). Wenn du gewinnst,",
-      bodyBold: "teile das Ergebnis und tagge @gblin auf Farcaster oder @GBLIN_Protocol auf X.",
-      bodyEnd: "Jeden Sonntag wird ein Gewinner per Zufallslos gezogen und erh\u00e4lt",
-      amount: "$10",
-      bodyTail: "direkt in die Wallet.",
-      cta: "Spielen"
+      eyebrow: "Protokoll-Update",
+      badge: "GBLIN V6",
+      title: "Wir sind auf GBLIN V6 umgestiegen",
+      body: "Wir haben GBLIN auf einen neuen, verbesserten Vertrag (V6) migriert \u2014 staerkerer Crash Shield, adaptiver Slippage und risikoaermeres Design. Um deine Token zum neuen Vertrag zu bewegen, nutze den",
+      bodyBold: "Migrate to V6 Button im Buy / Sell Panel.",
+      bodyEnd: "Er loest dein V5 ein und kauft V6 fuer dich in",
+      amount: "zwei Klicks",
+      bodyTail: "direkt on-chain.",
+      cta: "Jetzt migrieren"
     },
     footer: {
       protocolName: "GBLIN PROTOKOLL"
