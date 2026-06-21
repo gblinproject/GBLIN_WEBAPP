@@ -6,6 +6,7 @@ import { Activity, ArrowRight, Cpu, Copy, Download, ExternalLink, Landmark, Refr
 import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
 import { CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
+import MigrateButton from "@/components/MigrateButton";
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -1022,6 +1023,7 @@ export function BuyView(props: BuyViewProps) {
             >
               {t('trade.inkindBtn')}
             </button>
+            <MigrateButton />
           </div>
 
           {mode === 'inkind' ? (
