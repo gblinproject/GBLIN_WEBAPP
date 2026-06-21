@@ -73,6 +73,10 @@ export const RPC_URL = ALCHEMY_KEY
   ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://mainnet.base.org'; // public RPC fallback (rate-limited)
 export const CONTRACT_ADDRESS = '0x38DcDB3A381677239BBc652aed9811F2f8496345';
+// V6 (contratto di produzione). Usato SOLO per il display pubblico: indirizzo mostrato
+// in home con tasto copia + link "View on BaseScan". Il trading/letture on-chain restano
+// su CONTRACT_ADDRESS finché non si ripunta tutto il pannello alla V6.
+export const DISPLAY_CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
 export const AERODROME_POOL = '0x8fdDa852a7b106b08848da676b8793814D561617';
 export const AERODROME_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481';
 export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';

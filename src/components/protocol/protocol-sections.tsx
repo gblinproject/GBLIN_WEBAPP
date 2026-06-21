@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, ArrowRight, Cpu, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
-import { CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
+import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
 
@@ -409,7 +409,7 @@ export function HomeView(props: HomeViewProps) {
                 type="button"
               >
                 <Copy className="h-3.5 w-3.5" />
-                {copied ? t('site.copied') : shortenAddress(CONTRACT_ADDRESS)}
+                {copied ? t('site.copied') : shortenAddress(DISPLAY_CONTRACT_ADDRESS)}
               </button>
             </div>
 
@@ -685,7 +685,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
               <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.openSourceDesc') || 'No hidden allocations. The code is fully open-source and verified on BaseScan. Complete transparency from day one.'}</p>
               <a 
-                href={`https://basescan.org/address/${CONTRACT_ADDRESS}`}
+                href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/[0.12]"
@@ -732,7 +732,7 @@ export function HomeView(props: HomeViewProps) {
               <a className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300 transition hover:bg-amber-500/[0.12] hover:-translate-y-0.5" href={WHITEPAPER_URL} rel="noreferrer" target="_blank">
                 <Download className="h-3.5 w-3.5" /> {t('site.whitepaper')}
               </a>
-              <a className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition hover:border-white/[0.12] hover:text-zinc-300" href={`https://basescan.org/address/${CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
+              <a className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition hover:border-white/[0.12] hover:text-zinc-300" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
                 <ExternalLink className="h-3.5 w-3.5" /> {t('site.basescan')}
               </a>
             </div>
@@ -780,7 +780,7 @@ export function DashboardView(props: DashboardViewProps) {
               </button>
               <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10" onClick={copyContract} type="button">
                 <Copy className="h-4 w-4" />
-                {copied ? t('site.copied') : shortenAddress(CONTRACT_ADDRESS)}
+                {copied ? t('site.copied') : shortenAddress(DISPLAY_CONTRACT_ADDRESS)}
               </button>
             </>
           }

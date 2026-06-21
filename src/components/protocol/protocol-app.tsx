@@ -11,6 +11,7 @@ import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
 import {
   CONTRACT_ADDRESS,
+  DISPLAY_CONTRACT_ADDRESS,
   ERC20_ABI,
   GBLIN_ABI,
   LANGUAGES,
@@ -687,7 +688,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [autoRebalanceOpportunity?.name, basketData, onChainData, rebalanceAssetStats, t]);
 
   const copyContract = useCallback(async () => {
-    await navigator.clipboard.writeText(CONTRACT_ADDRESS);
+    await navigator.clipboard.writeText(DISPLAY_CONTRACT_ADDRESS);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   }, []);

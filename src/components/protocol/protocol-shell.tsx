@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ExternalLink, Globe, Menu, Zap, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
-import { CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
+import { DISPLAY_CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
 import type { ProtocolView } from './protocol-sections';
 
 interface ProtocolShellProps {
@@ -309,7 +309,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
             <LiveClock />
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-400">
-            <span>{shortenAddress(CONTRACT_ADDRESS)}</span>
+            <span>{shortenAddress(DISPLAY_CONTRACT_ADDRESS)}</span>
           </div>
         </div>
         {children}
@@ -328,7 +328,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
               {t('site.whitepaper')}
               <ExternalLink className="h-4 w-4" />
             </a>
-            <a className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10" href={`https://basescan.org/address/${CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
+            <a className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
               {t('site.basescan')}
               <ExternalLink className="h-4 w-4" />
             </a>
