@@ -641,8 +641,8 @@ export function HomeView(props: HomeViewProps) {
 
           {/* Story Text */}
           <div className="mb-8 p-5 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
-            <p className="text-sm leading-7 text-white/60 mb-4">{t('security.story1') || 'At GBLIN, we believe security is built by addressing problems in broad daylight. Before launching our definitive version (V5), a white-hat researcher identified a critical vulnerability involving a "Silent Catch" and Path Spoofing vector.'}</p>
-            <p className="text-sm leading-7 text-white/60">{t('security.story2') || 'Unlike the crypto standard, we did not hide it. We rebuilt our engine from scratch to make it an impenetrable fortress. The GBLIN V5 infrastructure today guarantees rigorous mathematical protection for your capital.'}</p>
+            <p className="text-sm leading-7 text-white/60 mb-4">{t('security.story1') || 'At GBLIN, we believe security is built by addressing problems in broad daylight. Before launching our definitive version (V6), white-hat research and multiple independent security reviews identified critical vulnerabilities — including a "Silent Catch" and a Path Spoofing vector.'}</p>
+            <p className="text-sm leading-7 text-white/60">{t('security.story2') || 'Unlike the crypto standard, we did not hide them. We rebuilt the engine from scratch and hardened it again for V6 — adaptive slippage, Chainlink min/max-answer bounds, and a fully parametric, hard-capped design. The GBLIN V6 infrastructure today guarantees rigorous mathematical protection for your capital.'}</p>
           </div>
           
           {/* Security Cards Grid */}
@@ -667,9 +667,9 @@ export function HomeView(props: HomeViewProps) {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
                   <Shield className="h-4 w-4" />
                 </div>
-                <p className="text-sm font-semibold text-white">{t('security.slippageTitle') || 'Inviolable 2% Slippage'}</p>
+                <p className="text-sm font-semibold text-white">{t('security.slippageTitle') || 'Adaptive Slippage Protection'}</p>
               </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.slippageDesc') || 'We eliminated "silent try/catch" transactions. If slippage exceeds the 2% maximum ceiling, the smart contract automatically reverts the operation. Funds are 100% protected.'}</p>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.slippageDesc') || 'We eliminated "silent try/catch" on critical swaps. Internal swaps use an adaptive slippage envelope (0.5%–5.5%) driven by on-chain volatility, under an immutable 20% hard cap; if a swap can\'t meet its minimum, the contract reverts. Funds are 100% protected.'}</p>
               <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] px-3 py-2">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">{t('security.noSilentFail') || 'No silent fails'}</p>
               </div>
