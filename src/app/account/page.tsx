@@ -625,14 +625,14 @@ export default function AccountPage() {
         console.log('[executeTrade] Sell mode v2:', { currentRedeemOption, gblinAmount: amount, rawQuote: rawQuote.toString(), timestamp: Date.now() });
 
         if (currentRedeemOption === 'basket') {
-          console.log('[executeTrade] Calling redeemInKind (basket)');
+          console.log('[executeTrade] Calling sellGBLIN (basket, V6 in-kind redeem)');
           const sellTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
               chain: thirdwebChain,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
-            method: "function redeemInKind(uint256 gblinAmount)",
+            method: "function sellGBLIN(uint256 gblinAmount)",
             params: [gblinAmount],
           });
 
@@ -690,7 +690,8 @@ export default function AccountPage() {
   const BUY_SELECTORS = new Set([
     ethers.id("buyGBLIN(uint256)").slice(0, 10).toLowerCase(),
     ethers.id("buyGBLINWithToken(bytes,uint256,uint256,uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("mintInKind(uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("buyGBLINInKind(address,uint256,uint256)").slice(0, 10).toLowerCase(), // V6 in-kind
+    ethers.id("mintInKind(uint256)").slice(0, 10).toLowerCase(),                     // V5 legacy
   ]);
   const SELL_SELECTORS = new Set([
     ethers.id("sellGBLIN(uint256)").slice(0, 10).toLowerCase(),

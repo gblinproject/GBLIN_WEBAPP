@@ -199,7 +199,7 @@ export default function AgentsPage() {
             npm package
           </a>
           <a
-            href="https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345"
+            href="https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0"
             target="_blank"
             rel="noopener noreferrer"
             className="px-5 py-2.5 rounded-lg border border-white/20 text-sm hover:bg-white/5 transition"

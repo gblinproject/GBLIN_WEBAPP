@@ -916,14 +916,14 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         const gblinAmount = ethers.parseEther(amount);
 
         if (redeemOption === 'basket') {
-          // Thirdweb: Redeem in kind
+          // V6: redeem in-kind = sellGBLIN (era redeemInKind in V5)
           const redeemTx = prepareContractCall({
             contract: {
               client: thirdwebClient,
               chain: base,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
-            method: "function redeemInKind(uint256 gblinAmount)",
+            method: "function sellGBLIN(uint256 gblinAmount)",
             params: [gblinAmount],
           });
           
