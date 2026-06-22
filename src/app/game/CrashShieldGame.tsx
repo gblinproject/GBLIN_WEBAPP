@@ -306,7 +306,7 @@ function OnboardingHint({ onDismiss }: { onDismiss: () => void }) {
             lineHeight: 1.55,
           }}
         >
-          GBLIN auto-rotates into stables when a drawdown crosses 20%. Guess the exact reallocation during a real crash.
+          GBLIN auto-rotates into stables when a drawdown breaches its adaptive threshold (~15%). Guess the exact reallocation during a real crash.
           If you guess right → post your win tagging @gblin on Farcaster or @GBLIN_Protocol on X.
           Every Sunday one winner is drawn at random and receives $10 directly in their wallet.
         </div>

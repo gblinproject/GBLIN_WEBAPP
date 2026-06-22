@@ -1383,7 +1383,7 @@ export function RebalanceView(props: RebalanceViewProps) {
               <Zap className="h-4 w-4 shrink-0 text-emerald-400" />
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Gas Estimate</p>
-                <p className="text-sm font-semibold text-emerald-300">~0.0001–0.0005 ETH · Reward ≈ {autoRebalanceOpportunity.targetEthAmount.toFixed(5)} ETH</p>
+                <p className="text-sm font-semibold text-emerald-300">~0.0001–0.0005 ETH · Adaptive bounty ≈ {Math.min(0.01, Math.max(0.00005, autoRebalanceOpportunity.targetEthAmount * 0.0005)).toFixed(5)} ETH</p>
               </div>
             </div>
           ) : null}

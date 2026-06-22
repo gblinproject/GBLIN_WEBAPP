@@ -67,7 +67,7 @@ const TOOLS = [
   },
   {
     name: 'find_keeper_bounty',
-    purpose: 'GBLIN pays you: check if a rebalance bounty is available right now. Returns ready-to-send calldata. The swap uses the contract\'s own funds — the keeper only pays gas (~$0.01 on Base) and earns 0.0001 ETH.',
+    purpose: 'GBLIN pays you: check if a rebalance bounty is available right now. Returns ready-to-send calldata. The swap uses the contract\'s own funds — the keeper only pays gas (~$0.01 on Base) and earns an adaptive bounty (~0.05% of the volume rebalanced, capped 0.00005–0.01 ETH).',
   },
 ];
 
@@ -240,7 +240,7 @@ export default function AgentsPage() {
               },
               {
                 title: 'Crash Shield aware',
-                body: 'When a basket asset drops >20%, dynamic weights re-route toward USDC. Slippage buffer auto-scales from 2.5% to 4% to absorb the temporary pool stress.',
+                body: 'When a basket asset breaches its adaptive crash threshold (~15%, dual-peak), dynamic weights re-route proportionally toward USDC. The internal slippage buffer auto-scales within a 0.5%–5.5% envelope driven by on-chain volatility to absorb the temporary pool stress.',
               },
               {
                 title: 'MCP-native — works everywhere',

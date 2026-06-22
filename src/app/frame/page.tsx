@@ -327,8 +327,8 @@ export default function FramePage() {
             }}
           >
             Autonomous on-chain basket on Base. cbBTC + WETH + USDC, with a
-            Crash Shield that rotates risk into stables when drawdowns exceed 20%.
-            Fully open source.
+            Crash Shield that rotates risk into stables when drawdowns breach its
+            adaptive threshold (~15%). Fully open source.
           </p>
 
           {/* Divider */}
