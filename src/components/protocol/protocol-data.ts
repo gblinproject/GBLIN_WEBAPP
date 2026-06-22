@@ -76,7 +76,9 @@ export const RPC_URL = ALCHEMY_KEY
 export const CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
 // Stesso indirizzo: tenuto come alias per i punti di "display pubblico" (home + View on BaseScan).
 export const DISPLAY_CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
-export const AERODROME_POOL = '0x8fdDa852a7b106b08848da676b8793814D561617';
+// Pool V6 GBLIN/WETH (per categorizzare le tx come "infra protocollo").
+export const AERODROME_POOL = '0x6Ac18D5e90278D2477027B5769EFb2fF0711FFbB'; // Aerodrome V6
+export const UNISWAP_POOL = '0xAb305c45F4E42A73909a49a6775e3f7782239dAE';   // Uniswap V3 V6
 export const AERODROME_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481';
 export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
 // Moralis JWT — currently consumed client-side, so it must be NEXT_PUBLIC_.
@@ -185,6 +187,7 @@ const PROTOCOL_CORE_ADDRESSES = new Set([
 ]);
 const PROTOCOL_INFRA_ADDRESSES = new Set([
   AERODROME_POOL.toLowerCase(),
+  UNISWAP_POOL.toLowerCase(),
   AERODROME_ROUTER.toLowerCase(),
   ZERO_ADDRESS
 ]);
