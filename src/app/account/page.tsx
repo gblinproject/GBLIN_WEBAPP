@@ -720,6 +720,10 @@ export default function AccountPage() {
       if (contractRes.ok) {
         const data = await contractRes.json();
         for (const tx of (data.result || [])) {
+          // Filtro esplicito: SOLO transazioni verso il contratto corrente (V6).
+          // I selettori (sellGBLINForEth, buyGBLIN…) sono identici tra V5 e V6, quindi senza
+          // questo controllo le vecchie tx V5 passavano (Moralis non sempre rispetta to_address).
+          if (tx.to_address?.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
           const selector = tx.input?.slice(0, 10)?.toLowerCase();
           const ts = new Date(tx.block_timestamp).getTime();
           let type: Transaction["type"] = "buy";
@@ -734,6 +738,8 @@ export default function AccountPage() {
       if (erc20Res.ok) {
         const data = await erc20Res.json();
         for (const tx of (data.result || [])) {
+          // Solo trasferimenti del token V6 (Moralis a volte ignora contract_addresses).
+          if (tx.address && tx.address.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
           const amount = parseFloat(ethers.formatUnits(tx.value, 18));
           const ts = new Date(tx.block_timestamp).getTime();
           const hash = tx.transaction_hash;
