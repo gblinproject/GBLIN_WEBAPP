@@ -794,6 +794,14 @@ export function DashboardView(props: DashboardViewProps) {
           <MetricCard hint={t('dashboard.assetsInVault')} label={t('dashboard.tvlTitle')} loading={isOnChainLoading} value={formatCurrency(onChainData?.tvl || 0)} />
           <MetricCard hint={t('site.marketDislocation')} label={t('site.discountPremium')} loading={isMarketLoading || isOnChainLoading} value={`${discountPercentage.toFixed(2)}%`} />
         </div>
+        {/* HERO — quanto è stato redistribuito a TUTTI i holder: il nostro punto di forza */}
+        <div className="mt-4 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
+            <p className="mt-2 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-zinc-300">{t('dashboard.totalYieldDesc')}</p>
+        </div>
       </section>
 
       <section>
@@ -824,19 +832,15 @@ export function DashboardView(props: DashboardViewProps) {
           </div>
           <div className={`${shellCard} p-5`}>
             <p className="text-sm font-semibold text-white">{t('site.reserveEngine')}</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.stabilityFund')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.dynamicReserve')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.dynamicReserve || 0), 4)} WETH</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('dashboard.totalYieldTitle')}</p>
-                <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
-              </div>
+            {/* HERO — redistribuito a TUTTI i holder (yield che entra nel NAV) */}
+            <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
+              <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+              <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('dashboard.totalYieldDesc')}</p>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.stabilityFund')}</p>
+              <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
             </div>
           </div>
         </div>
@@ -1600,7 +1604,7 @@ function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
 }
 
 export function VaultView(props: VaultViewProps) {
-  const { t, basketData, onChainData, lastYieldDistribution } = props;
+  const { t, basketData, onChainData } = props;
 
   return (
     <div className="space-y-12">
@@ -1631,14 +1635,15 @@ export function VaultView(props: VaultViewProps) {
         </div>
         <div className={`${shellCard} p-7 sm:p-8`}>
           <p className="text-[11px] uppercase tracking-[0.38em] text-zinc-500">{t('site.protectedReserves')}</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <MetricCard hint="Last automated cycle" label={t('site.lastYield')} value={formatDateLabel(lastYieldDistribution)} />
-            <MetricCard hint="Protocol reserve target" label={t('site.dynamicReserve')} value={`${formatTokenAmount(Number(onChainData?.dynamicReserve || 0), 4)} WETH`} />
+          {/* HERO — quanto è stato redistribuito a TUTTI i holder (il nostro punto di forza) */}
+          <div className="mt-6 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
+            <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+            <p className="mt-3 text-sm leading-6 text-zinc-300">{t('yield.automationDesc')}</p>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <MetricCard hint="Immediate liquidity buffer" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH`} />
             <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '$0.00'} />
-          </div>
-          <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
-            <p className="text-sm leading-7 text-zinc-300">{t('yield.automationDesc')}</p>
           </div>
         </div>
       </section>

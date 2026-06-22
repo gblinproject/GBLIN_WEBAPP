@@ -816,51 +816,46 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
   }
 };
 
-// Fetch total yield distributed from YieldDistributed events
+// Totale ridistribuito a TUTTI i holder (somma degli eventi YieldDistributed = lo yield che
+// entra nel NAV ad ogni acquisto dal contratto). V6 emette YieldDistributed(uint256) su ogni buy.
+// Usiamo l'indicizzatore Blockscout (una sola chiamata, nessun limite di range come getLogs sull'RPC).
 export const fetchTotalYieldDistributed = async (): Promise<number> => {
+  const iface = new ethers.Interface(["event YieldDistributed(uint256 amount)"]);
+  const topic = iface.getEvent("YieldDistributed")!.topicHash;
+
+  // 1) Blockscout API (preferita: copre tutta la storia in un colpo)
+  try {
+    const url = `https://base.blockscout.com/api?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${CONTRACT_ADDRESS}&topic0=${topic}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.result)) {
+        let total = 0n;
+        for (const log of data.result) {
+          try { total += ethers.getBigInt(log.data); } catch { /* skip */ }
+        }
+        return Number(ethers.formatEther(total));
+      }
+    }
+  } catch { /* fall through */ }
+
+  // 2) Fallback: getLogs a chunk (per RPC pubblici che limitano il range)
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    
-    // Check last yield distribution time first
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-    const lastYieldTime = await contract.lastYieldDistribution().catch(() => 0n);
-    console.log('Last yield distribution timestamp:', Number(lastYieldTime), new Date(Number(lastYieldTime) * 1000).toISOString());
-    
-    // Create interface to get correct event topic
-    const iface = new ethers.Interface(["event YieldDistributed(uint256 amount)"]);
-    const eventTopic = iface.getEvent("YieldDistributed")!.topicHash;
-    
-    console.log('YieldDistributed topic:', eventTopic);
-    
-    // Get logs from last 500,000 blocks (~2 months on Base)
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlock - 500000);
-    
-    console.log('Fetching logs from block', fromBlock, 'to', currentBlock);
-    
-    const logs = await provider.getLogs({
-      address: CONTRACT_ADDRESS,
-      topics: [eventTopic],
-      fromBlock,
-      toBlock: 'latest',
-    });
-    
-    console.log('Found', logs.length, 'YieldDistributed events');
-    
-    let totalDistributed = 0n;
-    
-    for (const log of logs) {
-      // Decode the amount from the data field (uint256)
-      const amount = ethers.getBigInt(log.data);
-      totalDistributed += amount;
-      console.log('Event amount:', ethers.formatEther(amount), 'WETH');
+    const current = await provider.getBlockNumber();
+    const SPAN = 700000, CHUNK = 9000;
+    const from = Math.max(0, current - SPAN);
+    const ranges: [number, number][] = [];
+    for (let s = from; s <= current; s += CHUNK + 1) ranges.push([s, Math.min(s + CHUNK, current)]);
+    let total = 0n;
+    for (let i = 0; i < ranges.length; i += 8) {
+      const batch = await Promise.all(ranges.slice(i, i + 8).map(([f, t]) =>
+        provider.getLogs({ address: CONTRACT_ADDRESS, topics: [topic], fromBlock: f, toBlock: t }).catch(() => [])
+      ));
+      for (const logs of batch) for (const log of logs) { try { total += ethers.getBigInt(log.data); } catch { /* skip */ } }
     }
-    
-    const total = Number(ethers.formatEther(totalDistributed));
-    console.log('Total yield distributed:', total, 'WETH');
-    return total;
-  } catch (error) {
-    console.error('Error fetching yield distributed:', error);
+    return Number(ethers.formatEther(total));
+  } catch {
     return 0;
   }
 };
