@@ -8,7 +8,11 @@ import {
   sendTransaction,
   waitForReceipt,
 } from "thirdweb";
-import { useActiveAccount } from "thirdweb/react";
+import {
+  useActiveAccount,
+  useActiveWalletChain,
+  useSwitchActiveWalletChain,
+} from "thirdweb/react";
 import { getWalletBalance } from "thirdweb/wallets";
 import { thirdwebClient, chain as thirdwebChain } from "@/lib/thirdweb";
 
@@ -27,6 +31,8 @@ const GAS_BUFFER = 30000000000000n;
  */
 export default function MigrateButton() {
   const account = useActiveAccount();
+  const activeChain = useActiveWalletChain();
+  const switchChain = useSwitchActiveWalletChain();
   const [label, setLabel] = useState("Migrate to V6");
   const [busy, setBusy] = useState(false);
 
@@ -37,6 +43,13 @@ export default function MigrateButton() {
     }
     setBusy(true);
     try {
+      // Forza il wallet su Base PRIMA di leggere/inviare: alcune wallet (es. MetaMask)
+      // restano su Ethereum e la transazione finirebbe sulla rete sbagliata.
+      if (activeChain?.id !== thirdwebChain.id) {
+        setLabel("Passo a Base…");
+        await switchChain(thirdwebChain);
+      }
+
       const v5 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V5_ADDRESS });
       const v6 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V6_ADDRESS });
 
