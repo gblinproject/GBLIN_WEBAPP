@@ -7,6 +7,7 @@ import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './
 import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
+import SellV5Button from "@/components/SellV5Button";
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -1028,6 +1029,7 @@ export function BuyView(props: BuyViewProps) {
               {t('trade.inkindBtn')}
             </button>
             <MigrateButton />
+            <SellV5Button />
           </div>
 
           {mode === 'inkind' ? (
