@@ -464,7 +464,7 @@ export function HomeView(props: HomeViewProps) {
               { label: t('dashboard.navTitle'), value: onChainData?.nav || '—', hint: t('dashboard.backing'), loading: isOnChainLoading, color: 'text-amber-400' },
               { label: t('dashboard.tvlTitle'), value: formatCurrency(onChainData?.tvl || 0), hint: t('dashboard.assetsInVault'), loading: isOnChainLoading, color: 'text-emerald-400' },
               { label: t('dashboard.supplyTitle'), value: onChainData?.totalSupply || '—', hint: t('dashboard.inCirculation'), loading: isOnChainLoading, color: 'text-white' },
-              { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
+              { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
             ].map(kpi => (
               <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 sm:p-6 hover:border-amber-500/20 transition-colors">
                 <p className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{kpi.label}</p>
@@ -798,7 +798,7 @@ export function DashboardView(props: DashboardViewProps) {
         <div className="mt-4 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-            <p className="mt-2 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+            <p className="mt-2 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
           </div>
           <p className="max-w-md text-sm leading-6 text-zinc-300">{t('dashboard.totalYieldDesc')}</p>
         </div>
@@ -835,7 +835,7 @@ export function DashboardView(props: DashboardViewProps) {
             {/* HERO — redistribuito a TUTTI i holder (yield che entra nel NAV) */}
             <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
               <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-              <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+              <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
               <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('dashboard.totalYieldDesc')}</p>
             </div>
             <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -1638,7 +1638,7 @@ export function VaultView(props: VaultViewProps) {
           {/* HERO — quanto è stato redistribuito a TUTTI i holder (il nostro punto di forza) */}
           <div className="mt-6 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
             <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-            <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 10)} WETH</p>
+            <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
             <p className="mt-3 text-sm leading-6 text-zinc-300">{t('yield.automationDesc')}</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
