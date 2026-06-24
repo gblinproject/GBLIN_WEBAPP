@@ -481,10 +481,10 @@ export function HomeView(props: HomeViewProps) {
       </section>
 
       {/* ── KILLER PROOF: 10y real backtest, GBLIN vs holding BTC/ETH ── */}
-      <ProofSection />
+      <ProofSection t={t} />
 
       {/* ── APPRECIATION ENGINE: the 0.05% → treasury fee, explained ── */}
-      <FeeEngineSection />
+      <FeeEngineSection t={t} />
 
       {/* SUNDAY CHALLENGE BANNER */}
       <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] via-[#080808] to-rose-500/[0.04]">
