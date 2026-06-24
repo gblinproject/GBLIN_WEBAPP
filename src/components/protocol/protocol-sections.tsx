@@ -8,6 +8,7 @@ import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatToken
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
 import SellV5Button from "@/components/SellV5Button";
+import { ProofSection, FeeEngineSection } from './proof-section';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -478,6 +479,12 @@ export function HomeView(props: HomeViewProps) {
           </div>
         </div>
       </section>
+
+      {/* ── KILLER PROOF: 10y real backtest, GBLIN vs holding BTC/ETH ── */}
+      <ProofSection />
+
+      {/* ── APPRECIATION ENGINE: the 0.05% → treasury fee, explained ── */}
+      <FeeEngineSection />
 
       {/* SUNDAY CHALLENGE BANNER */}
       <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] via-[#080808] to-rose-500/[0.04]">
