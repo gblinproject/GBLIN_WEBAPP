@@ -27,7 +27,7 @@ const DEFAULT_RPC_URL = "https://base-rpc.publicnode.com";
 export const RPC_URL = process.env.GBLIN_RPC_URL ?? DEFAULT_RPC_URL;
 
 // ─── Core Contracts (Base Mainnet, verified) ────────────────────────────────
-export const GBLIN_V5: Address = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
+export const GBLIN_V5: Address = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6 production (const name kept to avoid cascade)
 export const USDC: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const WETH: Address = "0x4200000000000000000000000000000000000006";
 export const GBLIN_TIMELOCK: Address = "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd";
@@ -210,6 +210,16 @@ export const GBLIN_ABI = [
       { name: "targetToken", type: "address" },
       { name: "wethToTargetFee", type: "uint24" },
       { name: "minTokenOut", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "sellGBLINForEth",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "gblinAmount", type: "uint256" },
+      { name: "minEthOut", type: "uint256" },
     ],
     outputs: [],
   },
@@ -454,15 +464,61 @@ export async function quoteGblinForUsdc(usdcTargetStr: string): Promise<{
 // JIT CALLDATA — sellGBLINForToken (single atomic tx)
 // ───────────────────────────────────────────────────────────────────────────
 
-export function buildJitCalldata(
+export interface JitStep {
+  step: number;
+  description: string;
+  target: Address;
+  calldata: `0x${string}`;
+  value: string;
+}
+
+// V6 removed sellGBLINForToken. GBLIN -> USDC is now two steps:
+//   1) sellGBLINForEth(gblin, minEthOut) -> agent receives ETH
+//   2) Uniswap exactInputSingle WETH->USDC, paid with the received ETH.
+// TX2 amountIn = minEthOut (guaranteed minimum from TX1) so it can never request
+// more ETH than TX1 delivered. Both legs carry a minOut (no sandwich surface).
+export async function buildJitCalldata(
   gblinToSell: bigint,
-  minUsdcOut: bigint
-): `0x${string}` {
-  return encodeFunctionData({
+  minUsdcOut: bigint,
+  slippageBps: bigint,
+  wallet: Address
+): Promise<{ steps: JitStep[]; minEthOut: bigint }> {
+  const ethExpected = (await client.readContract({
+    address: GBLIN_V5,
     abi: GBLIN_ABI,
-    functionName: "sellGBLINForToken",
-    args: [gblinToSell, USDC, WETH_USDC_POOL_FEE, minUsdcOut],
+    functionName: "quoteSellGBLIN",
+    args: [gblinToSell],
+  })) as bigint;
+  const minEthOut = applySlippageBuffer(ethExpected, slippageBps);
+
+  const sellCalldata = encodeFunctionData({
+    abi: GBLIN_ABI,
+    functionName: "sellGBLINForEth",
+    args: [gblinToSell, minEthOut],
   });
+  const swapCalldata = encodeFunctionData({
+    abi: SWAP_ROUTER_ABI,
+    functionName: "exactInputSingle",
+    args: [
+      {
+        tokenIn: WETH,
+        tokenOut: USDC,
+        fee: WETH_USDC_POOL_FEE,
+        recipient: wallet,
+        amountIn: minEthOut,
+        amountOutMinimum: minUsdcOut,
+        sqrtPriceLimitX96: 0n,
+      },
+    ],
+  });
+
+  return {
+    minEthOut,
+    steps: [
+      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN_V5, calldata: sellCalldata, value: "0" },
+      { step: 2, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: swapCalldata, value: minEthOut.toString() },
+    ],
+  };
 }
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ GBLIN (Global Balanced Liquidity Index) is a treasury-backed index token on Base
 
 Fetch unsigned calldata from the GBLIN x402 API, then execute via Base MCP's `send_calls`.
 
-**Contract (Base mainnet):** `0x38DcDB3A381677239BBc652aed9811F2f8496345`  
+**Contract (Base mainnet):** `0x36C81d7E1966310F305eA637e761Cf77F90852f0`  
 **Supported chain:** Base mainnet (`8453` / `0x2105`)  
 **API base:** `https://gblin.digital` 
 
@@ -111,7 +111,7 @@ Response shape:
     {
       "step": 4,
       "description": "Buy GBLIN with WETH via buyGBLINWithToken",
-      "target": "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+      "target": "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
       "calldata": "0x...",
       "value": "0"
     }
@@ -132,7 +132,7 @@ Response shape (flat payload):
 ```json
 {
   "action": "single_atomic_tx",
-  "target_contract": "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+  "target_contract": "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
   "calldata": "0x...",
   "value": "0",
   "compatibility": { "eoa": true, "erc4337": true, "eip7702": true }
@@ -243,7 +243,7 @@ Map `target_contract` → `to` and `calldata` → `data`:
 
 | Contract | Address |
 |---|---|
-| GBLIN V5 | `0x38DcDB3A381677239BBc652aed9811F2f8496345` |
+| GBLIN V5 | `0x36C81d7E1966310F305eA637e761Cf77F90852f0` |
 | Timelock 48h | `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd` |
 | WETH | `0x4200000000000000000000000000000000000006` |
 | USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
@@ -259,5 +259,5 @@ Map `target_contract` → `to` and `calldata` → `data`:
 - Whitepaper: https://github.com/gblinproject/Whitepaper/raw/main/GBLIN_WHITE_PAPER_V5.pdf
 - GitHub: https://github.com/gblinproject/GBLIN-Protocol
 - MCP Server: https://github.com/gblinproject/GBLIN-MCP
-- Basescan: https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345
+- Basescan: https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0
 - Defillama: https://defillama.com/protocol/tvl/global-balanced-liquidity-index

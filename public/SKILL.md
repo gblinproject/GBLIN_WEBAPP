@@ -16,4 +16,4 @@ Pay $0.001–$0.005 USDC per call via x402.
 - GET /api/x402/jit — $0.005 — JIT swap for x402 invoice
 
 ## Contract
-0x38DcDB3A381677239BBc652aed9811F2f8496345 (Base mainnet)
+0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet)

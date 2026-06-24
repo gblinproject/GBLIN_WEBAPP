@@ -5,15 +5,14 @@
  * calldata. Use this immediately before paying an x402 invoice when the
  * agent's USDC balance is insufficient.
  *
- * Returns calldata for `sellGBLINForToken(gblinAmount, USDC, fee, minUsdcOut)`.
- * Single atomic transaction — works on EOA, ERC-4337, and EIP-7702 wallets.
+ * V6: GBLIN -> USDC in two steps (sellGBLINForEth + Uniswap WETH->USDC).
+ * Returns a sequential_txs payload. EOAs sign twice; smart accounts can batch.
  *
  * Paywall: $0.005 USDC per call.
  */
 
 import { formatUnits } from "viem";
 import {
-  GBLIN_V5,
   USDC,
   WETH_USDC_POOL_FEE,
   buildJitCalldata,
@@ -55,16 +54,15 @@ export async function GET(req: Request) {
     // 2. Reverse quote: how much GBLIN must be sold?
     const quote = await quoteGblinForUsdc(usdc);
 
-    // 3. Build atomic calldata
-    const calldata = buildJitCalldata(quote.gblinToSell, quote.minUsdcOut);
+    // 3. Build V6 calldata (2 steps: sellGBLINForEth + Uniswap WETH->USDC)
+    const jit = await buildJitCalldata(quote.gblinToSell, quote.minUsdcOut, quote.slippage.bps, wallet);
 
     return jsonResponse({
-      action: "single_atomic_tx",
-      target_contract: GBLIN_V5,
-      calldata,
-      value: "0",
+      action: "sequential_txs",
+      steps: jit.steps,
       params: {
         gblin_amount: formatUnits(quote.gblinToSell, 18),
+        eth_min_out: formatUnits(jit.minEthOut, 18),
         target_token: USDC,
         pool_fee: WETH_USDC_POOL_FEE,
         min_usdc_out: formatUnits(quote.minUsdcOut, 6),
@@ -75,7 +73,7 @@ export async function GET(req: Request) {
         slippage_buffer_pct: quote.slippage.pct,
         slippage_reason: quote.slippage.reason,
       },
-      compatibility: { eoa: true, erc4337: true, eip7702: true },
+      compatibility: { eoa: true, erc4337: true, eip7702: true, note: "V6 path is two steps (sellGBLINForEth + Uniswap WETH->USDC). EOAs sign twice; ERC-4337/EIP-7702 can batch into one UserOp." },
       gas_hint: 600_000,
     });
   } catch (err) {

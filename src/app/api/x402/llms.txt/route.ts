@@ -18,7 +18,7 @@ Agents store their P&L in GBLIN and use these endpoints to read protocol
 state, get safe swap quotes, and generate ready-to-broadcast calldata for
 Just-In-Time GBLIN→USDC conversions to pay x402 invoices.
 
-Contract:    0x38DcDB3A381677239BBc652aed9811F2f8496345 (Base mainnet, chain id 8453)
+Contract:    0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet, chain id 8453)
 Owner:       48h Timelock 0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
 Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
@@ -36,7 +36,7 @@ NAV in USD, basket composition with dynamic weights, Crash Shield status.
 Preview a GBLIN swap (no execution). Returns expected output + safe minOut.
 
 ### GET /api/x402/jit?usdc=…&wallet=0x…    ($0.005 USDC)
-Just-In-Time GBLIN→USDC: ready-to-broadcast calldata for sellGBLINForToken.
+Just-In-Time GBLIN→USDC: two-step calldata: sellGBLINForEth (GBLIN->ETH) then a Uniswap WETH->USDC swap.
 Single atomic tx. Compatible with EOA, ERC-4337, EIP-7702.
 
 ### GET /api/x402/invest?usdc=…            ($0.002 USDC)

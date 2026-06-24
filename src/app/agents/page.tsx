@@ -125,7 +125,7 @@ const FAQS = [
   },
   {
     q: 'Which wallets work?',
-    a: 'Any. The contract function `sellGBLINForToken` is a single atomic transaction — works on EOA (Privy, MetaMask), ERC-4337 smart accounts (Safe, Coinbase smart wallet), and EIP-7702 delegated EOAs (Pectra+).',
+    a: 'Any. The contract function `sellGBLINForEth` + a Uniswap WETH->USDC swap is a two-step flow (V6) — works on EOA (Privy, MetaMask), ERC-4337 smart accounts (Safe, Coinbase smart wallet), and EIP-7702 delegated EOAs (Pectra+).',
   },
   {
     q: 'How is slippage handled?',
@@ -227,8 +227,8 @@ export default function AgentsPage() {
                 body: 'Hold GBLIN (basket appreciation) and JIT-swap to USDC only when invoices come in. x402 payments still settle in USDC — facilitator unchanged.',
               },
               {
-                title: 'Atomic 1-tx swap, any wallet',
-                body: 'The contract has a native `sellGBLINForToken` function. No batched UserOp, no ERC-4337 dependency. EOA, smart account, EIP-7702 all work identically.',
+                title: 'Two-step swap (V6), any wallet',
+                body: 'On V6 the redemption is sellGBLINForEth (GBLIN->ETH) plus a Uniswap WETH->USDC swap: two steps. EOAs sign twice; smart accounts (ERC-4337) and EIP-7702 can batch both into one UserOp.',
               },
               {
                 title: 'On-chain quotes, no oracles to trust',
@@ -355,8 +355,8 @@ const jit = await mcp.callTool({
 // jit.content[0].text contains:
 // {
 //   action: "single_atomic_tx",
-//   target_contract: "0x38DcDB3A...",
-//   calldata: "0x6a54df11...",  // sellGBLINForToken(...)
+//   action: "sequential_txs", steps: [sellGBLINForEth, WETH->USDC]
+//   target (V6): 0x36C81d7E...52f0
 //   expected: { usdc_out: "0.5128", slippage_buffer_pct: 2.5 },
 //   compatibility: { eoa: true, erc4337: true, eip7702: true }
 // }
