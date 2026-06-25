@@ -1040,6 +1040,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         },
         method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",
         params: [BigInt(autoRebalanceOpportunity.basketIndex), isWethToAsset, autoRebalanceOpportunity.amountToSwap],
+        // Gas limit esplicito = salta la stima automatica (che fa revert PRIMA di MetaMask sul
+        // floor del contratto, impedendo alla tx di partire). Cosi' la transazione raggiunge la
+        // conferma del wallet ed e' l'utente a decidere; se il contratto rifiuta, reverta on-chain.
+        gas: 3_000_000n,
       });
       
       let hash: `0x${string}` | '' = '';
@@ -1121,6 +1125,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           },
           method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",
           params: [BigInt(asset.basketIndex), isWethToAsset, asset.amountToSwap],
+          // Gas limit esplicito: salta la stima automatica che farebbe fallire la tx prima di MetaMask.
+          gas: 3_000_000n,
         });
         
         let hash: `0x${string}` | '' = '';
