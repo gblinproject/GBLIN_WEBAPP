@@ -1011,7 +1011,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       return;
     }
 
-    if (!autoRebalanceOpportunity || !autoRebalanceOpportunity.eligible || autoRebalanceOpportunity.amountToSwap <= 0n) {
+    // UX: non pre-blocchiamo i rebalance sotto-floor / "non necessari". L'utente può sempre
+    // tentare l'operazione migliore disponibile; il contratto è l'arbitro finale e va in revert
+    // pulito (SwapVolumeTooLow / RebalanceNotNeeded) con messaggio tradotto se non può eseguire.
+    if (!autoRebalanceOpportunity) {
       setArbError(t('rebalance.errorNoOpportunity'));
       return;
     }
@@ -1166,7 +1169,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     ? quote !== '0' && quote !== 'Err' && quote !== 'Basket unavailable'
     : rawQuote > 0n;
   const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote;
-  const isArbDisabled = isArbitraging || !autoRebalanceOpportunity || !autoRebalanceOpportunity.eligible || autoRebalanceOpportunity.amountToSwap <= 0n;
+  // Bottone abilitato finché c'è un'opportunità su cui puntare (anche sotto-floor):
+  // l'utente può tentare, il contratto decide. Disabilitato solo durante una tx in corso.
+  const isArbDisabled = isArbitraging || !autoRebalanceOpportunity;
 
   const sharedProps = {
     t,
