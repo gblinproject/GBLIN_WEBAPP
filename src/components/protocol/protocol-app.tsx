@@ -582,7 +582,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [rebalanceAssetStats]);
 
   const eligibleRebalanceAssets = useMemo(() => {
-    return rebalanceAssetStats.filter((asset) => asset.eligible && asset.amountToSwap > 0n);
+    // "Ribilancia Tutti" tenta ogni asset che ha una DIREZIONE di rebalance (anche sotto-floor),
+    // non solo quelli "eligible". L'utente può sempre provare: il contratto reverta in modo pulito
+    // (SwapVolumeTooLow / RebalanceNotNeeded) i singoli asset che non riesce a eseguire.
+    return rebalanceAssetStats.filter(
+      (asset) => asset.recommendation === 'weth-to-asset' || asset.recommendation === 'asset-to-weth'
+    );
   }, [rebalanceAssetStats]);
 
   const rebalanceBountyActive = (onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0) >= 0.0001;
