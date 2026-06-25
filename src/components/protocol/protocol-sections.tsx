@@ -1177,7 +1177,14 @@ export function BuyView(props: BuyViewProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      const bal = mode === 'sell' ? parseFloat(gblinBalance) : parseFloat(inputBalance);
+                      if (mode === 'sell') {
+                        // VENDI: MAX = saldo GBLIN ESATTO, senza cuscinetto 0.9999. Vendere GBLIN
+                        // non richiede di lasciare gas (il gas e' in ETH), quindi si vende tutto.
+                        if (!gblinBalance || parseFloat(gblinBalance) <= 0) return;
+                        handleCryptoAmountChange(gblinBalance);
+                        return;
+                      }
+                      const bal = parseFloat(inputBalance);
                       if (!bal || bal <= 0) return;
                       const maxVal = (bal * 0.9999).toFixed(6);
                       if (mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto') {
