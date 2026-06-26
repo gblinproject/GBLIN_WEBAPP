@@ -7,7 +7,7 @@ export const revalidate = 300;
 /**
  * 1200×630 OG image (1.91:1 aspect ratio).
  * Used for heroImageUrl and ogImageUrl in the Farcaster manifest.
- * Primary message: challenge / win $10 CTA.
+ * Primary message: crash-shield challenge CTA.
  */
 export async function GET() {
   return new ImageResponse(

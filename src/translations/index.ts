@@ -1215,15 +1215,15 @@ export const translations: Record<Language, any> = {
       core: "金库核心"
     },
     sundayChallenge: {
-      eyebrow: "每周挑战",
-      badge: "每周日",
-      title: "Crash Shield 游戏 — $10 赢取",
-      body: "预测 GBLIN 在真实崩盘期间如何重新分配 (Jan 2026, FTX, May 2021, Mar 2020)。如果你赢了,",
-      bodyBold: "分享结果并在 Farcaster 或 X 上标记 @gblin。",
-      bodyEnd: "每周日将随机抽取一个获胜者并获得",
-      amount: "$10",
-      bodyTail: "直接进入钱包。",
-      cta: "开始游戏"
+      eyebrow: "协议更新",
+      badge: "GBLIN V6",
+      title: "我们已升级到 GBLIN V6",
+      body: "我们已将 GBLIN 迁移到全新的改进合约 (V6) — 更强的崩盘护盾、自适应滑点和更低风险的设计。你的 V5 代币仍然可用，要迁移到新合约，只需使用",
+      bodyBold: "Buy / Sell 面板中的 Migrate to V6 按钮。",
+      bodyEnd: "它会赎回你的 V5 并为你重新购买 V6，只需",
+      amount: "两次点击",
+      bodyTail: "即可直接在链上完成。",
+      cta: "立即迁移"
     },
     footer: {
       protocolName: "GBLIN 协议"
@@ -1240,15 +1240,15 @@ export const translations: Record<Language, any> = {
       core: "金庫コア"
     },
     sundayChallenge: {
-      eyebrow: "週末チャレンジ",
-      badge: "毎週日曜日",
-      title: "Crash Shield ゲーム — $10 賞金",
-      body: "GBLIN が実際の崩壊期間中にどのように再分配されたかを予測してください (Jan 2026, FTX, May 2021, Mar 2020)。もしあなたが勝ったら,",
-      bodyBold: "結果を共有し、Farcaster または X で @gblin をタグ付けしてください。",
-      bodyEnd: "毎週日曜日に勝者がランダムに選ばれ、",
-      amount: "$10",
-      bodyTail: "が直接ウォレットに入金されます。",
-      cta: "ゲームを始める"
+      eyebrow: "プロトコル更新",
+      badge: "GBLIN V6",
+      title: "GBLIN V6 にアップグレードしました",
+      body: "GBLIN を新しく改良されたコントラクト (V6) に移行しました — より強力なクラッシュシールド、適応型スリッページ、低リスク設計。V5 トークンは引き続き使えますが、新しいコントラクトに移すには",
+      bodyBold: "Buy / Sell パネルの Migrate to V6 ボタンを使ってください。",
+      bodyEnd: "V5 を償還し、V6 を再購入します。わずか",
+      amount: "2クリック",
+      bodyTail: "で、すべてオンチェーンで完了します。",
+      cta: "今すぐ移行"
     },
     footer: {
       protocolName: "GBLIN プロトコル"
