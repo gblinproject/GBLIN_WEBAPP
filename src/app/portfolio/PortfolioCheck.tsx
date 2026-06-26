@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Loader2, Share2, Shield, Sparkles, Wallet } from "lucide-react";
+import { ArrowRight, RefreshCw, Share2, Shield, Sparkles, Wallet } from "lucide-react";
 import { CRASHES, worstCrash, type ValueWeights } from "@/lib/crash-data";
 
 /**
@@ -226,7 +226,7 @@ export default function PortfolioCheck() {
 
           {state === "loading" && (
             <div style={{ textAlign: "center", padding: "30px 0" }}>
-              <Loader2 className="gblin-spin" size={28} color={C.amber} />
+              <RefreshCw className="gblin-spin" size={28} color={C.amber} />
               <div style={{ color: C.textDim, fontSize: 13, marginTop: 12 }}>Reading your holdings on Base…</div>
             </div>
           )}
