@@ -360,7 +360,7 @@ export default function AccountPage() {
       }
     };
     fetchPrices();
-    const interval = setInterval(fetchPrices, 120000);
+    const interval = setInterval(() => { if (typeof document === "undefined" || !document.hidden) fetchPrices(); }, 300000);
     return () => clearInterval(interval);
   }, [currencyConfig]);
 

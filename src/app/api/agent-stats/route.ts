@@ -129,13 +129,13 @@ const ERROR_CACHE_TTL_MS = 30_000;
 export async function GET(): Promise<Response> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return Response.json(cache.data);
+    return Response.json(cache.data, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
   }
 
   try {
     const data = await fetchAgentStats();
     cache = { data, fetchedAt: now };
-    return Response.json(data);
+    return Response.json(data, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
   } catch (err) {
     // Never return 500 — the home page must render. Serve the previous cache
     // if available, otherwise zeros. Cache the fallback briefly so we don't

@@ -1,0 +1,186 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GBLIN Protocol \u2014 x402 API",
+    "version": "1.0.0",
+    "description": "GBLIN is the Treasury Standard for AI Agents on Base mainnet: an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield. These endpoints let agents read protocol state, get safe swap quotes and generate ready-to-broadcast calldata. Paid via x402 (USDC on Base, chain id 8453).",
+    "contact": {
+      "name": "GBLIN",
+      "url": "https://gblin.digital",
+      "email": "info@gblin.digital"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://gblin.digital"
+    }
+  ],
+  "externalDocs": {
+    "description": "Machine-readable index (free)",
+    "url": "https://gblin.digital/api/x402/llms.txt"
+  },
+  "x-payment": {
+    "scheme": "exact",
+    "network": "base-mainnet",
+    "chainId": 8453,
+    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "facilitator": "Coinbase CDP"
+  },
+  "paths": {
+    "/api/x402/treasury-state": {
+      "get": {
+        "summary": "Treasury state",
+        "description": "NAV in USD, basket composition with dynamic weights, Crash Shield status.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        }
+      }
+    },
+    "/api/x402/quote": {
+      "get": {
+        "summary": "Swap quote",
+        "description": "Preview a GBLIN swap (no execution). Returns expected output and safe minOut.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "buy or sell"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Input amount"
+          }
+        ]
+      }
+    },
+    "/api/x402/jit": {
+      "get": {
+        "summary": "Just-In-Time GBLIN to USDC",
+        "description": "Two-step calldata: sellGBLINForEth then Uniswap WETH to USDC. Single atomic tx.\n\nRequires an x402 USDC payment on Base mainnet ($0.005 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "usdc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target USDC amount"
+          },
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0x wallet address"
+          }
+        ]
+      }
+    },
+    "/api/x402/invest": {
+      "get": {
+        "summary": "Invest USDC into GBLIN",
+        "description": "Two-step approve + buyGBLINWithToken calldata for treasury accumulation.\n\nRequires an x402 USDC payment on Base mainnet ($0.002 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "usdc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "USDC amount to invest"
+          }
+        ]
+      }
+    },
+    "/api/x402/health": {
+      "get": {
+        "summary": "Wallet treasury health",
+        "description": "Balances, gas runway and rebalance recommendation for a wallet.\n\nRequires an x402 USDC payment on Base mainnet ($0.002 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0x wallet address"
+          },
+          {
+            "name": "daily_burn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Estimated daily USDC burn"
+          }
+        ]
+      }
+    },
+    "/api/x402/governance": {
+      "get": {
+        "summary": "Governance check",
+        "description": "Verify owner is the 48h Timelock and read min delay parameters.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        }
+      }
+    }
+  }
+}
