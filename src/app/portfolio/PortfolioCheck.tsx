@@ -176,8 +176,8 @@ export default function PortfolioCheck() {
       `I just stress-tested my wallet against real crypto crashes.\n\n` +
       `In ${w.crash.short}, my portfolio would have dropped -${w.portfolio}%. ` +
       `The GBLIN basket fell just -${w.gblin}% — it de-risks itself, on-chain.\n\n` +
-      `Test yours 👇`;
-    const embed = `${SITE_URL}/api/share?you=${w.portfolio}&gblin=${w.gblin}&crash=${w.crash.id}${result.username ? `&u=${encodeURIComponent(result.username)}` : ""}`;
+      `Test yours on @gblin 👇`;
+    const embed = `${SITE_URL}/portfolio?you=${w.portfolio}&gblin=${w.gblin}&crash=${w.crash.id}${result.username ? `&u=${encodeURIComponent(result.username)}` : ""}`;
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
       await sdk.actions.composeCast({ text, embeds: [embed] });

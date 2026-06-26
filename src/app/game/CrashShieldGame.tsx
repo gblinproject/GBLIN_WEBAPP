@@ -122,7 +122,7 @@ export default function CrashShieldGame() {
     const text =
       `When ${c.short} hit, Bitcoin fell -${c.btc}% and Ethereum -${c.eth}%.\n\n` +
       `GBLIN's Crash Shield only fell -${c.gblin}% — it de-risks itself, on-chain, on Base.\n\n` +
-      `Run your own crash test 👇`;
+      `Run your own crash test on @gblin 👇`;
     const embed = `${SITE_URL}/game?crash=${c.id}&gblin=${c.gblin}&direct=${c.btc}`;
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");

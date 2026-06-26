@@ -82,7 +82,7 @@ export default function FrameHook() {
     const text =
       `When ${crash.short} hit, Bitcoin fell -${crash.btc}% and Ethereum -${crash.eth}%.\n\n` +
       `GBLIN's Crash Shield only fell -${crash.gblin}% — it de-risks itself, on-chain, on Base.\n\n` +
-      `Could you have guessed it? Try the challenge 👇`;
+      `Could you have guessed it? Try the @gblin Crash Shield 👇`;
     const embed = `${SITE_URL}/frame`;
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
