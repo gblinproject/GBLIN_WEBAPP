@@ -248,6 +248,12 @@ export default function FrameHook() {
                 <ActionCard href="/game" icon={<Shield size={16} />} title="Full challenge" subtitle="Backtest real crashes" tone="blue" />
               </div>
 
+              <Link href="/portfolio" style={{ textDecoration: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "13px", borderRadius: 13, border: "1px solid rgba(251,191,36,0.5)", background: "rgba(251,191,36,0.12)", color: "#fde68a", fontWeight: 800, fontSize: 14 }}>
+                  Now stress-test YOUR wallet <ArrowRight size={15} />
+                </div>
+              </Link>
+
               <button
                 onClick={() => {
                   setPicked(null);
