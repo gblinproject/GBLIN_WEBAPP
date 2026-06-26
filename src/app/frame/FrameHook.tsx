@@ -245,7 +245,7 @@ export default function FrameHook() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
                 <ActionCard href="/buy-gblin" icon={<Sparkles size={16} />} title="Mint GBLIN" subtitle="Buy the basket" tone="amber" />
-                <ActionCard href="/game" icon={<Shield size={16} />} title="Full challenge" subtitle="Win $10 on Sunday" tone="blue" />
+                <ActionCard href="/game" icon={<Shield size={16} />} title="Full challenge" subtitle="Backtest real crashes" tone="blue" />
               </div>
 
               <button

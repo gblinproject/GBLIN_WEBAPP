@@ -490,9 +490,9 @@ function VictoryBody({
           border: "1px solid rgba(251,191,36,0.25)",
         }}
       >
-        <div style={{ fontSize: 22 }}>🎰</div>
+        <div style={{ fontSize: 22 }}>🛡️</div>
         <div style={{ color: "#e2e8f0", fontSize: 18, display: "flex" }}>
-          Every Sunday the GBLIN creator picks a random winner for $10
+          Real on-chain data · cbBTC + WETH + USDC · 0 admin keys
         </div>
       </div>
     </div>

@@ -293,7 +293,7 @@ export async function GET(req: Request) {
                 letterSpacing: 0.2,
               }}
             >
-              Play the Crash Shield game every Sunday · win $10 · gblin.digital/game
+              Guess how little GBLIN drops in a real crash · gblin.digital/frame
             </div>
           </div>
           <div
@@ -312,7 +312,7 @@ export async function GET(req: Request) {
               boxShadow: "0 8px 24px -8px rgba(251,191,36,0.6)",
             }}
           >
-            Win $10
+            Play
           </div>
         </div>
       </div>

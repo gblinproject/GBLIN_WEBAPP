@@ -136,7 +136,7 @@ export async function GET() {
               lineHeight: 1.4,
             }}
           >
-            Open the mini app · guess the reallocation · win $10 every Sunday
+            Open the mini app · guess GBLIN&apos;s drawdown in a real crash
           </div>
         </div>
 
@@ -188,7 +188,7 @@ export async function GET() {
               boxShadow: "0 8px 28px -8px rgba(251,191,36,0.7)",
             }}
           >
-            Play &amp; Win $10
+            Beat the crash
           </div>
         </div>
       </div>
