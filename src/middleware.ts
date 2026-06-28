@@ -66,9 +66,16 @@ const NETWORK = "eip155:8453" as const;
 // signs every verify/settle call with our CDP key — required by CDP.
 const cdpKeyId = process.env.CDP_API_KEY_ID;
 const cdpKeySecret = process.env.CDP_API_KEY_SECRET;
+// Resilience: @coinbase/x402 @2.1.0 (latest as of Jun 2026) 401s on the CDP
+// facilitator getSupported() — a known upstream bug with no released fix. To
+// avoid 500s on every /api/x402/* request, we DEFAULT to the public
+// x402.org facilitator (no auth). Re-enable CDP — for the official Bazaar
+// listing — only by setting X402_ENABLE_CDP="true" once the bug is fixed.
+const useCdp =
+  process.env.X402_ENABLE_CDP === "true" && !!cdpKeyId && !!cdpKeySecret;
 const facilitatorClient = new HTTPFacilitatorClient(
-  cdpKeyId && cdpKeySecret
-    ? createFacilitatorConfig(cdpKeyId, cdpKeySecret)
+  useCdp
+    ? createFacilitatorConfig(cdpKeyId as string, cdpKeySecret as string)
     : {
         url: (process.env.X402_FACILITATOR_URL ??
           "https://x402.org/facilitator") as `${string}://${string}`,
