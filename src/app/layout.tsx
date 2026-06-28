@@ -13,6 +13,8 @@ const inter = Inter({ subsets: ["latin"] });
 const SITE_URL = "https://gblin.digital";
 const OG_IMAGE =
   "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
+// Wide 1200x630 social-share banner (avoids X/OG cropping the square logo).
+const OG_BANNER = `${SITE_URL}/og-gblin.png`;
 const SITE_DESCRIPTION =
   "GBLIN is a non-speculative on-chain index on Base Network. 45% cbBTC + 45% WETH + 10% USDC. Algorithmic rebalancing, transparent NAV, no team allocation, no VC, no presale. Wealth preservation, not speculation.";
 
@@ -65,7 +67,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: OG_IMAGE,
+        url: OG_BANNER,
         width: 1200,
         height: 630,
         alt: "GBLIN — The Golden Vault on Base",
@@ -76,7 +78,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GBLIN — Wealth Preservation Protocol on Base",
     description: SITE_DESCRIPTION,
-    images: [OG_IMAGE],
+    images: [OG_BANNER],
   },
   robots: {
     index: true,
