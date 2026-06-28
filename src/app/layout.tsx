@@ -14,7 +14,8 @@ const SITE_URL = "https://gblin.digital";
 const OG_IMAGE =
   "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
 // Wide 1200x630 social-share banner (avoids X/OG cropping the square logo).
-const OG_BANNER = `${SITE_URL}/og-gblin.png`;
+// Lightweight JPG + fresh filename so X/Twitterbot fetches it reliably (no stale cache).
+const OG_BANNER = `${SITE_URL}/og-gblin-v2.jpg`;
 const SITE_DESCRIPTION =
   "GBLIN is a non-speculative on-chain index on Base Network. 45% cbBTC + 45% WETH + 10% USDC. Algorithmic rebalancing, transparent NAV, no team allocation, no VC, no presale. Wealth preservation, not speculation.";
 
