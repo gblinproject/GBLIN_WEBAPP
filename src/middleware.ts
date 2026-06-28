@@ -78,7 +78,7 @@ const facilitatorClient = new HTTPFacilitatorClient(
     ? createFacilitatorConfig(cdpKeyId as string, cdpKeySecret as string)
     : {
         url: (process.env.X402_FACILITATOR_URL ??
-          "https://x402.org/facilitator") as `${string}://${string}`,
+          "https://facilitator.payai.network") as `${string}://${string}`,
       }
 );
 const server = new x402ResourceServer(facilitatorClient).register(
