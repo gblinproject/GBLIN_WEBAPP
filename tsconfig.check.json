@@ -1,0 +1,1 @@
+{ "extends": "./tsconfig.json", "include": ["next-env.d.ts","src/types/lucide-react.d.ts","src/middleware.ts","src/components/protocol/protocol-translations.ts","src/components/protocol/protocol-sections.tsx"] }

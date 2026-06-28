@@ -297,8 +297,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'No hidden allocations. The code is fully open-source and verified on BaseScan. Complete transparency from day one.',
       viewOnBasescan: 'View on BaseScan',
-      bugBountyTitle: '$257 Math Challenge',
-      bugBountyDesc: 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $257 Bug Bounty permanently open for anyone who can break the protocol mathematics.',
+      bugBountyTitle: '$50 Math Challenge',
+      bugBountyDesc: 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $50 Bug Bounty permanently open for anyone who can break the protocol mathematics.',
       viewBounty: 'View Bug Bounty'
     },
     aureus: {
@@ -659,8 +659,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Nessuna allocazione nascosta. Il codice è completamente open-source e verificato su BaseScan. Trasparenza totale dal primo giorno.',
       viewOnBasescan: 'Vedi su BaseScan',
-      bugBountyTitle: 'Sfida alla Matematica ($257)',
-      bugBountyDesc: 'Siamo così sicuri del nostro modello di ribilanciamento "Dynamic Volume Floor" che abbiamo un Bug Bounty da 257$ sempre aperto per chiunque riesca a violare la matematica del protocollo.',
+      bugBountyTitle: 'Sfida alla Matematica ($50)',
+      bugBountyDesc: 'Siamo così sicuri del nostro modello di ribilanciamento "Dynamic Volume Floor" che abbiamo un Bug Bounty da 50$ sempre aperto per chiunque riesca a violare la matematica del protocollo.',
       viewBounty: 'Vedi Bug Bounty'
     },
     aureus: {
@@ -1021,8 +1021,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Sin asignaciones ocultas. El código es completamente open-source y verificado en BaseScan. Transparencia total desde el primer día.',
       viewOnBasescan: 'Ver en BaseScan',
-      bugBountyTitle: 'Desafío Matemático ($257)',
-      bugBountyDesc: 'Estamos tan seguros de nuestro modelo de reequilibrio "Dynamic Volume Floor" que tenemos un Bug Bounty de $257 permanentemente abierto para quien pueda romper las matemáticas del protocollo.',
+      bugBountyTitle: 'Desafío Matemático ($50)',
+      bugBountyDesc: 'Estamos tan seguros de nuestro modelo de reequilibrio "Dynamic Volume Floor" que tenemos un Bug Bounty de $50 permanentemente abierto para quien pueda romper las matemáticas del protocollo.',
       viewBounty: 'Ver Bug Bounty'
     }
   },
@@ -1322,8 +1322,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Pas d\'allocations cachées. Le code est entièrement open-source et vérifié sur BaseScan. Transparence totale dès le premier jour.',
       viewOnBasescan: 'Voir sur BaseScan',
-      bugBountyTitle: 'Défi Mathématique (257$)',
-      bugBountyDesc: 'Nous sommes si confiants dans notre modèle de rééquilibrage "Dynamic Volume Floor" que nous avons un Bug Bounty de 257$ toujours ouvert pour quiconque parvient à violer les mathématiques du protocole.',
+      bugBountyTitle: 'Défi Mathématique (50$)',
+      bugBountyDesc: 'Nous sommes si confiants dans notre modèle de rééquilibrage "Dynamic Volume Floor" que nous avons un Bug Bounty de 50$ toujours ouvert pour quiconque parvient à violer les mathématiques du protocole.',
       viewBounty: 'Voir le Bug Bounty'
     }
   },
@@ -1623,8 +1623,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Keine verborgenen Zuteilungen. Der Code ist vollständig Open-Source und auf BaseScan verifiziert. Vollständige Transparenz vom ersten Tag an.',
       viewOnBasescan: 'Auf BaseScan ansehen',
-      bugBountyTitle: '$257 Mathe-Herausforderung',
-      bugBountyDesc: 'Wir sind so zuversichtlich in unserem "Dynamic Volume Floor"-Rebalancing-Modell, dass wir ein permanentes $257 Bug Bounty für jeden offen haben, der die Mathematik des Protokolls brechen kann.',
+      bugBountyTitle: '$50 Mathe-Herausforderung',
+      bugBountyDesc: 'Wir sind so zuversichtlich in unserem "Dynamic Volume Floor"-Rebalancing-Modell, dass wir ein permanentes $50 Bug Bounty für jeden offen haben, der die Mathematik des Protokolls brechen kann.',
       viewBounty: 'Bug Bounty ansehen'
     }
   },
@@ -1924,8 +1924,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: '没有隐藏分配。代码完全开源并在 BaseScan 上验证。从第一天起就完全透明。',
       viewOnBasescan: '在 BaseScan 上查看',
-      bugBountyTitle: '$257 数学挑战',
-      bugBountyDesc: '我们对我们的"动态交易量底"再平衡模型非常有信心，因此我们为任何能够破解协议数学的人永久开放 $257 漏洞赏金。',
+      bugBountyTitle: '$50 数学挑战',
+      bugBountyDesc: '我们对我们的"动态交易量底"再平衡模型非常有信心，因此我们为任何能够破解协议数学的人永久开放 $50 漏洞赏金。',
       viewBounty: '查看漏洞赏金'
     }
   },
@@ -2225,8 +2225,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & オープンソース',
       openSourceDesc: '隠された割り当てはありません。コードは完全にオープンソースで、BaseScan で検証されています。初日から完全な透明性を確保。',
       viewOnBasescan: 'BaseScan で表示',
-      bugBountyTitle: '$257 数学チャレンジ',
-      bugBountyDesc: '私たちは "Dynamic Volume Floor" リバランス・モデルに非常に自信があるため、プロトコルの数学を破ることができる人のために $257 のバグ・バウンティを常時開放しています。',
+      bugBountyTitle: '$50 数学チャレンジ',
+      bugBountyDesc: '私たちは "Dynamic Volume Floor" リバランス・モデルに非常に自信があるため、プロトコルの数学を破ることができる人のために $50 のバグ・バウンティを常時開放しています。',
       viewBounty: 'バグ・バウンティを見る'
     }
   }

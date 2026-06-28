@@ -709,9 +709,9 @@ export function HomeView(props: HomeViewProps) {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400">
                   <Zap className="h-4 w-4" />
                 </div>
-                <p className="text-sm font-semibold text-white">{t('security.bugBountyTitle') || '$257 Math Challenge'}</p>
+                <p className="text-sm font-semibold text-white">{t('security.bugBountyTitle') || '$50 Math Challenge'}</p>
               </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.bugBountyDesc') || 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $257 Bug Bounty permanently open for anyone who can break the protocol mathematics.'}</p>
+              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.bugBountyDesc') || 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $50 Bug Bounty permanently open for anyone who can break the protocol mathematics.'}</p>
               <a 
                 href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
                 target="_blank" 

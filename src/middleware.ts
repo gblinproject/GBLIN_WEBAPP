@@ -126,7 +126,7 @@ const x402Middleware = paymentProxy(
                 },
               ],
               meta: {
-                contract: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+                contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
                 chain: "base",
                 chain_id: 8453,
                 as_of_unix: 1747600000,
@@ -204,7 +204,7 @@ const x402Middleware = paymentProxy(
           output: {
             example: {
               action: "single_atomic_tx",
-              target_contract: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+              target_contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
               calldata: "0x5d2e1ca7…",
               value: "0",
               params: {
@@ -259,7 +259,7 @@ const x402Middleware = paymentProxy(
                   step: 2,
                   description:
                     "Buy GBLIN with USDC via native contract function",
-                  target: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+                  target: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
                   calldata: "0x4f5d3a7b…",
                   value: "0",
                 },
@@ -349,7 +349,7 @@ const x402Middleware = paymentProxy(
           inputSchema: { type: "object", properties: {}, required: [] },
           output: {
             example: {
-              gblin_v5: "0x38DcDB3A381677239BBc652aed9811F2f8496345",
+              gblin_v6: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
               owner: "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
               owner_is_timelock: true,
               owner_is_renounced: false,
@@ -365,7 +365,7 @@ const x402Middleware = paymentProxy(
               },
               verification: {
                 gblin_v5_basescan:
-                  "https://basescan.org/address/0x38DcDB3A381677239BBc652aed9811F2f8496345#readContract",
+                  "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#readContract",
                 timelock_basescan:
                   "https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd#readContract",
               },
