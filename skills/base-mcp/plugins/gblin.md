@@ -178,7 +178,7 @@ Map `target_contract` → `to` and `calldata` → `data`:
 
 ## Orchestration patterns
 
-### Pattern A — Invest idle USDC into GBLIN
+### Pattern A — Park surplus USDC into GBLIN
 
 ```
 1. get_wallets → address
@@ -231,7 +231,7 @@ Map `target_contract` → `to` and `calldata` → `data`:
 ## Safety rules for agents
 
 - **Never skip the quote step.** Always show NAV, expected output, and fees before executing invest.
-- **Crash Shield:** if `crashShieldActive: true`, warn the user that basket weights have been dynamically adjusted due to market drawdown >20%. Do not block the transaction — the smart contract handles it — but explain the situation.
+- **Crash Shield:** if `crashShieldActive: true`, warn the user that basket weights have been dynamically adjusted due to a severe market drawdown (V6 adaptive threshold, from ~15%). Do not block the transaction — the smart contract handles it — but explain the situation.
 - **Cooldown:** if `cooldownActive: true`, do not attempt any sell or JIT redeem. Wait 2 minutes after the last deposit.
 - **Governance delay:** any protocol parameter change requires 48 hours via Timelock `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`. Do not promise immediate changes.
 - **GBLIN is not a stablecoin.** NAV fluctuates with WETH and cbBTC prices. Always present the current NAV before quoting.
@@ -243,7 +243,7 @@ Map `target_contract` → `to` and `calldata` → `data`:
 
 | Contract | Address |
 |---|---|
-| GBLIN V5 | `0x36C81d7E1966310F305eA637e761Cf77F90852f0` |
+| GBLIN V6 | `0x36C81d7E1966310F305eA637e761Cf77F90852f0` |
 | Timelock 48h | `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd` |
 | WETH | `0x4200000000000000000000000000000000000006` |
 | USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |

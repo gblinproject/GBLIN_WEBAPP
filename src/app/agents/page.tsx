@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is the treasury standard for AI agents on Base mainnet. Open-source MCP server with 8 tools: live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, USDC reinvestment, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 9 tools: an on-chain market-risk signal, live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
 
 export const metadata: Metadata = {
   title: 'GBLIN for AI Agents — Treasury Standard on Base',
@@ -37,6 +37,10 @@ export const metadata: Metadata = {
 };
 
 const TOOLS = [
+  {
+    name: 'get_market_risk_regime',
+    purpose: 'BTC/ETH risk regime (calm / elevated / crash) + severity + risk_on/reduce/risk_off posture, from the on-chain Crash Shield. $0.002 USDC via x402.',
+  },
   {
     name: 'get_treasury_state',
     purpose: 'Snapshot NAV in USD, basket composition, and Crash Shield status from on-chain reads.',
@@ -116,8 +120,8 @@ await mcp.connect(transport);`,
 
 const FAQS = [
   {
-    q: 'Why hold GBLIN instead of USDC?',
-    a: 'USDC pays no yield and loses to inflation. GBLIN is a 45% cbBTC + 45% WETH + 10% USDC basket with an automated Crash Shield, designed to appreciate over time while remaining instantly swappable to USDC for x402 payments.',
+    q: 'Is GBLIN a replacement for USDC?',
+    a: 'No. GBLIN is managed crypto exposure with a capped drawdown — for surplus capital you want to grow with less downside than holding BTC/ETH. It can still lose value in a crash (less than BTC/ETH, but it is not principal-protected). Keep operating cash in USDC; park surplus in GBLIN and JIT-swap back to USDC for x402 payments.',
   },
   {
     q: 'Does this break my x402 flow?',
@@ -285,11 +289,11 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 8 tools ───────── */}
+      {/* ───────── The 9 tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 8 tools
+            The 9 tools
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold
@@ -413,16 +417,16 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               <h3 className="font-medium text-base">What the template does</h3>
               <ul className="mt-3 space-y-2 text-sm text-white/70 leading-relaxed list-disc list-inside marker:text-[#F27D26]">
                 <li>
-                  Declares a <strong>treasury policy</strong>: idle USDC &gt;
-                  7× daily burn must be converted to GBLIN.
+                  Declares a <strong>treasury policy</strong>: park SURPLUS
+                  (idle USDC &gt; 7× daily burn) into GBLIN — operating cash stays in USDC.
                 </li>
                 <li>
                   Tells AI assistants to call{' '}
                   <code className="text-[#F27D26]">swap_gblin_to_usdc_jit</code>{' '}
-                  for x402 payments instead of holding flat USDC.
+                  for x402 payments, redeeming GBLIN to USDC just-in-time.
                 </li>
                 <li>
-                  Lists the 8 MCP tools and the exact MCP client config
+                  Lists the 9 MCP tools and the exact MCP client config
                   (Claude, Windsurf, Cursor, AgentKit).
                 </li>
                 <li>

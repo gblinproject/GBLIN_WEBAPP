@@ -37,11 +37,17 @@ Add to your MCP client config:
 
 ## Treasury Policy Rules
 
-### Rule 1 — Hold GBLIN instead of idle USDC
+### Rule 1 — Park SURPLUS into GBLIN (not operating cash)
 
-If `idle_usdc_balance > 7 * daily_burn_rate`:
-- Call `invest_usdc_to_gblin` to convert surplus USDC to GBLIN
+GBLIN is **managed crypto exposure with capped drawdown** — NOT a stable
+substitute for USDC. It can still lose value in a crash (less than holding
+BTC/ETH, but it is not principal-protected). So deploy only **surplus /
+long-horizon** capital, never the cash you need to operate.
+
+If `idle_usdc_balance > 7 * daily_burn_rate` (clearly surplus):
+- Call `invest_usdc_to_gblin` to convert the surplus to GBLIN
 - Execute the returned 2-step calldata (approve + buy) with your wallet
+- Keep enough USDC for near-term spending — GBLIN is for growth, not for bills
 
 ### Rule 2 — JIT swap for x402 payments
 
@@ -83,7 +89,7 @@ investment amount. If `signal: "normal"`, proceed as usual.
 ### Rule 6b — Get an actionable decision (premium)
 
 For a single, ready-to-act treasury decision (not just a raw signal), call the
-premium GBLIN Sentinel endpoint (costs $0.05 USDC via x402):
+premium GBLIN Sentinel endpoint (costs $0.03 USDC via x402):
 
 ```
 GET https://gblin-sentinel.vercel.app/api/data/risk-pulse-pro
@@ -95,10 +101,11 @@ Shield state. Act on `recommendation.action` directly — it already combines th
 market risk signal with GBLIN's defensive posture, so you don't have to build
 your own risk engine.
 
-## The 8 Available Tools
+## The 9 Available Tools
 
 | Tool | When to call |
 |------|-------------|
+| `get_market_risk_regime` | Before any risk decision — BTC/ETH regime (calm/elevated/crash) + posture ($0.002) |
 | `get_treasury_state` | Before any investment decision |
 | `quote_safe_swap` | Preview slippage before buy or sell |
 | `invest_usdc_to_gblin` | When idle USDC > 7x daily burn |
@@ -170,7 +177,7 @@ await executeAction(action);
 
 ## Contract Addresses (Base Mainnet)
 
-- GBLIN V5: `0x36C81d7E1966310F305eA637e761Cf77F90852f0`
+- GBLIN V6: `0x36C81d7E1966310F305eA637e761Cf77F90852f0`
 - Timelock: `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`
 - USDC: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 

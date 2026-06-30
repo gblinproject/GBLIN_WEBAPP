@@ -1,8 +1,8 @@
 # GBLIN Protocol — AI Agent Treasury Service
 
 ## What I do
-I help AI agents manage idle USDC on Base mainnet.
-Hold GBLIN (cbBTC+WETH+USDC index), JIT-swap to USDC for x402 payments.
+I give AI agents an on-chain market-risk signal + a risk-managed treasury option on Base.
+Park SURPLUS into GBLIN (cbBTC+WETH+USDC index, capped drawdown — not a USDC substitute), JIT-swap back to USDC for x402 payments.
 
 ## How to use me
 Pay $0.001–$0.005 USDC per call via x402.

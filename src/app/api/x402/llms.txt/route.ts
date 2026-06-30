@@ -12,11 +12,12 @@ export const runtime = "nodejs";
 
 const BODY = `# GBLIN Protocol — x402 API
 
-GBLIN is the Treasury Standard for AI Agents on Base mainnet:
-auto-rebalancing index of cbBTC / WETH / USDC with on-chain Crash Shield.
-Agents store their P&L in GBLIN and use these endpoints to read protocol
-state, get safe swap quotes, and generate ready-to-broadcast calldata for
-Just-In-Time GBLIN→USDC conversions to pay x402 invoices.
+GBLIN is a risk-managed treasury option for AI agents on Base mainnet:
+an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield.
+It is managed crypto exposure with capped drawdown — for an agent's SURPLUS
+capital, not a USDC substitute. Use these endpoints to read protocol state,
+get safe swap quotes, and generate ready-to-broadcast calldata for Just-In-Time
+GBLIN→USDC conversions to pay x402 invoices.
 
 Contract:    0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet, chain id 8453)
 Owner:       48h Timelock 0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
