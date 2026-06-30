@@ -190,7 +190,7 @@ export default function AgentsPage() {
             href="https://github.com/gblinproject/GBLIN-MCP"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-5 py-2.5 rounded-lg bg-[#F27D26] text-black font-medium text-sm hover:opacity-90 transition"
+            className="px-5 py-2.5 rounded-lg bg-amber-500 text-black font-medium text-sm hover:opacity-90 transition"
           >
             View on GitHub
           </a>
@@ -253,7 +253,7 @@ export default function AgentsPage() {
             ].map((card) => (
               <div
                 key={card.title}
-                className="glass p-6 rounded-xl"
+                className="border border-white/[0.07] bg-white/[0.02]p-6 rounded-xl"
               >
                 <h3 className="font-medium text-base">{card.title}</h3>
                 <p className="mt-2 text-sm text-white/60 leading-relaxed">{card.body}</p>
@@ -275,7 +275,7 @@ export default function AgentsPage() {
 
           <div className="mt-10 space-y-6">
             {FRAMEWORKS.map((fw) => (
-              <div key={fw.name} className="glass rounded-xl overflow-hidden">
+              <div key={fw.name} className="border border-white/[0.07] bg-white/[0.02]rounded-xl overflow-hidden">
                 <div className="px-5 py-3 flex items-center justify-between border-b border-white/10">
                   <span className="font-medium">{fw.name}</span>
                   <span className="text-xs text-white/40 font-mono">{fw.file}</span>
@@ -305,9 +305,9 @@ export default function AgentsPage() {
             {TOOLS.map((tool) => (
               <div
                 key={tool.name}
-                className="glass rounded-lg px-5 py-4 flex flex-col sm:flex-row sm:items-baseline gap-3"
+                className="border border-white/[0.07] bg-white/[0.02]rounded-lg px-5 py-4 flex flex-col sm:flex-row sm:items-baseline gap-3"
               >
-                <code className="text-[#F27D26] font-mono text-sm whitespace-nowrap">
+                <code className="text-amber-400 font-mono text-sm whitespace-nowrap">
                   {tool.name}
                 </code>
                 <p className="text-sm text-white/70 leading-relaxed">{tool.purpose}</p>
@@ -391,7 +391,7 @@ const hash = await wallet.sendTransaction({
           </h2>
 
           <p className="mt-4 text-white/70 max-w-3xl leading-relaxed">
-            <code className="text-[#F27D26]">AGENTS.md</code> is the emerging
+            <code className="text-amber-400">AGENTS.md</code> is the emerging
             standard read automatically by Claude Code, Cursor, Windsurf,
             GitHub Copilot, Codex and every modern AI coding assistant when
             they enter a repo. Drop our template into your project root and
@@ -400,7 +400,7 @@ const hash = await wallet.sendTransaction({
           </p>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-            <div className="glass rounded-xl overflow-hidden">
+            <div className="border border-white/[0.07] bg-white/[0.02]rounded-xl overflow-hidden">
               <div className="px-5 py-3 flex items-center justify-between border-b border-white/10">
                 <span className="font-medium text-sm">One-line install</span>
                 <span className="text-xs text-white/40 font-mono">curl</span>
@@ -413,16 +413,16 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               </pre>
             </div>
 
-            <div className="glass rounded-xl p-5">
+            <div className="border border-white/[0.07] bg-white/[0.02]rounded-xl p-5">
               <h3 className="font-medium text-base">What the template does</h3>
-              <ul className="mt-3 space-y-2 text-sm text-white/70 leading-relaxed list-disc list-inside marker:text-[#F27D26]">
+              <ul className="mt-3 space-y-2 text-sm text-white/70 leading-relaxed list-disc list-inside marker:text-amber-400">
                 <li>
                   Declares a <strong>treasury policy</strong>: park SURPLUS
                   (idle USDC &gt; 7× daily burn) into GBLIN — operating cash stays in USDC.
                 </li>
                 <li>
                   Tells AI assistants to call{' '}
-                  <code className="text-[#F27D26]">swap_gblin_to_usdc_jit</code>{' '}
+                  <code className="text-amber-400">swap_gblin_to_usdc_jit</code>{' '}
                   for x402 payments, redeeming GBLIN to USDC just-in-time.
                 </li>
                 <li>
@@ -438,7 +438,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
                 href="/AGENTS.template.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 text-sm text-[#F27D26] hover:underline"
+                className="mt-5 inline-flex items-center gap-2 text-sm text-amber-400 hover:underline"
               >
                 View raw template ↗
               </a>
@@ -483,9 +483,9 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
                 desc: 'Live keeper bounty check — includes MCP tool reference for execution',
               },
             ].map((ep) => (
-              <div key={ep.path} className="glass rounded-xl p-5">
+              <div key={ep.path} className="border border-white/[0.07] bg-white/[0.02]rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <code className="text-xs text-[#F27D26] font-mono break-all">{ep.path}</code>
+                  <code className="text-xs text-amber-400 font-mono break-all">{ep.path}</code>
                   <span className="ml-3 text-xs text-white/40 whitespace-nowrap">{ep.price} USDC</span>
                 </div>
                 <p className="text-sm text-white/60 leading-relaxed">{ep.desc}</p>
@@ -498,7 +498,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               href="https://gblin-sentinel.vercel.app/.well-known/x402"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#F27D26] hover:underline"
+              className="text-amber-400 hover:underline"
             >
               x402 manifest ↗
             </a>
@@ -506,7 +506,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               href="https://gblin-sentinel.vercel.app/llms.txt"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#F27D26] hover:underline"
+              className="text-amber-400 hover:underline"
             >
               llms.txt ↗
             </a>
@@ -514,7 +514,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               href="https://github.com/gblinproject/gblin-sentinel"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#F27D26] hover:underline"
+              className="text-amber-400 hover:underline"
             >
               Source on GitHub ↗
             </a>
@@ -531,7 +531,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
 
           <div className="mt-10 space-y-6">
             {FAQS.map((item) => (
-              <div key={item.q} className="border-l-2 border-[#F27D26]/40 pl-5">
+              <div key={item.q} className="border-l-2 border-amber-500/40 pl-5">
                 <h3 className="font-medium text-base">{item.q}</h3>
                 <p className="mt-2 text-sm text-white/70 leading-relaxed">{item.a}</p>
               </div>
