@@ -27,8 +27,9 @@ MCP server:  @gblin-protocol/mcp-server (npm)
 
 ## Paid endpoints
 
-All endpoints below require an x402 USDC payment on Base mainnet. Recommended
-client: Coinbase x402-fetch or x402-axios. Free MCP equivalent: \`@gblin-protocol/mcp-server\`.
+All endpoints below require an x402 USDC payment on Base mainnet. This API speaks
+x402 v2. Recommended client: @x402/fetch or @x402/axios (the current v2 SDK — they
+handle both v1 and v2 automatically). Free MCP equivalent: \`@gblin-protocol/mcp-server\`.
 
 ### GET /api/x402/treasury-state          ($0.001 USDC)
 NAV in USD, basket composition with dynamic weights, Crash Shield status.
@@ -51,14 +52,15 @@ Verify owner is the 48h Timelock + read min delay parameters.
 
 ## Network
 
-- Chain:      Base mainnet (8453)
-- Asset:      USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
-- Scheme:     exact (EIP-3009 transferWithAuthorization)
-- Facilitator: Coinbase CDP (default)
+- Chain:       Base mainnet (CAIP-2 eip155:8453)
+- Asset:       USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
+- Scheme:      exact (EIP-3009 transferWithAuthorization)
+- Protocol:    x402 v2 — payment requirements are returned in the PAYMENT-REQUIRED response header (body stays empty)
+- Facilitator: PayAI (https://facilitator.payai.network)
 
 ## Notes for agents
 
-- Every response includes \`X-PAYMENT-RESPONSE\` header with the settlement tx hash.
+- Every paid response includes a \`PAYMENT-RESPONSE\` header with the settlement tx hash.
 - Read endpoints (treasury-state, governance) are heavily cached (30–60s).
 - The /jit endpoint checks the wallet's 2-minute cooldown before quoting.
 - For free local use, install the MCP server: \`npx @gblin-protocol/mcp-server\`.

@@ -20,11 +20,16 @@
     "url": "https://gblin.digital/api/x402/llms.txt"
   },
   "x-payment": {
+    "x402Version": 2,
     "scheme": "exact",
-    "network": "base-mainnet",
+    "network": "eip155:8453",
     "chainId": 8453,
     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "facilitator": "Coinbase CDP"
+    "facilitator": "PayAI (https://facilitator.payai.network)",
+    "requirementsHeader": "PAYMENT-REQUIRED",
+    "signatureHeader": "PAYMENT-SIGNATURE",
+    "responseHeader": "PAYMENT-RESPONSE",
+    "recommendedClient": "@x402/fetch or @x402/axios (handle both v1 and v2)"
   },
   "paths": {
     "/api/x402/treasury-state": {
