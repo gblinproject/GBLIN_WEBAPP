@@ -33,6 +33,7 @@
 import type { NextRequest } from "next/server";
 import type { Address } from "viem";
 import { paymentProxy } from "@x402/next";
+import { PaywallBuilder, evmPaywall } from "@x402/paywall";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
@@ -96,6 +97,20 @@ const accepts = (price: `$${string}`) => [
     payTo: PAY_TO,
   },
 ];
+
+// Rich 402 paywall UI (connect wallet + one-click pay) for humans who open a
+// paid endpoint in a browser. Server-side HTML only — agents still receive the
+// machine-readable 402 with x402 requirements. Network: Base mainnet (EVM).
+const PAYWALL_CONFIG = {
+  appName: "GBLIN Protocol",
+  appLogo:
+    "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+  testnet: false,
+};
+const paywall = new PaywallBuilder()
+  .withNetwork(evmPaywall)
+  .withConfig(PAYWALL_CONFIG)
+  .build();
 
 const x402Middleware = paymentProxy(
   {
@@ -415,7 +430,9 @@ const x402Middleware = paymentProxy(
       },
     },
   },
-  server
+  server,
+  PAYWALL_CONFIG,
+  paywall
 );
 
 export const middleware = x402Middleware;
