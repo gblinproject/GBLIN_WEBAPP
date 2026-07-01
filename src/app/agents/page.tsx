@@ -73,6 +73,10 @@ const TOOLS = [
     name: 'find_keeper_bounty',
     purpose: 'GBLIN pays you: check if a rebalance bounty is available right now. Returns ready-to-send calldata. The swap uses the contract\'s own funds — the keeper only pays gas (~$0.01 on Base) and earns an adaptive bounty (~0.05% of the volume rebalanced, capped 0.00005–0.01 ETH).',
   },
+  {
+    name: 'verify_risk_attestation',
+    purpose: 'Verify a peer agent\'s Risk Attestation before trusting it: recomputes the EIP-712 id (tamper check), recovers the signer against GBLIN\'s published attestor, checks the 10-minute freshness, and flags if the on-chain regime has drifted. Free — the paid side is minting one at /api/x402/attestation ($0.003).',
+  },
 ];
 
 const FRAMEWORKS = [

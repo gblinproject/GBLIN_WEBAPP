@@ -50,6 +50,15 @@ Wallet treasury analysis: balances, gas runway, rebalance recommendation.
 ### GET /api/x402/governance                ($0.001 USDC)
 Verify owner is the 48h Timelock + read min delay parameters.
 
+### GET /api/x402/attestation               ($0.003 USDC)
+Perishable (10-minute) Risk Attestation: a verifiable proof of the current BTC/ETH
+risk regime (calm | elevated | crash) derived from the on-chain Crash Shield. Attach
+it to your own action as portable proof-of-diligence ("I checked market risk before
+moving capital"); any counterparty verifies it in one step — EIP-712 signature when
+an attestor key is configured, else a tamper-evident attestation_id. Expires in 10
+minutes, so re-fetch each decision cycle. Free verifier: \`verify_risk_attestation\`
+in @gblin-protocol/mcp-server.
+
 ## Network
 
 - Chain:       Base mainnet (CAIP-2 eip155:8453)

@@ -374,6 +374,46 @@ const x402Middleware = paymentProxy(
         }),
       },
     },
+    "/api/x402/attestation": {
+      accepts: accepts("$0.003"),
+      description:
+        "GBLIN Risk Attestation: a perishable (10-minute), verifiable proof of the current BTC/ETH risk regime (calm | elevated | crash) derived from the on-chain Crash Shield. Attach it to your action as proof-of-diligence; any counterparty verifies it in one step (EIP-712 signature when configured, else tamper-evident id). Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+      mimeType: "application/json",
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: {},
+          inputSchema: { type: "object", properties: {}, required: [] },
+          output: {
+            example: {
+              attestation: {
+                regime: "calm",
+                regime_code: 0,
+                risk_posture: "risk_on",
+                severity_pct: 0,
+                severity_bps: 0,
+                defensive_cash_pct: 10,
+                shield_active: false,
+                block_number: 34567890,
+                issued_at: 1747600000,
+                expires_at: 1747600600,
+                ttl_seconds: 600,
+                basket_hash: "0xabcd…",
+                chain_id: 8453,
+                contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+              },
+              attestation_id: "0x9f1c…",
+              signature: "0x… (present when attestor key configured, else null)",
+              attestor: "0x… (published GBLIN attestor, else null)",
+              signed: false,
+              verify: {
+                free_mcp_tool:
+                  "npx @gblin-protocol/mcp-server → verify_risk_attestation",
+              },
+            },
+          },
+        }),
+      },
+    },
   },
   server
 );
@@ -388,6 +428,7 @@ export const config = {
     "/api/x402/invest",
     "/api/x402/health",
     "/api/x402/governance",
+    "/api/x402/attestation",
   ],
   runtime: "nodejs",
 };

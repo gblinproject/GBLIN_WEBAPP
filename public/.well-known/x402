@@ -42,6 +42,12 @@
       "method": "GET",
       "price": "0.001",
       "description": "Timelock state and governance info"
+    },
+    {
+      "path": "/api/x402/attestation",
+      "method": "GET",
+      "price": "0.003",
+      "description": "Perishable (10-min) verifiable Risk Attestation: BTC/ETH regime proof-of-diligence agents attach to actions"
     }
   ],
   "contact": "info@gblin.digital",

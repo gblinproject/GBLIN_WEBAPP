@@ -186,6 +186,20 @@
           }
         }
       }
+    },
+    "/api/x402/attestation": {
+      "get": {
+        "summary": "Risk Attestation (perishable, verifiable)",
+        "description": "Perishable (10-minute) proof of the current BTC/ETH risk regime (calm | elevated | crash) derived from the on-chain Crash Shield. Attach it to your action as portable proof-of-diligence; any counterparty verifies it in one step (EIP-712 signature when an attestor key is configured, else a tamper-evident attestation_id). Expires in 10 minutes, so re-fetch each decision cycle.\n\nRequires an x402 USDC payment on Base mainnet ($0.003 USDC). Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        }
+      }
     }
   }
 }

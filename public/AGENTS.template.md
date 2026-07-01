@@ -101,11 +101,12 @@ Shield state. Act on `recommendation.action` directly — it already combines th
 market risk signal with GBLIN's defensive posture, so you don't have to build
 your own risk engine.
 
-## The 9 Available Tools
+## The 10 Available Tools
 
 | Tool | When to call |
 |------|-------------|
 | `get_market_risk_regime` | Before any risk decision — BTC/ETH regime (calm/elevated/crash) + posture ($0.002) |
+| `verify_risk_attestation` | Verify a peer's Risk Attestation before trusting it — integrity + signature + freshness (free) |
 | `get_treasury_state` | Before any investment decision |
 | `quote_safe_swap` | Preview slippage before buy or sell |
 | `invest_usdc_to_gblin` | When idle USDC > 7x daily burn |
