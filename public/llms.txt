@@ -22,7 +22,7 @@
 - **MCP Server:** `npx @gblin-protocol/mcp-server`
 - **GitHub:** https://github.com/gblinproject/GBLIN-MCP
 - **Docs:** https://gblin.digital/agents
-- **9 MCP tools exposed:**
+- **10 MCP tools exposed:**
   1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture ($0.002) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
   3. `quote_safe_swap` — preview buy/sell with dynamic slippage
@@ -32,6 +32,7 @@
   7. `get_governance_state` — verify 48h timelock ownership + pending ops
   8. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding
   9. `find_keeper_bounty` — check rebalance bounty availability, earn 0.0001 ETH
+  10. `verify_risk_attestation` — FREE verifier for GBLIN Risk Attestations (EIP-712 recover + freshness + live drift). Mint attestations at https://gblin.digital/api/x402/attestation ($0.003)
 
 ## Wallet compatibility
 

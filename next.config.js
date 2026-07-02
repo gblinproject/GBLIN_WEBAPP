@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // @x402/next carica '@x402/extensions/bazaar' con un import dinamico
+  // (webpackIgnore) risolto a runtime da node_modules: va marcato esterno
+  // e incluso nel file tracing, altrimenti ERR_MODULE_NOT_FOUND nei log.
+  serverExternalPackages: ['@x402/extensions'],
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/@x402/extensions/**'],
+  },
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,

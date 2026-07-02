@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 9 tools: an on-chain market-risk signal, live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 10 tools: an on-chain market-risk signal, free risk-attestation verification, live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
 
 export const metadata: Metadata = {
   title: 'GBLIN for AI Agents — Treasury Standard on Base',
@@ -293,11 +293,11 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 9 tools ───────── */}
+      {/* ───────── The 10 tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 9 tools
+            The 10 tools
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold
@@ -430,7 +430,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
                   for x402 payments, redeeming GBLIN to USDC just-in-time.
                 </li>
                 <li>
-                  Lists the 9 MCP tools and the exact MCP client config
+                  Lists the 10 MCP tools and the exact MCP client config
                   (Claude, Windsurf, Cursor, AgentKit).
                 </li>
                 <li>

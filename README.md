@@ -8,11 +8,11 @@ Front-end and dApp for **GBLIN**, an on-chain index on Base mainnet (45% cbBTC +
 
 ## Trust & Governance
 
-**GBLIN_V5 is now owned by a 48-hour Timelock Controller** — every admin action (parameter change, oracle update, ownership transfer) is enforced on-chain to wait `172,800 seconds` before it can be executed. Verifiable end-to-end on BaseScan.
+**GBLIN_V6 is now owned by a 48-hour Timelock Controller** — every admin action (parameter change, oracle update, ownership transfer) is enforced on-chain to wait `172,800 seconds` before it can be executed. Verifiable end-to-end on BaseScan.
 
 | Component | Address |
 |---|---|
-| **GBLIN_V5 token** | [`0x36C81d7E1966310F305eA637e761Cf77F90852f0`](https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0) |
+| **GBLIN_V6 token** | [`0x36C81d7E1966310F305eA637e761Cf77F90852f0`](https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0) |
 | **Timelock Controller** | [`0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`](https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd) |
 | **Ownership transfer tx** | [`0xb653f54ffa9b1764b41932e6a411077e7e34550605303f15d90900de682edaaf`](https://basescan.org/tx/0xb653f54ffa9b1764b41932e6a411077e7e34550605303f15d90900de682edaaf) |
 
