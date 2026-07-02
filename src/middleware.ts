@@ -74,12 +74,38 @@ const cdpKeyId = process.env.CDP_API_KEY_ID;
 const cdpKeySecret = process.env.CDP_API_KEY_SECRET;
 // CDP is the DEFAULT when keys are present: only CDP-settled payments are
 // indexed by the x402 Bazaar (discovery + ranking). The old 401 problem was
-// on getSupported() only — we skip that call via `syncFacilitatorOnStart:
-// false` below, so verify/settle can run against CDP.
+// on getSupported() only — handled by ResilientFacilitatorClient below,
+// so verify/settle can run against CDP.
 // Rollback senza toccare il codice: X402_ENABLE_CDP="false" → PayAI.
 const useCdp =
   !!cdpKeyId && !!cdpKeySecret && process.env.X402_ENABLE_CDP !== "false";
-const facilitatorClient = new HTTPFacilitatorClient(
+/**
+ * Facilitator client with a resilient getSupported().
+ * The CDP /supported route 401s with @coinbase/x402@2.1.0 auth headers
+ * (known upstream bug); verify/settle use per-request signed headers and
+ * are unaffected. Without supported kinds, buildPaymentRequirements()
+ * throws "Facilitator does not support exact on eip155:8453" on every
+ * request. So: try the real call first, and on failure fall back to the
+ * statically known CDP capabilities so initialize() always succeeds.
+ */
+class ResilientFacilitatorClient extends HTTPFacilitatorClient {
+  async getSupported() {
+    try {
+      return await super.getSupported();
+    } catch {
+      return {
+        kinds: [
+          { x402Version: 2, scheme: "exact", network: NETWORK },
+          { x402Version: 1, scheme: "exact", network: NETWORK },
+        ],
+        extensions: ["bazaar"],
+        signers: {},
+      };
+    }
+  }
+}
+
+const facilitatorClient = new ResilientFacilitatorClient(
   useCdp
     ? createFacilitatorConfig(cdpKeyId as string, cdpKeySecret as string)
     : {
@@ -440,11 +466,7 @@ const x402Middleware = paymentProxy(
   },
   server,
   PAYWALL_CONFIG,
-  paywall,
-  // Skip the facilitator getSupported() sync at startup. With CDP this call
-  // 401s (known upstream bug in @coinbase/x402 auth for that route); schemes
-  // are registered locally, so the sync is not needed for verify/settle.
-  !useCdp
+  paywall
 );
 
 export const middleware = x402Middleware;
