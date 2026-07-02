@@ -38,6 +38,10 @@ import { paymentProxy } from "@x402/next";
 import { PaywallBuilder, evmPaywall } from "@x402/paywall";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
+// Side-effect import of the package ROOT: @x402/next dynamically imports
+// '@x402/extensions' at runtime; without this static reference the Next
+// bundler omits it and cold starts log ERR_MODULE_NOT_FOUND.
+import "@x402/extensions";
 import {
   declareDiscoveryExtension,
   bazaarResourceServerExtension,
