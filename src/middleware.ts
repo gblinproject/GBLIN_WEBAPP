@@ -22,10 +22,12 @@
  *   - X402_PAY_TO_WALLET   : 0x… address that receives USDC
  *
  * Optional:
- *   - X402_FACILITATOR_URL : facilitator endpoint
- *                            • default: https://x402.org/facilitator (testnet + Base mainnet)
- *                            • CDP:     https://api.cdp.coinbase.com/platform/v2/x402
- *                            • PayAI:   https://facilitator.payai.network
+ *   - CDP_API_KEY_ID / CDP_API_KEY_SECRET : when set, the CDP facilitator is
+ *     used BY DEFAULT (required for x402 Bazaar indexing of these endpoints).
+ *   - X402_ENABLE_CDP="false" : opt OUT of CDP (falls back to PayAI/custom).
+ *   - X402_FACILITATOR_URL : non-CDP fallback facilitator
+ *                            • default: https://facilitator.payai.network
+ *                            • note: x402.org è ormai SOLO testnet
  *
  * Pricing: micropayments calibrated for autonomous agent budgets.
  */
@@ -36,7 +38,10 @@ import { paymentProxy } from "@x402/next";
 import { PaywallBuilder, evmPaywall } from "@x402/paywall";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+import {
+  declareDiscoveryExtension,
+  bazaarResourceServerExtension,
+} from "@x402/extensions/bazaar";
 import { createFacilitatorConfig } from "@coinbase/x402";
 
 const PAY_TO = (process.env.X402_PAY_TO_WALLET ?? "") as Address;
@@ -67,13 +72,13 @@ const NETWORK = "eip155:8453" as const;
 // signs every verify/settle call with our CDP key — required by CDP.
 const cdpKeyId = process.env.CDP_API_KEY_ID;
 const cdpKeySecret = process.env.CDP_API_KEY_SECRET;
-// Resilience: @coinbase/x402 @2.1.0 (latest as of Jun 2026) 401s on the CDP
-// facilitator getSupported() — a known upstream bug with no released fix. To
-// avoid 500s on every /api/x402/* request, we DEFAULT to the public
-// x402.org facilitator (no auth). Re-enable CDP — for the official Bazaar
-// listing — only by setting X402_ENABLE_CDP="true" once the bug is fixed.
+// CDP is the DEFAULT when keys are present: only CDP-settled payments are
+// indexed by the x402 Bazaar (discovery + ranking). The old 401 problem was
+// on getSupported() only — we skip that call via `syncFacilitatorOnStart:
+// false` below, so verify/settle can run against CDP.
+// Rollback senza toccare il codice: X402_ENABLE_CDP="false" → PayAI.
 const useCdp =
-  process.env.X402_ENABLE_CDP === "true" && !!cdpKeyId && !!cdpKeySecret;
+  !!cdpKeyId && !!cdpKeySecret && process.env.X402_ENABLE_CDP !== "false";
 const facilitatorClient = new HTTPFacilitatorClient(
   useCdp
     ? createFacilitatorConfig(cdpKeyId as string, cdpKeySecret as string)
@@ -82,10 +87,13 @@ const facilitatorClient = new HTTPFacilitatorClient(
           "https://facilitator.payai.network") as `${string}://${string}`,
       }
 );
-const server = new x402ResourceServer(facilitatorClient).register(
-  NETWORK,
-  new ExactEvmScheme()
-);
+// bazaarResourceServerExtension enriches each route's declared discovery
+// metadata (adds HTTP method, validates schemas) and attaches it to the
+// payment payload — REQUIRED for the CDP facilitator to catalog us in the
+// Bazaar after the first successful settlement.
+const server = new x402ResourceServer(facilitatorClient)
+  .register(NETWORK, new ExactEvmScheme())
+  .registerExtension(bazaarResourceServerExtension);
 
 // Shared accepts helper — every endpoint is paid in USDC on Base mainnet to the
 // same treasury wallet, only the price varies.
@@ -432,7 +440,11 @@ const x402Middleware = paymentProxy(
   },
   server,
   PAYWALL_CONFIG,
-  paywall
+  paywall,
+  // Skip the facilitator getSupported() sync at startup. With CDP this call
+  // 401s (known upstream bug in @coinbase/x402 auth for that route); schemes
+  // are registered locally, so the sync is not needed for verify/settle.
+  !useCdp
 );
 
 export const middleware = x402Middleware;
