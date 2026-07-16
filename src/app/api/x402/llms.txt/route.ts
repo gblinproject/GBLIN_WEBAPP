@@ -65,7 +65,7 @@ in @gblin-protocol/mcp-server.
 - Asset:       USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
 - Scheme:      exact (EIP-3009 transferWithAuthorization)
 - Protocol:    x402 v2 — payment requirements are returned in the PAYMENT-REQUIRED response header (body stays empty)
-- Facilitator: PayAI (https://facilitator.payai.network)
+- Facilitator: Coinbase CDP (default when configured) or PayAI (https://facilitator.payai.network); the PAYMENT-REQUIRED header always announces the active one
 
 ## Notes for agents
 

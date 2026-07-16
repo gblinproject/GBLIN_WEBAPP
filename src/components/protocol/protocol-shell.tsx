@@ -22,8 +22,9 @@ interface ProtocolShellProps {
   children: ReactNode;
 }
 
-const navItems: Array<{ key: 'home' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents'; href: string; view: ProtocolView | null }> = [
+const navItems: Array<{ key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents'; href: string; view: ProtocolView | null }> = [
   { key: 'home', href: '/', view: 'home' },
+  { key: 'buy', href: '/buy-gblin', view: 'buy' },
   { key: 'dashboard', href: '/dashboard', view: 'dashboard' },
   { key: 'rebalance', href: '/rebalance', view: 'rebalance' },
   { key: 'vault', href: '/vault', view: 'vault' },

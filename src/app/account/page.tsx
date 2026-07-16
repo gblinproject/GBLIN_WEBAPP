@@ -1809,7 +1809,7 @@ export default function AccountPage() {
                   copyContract={() => {}}
                   copied={false}
                   marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
-                  onChainData={{ nav: `$${(gblinPriceUsd * balance).toFixed(2)}`, ...onChainData }}
+                  onChainData={{ nav: '—', ...onChainData }}
                   basketData={[]}
                   lastYieldDistribution={0}
                   discountPercentage={0}

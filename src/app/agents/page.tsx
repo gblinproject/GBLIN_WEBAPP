@@ -145,7 +145,7 @@ const FAQS = [
   },
   {
     q: 'Are there paid endpoints?',
-    a: 'Yes — 6 x402 HTTP endpoints are live at gblin.digital/api/x402/*. Prices range from $0.001 to $0.005 USDC per call, paid on Base mainnet. The MCP server itself remains free.',
+    a: 'Yes — 7 x402 HTTP endpoints are live at gblin.digital/api/x402/*. Prices range from $0.001 to $0.005 USDC per call, paid on Base mainnet. The MCP server itself remains free.',
   },
 ];
 

@@ -55,7 +55,8 @@ export default function FarcasterInstallBanner() {
   const handleAddFrame = async () => {
     if (!sdkRef) return;
     try {
-      await sdkRef.actions.addFrame();
+      const actions = sdkRef.actions as { addMiniApp?: () => Promise<unknown>; addFrame?: () => Promise<unknown> };
+      await (actions.addMiniApp ? actions.addMiniApp() : actions.addFrame?.());
     } catch (err) {
       console.error("[farcaster] addFrame failed:", err);
     }

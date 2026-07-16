@@ -4,6 +4,7 @@ export const translations: Record<Language, any> = {
   en: {
     nav: {
       home: "HOME",
+      buy: "BUY",
       dashboard: "DASHBOARD",
       trade: "TRADE",
       buyGblin: "BUY GBLIN",
@@ -93,6 +94,7 @@ export const translations: Record<Language, any> = {
       transacting: "Executing...",
       enterAmount: "Enter Amount",
       buyBtn: "Buy GBLIN",
+      needEth: "Need ETH on Base? Buy it on Coinbase, then withdraw to the Base network — fast and cheap.",
       sellBtn: "Sell GBLIN",
       inkindBtn: "In-Kind",
       inkindBadge: "INSTITUTIONAL FACILITY",
@@ -240,6 +242,7 @@ export const translations: Record<Language, any> = {
   it: {
     nav: {
       home: "HOME",
+      buy: "COMPRA",
       dashboard: "DASHBOARD",
       trade: "SCAMBIO",
       buyGblin: "ACQUISTA GBLIN",
@@ -329,6 +332,7 @@ export const translations: Record<Language, any> = {
       transacting: "Esecuzione...",
       enterAmount: "Inserisci Importo",
       buyBtn: "Compra GBLIN",
+      needEth: "Ti serve ETH su Base? Compralo su Coinbase e prelevalo sulla rete Base — veloce ed economico.",
       sellBtn: "Vendi GBLIN",
       inkindBtn: "In-Kind",
       inkindBadge: "FACILITY ISTITUZIONALE",
@@ -476,6 +480,7 @@ export const translations: Record<Language, any> = {
   es: {
     nav: {
       home: "INICIO",
+      buy: "COMPRAR",
       dashboard: "PANEL",
       trade: "COMERCIO",
       buyGblin: "COMPRAR GBLIN",
@@ -565,6 +570,7 @@ export const translations: Record<Language, any> = {
       transacting: "Ejecutando...",
       enterAmount: "Ingrese Cantidad",
       buyBtn: "Comprar GBLIN",
+      needEth: "¿Necesitas ETH en Base? Cómpralo en Coinbase y retíralo a la red Base — rápido y barato.",
       sellBtn: "Vender GBLIN",
       inkindBtn: "In-Kind",
       inkindBadge: "FACILIDAD INSTITUCIONAL",
@@ -665,6 +671,7 @@ export const translations: Record<Language, any> = {
   fr: {
     nav: {
       home: "ACCUEIL",
+      buy: "ACHETER",
       dashboard: "TABLEAU DE BORD",
       trade: "ÉCHANGE",
       buyGblin: "ACHETER GBLIN",
@@ -754,6 +761,7 @@ export const translations: Record<Language, any> = {
       transacting: "Exécution...",
       enterAmount: "Entrez le Montant",
       buyBtn: "Acheter GBLIN",
+      needEth: "Besoin d'ETH sur Base ? Achetez-en sur Coinbase puis retirez-le vers le réseau Base — rapide et économique.",
       sellBtn: "Vendre GBLIN",
       inkindBtn: "In-Kind",
       inkindBadge: "FACILITÉ INSTITUTIONNELLE",
@@ -854,6 +862,7 @@ export const translations: Record<Language, any> = {
   de: {
     nav: {
       home: "STARTSEITE",
+      buy: "KAUFEN",
       dashboard: "DASHBOARD",
       trade: "HANDEL",
       buyGblin: "GBLIN KAUFEN",
@@ -943,6 +952,7 @@ export const translations: Record<Language, any> = {
       transacting: "Ausführung...",
       enterAmount: "Betrag eingeben",
       buyBtn: "GBLIN Kaufen",
+      needEth: "Du brauchst ETH auf Base? Kaufe es auf Coinbase und zahle es auf das Base-Netzwerk aus — schnell und günstig.",
       sellBtn: "GBLIN Verkaufen",
       inkindBtn: "In-Kind",
       inkindBadge: "INSTITUTIONELLE FAZILITÄT",
@@ -1043,6 +1053,7 @@ export const translations: Record<Language, any> = {
   zh: {
     nav: {
       home: "首页",
+      buy: "购买",
       dashboard: "仪表板",
       trade: "交易",
       buyGblin: "购买 GBLIN",
@@ -1132,6 +1143,7 @@ export const translations: Record<Language, any> = {
       transacting: "执行中...",
       enterAmount: "输入金额",
       buyBtn: "购买 GBLIN",
+      needEth: "需要 Base 上的 ETH？在 Coinbase 购买后提现到 Base 网络——快速又便宜。",
       sellBtn: "出售 GBLIN",
       inkindBtn: "In-Kind",
       inkindBadge: "机构设施",

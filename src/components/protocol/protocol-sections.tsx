@@ -1039,6 +1039,15 @@ export function BuyView(props: BuyViewProps) {
             <SellV5Button />
           </div>
 
+          <a
+            className="mt-3 block text-xs text-zinc-500 underline decoration-zinc-700 underline-offset-4 transition hover:text-amber-300"
+            href="https://www.coinbase.com/how-to-buy/ethereum"
+            rel="noreferrer"
+            target="_blank"
+          >
+            {t('trade.needEth')}
+          </a>
+
           {mode === 'inkind' ? (
             <div className="mt-6">
               <WhaleDepositPanel

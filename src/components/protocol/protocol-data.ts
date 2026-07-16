@@ -776,10 +776,6 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     }
 
     const nav = activeSupply > 0 ? effectiveTvl / activeSupply : 1;
-    const stabilityFundUsd = stabilityFund * wethPrice;
-    const reserveRatio = effectiveTvl > 0 ? stabilityFundUsd / effectiveTvl : 0;
-    const estimatedApy = (6 + Math.min(reserveRatio * 1200, 6)).toFixed(2);
-
     // Fetch total yield distributed from events
     const totalYieldDistributed = await fetchTotalYieldDistributed();
 
@@ -793,12 +789,7 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       dynamicReserve: ethers.formatEther(dynamicReserve),
       basketData: basketItems,
       totalYieldDistributed,
-      apyData: {
-        totalVolume: tvl * 0.6,
-        transactionCount: 15,
-        estimatedApy,
-        timeframe: '30 days'
-      }
+      apyData: null
     };
   } catch {
     return {

@@ -5,7 +5,7 @@
   "chainId": 8453,
   "currency": "USDC",
   "currencyAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  "facilitator": "https://x402.org/facilitator",
+  "facilitator": "https://facilitator.payai.network",
   "endpoints": [
     {
       "path": "/api/x402/treasury-state",
