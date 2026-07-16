@@ -19,7 +19,7 @@ export async function GET() {
     const j = await r.json();
     const raw = j?.result;
     const stats = raw ? JSON.parse(raw) : null;
-    return NextResponse.json({ enabled: true, stats });
+    return NextResponse.json({ enabled: true, stats }, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } });
   } catch {
     return NextResponse.json({ enabled: false, stats: null });
   }

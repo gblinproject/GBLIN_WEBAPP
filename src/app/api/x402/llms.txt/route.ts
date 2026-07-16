@@ -80,7 +80,7 @@ export async function GET() {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      "cache-control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
 }
