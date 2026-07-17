@@ -2,7 +2,7 @@
   "type": "AgentCard",
   "protocolVersion": "erc8004/1",
   "name": "GBLIN Protocol",
-  "description": "Self-defending, collateral-backed treasury index for AI agents on Base. Every GBLIN is backed by a WETH/cbBTC/USDC basket with an on-chain Crash Shield that auto-reduces risk on drawdowns. In-kind redemption anytime.",
+  "description": "The Machine Reserve: permissionless, self-defending reserve asset for AI-agent treasuries on Base. Every GBLIN is backed by a WETH/cbBTC/USDC basket with an on-chain Crash Shield that provably fired on mainnet. Risk policy is public code; risk state is a signed observable, not an opinion. In-kind redemption anytime.",
   "url": "https://gblin.digital",
   "iconUrl": "https://gblin.digital/LOGO_GBLIN.png",
   "provider": {
@@ -24,11 +24,36 @@
     "llmsTxt": "https://gblin.digital/api/x402/llms.txt"
   },
   "skills": [
-    { "id": "treasury_state", "name": "Read treasury state", "description": "NAV, basket composition and Crash Shield status.", "price": "free" },
-    { "id": "quote", "name": "Quote buy/sell", "description": "USDC/ETH to GBLIN quote with fees and slippage.", "price": "free" },
-    { "id": "jit_redemption", "name": "JIT redemption", "description": "Two-step GBLIN to USDC calldata to settle x402 invoices.", "price": "free" },
-    { "id": "risk_regime", "name": "Market risk regime", "description": "On-chain crash-shield-derived risk signal (calm/elevated/crash).", "price": "0.002 USDC" },
-    { "id": "risk_attestation", "name": "Signed risk attestation", "description": "EIP-712 signed proof-of-diligence an agent can attach to its own actions.", "price": "0.003 USDC" }
+    {
+      "id": "treasury_state",
+      "name": "Read treasury state",
+      "description": "NAV, basket composition and Crash Shield status.",
+      "price": "free"
+    },
+    {
+      "id": "quote",
+      "name": "Quote buy/sell",
+      "description": "USDC/ETH to GBLIN quote with fees and slippage.",
+      "price": "free"
+    },
+    {
+      "id": "jit_redemption",
+      "name": "JIT redemption",
+      "description": "Two-step GBLIN to USDC calldata to settle x402 invoices.",
+      "price": "free"
+    },
+    {
+      "id": "risk_regime",
+      "name": "Market risk regime",
+      "description": "On-chain crash-shield-derived risk signal (calm/elevated/crash).",
+      "price": "0.002 USDC"
+    },
+    {
+      "id": "risk_attestation",
+      "name": "Signed risk attestation",
+      "description": "EIP-712 signed proof-of-diligence an agent can attach to its own actions.",
+      "price": "0.003 USDC"
+    }
   ],
   "payment": {
     "scheme": "x402",

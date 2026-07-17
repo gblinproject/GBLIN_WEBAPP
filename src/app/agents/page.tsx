@@ -4,10 +4,10 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 10 tools: an on-chain market-risk signal, free risk-attestation verification, live NAV, dynamic-slippage quotes, atomic Just-In-Time GBLIN→USDC swaps for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 10 tools: an on-chain market-risk signal, free risk-attestation verification, live NAV, dynamic-slippage quotes, deterministic two-step Just-In-Time GBLIN→USDC redemption for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
 
 export const metadata: Metadata = {
-  title: 'GBLIN for AI Agents — Treasury Standard on Base',
+  title: 'GBLIN — The Machine Reserve · AI Agent Treasury on Base',
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/agents` },
   openGraph: {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     'autonomous agent wallet',
     'JIT swap GBLIN USDC',
     'agentic economy',
-    'agent treasury yield',
+    'machine reserve',
   ],
 };
 
@@ -51,7 +51,7 @@ const TOOLS = [
   },
   {
     name: 'swap_gblin_to_usdc_jit',
-    purpose: 'Generate ready-to-broadcast calldata for an atomic 1-tx GBLIN→USDC swap right before paying an x402 invoice. Works on EOA, ERC-4337, EIP-7702.',
+    purpose: 'Generate ready-to-broadcast calldata for a deterministic two-step GBLIN→USDC redemption right before paying an x402 invoice. Works on EOA, ERC-4337, EIP-7702 (batchable in one UserOp on smart accounts).',
   },
   {
     name: 'invest_usdc_to_gblin',

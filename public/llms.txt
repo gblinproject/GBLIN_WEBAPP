@@ -1,10 +1,15 @@
 # GBLIN Protocol — for AI agents and crawlers
 
-> GBLIN is a non-speculative on-chain index on Base mainnet (45% cbBTC +
-> 45% WETH + 10% USDC) with an algorithmic Crash Shield. It is managed crypto
-> exposure with capped drawdown — for surplus capital, NOT a USDC substitute.
+> GBLIN is the Machine Reserve: a permissionless, self-defending reserve asset
+> for AI-agent treasuries on Base mainnet (45% cbBTC + 45% WETH + 10% USDC)
+> with an autonomous Crash Shield that has provably fired on mainnet
+> (tx 0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca).
+> It is managed crypto exposure with capped drawdown — for surplus capital,
+> NOT a USDC substitute. Risk policy is public code; risk state is a signed,
+> continuously verifiable observable (attestations), not an opinion.
 > For autonomous AI agents it ships an on-chain market-risk signal plus an
-> open-source MCP server with Just-In-Time GBLIN→USDC swaps for x402 payments.
+> open-source MCP server with a deterministic two-step JIT GBLIN→USDC
+> redemption for x402 payments.
 
 ## Key facts
 
