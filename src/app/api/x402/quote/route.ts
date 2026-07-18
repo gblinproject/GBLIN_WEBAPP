@@ -13,7 +13,7 @@
 import { formatUnits, parseUnits } from "viem";
 import {
   GBLIN_ABI,
-  GBLIN_V5,
+  GBLIN,
   MIN_DEPOSIT_WEI,
   applySlippageBuffer,
   client,
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       }
 
       const [gblinOut, founderFee, stabFee] = await client.readContract({
-        address: GBLIN_V5,
+        address: GBLIN,
         abi: GBLIN_ABI,
         functionName: "quoteBuyGBLIN",
         args: [amountWei],
@@ -82,7 +82,7 @@ export async function GET(req: Request) {
 
     // sell
     const ethOut = await client.readContract({
-      address: GBLIN_V5,
+      address: GBLIN,
       abi: GBLIN_ABI,
       functionName: "quoteSellGBLIN",
       args: [amountWei],

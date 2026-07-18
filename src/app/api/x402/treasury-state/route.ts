@@ -9,7 +9,7 @@
  */
 
 import {
-  GBLIN_V5,
+  GBLIN,
   getBasketState,
   getDynamicSlippage,
   getEthPriceUsd,
@@ -43,7 +43,7 @@ export async function GET() {
         pool_fee_bps: e.poolFee,
       })),
       meta: {
-        contract: GBLIN_V5,
+        contract: GBLIN,
         chain: "base",
         chain_id: 8453,
         as_of_unix: Math.floor(Date.now() / 1000),

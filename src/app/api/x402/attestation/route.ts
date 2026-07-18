@@ -28,7 +28,7 @@
  */
 
 import {
-  GBLIN_V5,
+  GBLIN,
   client,
   getBasketState,
   jsonResponse,
@@ -52,7 +52,7 @@ const EIP712_DOMAIN = {
   name: "GBLIN Risk Attestation",
   version: "1",
   chainId: 8453,
-  verifyingContract: GBLIN_V5, // GBLIN_V6 production contract on Base
+  verifyingContract: GBLIN, // GBLIN_V6 production contract on Base
 } as const;
 
 const EIP712_TYPES = {
@@ -199,7 +199,7 @@ export async function GET() {
         ttl_seconds: TTL_SECONDS,
         basket_hash: basketHash,
         chain_id: 8453,
-        contract: GBLIN_V5,
+        contract: GBLIN,
       },
       eip712: eip712Public,
       attestation_id: attestationId,

@@ -5,7 +5,7 @@
  * sequential transactions (bypasses broken exactInput in contract):
  *   1. approve USDC to SwapRouter02
  *   2. swap USDC→WETH via exactInputSingle
- *   3. approve WETH to GBLIN_V5
+ *   3. approve WETH to GBLIN
  *   4. buyGBLINWithToken with WETH as tokenIn
  *
  * All transactions have non-zero minOut values to prevent MEV sandwich.
@@ -14,7 +14,7 @@
  */
 
 import {
-  GBLIN_V5,
+  GBLIN,
   USDC,
   buildInvestCalldata,
   getDynamicSlippage,

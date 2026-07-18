@@ -27,7 +27,10 @@ const DEFAULT_RPC_URL = "https://base-rpc.publicnode.com";
 export const RPC_URL = process.env.GBLIN_RPC_URL ?? DEFAULT_RPC_URL;
 
 // ─── Core Contracts (Base Mainnet, verified) ────────────────────────────────
-export const GBLIN_V5: Address = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6 production (const name kept to avoid cascade)
+// The single production GBLIN contract on Base. Deliberately unversioned:
+// agents consume an address, not a release number, and the old versioned name
+// is what let a stale "v5" label leak into the public governance response.
+export const GBLIN: Address = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
 export const USDC: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const WETH: Address = "0x4200000000000000000000000000000000000006";
 export const GBLIN_TIMELOCK: Address = "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd";
@@ -285,7 +288,7 @@ export async function getNavUsd(): Promise<number> {
 
   const [ethPerGblinWei, ethPriceUsd] = await Promise.all([
     client.readContract({
-      address: GBLIN_V5,
+      address: GBLIN,
       abi: GBLIN_ABI,
       functionName: "quoteSellGBLIN",
       args: [parseUnits("1", 18)],
@@ -332,7 +335,7 @@ export async function getBasketState(): Promise<BasketState> {
   for (let i = 0; i < 8; i++) {
     try {
       const raw = await client.readContract({
-        address: GBLIN_V5,
+        address: GBLIN,
         abi: GBLIN_ABI,
         functionName: "basket",
         args: [BigInt(i)],
@@ -408,7 +411,7 @@ export interface CooldownStatus {
 export async function checkCooldown(wallet: Address): Promise<CooldownStatus> {
   const [lastDeposit, block] = await Promise.all([
     client.readContract({
-      address: GBLIN_V5,
+      address: GBLIN,
       abi: GBLIN_ABI,
       functionName: "lastDepositTime",
       args: [wallet],
@@ -484,7 +487,7 @@ export async function buildJitCalldata(
   wallet: Address
 ): Promise<{ steps: JitStep[]; minEthOut: bigint }> {
   const ethExpected = (await client.readContract({
-    address: GBLIN_V5,
+    address: GBLIN,
     abi: GBLIN_ABI,
     functionName: "quoteSellGBLIN",
     args: [gblinToSell],
@@ -515,7 +518,7 @@ export async function buildJitCalldata(
   return {
     minEthOut,
     steps: [
-      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN_V5, calldata: sellCalldata, value: "0" },
+      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN, calldata: sellCalldata, value: "0" },
       { step: 2, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: swapCalldata, value: minEthOut.toString() },
     ],
   };
@@ -561,7 +564,7 @@ export async function buildInvestCalldata(
   }
 
   const [gblinExpected] = await client.readContract({
-    address: GBLIN_V5,
+    address: GBLIN,
     abi: GBLIN_ABI,
     functionName: "quoteBuyGBLIN",
     args: [minWethOut],
@@ -596,7 +599,7 @@ export async function buildInvestCalldata(
   const approveWethCalldata = encodeFunctionData({
     abi: ERC20_ABI,
     functionName: "approve",
-    args: [GBLIN_V5, minWethOut],
+    args: [GBLIN, minWethOut],
   });
 
   // Step 4: Buy GBLIN with WETH (WETH path skips broken Uniswap call)
@@ -616,7 +619,7 @@ export async function buildInvestCalldata(
       { step: 1, description: "Approve USDC to SwapRouter02 for WETH swap", target: USDC, calldata: approveRouterCalldata, value: "0" },
       { step: 2, description: "Swap USDC→WETH via SwapRouter02 exactInputSingle", target: SWAP_ROUTER_02, calldata: swapCalldata, value: "0" },
       { step: 3, description: "Approve WETH to GBLIN contract", target: WETH, calldata: approveWethCalldata, value: "0" },
-      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN_V5, calldata: buyCalldata, value: "0" },
+      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN, calldata: buyCalldata, value: "0" },
     ],
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),
@@ -640,7 +643,7 @@ export interface WalletBalances {
 export async function getWalletBalances(wallet: Address): Promise<WalletBalances> {
   const [gblin, usdc, eth, navUsd, ethPriceUsd] = await Promise.all([
     client.readContract({
-      address: GBLIN_V5,
+      address: GBLIN,
       abi: GBLIN_ABI,
       functionName: "balanceOf",
       args: [wallet],

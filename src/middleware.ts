@@ -299,7 +299,10 @@ const x402Middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          input: { usdc: "10" },
+          input: {
+            usdc: "10",
+            wallet: "0x0000000000000000000000000000000000000001",
+          },
           inputSchema: {
             type: "object",
             properties: {
@@ -307,8 +310,13 @@ const x402Middleware = paymentProxy(
                 type: "string",
                 description: "USDC amount to invest into GBLIN (decimal string)",
               },
+              wallet: {
+                type: "string",
+                description:
+                  "Agent EOA / smart-account 0x address that will execute the returned calldata",
+              },
             },
-            required: ["usdc"],
+            required: ["usdc", "wallet"],
           },
           output: {
             example: {
@@ -415,7 +423,7 @@ const x402Middleware = paymentProxy(
           inputSchema: { type: "object", properties: {}, required: [] },
           output: {
             example: {
-              gblin_v6: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+              contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
               owner: "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
               owner_is_timelock: true,
               owner_is_renounced: false,
@@ -430,7 +438,7 @@ const x402Middleware = paymentProxy(
                 expected_min_delay_seconds: 172800,
               },
               verification: {
-                gblin_v6_basescan:
+                contract_basescan:
                   "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#readContract",
                 timelock_basescan:
                   "https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd#readContract",
@@ -486,7 +494,53 @@ const x402Middleware = paymentProxy(
   paywall
 );
 
-export const middleware = x402Middleware;
+/**
+ * Query params required by each paid route, validated BEFORE the payment flow.
+ *
+ * Why this exists: the x402 resource server settles the payment around the
+ * handler, so a malformed request used to be charged in full and then answered
+ * with a 400. An agent that discovered us on the Bazaar and called an endpoint
+ * with a missing param would pay and receive nothing — the worst possible first
+ * contact, and the fastest way to be marked untrustworthy.
+ *
+ * The patterns below are copied verbatim from each route handler, so this guard
+ * can only reject requests the handler would have rejected anyway. It never
+ * narrows what is accepted.
+ */
+const DECIMAL = /^\d+(\.\d+)?$/;
+const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
+
+const REQUIRED_QUERY: Record<string, Record<string, RegExp>> = {
+  "/api/x402/invest": { usdc: DECIMAL, wallet: ADDRESS },
+  "/api/x402/jit": { usdc: DECIMAL, wallet: ADDRESS },
+  "/api/x402/quote": { direction: /^(buy|sell)$/, amount: DECIMAL },
+  "/api/x402/health": { wallet: ADDRESS },
+};
+
+export async function middleware(req: NextRequest) {
+  const url = new URL(req.url);
+  const rules = REQUIRED_QUERY[url.pathname];
+
+  if (rules) {
+    const invalid = Object.entries(rules)
+      .filter(([param, pattern]) => !pattern.test(url.searchParams.get(param) ?? ""))
+      .map(([param]) => param);
+
+    if (invalid.length > 0) {
+      // 400 before payment: the caller is not charged for a bad request.
+      return Response.json(
+        {
+          error: "Invalid or missing query parameters. No payment was taken.",
+          invalid,
+          hint: `See the parameter schema at ${url.origin}/.well-known/x402`,
+        },
+        { status: 400, headers: { "cache-control": "no-store" } }
+      );
+    }
+  }
+
+  return x402Middleware(req);
+}
 
 export const config = {
   matcher: [

@@ -73,7 +73,7 @@ export async function GET(req: Request) {
         slippage_buffer_pct: quote.slippage.pct,
         slippage_reason: quote.slippage.reason,
       },
-      compatibility: { eoa: true, erc4337: true, eip7702: true, note: "V6 path is two steps (sellGBLINForEth + Uniswap WETH->USDC). EOAs sign twice; ERC-4337/EIP-7702 can batch into one UserOp." },
+      compatibility: { eoa: true, erc4337: true, eip7702: true, note: "Redemption is two steps (sellGBLINForEth + Uniswap WETH->USDC). EOAs sign twice; ERC-4337/EIP-7702 can batch into one UserOp." },
       gas_hint: 600_000,
     });
   } catch (err) {

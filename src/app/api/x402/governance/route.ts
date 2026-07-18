@@ -1,7 +1,7 @@
 /**
  * GET /api/x402/governance
  *
- * Verifies GBLIN protocol governance state: confirms whether GBLIN_V5 is
+ * Verifies GBLIN protocol governance state: confirms whether GBLIN is
  * owned by the 48h Timelock, reads the timelock's min delay, and reports
  * the founder wallet. Use to gate trust-sensitive agent actions.
  *
@@ -13,7 +13,7 @@ import {
   EXPECTED_MIN_DELAY_SECONDS,
   GBLIN_ABI,
   GBLIN_TIMELOCK,
-  GBLIN_V5,
+  GBLIN,
   TIMELOCK_ABI,
   client,
   jsonResponse,
@@ -25,12 +25,12 @@ export async function GET() {
   try {
     const [owner, founder] = await Promise.all([
       client.readContract({
-        address: GBLIN_V5,
+        address: GBLIN,
         abi: GBLIN_ABI,
         functionName: "owner",
       }),
       client.readContract({
-        address: GBLIN_V5,
+        address: GBLIN,
         abi: GBLIN_ABI,
         functionName: "founderWallet",
       }),
@@ -64,7 +64,7 @@ export async function GET() {
     }
 
     return jsonResponse({
-      gblin_v5: GBLIN_V5,
+      contract: GBLIN,
       owner: ownerNorm,
       owner_is_timelock: ownerIsTimelock,
       owner_is_renounced: ownerIsRenounced,
@@ -76,7 +76,7 @@ export async function GET() {
           : "WARNING: owner is an EOA / unknown contract — admin actions are NOT timelocked.",
       timelock: timelockState,
       verification: {
-        gblin_v5_basescan: `https://basescan.org/address/${GBLIN_V5}#readContract`,
+        contract_basescan: `https://basescan.org/address/${GBLIN}#readContract`,
         timelock_basescan: `https://basescan.org/address/${GBLIN_TIMELOCK}#readContract`,
       },
     });
