@@ -37,6 +37,24 @@ const nextConfig = {
       },
     ];
   },
+  // Crawlers probe common contact/about paths and locale variants the site
+  // never had (language is a client-side toggle, not a URL segment). These
+  // were returning 404 in the Vercel logs. Redirect them to real destinations
+  // so bots and humans land somewhere instead of hitting an error.
+  async redirects() {
+    return [
+      // "about the company" variants → homepage (solo project, no separate page)
+      { source: '/company', destination: '/', permanent: true },
+      { source: '/nosotros', destination: '/', permanent: true },
+      // contact variants → homepage (contact is the in-nav menu + email)
+      { source: '/contact', destination: '/', permanent: true },
+      { source: '/contatti', destination: '/', permanent: true },
+      { source: '/contato', destination: '/', permanent: true },
+      { source: '/contacto', destination: '/', permanent: true },
+      { source: '/en/contact', destination: '/', permanent: true },
+      { source: '/es/contacto', destination: '/', permanent: true },
+    ];
+  },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
