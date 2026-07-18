@@ -235,7 +235,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/jit": {
       accepts: accepts("$0.005"),
       description:
-        "Just-In-Time GBLIN→USDC calldata. Returns ready-to-broadcast atomic-swap calldata sized to cover the requested USDC amount.",
+        "Just-In-Time GBLIN→USDC calldata. Returns two ready-to-broadcast steps (sellGBLINForEth + WETH→USDC swap) sized to cover the requested USDC amount; smart accounts can batch them in one UserOp.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
@@ -256,10 +256,23 @@ const x402Middleware = paymentProxy(
           },
           output: {
             example: {
-              action: "single_atomic_tx",
-              target_contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
-              calldata: "0x5d2e1ca7…",
-              value: "0",
+              action: "two_step_redemption",
+              steps: [
+                {
+                  step: 1,
+                  target: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+                  calldata: "0x5d2e1ca7…",
+                  value: "0",
+                  description: "sellGBLINForEth(gblin_amount, min_eth_out)",
+                },
+                {
+                  step: 2,
+                  target: "0x2626664c2603336E57B271c5C0b26F421741e481",
+                  calldata: "0x414bf389…",
+                  value: "0",
+                  description: "Uniswap V3 WETH→USDC with min_usdc_out",
+                },
+              ],
               params: {
                 gblin_amount: "0.412345",
                 target_token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
@@ -417,7 +430,7 @@ const x402Middleware = paymentProxy(
                 expected_min_delay_seconds: 172800,
               },
               verification: {
-                gblin_v5_basescan:
+                gblin_v6_basescan:
                   "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#readContract",
                 timelock_basescan:
                   "https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd#readContract",

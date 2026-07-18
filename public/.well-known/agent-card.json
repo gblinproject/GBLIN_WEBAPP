@@ -63,9 +63,10 @@
     "payTo": "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B"
   },
   "trust": {
-    "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "identityRegistry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
     "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
-    "agentId": "TBD_AFTER_MINT"
+    "agentId": "59286",
+    "agentPage": "https://8004scan.io/agents/base/59286"
   },
   "proof": {
     "crashShieldActivation": "https://basescan.org/tx/0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca",
