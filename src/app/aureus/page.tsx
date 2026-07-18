@@ -264,9 +264,16 @@ function AureusContent() {
             <Stat label={t('aureus.capital')} value={`$${s.capital_usd.toFixed(2)}`} />
             <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(2)} / $${s.capital_usd.toFixed(2)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
-            <Stat label={t('aureus.realizedPnl')}
-              value={fmtUsd(s.net_pnl_usd ?? s.lifetime_pnl_usd ?? s.realized_pnl_usd)}
-              tone={(s.net_pnl_usd ?? s.lifetime_pnl_usd ?? s.realized_pnl_usd) >= 0 ? 'pos' : 'neg'} />
+            {/* This is LIFETIME P&L net of creator fees — not the daily
+                `realized_pnl_usd` counter, which resets every day and is used
+                only for the daily loss limit. Labelling it "realized" made the
+                card contradict the underlying data. The daily counter is
+                deliberately NOT part of the fallback chain: showing it here
+                would be a different metric entirely. */}
+            <Stat label={t('aureus.netPnl')}
+              value={fmtUsd(s.net_pnl_usd ?? s.lifetime_pnl_usd)}
+              tone={(s.net_pnl_usd ?? s.lifetime_pnl_usd) >= 0 ? 'pos' : 'neg'}
+              hint={t('aureus.netPnlHint')} />
             <Stat label={t('aureus.winRate')} value={`${(s.win_rate * 100).toFixed(0)}%`} />
             <Stat label={t('aureus.openPositionsLabel')} value={`${s.open_count}`} />
             <Stat label={t('aureus.closedTrades')} value={`${s.closed_count}`} />
@@ -621,12 +628,13 @@ function AureusContent() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: 'pos' | 'neg' }) {
+function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: 'pos' | 'neg'; hint?: string }) {
   const color = tone === 'pos' ? 'text-emerald-400' : tone === 'neg' ? 'text-red-400' : 'text-gray-100';
   return (
     <div className="bg-white/5 rounded-lg p-4">
       <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">{label}</p>
       <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
+      {hint && <p className="mt-1 text-[10px] leading-tight text-gray-500">{hint}</p>}
     </div>
   );
 }
