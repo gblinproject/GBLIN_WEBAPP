@@ -1599,8 +1599,25 @@ function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
                       {event.date ? new Date(event.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-white">
-                        {event.tokenIn} <ArrowRight className="h-3 w-3 text-zinc-500" /> {event.tokenOut}
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-white">
+                          {event.tokenIn} <ArrowRight className="h-3 w-3 text-zinc-500" /> {event.tokenOut}
+                        </span>
+                        {/* Which deployment executed it. Rebalances predating the
+                            migration stay visible and are labelled, rather than
+                            hidden or passed off as current-contract activity. */}
+                        {event.contract && (
+                          <span
+                            title={event.contractAddress}
+                            className={`rounded px-1.5 py-0.5 font-mono text-[10px] tracking-wide ${
+                              event.isCurrentContract === false
+                                ? 'border border-amber-400/30 bg-amber-400/10 text-amber-300/90'
+                                : 'border border-white/10 bg-white/5 text-zinc-400'
+                            }`}
+                          >
+                            {event.contract}
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="py-3 pr-4 font-mono text-xs text-zinc-500">
