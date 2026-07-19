@@ -100,6 +100,20 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       // connectors and shows "Available wallets not found". EVM connectors
       // cover MetaMask, Coinbase Wallet and any injected (EIP-6963) wallet.
       providers: [EthereumProvider({ metaMask: true, coinbase: true })],
+      // REQUIRED in practice: the widget's default public RPCs (publicnode)
+      // died with ERR_CONNECTION_CLOSED in testing — with no reachable RPC on
+      // the source chain the Buy click can't even build the transaction and
+      // does nothing. Official fix per LI.FI docs: pass our own rpcUrls.
+      // Multiple endpoints per chain = automatic fallback.
+      sdkConfig: {
+        rpcUrls: {
+          1: ["https://cloudflare-eth.com", "https://eth.drpc.org", "https://1rpc.io/eth"],
+          8453: ["https://mainnet.base.org", "https://base.drpc.org", "https://1rpc.io/base"],
+          42161: ["https://arb1.arbitrum.io/rpc", "https://arbitrum.drpc.org"],
+          10: ["https://mainnet.optimism.io", "https://optimism.drpc.org"],
+          137: ["https://polygon-rpc.com", "https://1rpc.io/matic"],
+        },
+      },
       // Destination is fixed: exact USDC amount on Base, then the vault call.
       toChain: BASE_CHAIN_ID,
       toToken: USDC_BASE,
