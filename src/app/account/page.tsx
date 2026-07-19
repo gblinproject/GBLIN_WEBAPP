@@ -8,8 +8,9 @@ import {
   useReadContract,
   useSendTransaction,
 } from "thirdweb/react";
-import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
-import { getContract, prepareContractCall, sendTransaction as sendTxDirect, type PreparedTransaction } from "thirdweb";
+import { ConnectButton } from "thirdweb/react";
+import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
+import LifiBuyWidget from "@/components/LifiBuyWidget";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -98,8 +99,9 @@ export default function AccountPage() {
   const account = useActiveAccount();
   const wallet = useActiveWallet();
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
-  // When set, opens the thirdweb Universal Bridge (PayEmbed) modal to fund + execute a buy
-  const [payTx, setPayTx] = useState<ReturnType<typeof prepareContractCall> | null>(null);
+  // When set, opens the LI.FI widget modal: pay with any token on any chain,
+  // routed to USDC on Base and zapped into GBLIN via buyGBLINInKind.
+  const [lifiParams, setLifiParams] = useState<{ usdcAmount: bigint; minGblinOut: bigint } | null>(null);
 
   const [activeTab, setActiveTab] = useState<"overview" | "buy" | "send">("overview");
   const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
@@ -515,31 +517,14 @@ export default function AccountPage() {
           const quotedGblinOut = await quoteMintFromWeth(ethAmount);
           const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
 
-          // Route through buyGBLINInKind(USDC) with an ERC20 target of USDC. USDC is the
-          // canonical cross-chain settlement token (Circle CCTP = native USDC on every
-          // major chain), so the thirdweb Universal Bridge can source it on Base from a
-          // huge range of tokens/chains (USDT, ETH, USDC anywhere, ...). Targeting WETH
-          // instead broke routing: WETH is a poor bridge destination, so only ETH (wrap)
-          // showed as a source and USDT/others were filtered out for lack of a route.
-          // Trade-off vs the WETH path: in-kind skips _splitFee (keeper reserve top-up)
-          // and on-buy diversification — but it STILL accretes the stability fee to NAV
-          // (the appreciation mechanism holds), and the keeper/rebalancing is handled by
-          // native buys + incentivizedRebalance. Enabling the buy at all outweighs the
-          // per-buy fee-split purity. USDC has 6 decimals.
-          const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
+          // LI.FI zap: the user pays with ANY token on ANY chain (auto-routing, no
+          // per-token allowlist — the reason we moved off thirdweb PayEmbed). LI.FI
+          // delivers the exact USDC on Base and its executor calls buyGBLINInKind;
+          // the minted GBLIN is forwarded to the user (toTokenAddress = GBLIN).
+          // USDC has 6 decimals.
           const usdValue = parseFloat(amount) * ethPriceUsd;
           const usdcAmount = BigInt(Math.max(1, Math.round(usdValue * 1e6)));
-          const buyTx = prepareContractCall({
-            contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
-            method: "function buyGBLINInKind(address token, uint256 amountIn, uint256 minGblinOut)",
-            params: [USDC_BASE, usdcAmount, minAmountOut],
-            erc20Value: { tokenAddress: USDC_BASE, amountWei: usdcAmount },
-          });
-
-          // PayEmbed transaction mode: the user pays with any token on any chain, thirdweb
-          // procures the USDC on Base, approves it to the GBLIN contract, and executes the
-          // buy. Non-custodial — the user signs each step.
-          setPayTx(buyTx);
+          setLifiParams({ usdcAmount, minGblinOut: minAmountOut });
           return;
         } else {
           // Non-ETH buy (USDC, cbBTC, etc.) — 4-step workaround for SwapRouter02 ABI mismatch
@@ -1696,32 +1681,19 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* thirdweb Universal Bridge — pay for a GBLIN buy with any token on any chain */}
-      {payTx && (
+      {/* LI.FI widget — pay for a GBLIN buy with any token on any chain */}
+      {lifiParams && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4"
-          onClick={() => setPayTx(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/75 p-4"
+          onClick={() => setLifiParams(null)}
         >
           <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <PayEmbed
-              client={thirdwebClient}
-              theme="dark"
-              payOptions={{
-                mode: "transaction",
-                transaction: payTx as unknown as PreparedTransaction,
-                metadata: { name: "Buy GBLIN", image: LOGO_URL },
-                onPurchaseSuccess: (info: any) => {
-                  const h =
-                    info?.transactionHash ??
-                    info?.receipt?.transactionHash ??
-                    info?.data?.transactionHash;
-                  if (h) setTradeTxHash(h);
-                  setPayTx(null);
-                },
-              }}
+            <LifiBuyWidget
+              usdcAmount={lifiParams.usdcAmount}
+              minGblinOut={lifiParams.minGblinOut}
             />
             <button
-              onClick={() => setPayTx(null)}
+              onClick={() => setLifiParams(null)}
               className="mt-3 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800"
             >
               {t("account.cancel") || "Close"}
