@@ -3,20 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  useActiveAccount,
-  useActiveWallet,
+  WagmiProvider,
+  useAccount,
+  useConnect,
+  useDisconnect,
   useReadContract,
-  useSendTransaction,
-} from "thirdweb/react";
-import { ConnectButton } from "thirdweb/react";
-import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
+  useSendTransaction as useWagmiSendTransaction,
+  useSwitchChain,
+  useWriteContract,
+} from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { base } from "wagmi/chains";
+import { parseAbi } from "viem";
+import { wagmiConfig } from "@/lib/wagmi";
 import LifiBuyWidget from "@/components/LifiBuyWidget";
-import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
-import { thirdwebClient, wallets, chain as thirdwebChain } from "@/lib/thirdweb";
 import {
   CONTRACT_ADDRESS,
   MORALIS_API_KEY,
@@ -49,12 +53,50 @@ const CURRENCY_CONFIG: Record<Language, { symbol: string; code: string; fxKey: s
 const shellCard = "rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl";
 const shellContainer = "mx-auto w-full max-w-[1720px]";
 
-// Contract instances
-const gblinContract = getContract({
-  client: thirdwebClient,
-  chain: thirdwebChain,
-  address: CONTRACT_ADDRESS,
-});
+// Human-readable ABIs for direct wagmi/viem writes (single wallet stack)
+const GBLIN_WRITE_ABI = parseAbi([
+  "function buyGBLIN(uint256 minGblinOut) payable",
+  "function sellGBLIN(uint256 gblinAmount)",
+  "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+]);
+
+// Minimal in-page connect UI (replaces the thirdweb ConnectButton).
+function WalletConnect({ label }: { label: string }) {
+  const { connectors, connect, isPending } = useConnect();
+  const [open, setOpen] = useState(false);
+  // Dedupe by id (EIP-6963 can surface a connector twice)
+  const unique = connectors.filter((c, i, all) => i === all.findIndex((x) => x.id === c.id));
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={isPending}
+        className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
+      >
+        <Wallet className="h-4 w-4" />
+        {label}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl border border-white/10 bg-[#111] p-2 shadow-xl">
+          {unique.map((connector) => (
+            <button
+              key={connector.id}
+              onClick={() => { connect({ connector }); setOpen(false); }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-white/10"
+            >
+              {connector.icon && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={connector.icon} alt="" className="h-5 w-5 rounded" />
+              )}
+              {connector.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Transaction {
   hash: string;
@@ -69,7 +111,22 @@ function isSupportedLanguage(value: string | null): value is Language {
   return LANGUAGES.some((item) => item.code === value);
 }
 
+// Shared providers: ONE wagmi config for the whole page — the LI.FI widget
+// auto-detects it (WagmiContext above -> external context) and reuses the
+// same wallet connection. One stack, one connect, one wallet popup.
+const queryClient = new QueryClient();
+
 export default function AccountPage() {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <AccountPageInner />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+function AccountPageInner() {
   const [language, setLanguageState] = useState<Language>("en");
 
   useEffect(() => {
@@ -96,9 +153,17 @@ export default function AccountPage() {
     [language]
   );
 
-  const account = useActiveAccount();
-  const wallet = useActiveWallet();
-  const { mutate: sendTx, isPending: isSending } = useSendTransaction();
+  // Single wallet stack: wagmi (shared with the LI.FI widget via WagmiProvider)
+  const { address: wagmiAddress } = useAccount();
+  const account = useMemo(() => (wagmiAddress ? { address: wagmiAddress } : undefined), [wagmiAddress]);
+  const { disconnect: wagmiDisconnect } = useDisconnect();
+  const { writeContractAsync, isPending: isSending } = useWriteContract();
+  const { sendTransactionAsync } = useWagmiSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  // Ensure Base before any direct contract write (MetaMask may sit on Ethereum)
+  const ensureBase = useCallback(async () => {
+    try { await switchChainAsync({ chainId: base.id }); } catch { /* already on Base or user handled it */ }
+  }, [switchChainAsync]);
   // When set, opens the LI.FI widget modal: pay with any token on any chain,
   // routed to USDC on Base and zapped into GBLIN via buyGBLINInKind.
   const [lifiParams, setLifiParams] = useState<{ usdcAmount: bigint; minGblinOut: bigint } | null>(null);
@@ -285,9 +350,11 @@ export default function AccountPage() {
 
   // Read GBLIN balance — also refetch every 15s so external purchases (MetaMask) show up
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
-    contract: gblinContract,
-    method: "function balanceOf(address) view returns (uint256)",
-    params: [address ?? "0x0000000000000000000000000000000000000000"],
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: parseAbi(["function balanceOf(address) view returns (uint256)"]),
+    functionName: "balanceOf",
+    args: [(address ?? "0x0000000000000000000000000000000000000000") as `0x${string}`],
+    chainId: base.id,
   });
 
   // Fetch ETH balance via ethers provider (Base)
@@ -306,7 +373,7 @@ export default function AccountPage() {
   const fetchMainnetEthBalance = useCallback(async () => {
     if (!address) return;
     try {
-      const provider = new ethers.JsonRpcProvider("https://ethereum.publicnode.com");
+      const provider = new ethers.JsonRpcProvider("https://cloudflare-eth.com");
       const bal = await provider.getBalance(address);
       setMainnetEthBalance(Number(ethers.formatEther(bal)));
     } catch {
@@ -328,9 +395,11 @@ export default function AccountPage() {
 
   // Read GBLIN price via quoteSell
   const { data: quoteData } = useReadContract({
-    contract: gblinContract,
-    method: "function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)",
-    params: [ethers.parseEther("1")],
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: parseAbi(["function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)"]),
+    functionName: "quoteSellGBLIN",
+    args: [ethers.parseEther("1")],
+    chainId: base.id,
   });
 
   // Fetch ETH price + FX rate together
@@ -509,174 +578,47 @@ export default function AccountPage() {
 
     try {
       if (tradeMode === 'buy') {
-        const SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
-
-        if (activeTradeToken?.isNative) {
-          // ETH buy: direct buyGBLIN
-          const ethAmount = ethers.parseEther(amount);
-          const quotedGblinOut = await quoteMintFromWeth(ethAmount);
-          const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
-
-          // LI.FI zap: the user pays with ANY token on ANY chain (auto-routing, no
-          // per-token allowlist — the reason we moved off thirdweb PayEmbed). LI.FI
-          // delivers the exact USDC on Base and its executor calls buyGBLINInKind;
-          // the minted GBLIN is forwarded to the user (toTokenAddress = GBLIN).
-          // USDC has 6 decimals.
-          const usdValue = parseFloat(amount) * ethPriceUsd;
-          const usdcAmount = BigInt(Math.max(1, Math.round(usdValue * 1e6)));
-          setLifiParams({ usdcAmount, minGblinOut: minAmountOut });
-          return;
-        } else {
-          // Non-ETH buy (USDC, cbBTC, etc.) — 4-step workaround for SwapRouter02 ABI mismatch
-          if (!activeTradeToken) throw new Error('Select a valid token');
-          const provider = getProvider();
-          const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
-          const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
-          if (!routeQuote || routeQuote.amountOut <= 0n) throw new Error('No swap route found');
-
-          const minGblinOut = (rawQuote * (10000n - slippageBps)) / 10000n;
-          const minWethOut = (routeQuote.amountOut * (10000n - slippageBps)) / 10000n;
-
-          // Step 1: Approve token to SwapRouter02
-          const tokenContract = new ethers.Contract(activeTradeToken.address, ERC20_ABI, provider);
-          const allowanceRouter = await tokenContract.allowance(address, SWAP_ROUTER_02).catch(() => 0n);
-          if (allowanceRouter < amountIn) {
-            const approveTx = prepareContractCall({
-              contract: { client: thirdwebClient, chain: thirdwebChain, address: activeTradeToken.address as `0x${string}` },
-              method: "function approve(address spender, uint256 amount) returns (bool)",
-              params: [SWAP_ROUTER_02 as `0x${string}`, amountIn],
-            });
-            let approveHash = '';
-            await new Promise<void>((resolve, reject) => {
-              sendTx(approveTx, { onSuccess: (data) => { approveHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
-            });
-            await provider.waitForTransaction(approveHash, 1, 60000);
-          }
-
-          // Step 2: Swap token→WETH via SwapRouter02
-          let swapTx;
-          if (routeQuote.fees.length === 1) {
-            swapTx = prepareContractCall({
-              contract: { client: thirdwebClient, chain: thirdwebChain, address: SWAP_ROUTER_02 as `0x${string}` },
-              method: "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut)",
-              params: [{
-                tokenIn: activeTradeToken.address as `0x${string}`,
-                tokenOut: WETH_ADDRESS as `0x${string}`,
-                fee: routeQuote.fees[0],
-                recipient: address as `0x${string}`,
-                amountIn,
-                amountOutMinimum: minWethOut,
-                sqrtPriceLimitX96: 0n,
-              }],
-            });
-          } else {
-            swapTx = prepareContractCall({
-              contract: { client: thirdwebClient, chain: thirdwebChain, address: SWAP_ROUTER_02 as `0x${string}` },
-              method: "function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum) params) returns (uint256 amountOut)",
-              params: [{ path: routeQuote.path, recipient: address as `0x${string}`, amountIn, amountOutMinimum: minWethOut }],
-            });
-          }
-          let swapHash = '';
-          await new Promise<void>((resolve, reject) => {
-            sendTx(swapTx, { onSuccess: (data) => { swapHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
-          });
-          await provider.waitForTransaction(swapHash, 1, 120000);
-
-          // Step 3: Read actual WETH balance after confirmed swap
-          const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
-          const wethToUse = await wethContract.balanceOf(address).catch(() => 0n);
-          const allowanceWeth = await wethContract.allowance(address, CONTRACT_ADDRESS).catch(() => 0n);
-          if (allowanceWeth < wethToUse) {
-            const approveWethTx = prepareContractCall({
-              contract: { client: thirdwebClient, chain: thirdwebChain, address: WETH_ADDRESS as `0x${string}` },
-              method: "function approve(address spender, uint256 amount) returns (bool)",
-              params: [CONTRACT_ADDRESS as `0x${string}`, wethToUse],
-            });
-            let approveWethHash = '';
-            await new Promise<void>((resolve, reject) => {
-              sendTx(approveWethTx, { onSuccess: (data) => { approveWethHash = data.transactionHash; resolve(); }, onError: (err: Error) => reject(err) });
-            });
-            await provider.waitForTransaction(approveWethHash, 1, 60000);
-          }
-
-          // Step 4: Buy GBLIN with WETH dummy path (contract skips internal swap when tokenIn==WETH)
-          const wethDummyPath = ethers.hexlify(ethers.concat([
-            ethers.getBytes(WETH_ADDRESS),
-            ethers.getBytes(ethers.toBeHex(0, 3)),
-            ethers.getBytes(WETH_ADDRESS),
-          ])) as `0x${string}`;
-
-          const buyTokenTx = prepareContractCall({
-            contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
-            method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
-            params: [wethDummyPath, wethToUse, 0n, minGblinOut],
-          });
-          await new Promise<void>((resolve, reject) => {
-            sendTx(buyTokenTx, {
-              onSuccess: (data) => { setTradeTxHash(data.transactionHash); resolve(); },
-              onError: (err: Error) => reject(err),
-            });
-          });
-        }
+        // ALL buys go through the LI.FI widget: pay with any token on any
+        // chain, routed to USDC on Base, minted via buyGBLINWithToken and
+        // forwarded to the user. The legacy thirdweb 4-step non-ETH path is
+        // gone — one wallet stack, one flow. `amount` is ETH-denominated by
+        // the form math regardless of the selected display token.
+        const ethAmount = ethers.parseEther(amount);
+        const quotedGblinOut = await quoteMintFromWeth(ethAmount);
+        const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
+        const usdValue = parseFloat(amount) * ethPriceUsd;
+        const usdcAmount = BigInt(Math.max(1, Math.round(usdValue * 1e6)));
+        setLifiParams({ usdcAmount, minGblinOut: minAmountOut });
+        return;
       } else {
-        // Sell mode - v3 FIX 2024-01-12: Use sellGBLINForEth (swaps to ETH) instead of sellGBLIN (basket)
+        // Sell: direct wagmi write on Base (opens ONLY the user's wallet — no
+        // third-party modal). sellGBLIN = in-kind basket redeem; default =
+        // sellGBLINForEth with explicit slippage floor.
+        await ensureBase();
         const gblinAmount = ethers.parseEther(amount);
-        const currentRedeemOption = redeemOption; // Capture current value
-        console.log('[executeTrade] Sell mode v2:', { currentRedeemOption, gblinAmount: amount, rawQuote: rawQuote.toString(), timestamp: Date.now() });
-
-        if (currentRedeemOption === 'basket') {
-          console.log('[executeTrade] Calling sellGBLIN (basket, V6 in-kind redeem)');
-          const sellTx = prepareContractCall({
-            contract: {
-              client: thirdwebClient,
-              chain: thirdwebChain,
+        const hash = redeemOption === 'basket'
+          ? await writeContractAsync({
               address: CONTRACT_ADDRESS as `0x${string}`,
-            },
-            method: "function sellGBLIN(uint256 gblinAmount)",
-            params: [gblinAmount],
-          });
-
-          await new Promise<void>((resolve, reject) => {
-            sendTx(sellTx, {
-              onSuccess: (data) => {
-                setTradeTxHash(data.transactionHash);
-                resolve();
-              },
-              onError: (err: Error) => reject(err),
-            });
-          });
-        } else {
-          console.log('[executeTrade] Calling sellGBLINForEth (ETH only) v2');
-          // Use sellGBLINForEth with explicit slippage instead of sellGBLIN
-          const minEthOut = (rawQuote * (10000n - slippageBps)) / 10000n;
-          console.log('[executeTrade] minEthOut:', minEthOut.toString());
-          const sellTx = prepareContractCall({
-            contract: {
-              client: thirdwebClient,
-              chain: thirdwebChain,
+              abi: GBLIN_WRITE_ABI,
+              functionName: 'sellGBLIN',
+              args: [gblinAmount],
+              chainId: base.id,
+            })
+          : await writeContractAsync({
               address: CONTRACT_ADDRESS as `0x${string}`,
-            },
-            method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
-            params: [gblinAmount, minEthOut],
-          });
-
-          await new Promise<void>((resolve, reject) => {
-            sendTx(sellTx, {
-              onSuccess: (data) => {
-                setTradeTxHash(data.transactionHash);
-                resolve();
-              },
-              onError: (err: Error) => reject(err),
+              abi: GBLIN_WRITE_ABI,
+              functionName: 'sellGBLINForEth',
+              args: [gblinAmount, (rawQuote * (10000n - slippageBps)) / 10000n],
+              chainId: base.id,
             });
-          });
-        }
+        setTradeTxHash(hash);
       }
     } catch (err: any) {
       setTradeError(err?.message ?? 'Transaction failed');
     } finally {
       setIsTransacting(false);
     }
-  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, sendTx]);
+  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, writeContractAsync, ensureBase, ethPriceUsd]);
 
   const gblinPriceUsd = useMemo(() => {
     if (!quoteData) return 0;
@@ -875,7 +817,7 @@ export default function AccountPage() {
     }
   }, [ethBalance, mainnetEthBalance, isBridging, bridgeStatus, t]);
 
-  const handleDisconnect = () => { if (wallet) wallet.disconnect(); };
+  const handleDisconnect = () => { wagmiDisconnect(); };
 
   const copyAddress = () => {
     if (!address) return;
@@ -890,26 +832,8 @@ export default function AccountPage() {
     setTimeout(() => { setTxSuccess(null); setTxHash(null); }, 8000);
   };
 
-  const handleSell = () => {
-    if (!address || !sellAmount) return;
-    const amount = parseFloat(sellAmount);
-    if (isNaN(amount) || amount <= 0) return;
-    const tx = prepareContractCall({
-      contract: gblinContract,
-      method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external",
-      params: [ethers.parseEther(sellAmount), 0n],
-    });
-    sendTx(tx, {
-      onSuccess: (data: any) => {
-        showSuccess(data?.transactionHash ?? "");
-        setSellAmount("");
-        setSellRedeemDone(true);
-        refetchBalance();
-        fetchEthBalance();
-      },
-      onError: () => {},
-    });
-  };
+  // (legacy handleSell for the removed sell tab deleted — selling goes through
+  // executeTrade with wagmi writes)
 
   const [transakLoading, setTransakLoading] = useState(false);
   const [transakError, setTransakError] = useState<string | null>(null);
@@ -963,20 +887,24 @@ export default function AccountPage() {
       setTransferError(t("account.errorInvalidAmount"));
       return;
     }
-    const tx = prepareContractCall({
-      contract: gblinContract,
-      method: "function transfer(address to, uint256 amount) external",
-      params: [transferAddress as `0x${string}`, ethers.parseEther(transferAmount)],
-    });
-    sendTx(tx, {
-      onSuccess: (data: any) => {
-        showSuccess(data?.transactionHash ?? "");
+    (async () => {
+      try {
+        await ensureBase();
+        const hash = await writeContractAsync({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: GBLIN_WRITE_ABI,
+          functionName: "transfer",
+          args: [transferAddress as `0x${string}`, ethers.parseEther(transferAmount)],
+          chainId: base.id,
+        });
+        showSuccess(hash);
         setTransferAmount("");
         setTransferAddress("");
         refetchBalance();
-      },
-      onError: () => setTransferError(t("account.errorTxFailed")),
-    });
+      } catch {
+        setTransferError(t("account.errorTxFailed"));
+      }
+    })();
   };
 
   // ─── QR Scanner ────────────────────────────────────────────────────────────
@@ -1099,14 +1027,11 @@ export default function AccountPage() {
         throw new Error("Insufficient ETH balance to cover gas fees");
       }
       const amountWei = ethers.parseEther(sendAmount.toFixed(18));
-      await sendTxDirect({
-        transaction: {
-          client: thirdwebClient,
-          chain: thirdwebChain,
-          to: transakOrder.walletAddress,
-          value: amountWei,
-        } as any,
-        account,
+      await ensureBase();
+      await sendTransactionAsync({
+        to: transakOrder.walletAddress as `0x${string}`,
+        value: amountWei,
+        chainId: base.id,
       });
       setTransakOrder(null);
       setTransakError(null);
@@ -1140,14 +1065,11 @@ export default function AccountPage() {
     setCoinbaseSending(true);
     try {
       const amountWei = ethers.parseEther(amount.toFixed(18));
-      await sendTxDirect({
-        transaction: {
-          client: thirdwebClient,
-          chain: thirdwebChain,
-          to: coinbaseAddress,
-          value: amountWei,
-        } as any,
-        account,
+      await ensureBase();
+      await sendTransactionAsync({
+        to: coinbaseAddress as `0x${string}`,
+        value: amountWei,
+        chainId: base.id,
       });
       setCoinbaseAddress("");
       setCoinbaseAmount("");
@@ -1215,17 +1137,7 @@ export default function AccountPage() {
                 </button>
               </>
             ) : (
-              <ConnectButton
-                client={thirdwebClient}
-                wallets={wallets}
-                theme="dark"
-                connectButton={{ label: t("account.connect") }}
-                connectModal={{
-                  size: "wide",
-                  title: t("account.loginHeadline"),
-                  showThirdwebBranding: false,
-                }}
-              />
+              <WalletConnect label={t("account.connect")} />
             )}
             <Link
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-zinc-300 transition hover:bg-white/10 sm:px-3 sm:py-2.5"
@@ -1253,18 +1165,8 @@ export default function AccountPage() {
                 <h2 className="text-2xl font-bold text-white">{t("account.loginHeadline")}</h2>
                 <p className="mt-2 text-zinc-400">{t("account.loginSubheadline")}</p>
               </div>
-              <ConnectButton
-                client={thirdwebClient}
-                wallets={wallets}
-                theme="dark"
-                connectButton={{ label: t("account.connect") }}
-                connectModal={{
-                  size: "wide",
-                  title: t("account.loginHeadline"),
-                  showThirdwebBranding: false,
-                }}
-              />
-              <p className="text-xs text-zinc-600">{t("account.poweredBy")} <span className="text-zinc-500">Thirdweb · Base</span></p>
+              <WalletConnect label={t("account.connect")} />
+              <p className="text-xs text-zinc-600">{t("account.poweredBy")} <span className="text-zinc-500">LI.FI · Base</span></p>
             </div>
           </div>
         )}

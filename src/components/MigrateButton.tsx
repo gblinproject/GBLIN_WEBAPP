@@ -1,153 +1,117 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { WagmiProvider, useAccount } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  getContract,
-  prepareContractCall,
+  getBalance,
   readContract,
-  sendTransaction,
-  waitForReceipt,
-} from "thirdweb";
-import {
-  useActiveAccount,
-  useActiveWalletChain,
-  useSwitchActiveWalletChain,
-} from "thirdweb/react";
-import { getWalletBalance } from "thirdweb/wallets";
-import { thirdwebClient, chain as thirdwebChain } from "@/lib/thirdweb";
+  switchChain,
+  waitForTransactionReceipt,
+  writeContract,
+} from "@wagmi/core";
+import { base } from "wagmi/chains";
+import { parseAbi } from "viem";
+import { wagmiConfig } from "@/lib/wagmi";
 
 // GBLIN V5 (vecchio, in produzione) e V6 (nuovo)
-const V5_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
-const V6_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
+const V5_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345" as const;
+const V6_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0" as const;
 
 // Cuscinetto ETH lasciato per il gas della seconda transazione (0.00003 ETH)
 const GAS_BUFFER = 30000000000000n;
 
+const V5_ABI = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+  "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
+]);
+const V6_ABI = parseAbi(["function buyGBLIN(uint256 minGblinOut) payable"]);
+
 /**
  * Banner "Migrate to V6" — appare SOLO se il wallet collegato detiene GBLIN V5.
- * Se il saldo V5 è 0 (quasi tutti), il componente non renderizza nulla:
- * così la toggle-row di trading resta pulita (Buy / Sell / In-Kind).
+ * Se il saldo V5 è 0 (quasi tutti), il componente non renderizza nulla.
  *
- * Migrazione = Opzione A in 2 transazioni:
- *   1) sellGBLINForEth sul V5  -> ricevi ETH
- *   2) buyGBLIN sul V6 con l'ETH ricevuto -> ricevi GBLIN V6
- * Azione secondaria: vendi tutto il V5 in ETH (1 transazione), senza ricomprare.
+ * Single wallet stack: usa wagmi (stesso config condiviso della pagina e del
+ * widget LI.FI). Nessuna dipendenza thirdweb. Il componente si porta il suo
+ * WagmiProvider (stesso singleton -> stato condiviso) così funziona anche
+ * dove la pagina non è già wrappata (es. /buy-gblin).
+ *
+ * Migrazione = 2 transazioni: sellGBLINForEth sul V5 -> buyGBLIN sul V6.
+ * Azione secondaria: vendi tutto il V5 in ETH senza ricomprare.
  */
-export default function MigrateButton() {
-  const account = useActiveAccount();
-  const activeChain = useActiveWalletChain();
-  const switchChain = useSwitchActiveWalletChain();
+function MigrateBanner() {
+  const { address } = useAccount();
   const [label, setLabel] = useState("Migrate to V6");
   const [busy, setBusy] = useState(false);
   // null = ancora sconosciuto; 0n = nessun V5 -> il banner si nasconde
   const [v5Bal, setV5Bal] = useState<bigint | null>(null);
 
-  // Legge il saldo V5 al mount / cambio account. Fail-safe: null (nasconde) su errore.
   useEffect(() => {
     let cancelled = false;
-    if (!account) {
-      setV5Bal(null);
-      return;
-    }
+    if (!address) { setV5Bal(null); return; }
     (async () => {
       try {
-        const v5 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V5_ADDRESS });
-        const bal = (await readContract({
-          contract: v5,
-          method: "function balanceOf(address) view returns (uint256)",
-          params: [account.address],
-        })) as bigint;
+        const bal = await readContract(wagmiConfig, {
+          address: V5_ADDRESS, abi: V5_ABI, functionName: "balanceOf",
+          args: [address], chainId: base.id,
+        });
         if (!cancelled) setV5Bal(bal);
-      } catch {
-        if (!cancelled) setV5Bal(null);
-      }
+      } catch { if (!cancelled) setV5Bal(null); }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [account]);
+    return () => { cancelled = true; };
+  }, [address]);
 
   async function ensureBase() {
-    if (activeChain?.id !== thirdwebChain.id) {
-      setLabel("Switching to Base…");
-      await switchChain(thirdwebChain);
-    }
+    try { await switchChain(wagmiConfig, { chainId: base.id }); } catch { /* già su Base */ }
+  }
+
+  async function readV5Balance(addr: `0x${string}`) {
+    return readContract(wagmiConfig, {
+      address: V5_ADDRESS, abi: V5_ABI, functionName: "balanceOf",
+      args: [addr], chainId: base.id,
+    });
   }
 
   async function migrate() {
-    if (!account) {
-      alert("Connect your wallet first.");
-      return;
-    }
+    if (!address) { alert("Connect your wallet first."); return; }
     setBusy(true);
     try {
-      // Forza il wallet su Base PRIMA di leggere/inviare: alcune wallet (es. MetaMask)
-      // restano su Ethereum e la transazione finirebbe sulla rete sbagliata.
       await ensureBase();
-
-      const v5 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V5_ADDRESS });
-      const v6 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V6_ADDRESS });
-
-      // 1) Saldo GBLIN V5
-      const v5Balance = (await readContract({
-        contract: v5,
-        method: "function balanceOf(address) view returns (uint256)",
-        params: [account.address],
-      })) as bigint;
-
+      const v5Balance = await readV5Balance(address);
       if (v5Balance === 0n) {
         alert("You have no V5 GBLIN to migrate.");
-        setLabel("Migrate to V6");
-        setBusy(false);
-        return;
+        setLabel("Migrate to V6"); setBusy(false); return;
       }
 
-      // ETH prima del riscatto (per misurare quanto ricevi, al netto del gas)
-      const balBefore = (
-        await getWalletBalance({ address: account.address, client: thirdwebClient, chain: thirdwebChain })
-      ).value;
+      const balBefore = (await getBalance(wagmiConfig, { address, chainId: base.id })).value;
 
-      // 2) TX 1 — riscatta il GBLIN V5 in ETH
       setLabel("1/2 Redeeming V5…");
-      const sellTx = prepareContractCall({
-        contract: v5,
-        method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
-        params: [v5Balance, 0n],
+      const sellHash = await writeContract(wagmiConfig, {
+        address: V5_ADDRESS, abi: V5_ABI, functionName: "sellGBLINForEth",
+        args: [v5Balance, 0n], chainId: base.id,
       });
-      const r1 = await sendTransaction({ transaction: sellTx, account });
-      await waitForReceipt(r1);
+      await waitForTransactionReceipt(wagmiConfig, { hash: sellHash, chainId: base.id });
 
-      // ETH ricevuto (netto del gas della tx1), meno cuscinetto per il gas della tx2
-      const balAfter = (
-        await getWalletBalance({ address: account.address, client: thirdwebClient, chain: thirdwebChain })
-      ).value;
+      const balAfter = (await getBalance(wagmiConfig, { address, chainId: base.id })).value;
       const received = balAfter > balBefore ? balAfter - balBefore : 0n;
       const valueIn = received > GAS_BUFFER ? received - GAS_BUFFER : 0n;
-
       if (valueIn <= 0n) {
         alert("The ETH received is too low to complete the V6 purchase.");
-        setLabel("Migrate to V6");
-        setBusy(false);
-        return;
+        setLabel("Migrate to V6"); setBusy(false); return;
       }
 
-      // 3) TX 2 — compra GBLIN V6 con l'ETH ricevuto
       setLabel("2/2 Buying V6…");
-      const buyTx = prepareContractCall({
-        contract: v6,
-        method: "function buyGBLIN(uint256 minGblinOut) payable",
-        params: [0n],
-        value: valueIn,
+      const buyHash = await writeContract(wagmiConfig, {
+        address: V6_ADDRESS, abi: V6_ABI, functionName: "buyGBLIN",
+        args: [0n], value: valueIn, chainId: base.id,
       });
-      const r2 = await sendTransaction({ transaction: buyTx, account });
-      await waitForReceipt(r2);
+      await waitForTransactionReceipt(wagmiConfig, { hash: buyHash, chainId: base.id });
 
       setLabel("✅ Migrated!");
       setV5Bal(0n);
       setTimeout(() => setLabel("Migrate to V6"), 4000);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert("Migration error: " + msg);
+      alert("Migration error: " + (e instanceof Error ? e.message : String(e)));
       setLabel("Migrate to V6");
     } finally {
       setBusy(false);
@@ -155,42 +119,27 @@ export default function MigrateButton() {
   }
 
   async function sellV5Only() {
-    if (!account) {
-      alert("Connect your wallet first.");
-      return;
-    }
+    if (!address) { alert("Connect your wallet first."); return; }
     setBusy(true);
     try {
       await ensureBase();
-      const v5 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V5_ADDRESS });
-      const v5Balance = (await readContract({
-        contract: v5,
-        method: "function balanceOf(address) view returns (uint256)",
-        params: [account.address],
-      })) as bigint;
-      if (v5Balance === 0n) {
-        alert("You have no V5 GBLIN to sell.");
-        setBusy(false);
-        return;
-      }
-      const sellTx = prepareContractCall({
-        contract: v5,
-        method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
-        params: [v5Balance, 0n],
+      const v5Balance = await readV5Balance(address);
+      if (v5Balance === 0n) { alert("You have no V5 GBLIN to sell."); setBusy(false); return; }
+      const hash = await writeContract(wagmiConfig, {
+        address: V5_ADDRESS, abi: V5_ABI, functionName: "sellGBLINForEth",
+        args: [v5Balance, 0n], chainId: base.id,
       });
-      const r = await sendTransaction({ transaction: sellTx, account });
-      await waitForReceipt(r);
+      await waitForTransactionReceipt(wagmiConfig, { hash, chainId: base.id });
       setV5Bal(0n);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert("V5 sell error: " + msg);
+      alert("V5 sell error: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
   }
 
   // Nasconde tutto se non c'è un saldo V5 da migrare.
-  if (!account || v5Bal === null || v5Bal === 0n) return null;
+  if (!address || v5Bal === null || v5Bal === 0n) return null;
 
   return (
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -218,5 +167,17 @@ export default function MigrateButton() {
         </button>
       </div>
     </div>
+  );
+}
+
+const queryClient = new QueryClient();
+
+export default function MigrateButton() {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <MigrateBanner />
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
