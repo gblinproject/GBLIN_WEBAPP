@@ -140,7 +140,15 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
         // hence the cast.
         executionOptions: {
           getContractCalls: async (params: { toAmount: bigint }) => ({
-            contractCalls: [buildContractCall(params.toAmount)],
+            // GUARD (verified live + via API repro): for contract-call routes
+            // the SDK passes toAmount = BigInt(step.estimate.toAmount), and the
+            // estimate is 0 (LI.FI cannot price the custom call's GBLIN
+            // output). Rebuilding with 0 produced fromAmount "0", which
+            // li.quest rejects with 400 isBigNumberish. Use the SDK amount
+            // only when real; otherwise our exact-out usdcAmount.
+            contractCalls: [
+              buildContractCall(params.toAmount > 0n ? params.toAmount : usdcAmount),
+            ],
           }),
         } as never,
       },
