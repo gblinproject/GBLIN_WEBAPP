@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import { ItemPrice, LiFiWidget, WidgetEvent, useWidgetEvents, type WidgetConfig } from "@lifi/widget";
+import { LiFiWidget, NFT, WidgetEvent, useWidgetEvents, type WidgetConfig } from "@lifi/widget";
 import { EthereumProvider } from "@lifi/widget-provider-ethereum";
 
 /**
@@ -153,13 +153,19 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
             payment is routed to USDC on Base and minted into GBLIN at NAV by
             the vault. The GBLIN arrives in your wallet.
           </div>
-          {/* CRITICAL: ItemPrice is the official component that writes
-              toChain/toToken/toAmount AND `contractCalls` into the widget's
-              internal form store. Without it the form's contractCalls stays
-              empty, no contract-call quote is ever fetched, routes stay empty
-              and the Buy button silently no-ops (`if (!currentRoute) return`).
-              A plain custom div here looks fine but is inert. */}
-          <ItemPrice
+          {/* CRITICAL: NFT (a generic "item + price" checkout card, despite the
+              name) is the official component that writes toChain/toToken/
+              toAmount AND `contractCalls` into the widget's internal form
+              store. Without one of these components the form's contractCalls
+              stays empty, no contract-call quote is ever fetched, routes stay
+              empty and the Buy button silently no-ops (`if (!currentRoute)
+              return`). It displays GBLIN as the purchased item, priced in
+              USDC — the `token` prop is the PRICE (what LI.FI must deliver),
+              not the item. */}
+          <NFT
+            imageUrl="https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.svg"
+            collectionName="GBLIN Protocol"
+            assetName="GBLIN — Global Balanced Liquidity Index"
             token={{
               address: USDC_BASE,
               chainId: BASE_CHAIN_ID,
@@ -171,7 +177,7 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
                 "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
               amount: usdcAmount,
             }}
-            contractCalls={contractCalls}
+            contractCall={contractCalls[0]}
           />
         </div>
       ),
