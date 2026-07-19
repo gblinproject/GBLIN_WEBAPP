@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { ethers } from "ethers";
 import { LiFiWidget, type WidgetConfig } from "@lifi/widget";
+import { EthereumProvider } from "@lifi/widget-provider-ethereum";
 
 // GBLIN V6 vault (also the ERC20 token itself) and USDC on Base
 const GBLIN_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
@@ -50,6 +51,10 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       // already picked the amount in our UI), source side is computed.
       mode: "custom",
       modeOptions: { custom: { type: "checkout" } },
+      // REQUIRED: without an explicit wallet provider the widget has NO
+      // connectors and shows "Available wallets not found". EVM connectors
+      // cover MetaMask, Coinbase Wallet and any injected (EIP-6963) wallet.
+      providers: [EthereumProvider({ metaMask: true, coinbase: true })],
       // Destination is fixed: exact USDC amount on Base, then the vault call.
       toChain: BASE_CHAIN_ID,
       toToken: USDC_BASE,
