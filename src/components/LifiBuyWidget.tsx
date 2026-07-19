@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import { LiFiWidget, WidgetEvent, useWidgetEvents, type WidgetConfig } from "@lifi/widget";
+import { ItemPrice, LiFiWidget, WidgetEvent, useWidgetEvents, type WidgetConfig } from "@lifi/widget";
 import { EthereumProvider } from "@lifi/widget-provider-ethereum";
 
 /**
@@ -84,6 +84,22 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       0n,
       minGblinOut,
     ]);
+    const contractCalls = [
+      {
+        fromAmount: usdcAmount.toString(),
+        fromTokenAddress: USDC_BASE,
+        toContractAddress: GBLIN_ADDRESS,
+        toContractCallData: callData,
+        // Higher than the in-kind path: covers the internal USDC->WETH swap
+        // plus the on-buy diversification swaps inside _mintGBLIN.
+        toContractGasLimit: "1200000",
+        // The executor approves USDC to the vault before calling it.
+        toApprovalAddress: GBLIN_ADDRESS,
+        // GBLIN (the vault IS the ERC20) is the call's output token:
+        // the executor forwards the minted GBLIN to the user.
+        toTokenAddress: GBLIN_ADDRESS,
+      },
+    ];
     return {
       integrator: "gblin",
       // Optional key from the LI.FI partner portal (higher rate limits).
@@ -119,37 +135,44 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       toToken: USDC_BASE,
       toAmount: ethers.formatUnits(usdcAmount, 6),
       formUpdateKey: usdcAmount.toString(),
-      contractCalls: [
-        {
-          fromAmount: usdcAmount.toString(),
-          fromTokenAddress: USDC_BASE,
-          toContractAddress: GBLIN_ADDRESS,
-          toContractCallData: callData,
-          // Higher than the in-kind path: covers the internal USDC->WETH swap
-          // plus the on-buy diversification swaps inside _mintGBLIN.
-          toContractGasLimit: "1200000",
-          // The executor approves USDC to the vault before calling it.
-          toApprovalAddress: GBLIN_ADDRESS,
-          // GBLIN (the vault IS the ERC20) is the call's output token:
-          // the executor forwards the minted GBLIN to the user.
-          toTokenAddress: GBLIN_ADDRESS,
-        },
-      ],
+      contractCalls,
       contractComponent: (
-        <div
-          style={{
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: "1px solid rgba(245,158,11,0.25)",
-            background: "rgba(245,158,11,0.06)",
-            color: "#fbbf24",
-            fontSize: 13,
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>Buy GBLIN</strong> — pay with any token on any chain. Your
-          payment is routed to USDC on Base and minted into GBLIN at NAV by the
-          vault. The GBLIN arrives in your wallet.
+        <div>
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid rgba(245,158,11,0.25)",
+              background: "rgba(245,158,11,0.06)",
+              color: "#fbbf24",
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Buy GBLIN</strong> — pay with any token on any chain. Your
+            payment is routed to USDC on Base and minted into GBLIN at NAV by
+            the vault. The GBLIN arrives in your wallet.
+          </div>
+          {/* CRITICAL: ItemPrice is the official component that writes
+              toChain/toToken/toAmount AND `contractCalls` into the widget's
+              internal form store. Without it the form's contractCalls stays
+              empty, no contract-call quote is ever fetched, routes stay empty
+              and the Buy button silently no-ops (`if (!currentRoute) return`).
+              A plain custom div here looks fine but is inert. */}
+          <ItemPrice
+            token={{
+              address: USDC_BASE,
+              chainId: BASE_CHAIN_ID,
+              symbol: "USDC",
+              decimals: 6,
+              name: "USD Coin",
+              priceUSD: "1",
+              logoURI:
+                "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+              amount: usdcAmount,
+            }}
+            contractCalls={contractCalls}
+          />
         </div>
       ),
       theme: {
