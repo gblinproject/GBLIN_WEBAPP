@@ -7,7 +7,6 @@ import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './
 import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
-import SellV5Button from "@/components/SellV5Button";
 import { ProofSection, FeeEngineSection } from './proof-section';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
@@ -1011,6 +1010,9 @@ export function BuyView(props: BuyViewProps) {
         {/* ── Right trade widget ── */}
         <div className={`${shellCard} p-7 sm:p-8 order-1 xl:order-2`}>
 
+          {/* V5 → V6 migration banner — self-hides unless the wallet holds V5 */}
+          <MigrateButton />
+
           {/* Buy / Sell / In-Kind toggle */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
@@ -1035,8 +1037,6 @@ export function BuyView(props: BuyViewProps) {
             >
               {t('trade.inkindBtn')}
             </button>
-            <MigrateButton />
-            <SellV5Button />
           </div>
 
           <a
