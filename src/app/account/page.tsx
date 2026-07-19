@@ -515,28 +515,29 @@ export default function AccountPage() {
           const quotedGblinOut = await quoteMintFromWeth(ethAmount);
           const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
 
-          // Route through buyGBLINWithToken with a WETH-only "dummy" path and an ERC20
-          // target of WETH. This lets the thirdweb Universal Bridge source WETH on Base
-          // from ANY token on ANY chain (incl. Solana) — cross-chain funding needs an
-          // ERC20 target, not a native `value`. Because tokenIn == WETH, the contract
-          // SKIPS the internal SwapRouter swap (so the suspected ABI-revert path never
-          // runs) and goes straight into _mintGBLIN — the SAME code as the native buy:
-          // it funds the keeper reserve via _splitFee, diversifies into the basket, and
-          // accretes the stability fee to NAV. Full protocol mechanics, unlike in-kind.
-          const wethDummyPath = ethers.hexlify(ethers.concat([
-            ethers.getBytes(WETH_ADDRESS),
-            ethers.getBytes(ethers.toBeHex(0, 3)),
-            ethers.getBytes(WETH_ADDRESS),
-          ])) as `0x${string}`;
+          // Route through buyGBLINInKind(USDC) with an ERC20 target of USDC. USDC is the
+          // canonical cross-chain settlement token (Circle CCTP = native USDC on every
+          // major chain), so the thirdweb Universal Bridge can source it on Base from a
+          // huge range of tokens/chains (USDT, ETH, USDC anywhere, ...). Targeting WETH
+          // instead broke routing: WETH is a poor bridge destination, so only ETH (wrap)
+          // showed as a source and USDT/others were filtered out for lack of a route.
+          // Trade-off vs the WETH path: in-kind skips _splitFee (keeper reserve top-up)
+          // and on-buy diversification — but it STILL accretes the stability fee to NAV
+          // (the appreciation mechanism holds), and the keeper/rebalancing is handled by
+          // native buys + incentivizedRebalance. Enabling the buy at all outweighs the
+          // per-buy fee-split purity. USDC has 6 decimals.
+          const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
+          const usdValue = parseFloat(amount) * ethPriceUsd;
+          const usdcAmount = BigInt(Math.max(1, Math.round(usdValue * 1e6)));
           const buyTx = prepareContractCall({
             contract: { client: thirdwebClient, chain: thirdwebChain, address: CONTRACT_ADDRESS as `0x${string}` },
-            method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
-            params: [wethDummyPath, ethAmount, 0n, minAmountOut],
-            erc20Value: { tokenAddress: WETH_ADDRESS as `0x${string}`, amountWei: ethAmount },
+            method: "function buyGBLINInKind(address token, uint256 amountIn, uint256 minGblinOut)",
+            params: [USDC_BASE, usdcAmount, minAmountOut],
+            erc20Value: { tokenAddress: USDC_BASE, amountWei: usdcAmount },
           });
 
           // PayEmbed transaction mode: the user pays with any token on any chain, thirdweb
-          // procures the WETH on Base, approves it to the GBLIN contract, and executes the
+          // procures the USDC on Base, approves it to the GBLIN contract, and executes the
           // buy. Non-custodial — the user signs each step.
           setPayTx(buyTx);
           return;
