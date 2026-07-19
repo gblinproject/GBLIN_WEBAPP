@@ -44,6 +44,12 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       apiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY || undefined,
       variant: "compact",
       appearance: "dark",
+      // REQUIRED for contract calls: without mode "custom" the widget ignores
+      // `contractCalls` and behaves as a plain exchange (user saw USDT->USDC
+      // with no GBLIN step). "checkout" = fixed destination amount (the user
+      // already picked the amount in our UI), source side is computed.
+      mode: "custom",
+      modeOptions: { custom: { type: "checkout" } },
       // Destination is fixed: exact USDC amount on Base, then the vault call.
       toChain: BASE_CHAIN_ID,
       toToken: USDC_BASE,
