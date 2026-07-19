@@ -1,9 +1,33 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ethers } from "ethers";
-import { LiFiWidget, type WidgetConfig } from "@lifi/widget";
+import { LiFiWidget, WidgetEvent, useWidgetEvents, type WidgetConfig } from "@lifi/widget";
 import { EthereumProvider } from "@lifi/widget-provider-ethereum";
+
+/**
+ * Console diagnostics for the execution flow ("Buy does nothing" debugging).
+ * Kept in a separate component per LI.FI docs (avoids re-rendering the widget).
+ */
+function LifiEventsLogger() {
+  const widgetEvents = useWidgetEvents();
+  useEffect(() => {
+    const log = (name: string) => (data: unknown) =>
+      console.log(`[LI.FI] ${name}`, data);
+    const subs: Array<[WidgetEvent, (d: never) => void]> = [
+      [WidgetEvent.RouteSelected, log("RouteSelected")],
+      [WidgetEvent.RouteExecutionStarted, log("RouteExecutionStarted")],
+      [WidgetEvent.RouteExecutionUpdated, log("RouteExecutionUpdated")],
+      [WidgetEvent.RouteExecutionCompleted, log("RouteExecutionCompleted")],
+      [WidgetEvent.RouteExecutionFailed, log("RouteExecutionFailed")],
+      [WidgetEvent.RouteHighValueLoss, log("RouteHighValueLoss")],
+      [WidgetEvent.AvailableRoutes, log("AvailableRoutes")],
+    ];
+    subs.forEach(([e, h]) => widgetEvents.on(e, h as never));
+    return () => subs.forEach(([e, h]) => widgetEvents.off(e, h as never));
+  }, [widgetEvents]);
+  return null;
+}
 
 // GBLIN V6 vault (also the ERC20 token itself) and USDC on Base
 const GBLIN_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
@@ -123,5 +147,10 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
     };
   }, [usdcAmount, minGblinOut]);
 
-  return <LiFiWidget integrator="gblin" config={config} />;
+  return (
+    <>
+      <LifiEventsLogger />
+      <LiFiWidget integrator="gblin" config={config} />
+    </>
+  );
 }
