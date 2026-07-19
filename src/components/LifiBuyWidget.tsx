@@ -78,28 +78,29 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
     // already bounds the whole output (a sandwiched inner swap lowers gblinOut
     // below the floor and reverts). If the call reverts for any reason, the
     // LI.FI executor's fallback delivers the USDC to the user's wallet.
-    const callData = GBLIN_IFACE.encodeFunctionData("buyGBLINWithToken", [
-      USDC_TO_WETH_PATH,
-      usdcAmount,
-      0n,
-      minGblinOut,
-    ]);
-    const contractCalls = [
-      {
-        fromAmount: usdcAmount.toString(),
-        fromTokenAddress: USDC_BASE,
-        toContractAddress: GBLIN_ADDRESS,
-        toContractCallData: callData,
-        // Higher than the in-kind path: covers the internal USDC->WETH swap
-        // plus the on-buy diversification swaps inside _mintGBLIN.
-        toContractGasLimit: "1200000",
-        // The executor approves USDC to the vault before calling it.
-        toApprovalAddress: GBLIN_ADDRESS,
-        // GBLIN (the vault IS the ERC20) is the call's output token:
-        // the executor forwards the minted GBLIN to the user.
-        toTokenAddress: GBLIN_ADDRESS,
-      },
-    ];
+    // Single source of truth for the vault call: used for the QUOTE (static
+    // `contractCalls` below) AND rebuilt at EXECUTION time by the
+    // `getContractCalls` hook with the exact delivered USDC amount.
+    const buildContractCall = (amountIn: bigint) => ({
+      fromAmount: amountIn.toString(),
+      fromTokenAddress: USDC_BASE,
+      toContractAddress: GBLIN_ADDRESS,
+      toContractCallData: GBLIN_IFACE.encodeFunctionData("buyGBLINWithToken", [
+        USDC_TO_WETH_PATH,
+        amountIn,
+        0n,
+        minGblinOut,
+      ]),
+      // Higher than the in-kind path: covers the internal USDC->WETH swap
+      // plus the on-buy diversification swaps inside _mintGBLIN.
+      toContractGasLimit: "1200000",
+      // The executor approves USDC to the vault before calling it.
+      toApprovalAddress: GBLIN_ADDRESS,
+      // GBLIN (the vault IS the ERC20) is the call's output token:
+      // the executor forwards the minted GBLIN to the user.
+      toTokenAddress: GBLIN_ADDRESS,
+    });
+    const contractCalls = [buildContractCall(usdcAmount)];
     return {
       integrator: "gblin",
       // Optional key from the LI.FI partner portal (higher rate limits).
@@ -129,6 +130,19 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
           10: ["https://mainnet.optimism.io", "https://optimism.drpc.org"],
           137: ["https://polygon-rpc.com", "https://1rpc.io/matic"],
         },
+        // REQUIRED for execution of contract-call routes: at execution time the
+        // SDK re-derives the calls via executionOptions.getContractCalls with
+        // the exact delivered amount (sdk-provider-ethereum/getUpdatedStep.ts
+        // throws "Contract calls are not found." without it — the form's
+        // contractCalls only feed the QUOTE). The widget's public type narrows
+        // executionOptions to updateTransactionRequestHook only, but at runtime
+        // it spreads the whole object into executeRoute (useRouteExecution.js),
+        // hence the cast.
+        executionOptions: {
+          getContractCalls: async (params: { toAmount: bigint }) => ({
+            contractCalls: [buildContractCall(params.toAmount)],
+          }),
+        } as never,
       },
       // Destination is fixed: exact USDC amount on Base, then the vault call.
       toChain: BASE_CHAIN_ID,
