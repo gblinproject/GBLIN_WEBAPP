@@ -9,7 +9,7 @@ import {
   useSendTransaction,
 } from "thirdweb/react";
 import { ConnectButton, PayEmbed, BridgeWidget } from "thirdweb/react";
-import { getContract, prepareContractCall, sendTransaction as sendTxDirect } from "thirdweb";
+import { getContract, prepareContractCall, sendTransaction as sendTxDirect, type PreparedTransaction } from "thirdweb";
 import { ethereum } from "thirdweb/chains";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -98,6 +98,8 @@ export default function AccountPage() {
   const account = useActiveAccount();
   const wallet = useActiveWallet();
   const { mutate: sendTx, isPending: isSending } = useSendTransaction();
+  // When set, opens the thirdweb Universal Bridge (PayEmbed) modal to fund + execute a buy
+  const [payTx, setPayTx] = useState<ReturnType<typeof prepareContractCall> | null>(null);
 
   const [activeTab, setActiveTab] = useState<"overview" | "buy" | "send">("overview");
   const [buyInputMode, setBuyInputMode] = useState<"currency" | "gblin">("currency");
@@ -520,12 +522,12 @@ export default function AccountPage() {
             value: ethAmount,
           });
 
-          await new Promise<void>((resolve, reject) => {
-            sendTx(buyTx, {
-              onSuccess: (data) => { setTradeTxHash(data.transactionHash); resolve(); },
-              onError: (err: Error) => reject(err),
-            });
-          });
+          // Open the thirdweb Universal Bridge (PayEmbed transaction mode): the user pays
+          // with ANY token on ANY chain, thirdweb sources the ETH on Base and executes
+          // buyGBLIN as the final step. Non-custodial — the user signs. If they already
+          // hold ETH on Base they can pay with it directly in the same UI.
+          setPayTx(buyTx);
+          return;
         } else {
           // Non-ETH buy (USDC, cbBTC, etc.) — 4-step workaround for SwapRouter02 ABI mismatch
           if (!activeTradeToken) throw new Error('Select a valid token');
@@ -1677,6 +1679,40 @@ export default function AccountPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* thirdweb Universal Bridge — pay for a GBLIN buy with any token on any chain */}
+      {payTx && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4"
+          onClick={() => setPayTx(null)}
+        >
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <PayEmbed
+              client={thirdwebClient}
+              theme="dark"
+              payOptions={{
+                mode: "transaction",
+                transaction: payTx as unknown as PreparedTransaction,
+                metadata: { name: "Buy GBLIN", image: LOGO_URL },
+                onPurchaseSuccess: (info: any) => {
+                  const h =
+                    info?.transactionHash ??
+                    info?.receipt?.transactionHash ??
+                    info?.data?.transactionHash;
+                  if (h) setTradeTxHash(h);
+                  setPayTx(null);
+                },
+              }}
+            />
+            <button
+              onClick={() => setPayTx(null)}
+              className="mt-3 w-full rounded-xl border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800"
+            >
+              {t("account.cancel") || "Close"}
+            </button>
           </div>
         </div>
       )}
