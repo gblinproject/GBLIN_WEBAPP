@@ -16,6 +16,7 @@ import { base } from "wagmi/chains";
 import { parseAbi } from "viem";
 import { wagmiConfig } from "@/lib/wagmi";
 import { lifiEvmProvider } from "@/lib/lifi-evm";
+import { ThemeProvider as MuiThemeProvider, createTheme } from "@mui/material/styles";
 import { WalletManagementProviders, useWalletMenu } from "@lifi/wallet-management";
 import LifiBuyWidget from "@/components/LifiBuyWidget";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
@@ -102,16 +103,32 @@ function isSupportedLanguage(value: string | null): value is Language {
 // same wallet connection. One stack, one connect, one wallet popup.
 const queryClient = new QueryClient();
 
+// MUI theme for the LI.FI wallet menu (its modal reads theme.breakpoints and
+// theme.vars — it CRASHES without a cssVariables theme in context; that crash
+// during SSR was the /account 500).
+const lifiMuiTheme = createTheme({
+  cssVariables: true,
+  palette: { mode: "dark" },
+});
+
 export default function AccountPage() {
+  // Client-only gate: wagmi connectors + the LI.FI wallet menu touch
+  // window/IndexedDB and MUI media queries that break Next SSR (500 on
+  // GET /account). Render nothing on the server, mount everything client-side.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        {/* LI.FI wallet management: powers the official wallet menu AND creates
-            the external EVM context (with the EIP-5792 kill switch) that the
-            LI.FI widget detects and reuses — one wallet session everywhere. */}
-        <WalletManagementProviders providers={[lifiEvmProvider]}>
-          <AccountPageInner />
-        </WalletManagementProviders>
+        <MuiThemeProvider theme={lifiMuiTheme}>
+          {/* LI.FI wallet management: powers the official wallet menu AND creates
+              the external EVM context (with the EIP-5792 kill switch) that the
+              LI.FI widget detects and reuses — one wallet session everywhere. */}
+          <WalletManagementProviders providers={[lifiEvmProvider]}>
+            <AccountPageInner />
+          </WalletManagementProviders>
+        </MuiThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
