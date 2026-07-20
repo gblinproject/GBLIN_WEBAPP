@@ -111,7 +111,10 @@ function MigrateBanner() {
       setV5Bal(0n);
       setTimeout(() => setLabel("Migrate to V6"), 4000);
     } catch (e: unknown) {
-      alert("Migration error: " + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/user rejected|user denied|4001/i.test(msg)) {
+        alert("Migration error: " + msg.split("\n")[0]);
+      }
       setLabel("Migrate to V6");
     } finally {
       setBusy(false);
@@ -132,7 +135,10 @@ function MigrateBanner() {
       await waitForTransactionReceipt(wagmiConfig, { hash, chainId: base.id });
       setV5Bal(0n);
     } catch (e: unknown) {
-      alert("V5 sell error: " + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/user rejected|user denied|4001/i.test(msg)) {
+        alert("V5 sell error: " + msg.split("\n")[0]);
+      }
     } finally {
       setBusy(false);
     }

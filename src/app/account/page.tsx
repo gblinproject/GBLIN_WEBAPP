@@ -64,6 +64,11 @@ const GBLIN_WRITE_ABI = parseAbi([
   "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
   "function transfer(address to, uint256 amount) returns (bool)",
 ]);
+// User clicked "Reject" in the wallet — not an error, just a cancelled action.
+function isUserRejection(msg: string): boolean {
+  return /user rejected|user denied|rejected the request|denied transaction|action_rejected|code.*4001/i.test(msg);
+}
+
 const ERC20_APPROVE_ABI = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
 ]);
@@ -704,11 +709,15 @@ function AccountPageInner() {
       }
     } catch (err: any) {
       const msg: string = err?.message ?? 'Transaction failed';
-      setTradeError(
-        msg.includes('gas required exceeds allowance')
-          ? 'Not enough ETH on Base to pay gas (a few cents are enough). Withdraw ETH to Base from any exchange, then retry.'
-          : msg
-      );
+      if (isUserRejection(msg)) {
+        // The user cancelled in the wallet: no scary red wall of viem text.
+        setTradeError('Transaction cancelled.');
+      } else if (msg.includes('gas required exceeds allowance')) {
+        setTradeError('Not enough ETH on Base to pay gas (a few cents are enough). Withdraw ETH to Base from any exchange, then retry.');
+      } else {
+        // Keep only the first meaningful line of the viem error, not the dump.
+        setTradeError(msg.split('\n')[0].slice(0, 300));
+      }
     } finally {
       setIsTransacting(false);
     }
@@ -995,8 +1004,9 @@ function AccountPageInner() {
         setTransferAmount("");
         setTransferAddress("");
         refetchBalance();
-      } catch {
-        setTransferError(t("account.errorTxFailed"));
+      } catch (err: any) {
+        const msg: string = err?.message ?? '';
+        setTransferError(isUserRejection(msg) ? 'Transaction cancelled.' : t("account.errorTxFailed"));
       }
     })();
   };
@@ -1450,7 +1460,15 @@ function AccountPageInner() {
                   copyContract={() => {}}
                   copied={false}
                   marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
-                  onChainData={{ nav: '—', ...onChainData }}
+                  onChainData={{
+                    ...onChainData,
+                    // Real on-chain NAV per token: quoteSellGBLIN(1 GBLIN) in ETH
+                    // (read from the vault) x live ETH price. The old audit
+                    // replaced a FAKE value with a dash; this is the honest one.
+                    nav: gblinPriceUsd > 0
+                      ? `$${gblinPriceUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '—',
+                  }}
                   basketData={[]}
                   lastYieldDistribution={0}
                   discountPercentage={0}
