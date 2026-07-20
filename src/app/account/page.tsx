@@ -597,8 +597,11 @@ function AccountPageInner() {
         const usdValue = parseFloat(amount) * ethPriceUsd;
         const provider = getProvider();
 
-        // 1) Native ETH on Base (1% + gas margin)
-        if (ethBalance >= parseFloat(amount) * 1.01 + 0.0001) {
+        // 1) Native ETH on Base. Margin = gas only (~$0.02-0.06 on Base): the
+        // tx sends exactly ethAmount and minGblinOut already guards the price,
+        // so no % buffer. The old 1% + 0.0001 ETH margin (~$0.20) wrongly sent
+        // users with "just enough" ETH to LI.FI for a pointless same-chain swap.
+        if (ethBalance >= parseFloat(amount) + 0.00003) {
           await ensureBase();
           const hash = await writeContractAsync({
             address: CONTRACT_ADDRESS as `0x${string}`,
@@ -671,6 +674,15 @@ function AccountPageInner() {
         // Sell: direct wagmi write on Base (opens ONLY the user's wallet — no
         // third-party modal). sellGBLIN = in-kind basket redeem; default =
         // sellGBLINForEth with explicit slippage floor.
+        // Fail fast with a HUMAN message when there is no ETH for gas on Base
+        // (a raw viem "gas required exceeds allowance (0)" is unreadable).
+        if (ethBalance < 0.00001) {
+          setTradeError(
+            'You need a little ETH on Base to pay gas (a few cents are enough). ' +
+            'Withdraw ETH from any exchange choosing the Base network, then retry.'
+          );
+          return;
+        }
         await ensureBase();
         const gblinAmount = ethers.parseEther(amount);
         const hash = redeemOption === 'basket'
@@ -691,7 +703,12 @@ function AccountPageInner() {
         setTradeTxHash(hash);
       }
     } catch (err: any) {
-      setTradeError(err?.message ?? 'Transaction failed');
+      const msg: string = err?.message ?? 'Transaction failed';
+      setTradeError(
+        msg.includes('gas required exceeds allowance')
+          ? 'Not enough ETH on Base to pay gas (a few cents are enough). Withdraw ETH to Base from any exchange, then retry.'
+          : msg
+      );
     } finally {
       setIsTransacting(false);
     }

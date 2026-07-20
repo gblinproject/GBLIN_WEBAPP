@@ -17,12 +17,25 @@ import { createDefaultWagmiConfig } from "@lifi/widget-provider-ethereum";
 // https://cloud.reown.com). Installed browser extensions (Rabby, Brave, OKX,
 // ...) are ADDED automatically via EIP-6963 discovery — the LI.FI menu lists
 // connectors + discovered wallets, deduped by name.
-const wcProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+// GBLIN's existing Reown/WalletConnect project — recovered from the original
+// pre-thirdweb AppKit setup (git f30019a, src/context/index.tsx). The env var
+// overrides it if ever rotated. projectId is public by design (client-side).
+const wcProjectId =
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
+  "9629f33d439505415769d9d29d7b788e";
 const { connectors: lifiConnectors } = createDefaultWagmiConfig({
   metaMask: {},
   coinbase: { appName: "GBLIN Protocol" },
   baseAccount: { appName: "GBLIN Protocol" },
-  ...(wcProjectId ? { walletConnect: { projectId: wcProjectId } } : {}),
+  walletConnect: {
+    projectId: wcProjectId,
+    metadata: {
+      name: "GBLIN Protocol",
+      description: "Global Balanced Liquidity Index on Base",
+      url: "https://gblin.digital",
+      icons: ["https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.svg"],
+    },
+  },
 });
 
 export const wagmiConfig = createConfig({
