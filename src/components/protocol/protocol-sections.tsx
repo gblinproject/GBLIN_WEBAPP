@@ -1089,11 +1089,10 @@ export function BuyView(props: BuyViewProps) {
                   Input mode
                 </p>
                 <div className="flex gap-2 flex-wrap">
-                  {(['fiat', 'gblin', 'crypto'] as const).map((im) => {
+                  {(['fiat', 'gblin'] as const).map((im) => {
                     const labels: Record<typeof im, string> = {
                       fiat: `${fiat.symbol} ${fiat.code}`,
                       gblin: 'GBLIN qty',
-                      crypto: 'ETH',
                     };
                     return (
                       <button
@@ -1113,29 +1112,6 @@ export function BuyView(props: BuyViewProps) {
                 </div>
               </div>
             )}
-
-            {/* Input asset selector (non-ETH tokens) */}
-            {mode === 'buy' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.inputAsset')}</span>
-                  <select
-                    className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white outline-none transition focus:border-amber-400/50"
-                    onChange={(e) => { setSelectedToken(e.target.value); if (e.target.value !== 'ETH') handleInputModeChange('crypto'); }}
-                    value={selectedToken}
-                  >
-                    {buyTokenOptions.map((opt) => (
-                      <option className="bg-[#0A0A0A]" key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </label>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.balance')}</span>
-                  <p className="mt-3 text-xl font-semibold text-white">{inputBalance}</p>
-                  <p className="mt-1 text-sm text-zinc-500">{resolvedTokenSymbol}</p>
-                </div>
-              </div>
-            ) : null}
 
             {/* Custom token address */}
             {mode === 'buy' && selectedToken === 'CUSTOM' ? (

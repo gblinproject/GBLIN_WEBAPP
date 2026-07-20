@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   WagmiProvider,
   useAccount,
-  useConnect,
   useDisconnect,
   useReadContract,
   useSendTransaction as useWagmiSendTransaction,
@@ -16,6 +15,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { base } from "wagmi/chains";
 import { parseAbi } from "viem";
 import { wagmiConfig } from "@/lib/wagmi";
+import { lifiEvmProvider } from "@/lib/lifi-evm";
+import { WalletManagementProviders, useWalletMenu } from "@lifi/wallet-management";
 import LifiBuyWidget from "@/components/LifiBuyWidget";
 import { ArrowRight, Wallet, TrendingUp, Coins, X as LogOut, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -30,6 +31,7 @@ import {
   GBLIN_ABI,
   ERC20_ABI,
   RPC_URL,
+  USDC_ADDRESS,
   WETH_ADDRESS,
   quoteTokenToWeth,
   type TradeTokenOption,
@@ -56,45 +58,29 @@ const shellContainer = "mx-auto w-full max-w-[1720px]";
 // Human-readable ABIs for direct wagmi/viem writes (single wallet stack)
 const GBLIN_WRITE_ABI = parseAbi([
   "function buyGBLIN(uint256 minGblinOut) payable",
+  "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
   "function sellGBLIN(uint256 gblinAmount)",
   "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
   "function transfer(address to, uint256 amount) returns (bool)",
 ]);
+const ERC20_APPROVE_ABI = parseAbi([
+  "function approve(address spender, uint256 amount) returns (bool)",
+]);
 
-// Minimal in-page connect UI (replaces the thirdweb ConnectButton).
+// Connect button: opens the OFFICIAL LI.FI wallet menu (same modal as the
+// widget) — every installed EIP-6963 wallet, MetaMask, Coinbase Wallet, with
+// proper UI. Connection lands in the shared wagmi config, so the page AND the
+// LI.FI widget see the same session.
 function WalletConnect({ label }: { label: string }) {
-  const { connectors, connect, isPending } = useConnect();
-  const [open, setOpen] = useState(false);
-  // Dedupe by id (EIP-6963 can surface a connector twice)
-  const unique = connectors.filter((c, i, all) => i === all.findIndex((x) => x.id === c.id));
+  const { openWalletMenu } = useWalletMenu();
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={isPending}
-        className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
-      >
-        <Wallet className="h-4 w-4" />
-        {label}
-      </button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl border border-white/10 bg-[#111] p-2 shadow-xl">
-          {unique.map((connector) => (
-            <button
-              key={connector.id}
-              onClick={() => { connect({ connector }); setOpen(false); }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-zinc-200 transition hover:bg-white/10"
-            >
-              {connector.icon && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={connector.icon} alt="" className="h-5 w-5 rounded" />
-              )}
-              {connector.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button
+      onClick={() => openWalletMenu()}
+      className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-amber-400"
+    >
+      <Wallet className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 
@@ -120,7 +106,12 @@ export default function AccountPage() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <AccountPageInner />
+        {/* LI.FI wallet management: powers the official wallet menu AND creates
+            the external EVM context (with the EIP-5792 kill switch) that the
+            LI.FI widget detects and reuses — one wallet session everywhere. */}
+        <WalletManagementProviders providers={[lifiEvmProvider]}>
+          <AccountPageInner />
+        </WalletManagementProviders>
       </QueryClientProvider>
     </WagmiProvider>
   );
@@ -578,15 +569,84 @@ function AccountPageInner() {
 
     try {
       if (tradeMode === 'buy') {
-        // ALL buys go through the LI.FI widget: pay with any token on any
-        // chain, routed to USDC on Base, minted via buyGBLINWithToken and
-        // forwarded to the user. The legacy thirdweb 4-step non-ETH path is
-        // gone — one wallet stack, one flow. `amount` is ETH-denominated by
-        // the form math regardless of the selected display token.
+        // SMART ROUTING (founder request): if the funds are ALREADY on Base,
+        // buy directly from the wallet — no LI.FI, no bridge fee, instant.
+        // Priority: native ETH -> WETH -> USDC (all via the proven on-chain
+        // paths). Anything else (other tokens, other chains) -> LI.FI widget.
+        // `amount` is ETH-denominated by the form math.
         const ethAmount = ethers.parseEther(amount);
         const quotedGblinOut = await quoteMintFromWeth(ethAmount);
         const minAmountOut = (quotedGblinOut * (10000n - slippageBps)) / 10000n;
         const usdValue = parseFloat(amount) * ethPriceUsd;
+        const provider = getProvider();
+
+        // 1) Native ETH on Base (1% + gas margin)
+        if (ethBalance >= parseFloat(amount) * 1.01 + 0.0001) {
+          await ensureBase();
+          const hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: GBLIN_WRITE_ABI,
+            functionName: 'buyGBLIN',
+            args: [minAmountOut],
+            value: ethAmount,
+            chainId: base.id,
+          });
+          setTradeTxHash(hash);
+          return;
+        }
+
+        // Shared ERC20 path: approve (if needed) + buyGBLINWithToken.
+        // Full mint mechanics (keeper reserve + diversification + NAV accretion),
+        // proven on-chain by the first LI.FI purchase.
+        const buyWithErc20 = async (token: `0x${string}`, amountIn: bigint, path: `0x${string}`) => {
+          await ensureBase();
+          const erc = new ethers.Contract(token, ERC20_ABI, provider);
+          const allowance: bigint = await erc.allowance(address, CONTRACT_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
+          if (allowance < amountIn) {
+            const approveHash = await writeContractAsync({
+              address: token,
+              abi: ERC20_APPROVE_ABI,
+              functionName: 'approve',
+              args: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
+              chainId: base.id,
+            });
+            await provider.waitForTransaction(approveHash, 1, 60000);
+          }
+          const hash = await writeContractAsync({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: GBLIN_WRITE_ABI,
+            functionName: 'buyGBLINWithToken',
+            args: [path, amountIn, 0n, minAmountOut],
+            chainId: base.id,
+          });
+          setTradeTxHash(hash);
+        };
+        const balanceOf = async (token: string): Promise<bigint> => {
+          try {
+            const erc = new ethers.Contract(token, ERC20_ABI, provider);
+            return BigInt(String(await erc.balanceOf(address)));
+          } catch { return 0n; }
+        };
+        const encodePath = (a: string, fee: number, b: string) => ethers.hexlify(ethers.concat([
+          ethers.getBytes(a), ethers.getBytes(ethers.toBeHex(fee, 3)), ethers.getBytes(b),
+        ])) as `0x${string}`;
+
+        // 2) WETH on Base (dummy WETH path -> contract skips the internal swap)
+        const wethBal = await balanceOf(WETH_ADDRESS);
+        if (wethBal >= ethAmount) {
+          await buyWithErc20(WETH_ADDRESS as `0x${string}`, ethAmount, encodePath(WETH_ADDRESS, 0, WETH_ADDRESS));
+          return;
+        }
+
+        // 3) USDC on Base (USDC -> WETH 0.05% pool; +0.3% buffer for the pool fee)
+        const usdcNeeded = BigInt(Math.max(1, Math.round(usdValue * 1.003 * 1e6)));
+        const usdcBal = await balanceOf(USDC_ADDRESS);
+        if (usdcBal >= usdcNeeded) {
+          await buyWithErc20(USDC_ADDRESS as `0x${string}`, usdcNeeded, encodePath(USDC_ADDRESS, 500, WETH_ADDRESS));
+          return;
+        }
+
+        // 4) Everything else (any token, any chain, incl. cbBTC on Base) -> LI.FI
         const usdcAmount = BigInt(Math.max(1, Math.round(usdValue * 1e6)));
         setLifiParams({ usdcAmount, minGblinOut: minAmountOut });
         return;
@@ -618,7 +678,7 @@ function AccountPageInner() {
     } finally {
       setIsTransacting(false);
     }
-  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, writeContractAsync, ensureBase, ethPriceUsd]);
+  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, writeContractAsync, ensureBase, ethPriceUsd, ethBalance, getProvider]);
 
   const gblinPriceUsd = useMemo(() => {
     if (!quoteData) return 0;
