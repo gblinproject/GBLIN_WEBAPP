@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ethers } from 'ethers';
 import { ArrowRight, Check, ExternalLink, RefreshCw, Shield } from 'lucide-react';
-import { prepareContractCall } from 'thirdweb';
-import { base } from 'thirdweb/chains';
-import { useSendTransaction } from 'thirdweb/react';
-import { thirdwebClient } from '@/lib/thirdweb';
+import { WagmiProvider, useSwitchChain, useWriteContract } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { base } from 'wagmi/chains';
+import { parseAbi } from 'viem';
+import { wagmiConfig } from '@/lib/wagmi';
 import { CONTRACT_ADDRESS, RPC_URL, WETH_ADDRESS, USDC_ADDRESS, formatTokenAmount, shortenAddress } from './protocol-data';
 
 // GBLIN V6 in-kind = deposit a SINGLE basket asset and mint GBLIN at NAV (no swap, no slippage on the basket).
@@ -42,6 +43,11 @@ const QUOTE_ABI = ['function quoteBuyGBLIN(uint256 ethAmount) view returns (uint
 
 const SLIPPAGE_BPS = 300n; // 3% buffer su minGblinOut (la NAV può muoversi tra quote e tx)
 
+const WRITE_ABI = parseAbi([
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function buyGBLINInKind(address token, uint256 amountIn, uint256 minGblinOut)',
+]);
+
 interface WhaleDepositPanelProps {
   t: (key: string) => string;
   address?: string;
@@ -50,7 +56,7 @@ interface WhaleDepositPanelProps {
   onSuccess?: () => void;
 }
 
-export function WhaleDepositPanel({ t, address, isConnected, openWallet, onSuccess }: WhaleDepositPanelProps) {
+function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess }: WhaleDepositPanelProps) {
   const [symbol, setSymbol] = useState<BasketAsset['symbol']>('WETH');
   const [amountRaw, setAmountRaw] = useState('');
   const [balance, setBalance] = useState(0n);
@@ -63,7 +69,9 @@ export function WhaleDepositPanel({ t, address, isConnected, openWallet, onSucce
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
-  const { mutate: sendTx } = useSendTransaction();
+  // Single wallet stack: wagmi (stessa sessione della pagina e del widget LI.FI)
+  const { writeContractAsync } = useWriteContract();
+  const { switchChainAsync } = useSwitchChain();
 
   const asset = useMemo(() => BASKET_ASSETS.find((a) => a.symbol === symbol)!, [symbol]);
 
@@ -140,28 +148,28 @@ export function WhaleDepositPanel({ t, address, isConnected, openWallet, onSucce
     setTxHash(null);
     try {
       const provider = getProvider();
+      // Assicura Base prima di firmare (MetaMask può essere su un'altra chain)
+      try { await switchChainAsync({ chainId: base.id }); } catch { /* già su Base */ }
       // 1. approve (se serve)
       if (needsApproval) {
         setSubmitStep(`Approve ${asset.symbol}`);
-        const approveTx = prepareContractCall({
-          contract: { client: thirdwebClient, chain: base, address: asset.address as `0x${string}` },
-          method: 'function approve(address spender, uint256 amount) returns (bool)',
-          params: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
-        });
-        const approvalHash: string = await new Promise((resolve, reject) => {
-          sendTx(approveTx, { onSuccess: (d) => resolve(d.transactionHash), onError: (err: Error) => reject(err) });
+        const approvalHash = await writeContractAsync({
+          address: asset.address as `0x${string}`,
+          abi: WRITE_ABI,
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
+          chainId: base.id,
         });
         await provider.waitForTransaction(approvalHash, 1, 180000);
       }
       // 2. buyGBLINInKind(token, amountIn, minGblinOut)
       setSubmitStep('Deposit');
-      const buyTx = prepareContractCall({
-        contract: { client: thirdwebClient, chain: base, address: CONTRACT_ADDRESS as `0x${string}` },
-        method: 'function buyGBLINInKind(address token, uint256 amountIn, uint256 minGblinOut)',
-        params: [asset.address as `0x${string}`, amountIn, minGblinOut],
-      });
-      const buyHash: string = await new Promise((resolve, reject) => {
-        sendTx(buyTx, { onSuccess: (d) => resolve(d.transactionHash), onError: (err: Error) => reject(err) });
+      const buyHash = await writeContractAsync({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: WRITE_ABI,
+        functionName: 'buyGBLINInKind',
+        args: [asset.address as `0x${string}`, amountIn, minGblinOut],
+        chainId: base.id,
       });
       await provider.waitForTransaction(buyHash, 1, 180000);
       setTxHash(buyHash);
@@ -182,7 +190,7 @@ export function WhaleDepositPanel({ t, address, isConnected, openWallet, onSucce
       setSubmitStep('');
       setIsSubmitting(false);
     }
-  }, [address, amountIn, asset, gblinOut, getProvider, isConnected, minGblinOut, needsApproval, onSuccess, openWallet, sendTx]);
+  }, [address, amountIn, asset, gblinOut, getProvider, isConnected, minGblinOut, needsApproval, onSuccess, openWallet, writeContractAsync, switchChainAsync]);
 
   return (
     <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] to-black/40 p-7 sm:p-8">
@@ -278,5 +286,20 @@ export function WhaleDepositPanel({ t, address, isConnected, openWallet, onSucce
         </div>
       ) : null}
     </div>
+  );
+}
+
+const queryClient = new QueryClient();
+
+// Autosufficiente: si porta il suo WagmiProvider (stesso singleton condiviso ->
+// stessa sessione wallet) così funziona anche dove la pagina non è wrappata
+// (es. /buy-gblin via ProtocolApp, ancora thirdweb).
+export function WhaleDepositPanel(props: WhaleDepositPanelProps) {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <WhaleDepositPanelInner {...props} />
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
