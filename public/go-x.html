@@ -17,11 +17,25 @@
 <p id="msg">Opening the X app…</p>
 <a id="fallback" class="btn" style="display:none" href="#">Open X in the browser</a>
 <script>
-  // Rimbalzo: prova l'APP X (schema twitter://, che l'app registra ancora),
-  // poi ripiega sul compose web solo se l'app non ha risposto (pagina ancora visibile).
-  var text = new URLSearchParams(location.search).get("text") || "";
-  var app = "twitter://post?message=" + encodeURIComponent(text);
-  var web = "https://x.com/intent/post?text=" + encodeURIComponent(text);
+  // Rimbalzo verso l'APP X (schema twitter://), con fallback web se l'app non risponde.
+  // Modi: ?text=…            → composer nuovo post
+  //       ?text=…&reply_to=ID → composer in risposta a un tweet
+  //       ?open=ID            → apre il tweet nell'app (per like/lettura thread)
+  var q = new URLSearchParams(location.search);
+  var open = q.get("open");
+  var text = q.get("text") || "";
+  var replyTo = q.get("reply_to");
+  var app, web;
+  if (open) {
+    app = "twitter://status?id=" + encodeURIComponent(open);
+    web = "https://x.com/i/status/" + encodeURIComponent(open);
+  } else if (replyTo) {
+    app = "twitter://post?message=" + encodeURIComponent(text) + "&in_reply_to_status_id=" + encodeURIComponent(replyTo);
+    web = "https://x.com/intent/post?in_reply_to=" + encodeURIComponent(replyTo) + "&text=" + encodeURIComponent(text);
+  } else {
+    app = "twitter://post?message=" + encodeURIComponent(text);
+    web = "https://x.com/intent/post?text=" + encodeURIComponent(text);
+  }
   var fb = document.getElementById("fallback");
   fb.href = web;
   location.href = app;
