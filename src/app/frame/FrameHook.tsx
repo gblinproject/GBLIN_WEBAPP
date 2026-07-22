@@ -81,7 +81,8 @@ export default function FrameHook() {
     setShareState("loading");
     const text =
       `When ${crash.short} hit, Bitcoin fell -${crash.btc}% and Ethereum -${crash.eth}%.\n\n` +
-      `GBLIN's Crash Shield only fell -${crash.gblin}% — it de-risks itself, on-chain, on Base.\n\n` +
+      `In the 10-year backtest, GBLIN's Crash Shield rule caps that drawdown at -${crash.gblin}% — ` +
+      `it de-risks itself, on-chain, on Base.\n\n` +
       `Could you have guessed it? Try the @gblin Crash Shield 👇`;
     const embed = `${SITE_URL}/frame`;
     try {
@@ -157,7 +158,7 @@ export default function FrameHook() {
             <span style={{ color: C.btc }}>BTC −{crash.btc}%</span>,{" "}
             <span style={{ color: C.eth }}>ETH −{crash.eth}%</span>.
             <br />
-            How far did <span className="gblin-grad-text-amber">GBLIN</span> fall?
+            How far would <span className="gblin-grad-text-amber">GBLIN</span> have fallen?
           </h1>
 
           {/* Interactive guess (one tap) */}
@@ -203,18 +204,25 @@ export default function FrameHook() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: correct ? "#a7f3d0" : "#fde68a" }}>
                   {correct
                     ? "Spot on — you get it."
-                    : `It was only −${crash.gblin}%. GBLIN held up better than you guessed.`}
+                    : `The rule caps it at −${crash.gblin}%. Better than you guessed.`}
                 </div>
               </div>
 
               {/* bars */}
-              <Bar label="🛡️ GBLIN Crash Shield" value={crash.gblin} max={maxBar} color={C.amber} strong />
+              <Bar label="🛡️ GBLIN Crash Shield (backtest)" value={crash.gblin} max={maxBar} color={C.amber} strong />
               <Bar label="Bitcoin" value={crash.btc} max={maxBar} color={C.btc} />
               <Bar label="Ethereum" value={crash.eth} max={maxBar} color={C.eth} />
 
               <p style={{ margin: "2px 0 0", fontSize: 12, color: C.textDim, lineHeight: 1.55 }}>
                 GBLIN rotates risk into stables when drawdowns breach its adaptive
                 threshold — automatically, on-chain. That gap is the whole point.
+              </p>
+              {/* ONESTÀ: il token non esisteva in questi crash. I numeri sono la regola
+                  del contratto applicata ai prezzi storici, non una discesa realmente subita. */}
+              <p style={{ margin: 0, fontSize: 10.5, color: C.textMute, lineHeight: 1.5 }}>
+                BTC and ETH figures are what actually happened. The GBLIN figure is the
+                shield rule from the contract applied to those same 10 years of prices —
+                a backtest, not a past return. GBLIN is volatile, not a stablecoin.
               </p>
             </div>
           )}
