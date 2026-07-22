@@ -188,7 +188,7 @@ function FooterStrip() {
       }}
     >
       <div style={{ display: "flex" }}>
-        cbBTC · WETH · USDC · autonomous rebalance · 0 admin keys
+        cbBTC · WETH · USDC · autonomous rebalance · 48h timelock
       </div>
       <div style={{ display: "flex", color: "#fbbf24", fontWeight: 700 }}>
         gblin.digital/game
@@ -492,7 +492,7 @@ function VictoryBody({
       >
         <div style={{ fontSize: 22 }}>🛡️</div>
         <div style={{ color: "#e2e8f0", fontSize: 18, display: "flex" }}>
-          Real on-chain data · cbBTC + WETH + USDC · 0 admin keys
+          Real on-chain data · cbBTC + WETH + USDC · 48h timelock
         </div>
       </div>
     </div>

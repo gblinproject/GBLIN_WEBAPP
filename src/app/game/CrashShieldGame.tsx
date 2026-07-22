@@ -166,7 +166,7 @@ export default function CrashShieldGame() {
               <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: -0.3 }}>
                 <span className="gblin-grad-text-amber">GBLIN</span> Crash Shield
               </div>
-              <div style={{ fontSize: 10.5, color: C.textMute }}>live on Base · 0 admin keys · real backtest data</div>
+              <div style={{ fontSize: 10.5, color: C.textMute }}>live on Base · 48h timelock · backtest data</div>
             </div>
           </div>
 

@@ -71,7 +71,7 @@ export async function GET(req: Request) {
             </div>
 
             <div style={{ display: "flex", fontSize: "24px", color: "#8a8780", marginTop: "40px" }}>
-              gblin.digital · backed basket on Base · 0 admin keys
+              gblin.digital · backed basket on Base · 48h timelock
             </div>
           </div>
         ) : (
@@ -83,7 +83,7 @@ export async function GET(req: Request) {
               Stress-test your real BTC / ETH holdings against the crypto crashes — and see how little the GBLIN basket fell.
             </div>
             <div style={{ display: "flex", fontSize: "24px", color: "#8a8780", marginTop: "54px" }}>
-              gblin.digital · backed basket on Base · 0 admin keys
+              gblin.digital · backed basket on Base · 48h timelock
             </div>
           </div>
         )}

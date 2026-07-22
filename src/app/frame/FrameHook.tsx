@@ -131,7 +131,7 @@ export default function FrameHook() {
                 <span className="gblin-grad-text-amber">GBLIN</span>
               </div>
               <div style={{ fontSize: 10.5, color: C.textMute, letterSpacing: 0.3 }}>
-                live on Base · 0 admin keys
+                live on Base · 48h timelock
               </div>
             </div>
             <span
