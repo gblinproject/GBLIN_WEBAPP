@@ -22,14 +22,15 @@ interface ProtocolShellProps {
   children: ReactNode;
 }
 
-const navItems: Array<{ key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents'; href: string; view: ProtocolView | null }> = [
+const navItems: Array<{ key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents' | 'observatory'; href: string; view: ProtocolView | null; label?: string }> = [
   { key: 'home', href: '/', view: 'home' },
   { key: 'buy', href: '/buy-gblin', view: 'buy' },
   { key: 'dashboard', href: '/dashboard', view: 'dashboard' },
   { key: 'rebalance', href: '/rebalance', view: 'rebalance' },
   { key: 'vault', href: '/vault', view: 'vault' },
   { key: 'aureus', href: '/aureus', view: null },
-  { key: 'agents', href: '/agents', view: null }
+  { key: 'agents', href: '/agents', view: null },
+  { key: 'observatory', href: '/observatory', view: null, label: 'Observatory' }
 ];
 
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
@@ -102,7 +103,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
         <div className={`${shellContainer} px-4 py-4 sm:px-6 lg:px-8 2xl:px-10`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <Link className="flex items-center gap-3 sm:gap-4" href="/">
+              <Link className="flex min-w-0 items-center gap-3 overflow-hidden sm:gap-4" href="/">
                 <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40 transition-transform duration-500 hover:scale-105">
                   <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
                 </span>
@@ -127,7 +128,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                     href={item.href}
                     key={item.key}
                   >
-                    {t(`nav.${item.key}`)}
+                    {item.label ?? t(`nav.${item.key}`)}
                   </Link>
                 );
               })}
@@ -280,7 +281,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                   href={item.href}
                   key={item.key}
                 >
-                  {t(`nav.${item.key}`)}
+                  {item.label ?? t(`nav.${item.key}`)}
                 </Link>
               ))}
               <Link
