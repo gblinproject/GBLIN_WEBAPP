@@ -44,6 +44,17 @@ const iface = new ethers.Interface([
 // don't hammer Basescan when multiple users hit the protocol page at once.
 export const revalidate = 30;
 
+// Attribution block — additive, consumed by third parties citing our data.
+const SOURCE = {
+  name: 'GBLIN Agent Economy Observatory',
+  url: 'https://gblin.digital/observatory',
+  data_endpoint: 'https://gblin.digital/api/rebalance-history',
+  docs: 'https://gblin.digital/llms.txt',
+  license: "CC BY 4.0 — cite 'GBLIN Agent Economy Observatory'",
+  disclosure:
+    'GBLIN operates 11 paid x402 endpoints; own traffic is excluded from organic counts; methodology is public',
+} as const;
+
 type RawLog = {
   topics: string[];
   data: string;
@@ -243,6 +254,7 @@ export async function GET() {
       events: decoded.filter(Boolean),
       source,
       count: decoded.length,
+      _source: SOURCE,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch history';

@@ -7,7 +7,7 @@
   "miniapp": {
     "version": "1",
     "name": "GBLIN",
-    "iconUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "iconUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN_1024.png",
     "homeUrl": "https://gblin.digital/frame",
     "splashImageUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
     "splashBackgroundColor": "#0a0b14",

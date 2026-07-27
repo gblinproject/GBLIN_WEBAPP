@@ -124,18 +124,29 @@ const EMPTY_STATS: AgentStats = {
   total_unique_agents: 0,
   total_usdc_earned: 0,
 };
+
+// Attribution block — additive, consumed by third parties citing our data.
+const SOURCE = {
+  name: "GBLIN Agent Economy Observatory",
+  url: "https://gblin.digital/observatory",
+  data_endpoint: "https://gblin.digital/api/agent-stats",
+  docs: "https://gblin.digital/llms.txt",
+  license: "CC BY 4.0 — cite 'GBLIN Agent Economy Observatory'",
+  disclosure:
+    "GBLIN operates 11 paid x402 endpoints; own traffic is excluded from organic counts; methodology is public",
+} as const;
 const ERROR_CACHE_TTL_MS = 30_000;
 
 export async function GET(): Promise<Response> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return Response.json(cache.data, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
+    return Response.json({ ...cache.data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
   }
 
   try {
     const data = await fetchAgentStats();
     cache = { data, fetchedAt: now };
-    return Response.json(data, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
+    return Response.json({ ...data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
   } catch (err) {
     // Never return 500 — the home page must render. Serve the previous cache
     // if available, otherwise zeros. Cache the fallback briefly so we don't
@@ -146,6 +157,7 @@ export async function GET(): Promise<Response> {
       ...fallback,
       stale: true,
       error: (err as Error).message,
+      _source: SOURCE,
     });
   }
 }
