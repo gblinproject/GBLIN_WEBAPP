@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ExternalLink, Globe, Menu, Zap, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, Globe, Menu, Zap, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
 import { DISPLAY_CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
 import type { ProtocolView } from './protocol-sections';
@@ -22,16 +22,40 @@ interface ProtocolShellProps {
   children: ReactNode;
 }
 
-const navItems: Array<{ key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents' | 'observatory'; href: string; view: ProtocolView | null; label?: string }> = [
-  { key: 'home', href: '/', view: 'home' },
-  { key: 'buy', href: '/buy-gblin', view: 'buy' },
-  { key: 'dashboard', href: '/dashboard', view: 'dashboard' },
-  { key: 'rebalance', href: '/rebalance', view: 'rebalance' },
-  { key: 'vault', href: '/vault', view: 'vault' },
-  { key: 'aureus', href: '/aureus', view: null },
-  { key: 'agents', href: '/agents', view: null },
-  { key: 'observatory', href: '/observatory', view: null, label: 'Observatory' }
+// Top bar: 5 voices for humans (home, buy, protocol, agents, aureus).
+// Protocol detail views and the agent/data pages live one click deep in
+// dropdowns, so first-time buyers see a simple site and technical visitors
+// still reach everything. `label` bypasses translations (proper nouns).
+interface NavLeaf {
+  key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents' | 'observatory';
+  href: string;
+  label?: string;
+}
+type NavEntry = NavLeaf & { children?: NavLeaf[] };
+
+const navItems: NavEntry[] = [
+  { key: 'home', href: '/' },
+  { key: 'buy', href: '/buy-gblin' },
+  {
+    key: 'dashboard', href: '/dashboard', label: 'Protocol',
+    children: [
+      { key: 'dashboard', href: '/dashboard' },
+      { key: 'rebalance', href: '/rebalance' },
+      { key: 'vault', href: '/vault' }
+    ]
+  },
+  {
+    key: 'agents', href: '/agents',
+    children: [
+      { key: 'agents', href: '/agents' },
+      { key: 'observatory', href: '/observatory', label: 'Observatory' }
+    ]
+  },
+  { key: 'aureus', href: '/aureus' }
 ];
+
+// Mobile hamburger keeps the flat list: vertical menus read fine ungrouped.
+const flatNavItems: NavLeaf[] = navItems.flatMap((item) => (item.children ? item.children : [item]));
 
 const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
 const shellContainer = 'mx-auto w-full max-w-[1720px]';
@@ -82,6 +106,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
   const [showContactMenu, setShowContactMenu] = useState(false);
+  const [openNavGroup, setOpenNavGroup] = useState<string | null>(null);
   const pathname = usePathname();
 
   const activeLanguage = useMemo(() => LANGUAGES.find((item) => item.code === language) ?? LANGUAGES[0], [language]);
@@ -92,6 +117,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
     setMenuOpen(false);
     setShowLangSelector(false);
     setShowContactMenu(false);
+    setOpenNavGroup(null);
   }, [pathname]);
 
   return (
@@ -119,17 +145,59 @@ export function ProtocolShell(props: ProtocolShellProps) {
 
             <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-2 shadow-inner lg:flex">
               {navItems.map((item) => {
-                const isActive = isActiveNavItem(item.href);
+                if (!item.children) {
+                  const isActive = isActiveNavItem(item.href);
+
+                  return (
+                    <Link
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
+                      href={item.href}
+                      key={item.key}
+                    >
+                      {item.label ?? t(`nav.${item.key}`)}
+                    </Link>
+                  );
+                }
+
+                const groupActive = item.children.some((child) => isActiveNavItem(child.href));
+                const isOpen = openNavGroup === item.key;
 
                 return (
-                  <Link
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
-                    href={item.href}
-                    key={item.key}
-                  >
-                    {item.label ?? t(`nav.${item.key}`)}
-                  </Link>
+                  <div className="relative" key={item.key}>
+                    <button
+                      aria-expanded={isOpen}
+                      aria-haspopup="true"
+                      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${groupActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
+                      onClick={() => {
+                        setOpenNavGroup((value) => (value === item.key ? null : item.key));
+                        setShowLangSelector(false);
+                        setShowContactMenu(false);
+                      }}
+                      type="button"
+                    >
+                      {item.label ?? t(`nav.${item.key}`)}
+                      <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isOpen ? (
+                      <div className="absolute left-0 top-full z-50 mt-3 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
+                        {item.children.map((child) => {
+                          const childActive = isActiveNavItem(child.href);
+
+                          return (
+                            <Link
+                              aria-current={childActive ? 'page' : undefined}
+                              className={`block rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition ${childActive ? 'bg-white text-black' : 'text-zinc-400 hover:bg-white/5 hover:text-amber-300'}`}
+                              href={child.href}
+                              key={child.key}
+                            >
+                              {child.label ?? t(`nav.${child.key}`)}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </nav>
@@ -275,7 +343,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
         {menuOpen ? (
           <div className="border-t border-white/5 px-4 py-4 lg:hidden sm:px-6">
             <div className={`${shellContainer} space-y-3`}>
-              {navItems.map((item) => (
+              {flatNavItems.map((item) => (
                 <Link
                   className={`block rounded-2xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActiveNavItem(item.href) ? 'bg-white text-black' : 'border border-white/10 bg-white/5 text-zinc-200'}`}
                   href={item.href}
