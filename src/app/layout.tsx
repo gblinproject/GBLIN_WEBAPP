@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
@@ -150,14 +149,15 @@ export const viewport: Viewport = {
   themeColor: "#050505",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const headerStore = await headers();
-  const cookies = headerStore.get("cookie");
-
+  // No headers()/cookies() here: reading them forced EVERY page to render
+  // dynamically on each request (a paid Fluid function invocation per view).
+  // The cookie was only consumed by the old thirdweb provider, now removed —
+  // without it, pages prerender as static and the CDN serves them for free.
   return (
     <html lang="en">
       <head>
@@ -168,7 +168,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <ClientContextProvider cookies={cookies}>{children}</ClientContextProvider>
+        <ClientContextProvider>{children}</ClientContextProvider>
         <PWAInstallPrompt />
         <FarcasterMiniAppReady />
         <FarcasterInstallBanner />

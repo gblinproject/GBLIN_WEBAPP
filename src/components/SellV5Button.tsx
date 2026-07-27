@@ -1,55 +1,50 @@
 "use client";
 
 import { useState } from "react";
-import {
-  getContract,
-  prepareContractCall,
-  readContract,
-  sendTransaction,
-  waitForReceipt,
-} from "thirdweb";
-import {
-  useActiveAccount,
-  useActiveWalletChain,
-  useSwitchActiveWalletChain,
-} from "thirdweb/react";
-import { thirdwebClient, chain as thirdwebChain } from "@/lib/thirdweb";
+import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { base } from "wagmi/chains";
+import { parseAbi } from "viem";
 
 // GBLIN V5 (vecchio contratto in produzione)
-const V5_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345";
+const V5_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345" as const;
+
+const V5_ABI = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+  "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
+]);
 
 /**
  * Pill "Sell all V5" — vende TUTTI i GBLIN V5 dell'utente in cambio di ETH.
  * Una sola transazione: sellGBLINForEth sul contratto V5.
- * Forza il wallet su Base prima di inviare.
+ * Forza il wallet su Base prima di inviare. (wagmi, ex thirdweb)
  */
 export default function SellV5Button() {
-  const account = useActiveAccount();
-  const activeChain = useActiveWalletChain();
-  const switchChain = useSwitchActiveWalletChain();
+  const { address, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient({ chainId: base.id });
   const [label, setLabel] = useState("Sell all V5");
   const [busy, setBusy] = useState(false);
 
   async function sellAll() {
-    if (!account) {
+    if (!address) {
       alert("Collega prima il wallet.");
       return;
     }
     setBusy(true);
     try {
       // Forza il wallet su Base PRIMA di leggere/inviare.
-      if (activeChain?.id !== thirdwebChain.id) {
+      if (chainId !== base.id) {
         setLabel("Passo a Base…");
-        await switchChain(thirdwebChain);
+        await switchChainAsync({ chainId: base.id });
       }
 
-      const v5 = getContract({ client: thirdwebClient, chain: thirdwebChain, address: V5_ADDRESS });
-
       // Saldo GBLIN V5
-      const v5Bal = (await readContract({
-        contract: v5,
-        method: "function balanceOf(address) view returns (uint256)",
-        params: [account.address],
+      const v5Bal = (await publicClient!.readContract({
+        address: V5_ADDRESS,
+        abi: V5_ABI,
+        functionName: "balanceOf",
+        args: [address],
       })) as bigint;
 
       if (v5Bal === 0n) {
@@ -61,13 +56,14 @@ export default function SellV5Button() {
 
       // TX — riscatta tutto il GBLIN V5 in ETH
       setLabel("Vendo V5…");
-      const sellTx = prepareContractCall({
-        contract: v5,
-        method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
-        params: [v5Bal, 0n],
+      const hash = await writeContractAsync({
+        address: V5_ADDRESS,
+        abi: V5_ABI,
+        functionName: "sellGBLINForEth",
+        args: [v5Bal, 0n],
+        chainId: base.id,
       });
-      const r = await sendTransaction({ transaction: sellTx, account });
-      await waitForReceipt(r);
+      await publicClient!.waitForTransactionReceipt({ hash });
 
       setLabel("✅ Venduto!");
       setTimeout(() => setLabel("Sell all V5"), 4000);
@@ -84,7 +80,7 @@ export default function SellV5Button() {
     <button
       type="button"
       onClick={sellAll}
-      disabled={busy || !account}
+      disabled={busy || !address}
       title="Vendi tutti i tuoi GBLIN V5 in cambio di ETH (1 transazione)"
       className="rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition border border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 hover:border-rose-400/50 disabled:opacity-50"
     >

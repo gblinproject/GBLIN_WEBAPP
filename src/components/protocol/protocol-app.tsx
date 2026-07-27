@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useActiveAccount, useActiveWallet, useSendTransaction, useDisconnect } from "thirdweb/react";
-import { prepareContractCall } from "thirdweb";
-import { base } from "thirdweb/chains";
+import { useAccount, useDisconnect } from 'wagmi';
+import { prepareContractCall, useSendTransaction } from '@/lib/wagmi-tx';
 import { ethers } from 'ethers';
-import { thirdwebClient } from '@/lib/thirdweb';
 import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
 import {
@@ -78,16 +76,16 @@ const protocolViewCache: {
 };
 
 export function ProtocolApp({ view }: ProtocolAppProps) {
-  const account = useActiveAccount();
-  const activeWallet = useActiveWallet();
+  const { address: wagmiAddress } = useAccount();
+  const account = useMemo(() => (wagmiAddress ? { address: wagmiAddress } : undefined), [wagmiAddress]);
   const { mutate: sendTx } = useSendTransaction();
   const { disconnect } = useDisconnect();
   const router = useRouter();
 
   const handleDisconnect = useCallback(() => {
-    if (activeWallet) disconnect(activeWallet);
-  }, [activeWallet, disconnect]);
-  
+    disconnect();
+  }, [disconnect]);
+
   const address = account?.address;
   const isConnected = !!account;
   const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
@@ -749,8 +747,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           // Thirdweb: Buy GBLIN with ETH
           const buyTx = prepareContractCall({
             contract: {
-              client: thirdwebClient,
-              chain: base,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
             method: "function buyGBLIN(uint256 minGblinOut) payable",
@@ -792,8 +788,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             addLog(`Approval required for ${activeTradeToken.symbol} → SwapRouter02.`);
             const approveTx = prepareContractCall({
               contract: {
-                client: thirdwebClient,
-                chain: base,
                 address: activeTradeToken.address as `0x${string}`,
               },
               method: "function approve(address spender, uint256 amount) returns (bool)",
@@ -819,8 +813,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             // Single hop: use exactInputSingle (no deadline, matches SwapRouter02)
             swapTx = prepareContractCall({
               contract: {
-                client: thirdwebClient,
-                chain: base,
                 address: SWAP_ROUTER_02 as `0x${string}`,
               },
               method: "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut)",
@@ -838,8 +830,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             // Multi-hop: use exactInput (SwapRouter02 version — no deadline field)
             swapTx = prepareContractCall({
               contract: {
-                client: thirdwebClient,
-                chain: base,
                 address: SWAP_ROUTER_02 as `0x${string}`,
               },
               method: "function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum) params) returns (uint256 amountOut)",
@@ -873,8 +863,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             addLog(`Approval required for WETH → GBLIN contract.`);
             const approveWethTx = prepareContractCall({
               contract: {
-                client: thirdwebClient,
-                chain: base,
                 address: WETH_ADDRESS as `0x${string}`,
               },
               method: "function approve(address spender, uint256 amount) returns (bool)",
@@ -902,8 +890,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           addLog(`Buying GBLIN with WETH...`);
           const buyTokenTx = prepareContractCall({
             contract: {
-              client: thirdwebClient,
-              chain: base,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
             method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
@@ -924,8 +910,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           // V6: redeem in-kind = sellGBLIN (era redeemInKind in V5)
           const redeemTx = prepareContractCall({
             contract: {
-              client: thirdwebClient,
-              chain: base,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
             method: "function sellGBLIN(uint256 gblinAmount)",
@@ -948,8 +932,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           // Thirdweb: Sell GBLIN for ETH
           const sellTx = prepareContractCall({
             contract: {
-              client: thirdwebClient,
-              chain: base,
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
             method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
@@ -1034,8 +1016,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       // Thirdweb: Incentivized Rebalance
       const rebalanceTx = prepareContractCall({
         contract: {
-          client: thirdwebClient,
-          chain: base,
           address: CONTRACT_ADDRESS as `0x${string}`,
         },
         method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",
@@ -1115,8 +1095,6 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         // Thirdweb: Incentivized Rebalance
         const rebalanceTx = prepareContractCall({
           contract: {
-            client: thirdwebClient,
-            chain: base,
             address: CONTRACT_ADDRESS as `0x${string}`,
           },
           method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",

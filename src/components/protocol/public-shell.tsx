@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useActiveAccount, useActiveWallet, useDisconnect } from 'thirdweb/react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
 import { LANGUAGES } from './protocol-data';
@@ -18,8 +18,7 @@ interface PublicShellProps {
 }
 
 export function PublicShell({ children }: PublicShellProps) {
-  const account = useActiveAccount();
-  const activeWallet = useActiveWallet();
+  const { address: accountAddress } = useAccount();
   const { disconnect } = useDisconnect();
   const router = useRouter();
 
@@ -60,14 +59,14 @@ export function PublicShell({ children }: PublicShellProps) {
   );
 
   const handleDisconnect = useCallback(() => {
-    if (activeWallet) disconnect(activeWallet);
-  }, [activeWallet, disconnect]);
+    disconnect();
+  }, [disconnect]);
 
   return (
     <ProtocolShell
-      address={account?.address}
+      address={accountAddress}
       disconnectWallet={handleDisconnect}
-      isConnected={!!account?.address}
+      isConnected={!!accountAddress}
       language={language}
       openWallet={() => router.push('/account')}
       setLanguage={setLanguage}

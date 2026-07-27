@@ -517,6 +517,22 @@ const REQUIRED_QUERY: Record<string, Record<string, RegExp>> = {
   "/api/x402/health": { wallet: ADDRESS },
 };
 
+/**
+ * In-memory cache of unpaid 402 responses (per path, per Accept flavor).
+ *
+ * Why: this middleware is ~74% of the project's Fluid CPU. Nearly all of that
+ * is crawlers/agents (Bazaar indexers, x402scan, discovery probes) GETting the
+ * paid endpoints WITHOUT a payment — and the 402 they receive is deterministic
+ * per path: the exact-scheme `accepts[]` requirements contain no nonce or
+ * timestamp (the EIP-3009 nonce/validity is generated client-side when the
+ * agent signs). So we build each 402 once per warm instance and replay it,
+ * instead of re-running the full paywall pipeline on every probe. Requests
+ * that DO carry a payment header always go through the real pipeline.
+ */
+const PAYMENT_HEADERS = ["payment-signature", "x-payment"] as const;
+const CACHE_402_TTL_MS = 5 * 60 * 1000;
+const cache402 = new Map<string, { expires: number; status: number; headers: [string, string][]; body: ArrayBuffer }>();
+
 export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const rules = REQUIRED_QUERY[url.pathname];
@@ -539,7 +555,35 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return x402Middleware(req);
+  const hasPayment = PAYMENT_HEADERS.some((h) => req.headers.get(h));
+  const wantsHtml = (req.headers.get("accept") ?? "").includes("text/html");
+  const cacheKey = `${url.pathname}:${wantsHtml ? "html" : "json"}`;
+
+  if (!hasPayment && req.method === "GET") {
+    const hit = cache402.get(cacheKey);
+    if (hit && hit.expires > Date.now()) {
+      return new Response(hit.body.slice(0), { status: hit.status, headers: hit.headers });
+    }
+  }
+
+  const res = await x402Middleware(req);
+
+  if (!hasPayment && req.method === "GET" && res.status === 402) {
+    try {
+      const clone = res.clone();
+      const body = await clone.arrayBuffer();
+      cache402.set(cacheKey, {
+        expires: Date.now() + CACHE_402_TTL_MS,
+        status: res.status,
+        headers: [...res.headers.entries()],
+        body,
+      });
+    } catch {
+      // caching is best-effort; never break the live response
+    }
+  }
+
+  return res;
 }
 
 export const config = {
