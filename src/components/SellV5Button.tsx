@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 import { base } from "wagmi/chains";
 import { parseAbi } from "viem";
+import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 
 // GBLIN V5 (vecchio contratto in produzione)
 const V5_ADDRESS = "0x38DcDB3A381677239BBc652aed9811F2f8496345" as const;
@@ -62,6 +63,7 @@ export default function SellV5Button() {
         functionName: "sellGBLINForEth",
         args: [v5Bal, 0n],
         chainId: base.id,
+        dataSuffix: BUILDER_CODE_SUFFIX,
       });
       await publicClient!.waitForTransactionReceipt({ hash });
 

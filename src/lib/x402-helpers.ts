@@ -9,6 +9,7 @@
  * broadcast calldata for the agent's wallet to execute on-chain.
  */
 
+import { withBuilderSuffix } from "./builder-code";
 import {
   createPublicClient,
   encodeFunctionData,
@@ -518,8 +519,8 @@ export async function buildJitCalldata(
   return {
     minEthOut,
     steps: [
-      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN, calldata: sellCalldata, value: "0" },
-      { step: 2, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: swapCalldata, value: minEthOut.toString() },
+      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN, calldata: withBuilderSuffix(sellCalldata), value: "0" },
+      { step: 2, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: minEthOut.toString() },
     ],
   };
 }
@@ -616,10 +617,10 @@ export async function buildInvestCalldata(
 
   return {
     steps: [
-      { step: 1, description: "Approve USDC to SwapRouter02 for WETH swap", target: USDC, calldata: approveRouterCalldata, value: "0" },
-      { step: 2, description: "Swap USDC→WETH via SwapRouter02 exactInputSingle", target: SWAP_ROUTER_02, calldata: swapCalldata, value: "0" },
-      { step: 3, description: "Approve WETH to GBLIN contract", target: WETH, calldata: approveWethCalldata, value: "0" },
-      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN, calldata: buyCalldata, value: "0" },
+      { step: 1, description: "Approve USDC to SwapRouter02 for WETH swap", target: USDC, calldata: withBuilderSuffix(approveRouterCalldata), value: "0" },
+      { step: 2, description: "Swap USDC→WETH via SwapRouter02 exactInputSingle", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: "0" },
+      { step: 3, description: "Approve WETH to GBLIN contract", target: WETH, calldata: withBuilderSuffix(approveWethCalldata), value: "0" },
+      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN, calldata: withBuilderSuffix(buyCalldata), value: "0" },
     ],
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),

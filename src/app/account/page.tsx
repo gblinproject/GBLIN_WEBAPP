@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import Link from "next/link";
 import {
   WagmiProvider,
@@ -608,7 +609,7 @@ function AccountPageInner() {
         // users with "just enough" ETH to LI.FI for a pointless same-chain swap.
         if (ethBalance >= parseFloat(amount) + 0.00003) {
           await ensureBase();
-          const hash = await writeContractAsync({
+          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: GBLIN_WRITE_ABI,
             functionName: 'buyGBLIN',
@@ -628,7 +629,7 @@ function AccountPageInner() {
           const erc = new ethers.Contract(token, ERC20_ABI, provider);
           const allowance: bigint = await erc.allowance(address, CONTRACT_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
           if (allowance < amountIn) {
-            const approveHash = await writeContractAsync({
+            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
               address: token,
               abi: ERC20_APPROVE_ABI,
               functionName: 'approve',
@@ -637,7 +638,7 @@ function AccountPageInner() {
             });
             await provider.waitForTransaction(approveHash, 1, 60000);
           }
-          const hash = await writeContractAsync({
+          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: GBLIN_WRITE_ABI,
             functionName: 'buyGBLINWithToken',
@@ -691,14 +692,14 @@ function AccountPageInner() {
         await ensureBase();
         const gblinAmount = ethers.parseEther(amount);
         const hash = redeemOption === 'basket'
-          ? await writeContractAsync({
+          ? await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
               address: CONTRACT_ADDRESS as `0x${string}`,
               abi: GBLIN_WRITE_ABI,
               functionName: 'sellGBLIN',
               args: [gblinAmount],
               chainId: base.id,
             })
-          : await writeContractAsync({
+          : await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
               address: CONTRACT_ADDRESS as `0x${string}`,
               abi: GBLIN_WRITE_ABI,
               functionName: 'sellGBLINForEth',
@@ -993,7 +994,7 @@ function AccountPageInner() {
     (async () => {
       try {
         await ensureBase();
-        const hash = await writeContractAsync({
+        const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
           address: CONTRACT_ADDRESS as `0x${string}`,
           abi: GBLIN_WRITE_ABI,
           functionName: "transfer",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import { ethers } from 'ethers';
 import { ArrowRight, Check, ExternalLink, RefreshCw, Shield } from 'lucide-react';
 import { WagmiProvider, useSwitchChain, useWriteContract } from 'wagmi';
@@ -153,7 +154,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
       // 1. approve (se serve)
       if (needsApproval) {
         setSubmitStep(`Approve ${asset.symbol}`);
-        const approvalHash = await writeContractAsync({
+        const approvalHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
           address: asset.address as `0x${string}`,
           abi: WRITE_ABI,
           functionName: 'approve',
@@ -164,7 +165,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
       }
       // 2. buyGBLINInKind(token, amountIn, minGblinOut)
       setSubmitStep('Deposit');
-      const buyHash = await writeContractAsync({
+      const buyHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: WRITE_ABI,
         functionName: 'buyGBLINInKind',

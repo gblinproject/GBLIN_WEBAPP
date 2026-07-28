@@ -14,6 +14,7 @@
 import { parseAbiItem, type Abi, type AbiFunction } from 'viem';
 import { useSwitchChain, useWriteContract } from 'wagmi';
 import { base } from 'wagmi/chains';
+import { BUILDER_CODE_SUFFIX } from './builder-code';
 
 export interface PreparedCall {
   address: `0x${string}`;
@@ -65,6 +66,8 @@ export function useSendTransaction() {
           args: tx.args as never,
           value: tx.value,
           chainId: base.id,
+          // ERC-8021: attribute this transaction to the GBLIN app on Base.
+          dataSuffix: BUILDER_CODE_SUFFIX,
         });
         callbacks?.onSuccess?.({ transactionHash });
       } catch (error) {
