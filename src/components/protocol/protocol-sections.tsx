@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { Activity, ArrowRight, Cpu, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
+import { Activity, ArrowRight, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
 import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
@@ -278,89 +278,6 @@ function WalletPanel({ isConnected, address, openWallet, disconnectWallet, t }: 
         </button>
       </div>
     </div>
-  );
-}
-
-interface AgentStats {
-  total_paid_calls: number;
-  total_unique_agents: number;
-  total_usdc_earned: number;
-}
-
-function AgentStatsSection({ t }: { t: (key: string) => string }) {
-  const [stats, setStats] = useState<AgentStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/agent-stats')
-      .then(r => r.json())
-      .then((data: AgentStats) => {
-        if (typeof data?.total_unique_agents === 'number') {
-          setStats(data);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  const usdcEarned = typeof stats?.total_usdc_earned === 'number'
-    ? Number(stats.total_usdc_earned.toFixed(4))
-    : 0;
-
-  const kpis = [
-    {
-      label: t('agentStats.uniqueAgents') || 'AI Agents',
-      value: stats?.total_unique_agents ?? 0,
-      suffix: '',
-      hint: t('agentStats.uniqueAgentsHint') || 'Unique wallets connected',
-      color: 'text-amber-400',
-    },
-    {
-      label: t('agentStats.paidCalls') || 'Paid API Calls',
-      value: stats?.total_paid_calls ?? 0,
-      suffix: '',
-      hint: t('agentStats.paidCallsHint') || 'x402 micropayments verified',
-      color: 'text-emerald-400',
-    },
-    {
-      label: t('agentStats.usdcEarned') || 'USDC Earned',
-      value: usdcEarned,
-      suffix: ' USDC',
-      hint: t('agentStats.usdcEarnedHint') || 'Paid to protocol on Base',
-      color: 'text-white',
-    },
-  ];
-
-  return (
-    <section className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.05] via-[#080808] to-[#080808]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-      <div className="absolute -right-20 -top-10 h-48 w-48 rounded-full bg-amber-500/8 blur-[70px]" />
-      <div className="p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300">
-            <Cpu className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('agentStats.eyebrow') || 'On-chain · Base Mainnet'}</p>
-            <h2 className="font-serif text-xl sm:text-2xl tracking-tight text-white">{t('agentStats.title') || 'AI Agents using GBLIN'}</h2>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {kpis.map(kpi => (
-            <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-amber-500/20 transition-colors">
-              <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{kpi.label}</p>
-              <p className={`font-serif text-3xl sm:text-4xl leading-none tracking-tight ${kpi.color} ${loading ? 'animate-pulse opacity-40' : ''}`}>
-                {loading ? '—' : `${kpi.value}${kpi.suffix}`}
-              </p>
-              <p className="mt-3 text-[11px] text-zinc-500 leading-tight">{kpi.hint}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-[10px] text-zinc-600 leading-5">
-          {t('agentStats.sourceNote') || 'Data read directly from Base mainnet USDC Transfer events · Refreshed every 5 min'}
-        </p>
-      </div>
-    </section>
   );
 }
 
@@ -856,9 +773,6 @@ export function HomeView(props: HomeViewProps) {
           </div>
         </div>
       </section>
-
-      {/* AI AGENTS COUNTER */}
-      <AgentStatsSection t={t} />
 
       {/* PROTOCOL SNAPSHOT */}
       <section className="rounded-2xl border border-white/[0.07] bg-[#080808] overflow-hidden">
