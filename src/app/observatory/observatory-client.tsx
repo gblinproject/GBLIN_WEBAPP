@@ -157,7 +157,7 @@ export function GblinNumbers() {
       <StatCard label="Unique paying agents" value={stats.total_unique_agents.toLocaleString('en-US')} />
       <StatCard
         label="USDC earned"
-        value={`$${stats.total_usdc_earned.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+        value={`$${stats.total_usdc_earned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         note="Every payment is a USDC transfer to the fee wallet on Base — verifiable on-chain"
       />
     </div>

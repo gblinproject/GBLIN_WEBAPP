@@ -62,6 +62,19 @@ export default function ObservatoryPage() {
           discloses our own position in the data it measures.
         </p>
 
+        {/* ── GBLIN's own numbers ───────────────────────────────────────
+            Sits first because it is the only block on this page whose every
+            figure settles on-chain. The conflict-of-interest note travels with
+            it and must never be separated from the numbers it qualifies. */}
+        <h2 className="mt-12 text-xl font-semibold text-white">Paid agent calls received by GBLIN</h2>
+        <GblinNumbers />
+        <p className="mt-4 text-sm leading-7 text-zinc-400">
+          Conflict of interest, disclosed plainly: GBLIN operates 11 paid x402 endpoints, so we are a
+          participant in the market this observatory measures. Our numbers are on-chain-verifiable (USDC
+          transfers to the fee wallet on Base), our own traffic is excluded from the organic counts below, and
+          we never inflate Bazaar statistics with self-calls.
+        </p>
+
         {/* ── OACR ─────────────────────────────────────────────────────── */}
         <h2 className="mt-12 text-xl font-semibold text-white">The metric: Organic Agent Commerce Ratio (OACR)</h2>
         <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
@@ -114,16 +127,6 @@ export default function ObservatoryPage() {
             </div>
           ))}
         </div>
-
-        {/* ── GBLIN's own numbers ───────────────────────────────────────── */}
-        <h2 className="mt-12 text-xl font-semibold text-white">GBLIN&rsquo;s own numbers</h2>
-        <p className="mt-2 text-sm leading-7 text-zinc-400">
-          Conflict of interest, disclosed plainly: GBLIN operates 11 paid x402 endpoints, so we are a
-          participant in the market this observatory measures. Our numbers are on-chain-verifiable (USDC
-          transfers to the fee wallet on Base), our own traffic is excluded from the organic counts above, and
-          we never inflate Bazaar statistics with self-calls.
-        </p>
-        <GblinNumbers />
 
         {/* ── Methodology ───────────────────────────────────────────────── */}
         <h2 className="mt-12 scroll-mt-24 text-xl font-semibold text-white" id="methodology">
