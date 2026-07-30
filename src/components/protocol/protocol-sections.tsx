@@ -364,6 +364,172 @@ function AgentStatsSection({ t }: { t: (key: string) => string }) {
   );
 }
 
+interface MintVsPoolRow {
+  usd: number;
+  mintUsd: number;
+  poolUsd: number;
+  extraPct: number;
+}
+
+interface MintVsPoolPayload {
+  ethUsd: number;
+  mintUsd: number;
+  poolLiquidityUsd: number;
+  rows: MintVsPoolRow[];
+  updatedAt: number;
+}
+
+/**
+ * The single fact that separates this token from anything sold out of a
+ * liquidity pool: the contract quotes the same price per token at any order
+ * size. Shown as a live side-by-side rather than a claim, because the visitor
+ * can re-read both legs on BaseScan.
+ *
+ * This section is also where the DEX links live. They used to sit in the hero,
+ * which sent buyers into a pool holding a few hundred dollars.
+ */
+function MintVsPoolSection({ t }: { t: (key: string) => string }) {
+  const [data, setData] = useState<MintVsPoolPayload | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/mint-vs-pool')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((payload: MintVsPoolPayload) => {
+        if (Array.isArray(payload?.rows) && payload.rows.length > 0) setData(payload);
+        else setFailed(true);
+      })
+      .catch(() => setFailed(true));
+  }, []);
+
+  // Nothing verified means nothing shown — an empty comparison is worse than none.
+  if (failed && !data) return null;
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.05] via-[#080808] to-[#080808]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="p-6 sm:p-8">
+        <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-400/70 mb-2">{t('landing.mvpEyebrow')}</p>
+        <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-3">{t('landing.mvpTitle')}</h2>
+        <p className="max-w-2xl text-sm leading-7 text-white/50 mb-6">{t('landing.mvpIntro')}</p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] border-collapse text-left">
+            <thead>
+              <tr className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">
+                <th className="pb-3 pr-4 font-normal">{t('landing.mvpColSize')}</th>
+                <th className="pb-3 pr-4 font-normal text-emerald-400/80">{t('landing.mvpColMint')}</th>
+                <th className="pb-3 pr-4 font-normal">{t('landing.mvpColPool')}</th>
+                <th className="pb-3 font-normal">{t('landing.mvpColDiff')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0
+                ? [0, 1, 2, 3].map(i => (
+                    <tr className="border-t border-white/[0.06]" key={i}>
+                      <td className="py-4 pr-4" colSpan={4}>
+                        <div className="h-4 w-full animate-pulse rounded bg-white/5" />
+                      </td>
+                    </tr>
+                  ))
+                : rows.map(row => (
+                    <tr className="border-t border-white/[0.06]" key={row.usd}>
+                      <td className="py-4 pr-4 font-serif text-lg text-white">${row.usd.toLocaleString('en-US')}</td>
+                      <td className="py-4 pr-4 font-mono text-sm text-emerald-300">
+                        {formatCurrency(row.mintUsd, 2)}
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-500/60">/ token</span>
+                      </td>
+                      <td className="py-4 pr-4 font-mono text-sm text-zinc-400">
+                        {formatCurrency(row.poolUsd, 2)}
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-zinc-600">/ token</span>
+                      </td>
+                      <td className="py-4">
+                        {/* Past double the price a percentage stops being readable — say it as a multiple. */}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${row.extraPct >= 100 ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                          {row.extraPct >= 100
+                            ? `×${(row.poolUsd / row.mintUsd).toFixed(1)}`
+                            : `+${row.extraPct.toFixed(0)}%`}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-5 max-w-3xl text-[11px] leading-6 text-zinc-600">
+          {t('landing.mvpFootnote')}{' '}
+          <span className="text-zinc-400">{data ? formatCurrency(data.poolLiquidityUsd, 0) : '—'}</span>.{' '}
+          {t('landing.mvpFootnote2')}
+        </p>
+
+        {/* The DEX routes, kept honest and kept second. */}
+        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+          <p className="text-sm font-semibold text-white">{t('landing.mvpPoolsTitle')}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-white/50">{t('landing.mvpPoolsBody')}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
+              href="https://aerodrome.finance/swap?from=eth&to=0x36C81d7E1966310F305eA637e761Cf77F90852f0&chain0=8453&chain1=8453"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t('landing.mvpAero')} <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <a
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
+              href="https://app.uniswap.org/explore/pools/base/0xAb305c45F4E42A73909a49a6775e3f7782239dAE"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t('landing.mvpUni')} <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+          <p className="mt-4 text-[11px] leading-6 text-zinc-600">{t('hero.uniswapBotNote')}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * States the vault's size before the visitor finds it elsewhere, and explains
+ * why the mechanism makes that size not matter for their own entry and exit.
+ */
+function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onChainData: OnChainData | null }) {
+  const tvl = formatCurrency(onChainData?.tvl || 0);
+
+  return (
+    <section className="rounded-2xl border border-white/[0.07] bg-[#080808] p-6 sm:p-8">
+      <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-2">{t('landing.sizeEyebrow')}</p>
+      <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-3 max-w-2xl">{t('landing.sizeTitle')}</h2>
+      <p className="max-w-3xl text-sm leading-7 text-white/50">
+        {t('landing.sizeBodyA')} <span className="font-semibold text-white">{tvl}</span>{t('landing.sizeBodyB')}
+      </p>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <a
+          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
+          href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {t('landing.sizeCta')} <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+        <a
+          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
+          href={`https://basescan.org/token/${DISPLAY_CONTRACT_ADDRESS}#balances`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {t('landing.sizeHolders')} <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </div>
+    </section>
+  );
+}
+
 export function HomeView(props: HomeViewProps) {
   const { t, onChainData, basketData, lastYieldDistribution, discountPercentage, isMarketLoading, isOnChainLoading, isConnected, address, openWallet, disconnectWallet, copyContract, copied } = props;
 
@@ -383,204 +549,105 @@ export function HomeView(props: HomeViewProps) {
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                 {t('dashboard.verified')}
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-400">
-                <Activity className="h-3 w-3 text-emerald-400" />
-                Base Mainnet · Live
-              </div>
             </div>
             <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-3">{t('site.brandSubtitle')}</p>
-            <h1 className="font-serif text-[clamp(2.8rem,8vw,5.5rem)] leading-[0.9] tracking-tight text-white">
-              {t('hero.title1')}{' '}
+            <h1 className="font-serif text-[clamp(2.3rem,6.5vw,4.4rem)] leading-[0.98] tracking-tight text-white">
+              {t('landing.h1a')}{' '}
               <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text italic text-transparent">
-                {t('hero.title2')}
+                {t('landing.h1b')}
               </span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-white/55 sm:text-lg">{t('hero.desc')}</p>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-white/55 sm:text-lg">{t('landing.sub')}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                className="group inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
-                href="/account"
+                className="group inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
+                href="/buy-gblin"
               >
-                {t('nav.dashboard')}
+                {t('landing.cta')}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Link>
+              <Link
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-transparent px-5 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-400 transition hover:border-amber-500/25 hover:text-amber-300"
+                href="/vault"
+              >
+                {t('landing.ctaSecondary')}
+              </Link>
+            </div>
+            <p className="mt-3 text-xs leading-6 text-zinc-500">{t('landing.ctaMicro')}</p>
+
+            {/* Verifiable proof strip — every item is a link someone can re-read on Base. */}
+            <div className="mt-7 flex flex-wrap items-center gap-2">
               <button
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-transparent px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-400"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-[11px] font-mono text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-300"
                 onClick={copyContract}
                 type="button"
               >
                 <Copy className="h-3.5 w-3.5" />
                 {copied ? t('site.copied') : shortenAddress(DISPLAY_CONTRACT_ADDRESS)}
               </button>
+              <a
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-[11px] font-mono text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-300"
+                href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {t('landing.proofVerify')}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             </div>
-
-            {/* DEX pool CTAs — Aerodrome + Uniswap side by side */}
-            <div className="mt-5 grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 max-w-2xl">
-              {/* Aerodrome pool CTA */}
-              <div className="rounded-2xl border border-sky-500/30 bg-sky-500/[0.07] transition hover:border-sky-500/60 hover:bg-sky-500/[0.12]">
-                <a
-                  href="https://aerodrome.finance/swap?from=eth&to=0x36C81d7E1966310F305eA637e761Cf77F90852f0&chain0=8453&chain1=8453"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 px-5 py-3.5"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-sky-400 truncate">{t('hero.aerodromeLabel')}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">{t('hero.aerodromeHint')}</p>
-                    </div>
-                  </div>
-                  <ExternalLink className="h-4 w-4 shrink-0 text-sky-500/60 group-hover:text-sky-400 transition-colors" />
-                </a>
-              </div>
-              {/* Uniswap pool CTA */}
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] transition hover:border-emerald-500/60 hover:bg-emerald-500/[0.12]">
-                <a
-                  href="https://app.uniswap.org/explore/pools/base/0xAb305c45F4E42A73909a49a6775e3f7782239dAE"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 px-5 py-3.5"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400 truncate">{t('hero.uniswapLabel')}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">{t('hero.uniswapHint')}</p>
-                    </div>
-                  </div>
-                  <ExternalLink className="h-4 w-4 shrink-0 text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
-                </a>
-              </div>
-            </div>
-            <p className="mt-3 max-w-2xl text-[10px] leading-5 text-emerald-400/50">{t('hero.uniswapBotNote')}</p>
           </div>
-          {/* KPI tiles — larger on desktop, responsive on mobile */}
-          <div className="grid w-full min-w-0 grid-cols-2 gap-3 sm:gap-4 xl:w-[460px]">
-            {[
-              { label: t('dashboard.navTitle'), value: onChainData?.nav || '—', hint: t('dashboard.backing'), loading: isOnChainLoading, color: 'text-amber-400' },
-              { label: t('dashboard.tvlTitle'), value: formatCurrency(onChainData?.tvl || 0), hint: t('dashboard.assetsInVault'), loading: isOnChainLoading, color: 'text-emerald-400' },
-              { label: t('dashboard.supplyTitle'), value: onChainData?.totalSupply || '—', hint: t('dashboard.inCirculation'), loading: isOnChainLoading, color: 'text-white' },
-              { label: t('dashboard.totalYieldTitle'), value: `${formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH`, hint: t('dashboard.totalYieldDesc'), loading: isOnChainLoading, color: 'text-amber-400' },
-            ].map(kpi => (
-              <div key={kpi.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 sm:p-6 hover:border-amber-500/20 transition-colors">
-                <p className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{kpi.label}</p>
-                <p className={`font-serif text-2xl sm:text-3xl xl:text-[2.5rem] leading-none tracking-tight ${kpi.color} ${kpi.loading ? 'animate-pulse opacity-50' : ''} break-words`}>
-                  {kpi.loading ? '...' : kpi.value}
-                </p>
-                <p className="mt-3 text-[11px] sm:text-xs text-zinc-500 leading-tight">{kpi.hint}</p>
+
+          {/* One live stat, and what stands behind it. */}
+          <div className="w-full min-w-0 xl:w-[400px]">
+            <div className="rounded-[1.75rem] border border-amber-500/20 bg-amber-500/[0.04] p-6 sm:p-8">
+              <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('landing.navLabel')}</p>
+              <p className={`mt-3 font-serif text-[clamp(2.4rem,9vw,3.6rem)] leading-none tracking-tight text-white ${isOnChainLoading ? 'animate-pulse opacity-50' : ''} break-words`}>
+                {isOnChainLoading ? '...' : (onChainData?.nav || '—')}
+              </p>
+              <p className="mt-3 text-[11px] leading-5 text-zinc-500">{t('landing.navHint')}</p>
+
+              <div className="mt-6 border-t border-white/[0.07] pt-5">
+                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{t('landing.backedBy')}</p>
+                {basketData.length > 0 ? (
+                  <>
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/5">
+                      {basketData.map((asset, i) => (
+                        <div
+                          key={asset.address}
+                          className={i === 0 ? 'bg-amber-400' : i === 1 ? 'bg-sky-400' : 'bg-emerald-400'}
+                          style={{ width: `${Math.max(asset.realWeight, 0)}%` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-3 space-y-1.5">
+                      {basketData.map((asset, i) => (
+                        <div className="flex items-center justify-between text-xs" key={asset.address}>
+                          <span className="flex items-center gap-2 text-zinc-400">
+                            <span className={`h-2 w-2 rounded-full ${i === 0 ? 'bg-amber-400' : i === 1 ? 'bg-sky-400' : 'bg-emerald-400'}`} />
+                            {asset.name}
+                          </span>
+                          <span className="font-mono text-zinc-500">{formatWeight(asset.realWeight)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="h-2.5 w-full animate-pulse rounded-full bg-white/5" />
+                    <div className="h-3 w-2/3 animate-pulse rounded bg-white/5" />
+                  </div>
+                )}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── KILLER PROOF: 10y real backtest, GBLIN vs holding BTC/ETH ── */}
-      <ProofSection t={t} />
+      {/* ── WHAT YOU ACTUALLY PAY: mint vs pool, live from Base ── */}
+      <MintVsPoolSection t={t} />
 
       {/* ── APPRECIATION ENGINE: the 0.05% → treasury fee, explained ── */}
       <FeeEngineSection t={t} />
-
-      {/* SUNDAY CHALLENGE BANNER */}
-      <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.07] via-[#080808] to-rose-500/[0.04]">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
-        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-500/10 blur-[60px]" />
-        <div className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div className="flex items-start gap-4 min-w-0">
-            <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/15 text-amber-300">
-              <Shield className="h-6 w-6" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('sundayChallenge.eyebrow')}</p>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">{t('sundayChallenge.badge')}</span>
-              </div>
-              <h3 className="font-serif text-xl tracking-tight text-white sm:text-2xl">
-                {t('sundayChallenge.title')}
-              </h3>
-              <p className="mt-2 max-w-xl text-sm leading-7 text-white/50">
-                {t('sundayChallenge.body')}{' '}
-                <span className="font-semibold text-white/80">{t('sundayChallenge.bodyBold')}</span>{' '}
-                {t('sundayChallenge.bodyEnd')}{' '}
-                <span className="font-bold text-amber-400">{t('sundayChallenge.amount')}</span>{' '}
-                {t('sundayChallenge.bodyTail')}
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/account"
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.3)] sm:self-center"
-          >
-            <Shield className="h-4 w-4" />
-            {t('sundayChallenge.cta')}
-          </Link>
-        </div>
-      </section>
-
-      {/* DEFILLAMA TRACKED */}
-      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <a 
-              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-4"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                  <path d="M2 17l10 5 10-5"/>
-                  <path d="M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
-                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
-              </div>
-            </a>
-            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
-              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* AI AGENTS COUNTER */}
-      <AgentStatsSection t={t} />
-
-      {/* FEATURE CARDS */}
-      <section className="grid gap-3 md:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <Landmark className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.bankTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.bankDesc')}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-6 hover:border-amber-500/40 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <Shield className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.crashShieldTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.crashShieldDesc')}</p>
-          <p className="mt-2 text-[11px] leading-5 text-amber-400/60">{t('core.crashShieldBotNote')}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <TrendingUp className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.appreciationTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.appreciationDesc')}</p>
-        </div>
-      </section>
 
       {/* VAULT BASKET + YIELD */}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)]">
@@ -631,6 +698,13 @@ export function HomeView(props: HomeViewProps) {
           </div>
         </div>
       </section>
+
+      {/* ── HOW BIG THIS IS: the vault's own size, stated first ── */}
+      <VaultSizeSection t={t} onChainData={onChainData} />
+
+      {/* ── SIMULATED 10y backtest of the live shield logic — below the live facts ── */}
+      <ProofSection t={t} />
+
 
       {/* SECURITY & TRANSPARENCY */}
       <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] to-[#080808] overflow-hidden">
@@ -725,6 +799,67 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
+      {/* FEATURE CARDS */}
+      <section className="grid gap-3 md:grid-cols-3">
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
+            <Landmark className="h-5 w-5" />
+          </div>
+          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.bankTitle')}</p>
+          <p className="text-sm leading-7 text-white/50">{t('core.bankDesc')}</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-6 hover:border-amber-500/40 transition-all group">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
+            <Shield className="h-5 w-5" />
+          </div>
+          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.crashShieldTitle')}</p>
+          <p className="text-sm leading-7 text-white/50">{t('core.crashShieldDesc')}</p>
+          <p className="mt-2 text-[11px] leading-5 text-amber-400/60">{t('core.crashShieldBotNote')}</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.appreciationTitle')}</p>
+          <p className="text-sm leading-7 text-white/50">{t('core.appreciationDesc')}</p>
+        </div>
+      </section>
+
+      {/* DEFILLAMA TRACKED */}
+      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <a 
+              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
+                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
+                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
+              </div>
+            </a>
+            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
+              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI AGENTS COUNTER */}
+      <AgentStatsSection t={t} />
+
       {/* PROTOCOL SNAPSHOT */}
       <section className="rounded-2xl border border-white/[0.07] bg-[#080808] overflow-hidden">
         <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.1fr_0.9fr]">
@@ -768,6 +903,18 @@ export function HomeView(props: HomeViewProps) {
           </div>
         </div>
       </section>
+
+      {/* Mobile keeps the one action within thumb reach at every scroll depth. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 p-3 sm:hidden">
+        <Link
+          className="pointer-events-auto flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-[12px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
+          href="/buy-gblin"
+        >
+          {t('landing.cta')}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+      <div className="h-16 sm:hidden" aria-hidden="true" />
     </div>
   );
 }
@@ -973,6 +1120,12 @@ export function BuyView(props: BuyViewProps) {
 
   return (
     <div className="space-y-8">
+      {/* The page's own claim, put where the money is about to move. */}
+      <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] px-6 py-5">
+        <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-400/70">{t('landing.buyEyebrow')}</p>
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-white/60">{t('landing.buyIntro')}</p>
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         {/* ── Left info panel ── */}
         <div className={`${shellCard} p-7 sm:p-8 order-2 xl:order-1`}>
@@ -1232,6 +1385,11 @@ export function BuyView(props: BuyViewProps) {
               <ArrowRight className="h-5 w-5" />
             </button>
 
+            {/* The cost of the click, stated before the click. */}
+            <p className="text-center text-xs leading-6 text-zinc-500">
+              {mode === 'buy' ? t('landing.ctaMicro') : t('landing.sellMicro')}
+            </p>
+
             {tradeError ? <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{tradeError}</div> : null}
             {tradeTxHash ? (
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
@@ -1246,6 +1404,9 @@ export function BuyView(props: BuyViewProps) {
           ) : null}
         </div>
       </section>
+
+      {/* Answers the question a buyer asks right after quoting: why is the DEX price different? */}
+      <MintVsPoolSection t={t} />
     </div>
   );
 }
