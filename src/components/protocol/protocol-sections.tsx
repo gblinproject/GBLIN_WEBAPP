@@ -281,6 +281,68 @@ function WalletPanel({ isConnected, address, openWallet, disconnectWallet, t }: 
   );
 }
 
+/**
+ * Autonomous agents that paid to use the protocol, next to the NAV card in the
+ * hero. Counts only — the lifetime USDC total lives on /observatory, where the
+ * conflict-of-interest note that qualifies it sits with it.
+ *
+ * Renders nothing until real numbers arrive: a hero that flashes zeros reads
+ * worse than a hero that never mentioned agents.
+ */
+function AgentPulse({ t }: { t: (key: string) => string }) {
+  const [stats, setStats] = useState<{ calls: number; agents: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/agent-stats')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((data: { total_paid_calls?: number; total_unique_agents?: number }) => {
+        if (cancelled) return;
+        const calls = Number(data?.total_paid_calls ?? 0);
+        const agents = Number(data?.total_unique_agents ?? 0);
+        if (calls > 0 || agents > 0) setStats({ calls, agents });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!stats) return null;
+
+  return (
+    <Link
+      className="group mt-4 block rounded-[1.75rem] border border-emerald-500/20 bg-emerald-500/[0.04] p-6 transition hover:border-emerald-500/40 hover:bg-emerald-500/[0.07] sm:p-7"
+      href="/observatory"
+    >
+      {/* items-start keeps the dot on the first line when the label wraps on mobile. */}
+      <div className="flex items-start gap-2">
+        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 animate-pulse" />
+        <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-emerald-400/80">{t('landing.agentsEyebrow')}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <p className="font-serif text-[clamp(1.9rem,7vw,2.6rem)] leading-none tracking-tight text-white">
+            {stats.agents.toLocaleString('en-US')}
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('landing.agentsUnique')}</p>
+        </div>
+        <div>
+          <p className="font-serif text-[clamp(1.9rem,7vw,2.6rem)] leading-none tracking-tight text-white">
+            {stats.calls.toLocaleString('en-US')}
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('landing.agentsCalls')}</p>
+        </div>
+      </div>
+      <p className="mt-4 text-[11px] leading-5 text-zinc-500">{t('landing.agentsHint')}</p>
+      <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300/80 transition group-hover:text-emerald-200">
+        {t('landing.agentsCta')}
+        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
+  );
+}
+
 interface MintVsPoolRow {
   usd: number;
   mintUsd: number;
@@ -556,6 +618,9 @@ export function HomeView(props: HomeViewProps) {
                 )}
               </div>
             </div>
+
+            {/* Self-hides until real counts arrive. */}
+            <AgentPulse t={t} />
           </div>
         </div>
       </section>
