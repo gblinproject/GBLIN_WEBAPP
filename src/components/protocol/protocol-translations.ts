@@ -3,10 +3,10 @@ import type { Language } from '@/translations/index';
 export const protocolTranslations: Partial<Record<Language, any>> = {
   en: {
     landing: {
-      agentsEyebrow: "Autonomous AI agents · live on Base",
-      agentsUnique: "agents that paid on their own",
+      agentsEyebrow: "Paid API calls · live on Base",
+      agentsUnique: "wallets that have paid, all time",
       agentsCalls: "paid calls settled on-chain",
-      agentsHint: "No human clicked for them. Each call was paid in USDC over x402 and settles as a transfer on Base, so the count can be re-derived from the chain by anyone.",
+      agentsHint: "Every call was paid in USDC over the x402 protocol and settles as a transfer on Base, so anyone can re-derive these totals from the chain. Cumulative since launch — see the observatory for the breakdown.",
       agentsCta: "See the observatory",
       mvpFootnote2: "An order much larger than that depth would not realistically fill: most DEX interfaces block a swap once the price impact gets this high. That is a limit of the pool, not of the token — the contract itself quotes the same price at every size.",
       h1a: "Bitcoin, Ethereum and dollars.",
@@ -406,10 +406,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   it: {
     landing: {
-      agentsEyebrow: "Agenti AI autonomi · live su Base",
-      agentsUnique: "agenti che hanno pagato da soli",
+      agentsEyebrow: "Chiamate API pagate · live su Base",
+      agentsUnique: "wallet che hanno pagato, in totale",
       agentsCalls: "chiamate pagate e regolate on-chain",
-      agentsHint: "Nessun umano ha cliccato al posto loro. Ogni chiamata è stata pagata in USDC via x402 e si regola come trasferimento su Base: il conteggio è ricavabile dalla catena da chiunque.",
+      agentsHint: "Ogni chiamata è stata pagata in USDC tramite il protocollo x402 e si regola come trasferimento su Base: chiunque può ricavare questi totali dalla catena. Sono cumulativi dal lancio — il dettaglio è nell’osservatorio.",
       agentsCta: "Guarda l’osservatorio",
       mvpFootnote2: "Un ordine molto più grande di quella profondità non verrebbe realisticamente eseguito: la maggior parte delle interfacce DEX blocca uno scambio quando l'impatto sul prezzo sale così tanto. È un limite della pool, non del token: il contratto quota lo stesso prezzo a qualsiasi importo.",
       h1a: "Bitcoin, Ethereum e dollari.",
@@ -809,10 +809,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   es: {
     landing: {
-      agentsEyebrow: "Agentes de IA autónomos · en vivo en Base",
-      agentsUnique: "agentes que pagaron por su cuenta",
+      agentsEyebrow: "Llamadas API pagadas · en vivo en Base",
+      agentsUnique: "carteras que han pagado, en total",
       agentsCalls: "llamadas pagadas liquidadas on-chain",
-      agentsHint: "Ningún humano hizo clic por ellos. Cada llamada se pagó en USDC vía x402 y se liquida como una transferencia en Base: cualquiera puede rehacer la cuenta desde la cadena.",
+      agentsHint: "Cada llamada se pagó en USDC mediante el protocolo x402 y se liquida como una transferencia en Base: cualquiera puede rehacer estos totales desde la cadena. Son acumulados desde el lanzamiento — el desglose está en el observatorio.",
       agentsCta: "Ver el observatorio",
       mvpFootnote2: "Una orden mucho mayor que esa profundidad no se ejecutaría de forma realista: la mayoría de las interfaces DEX bloquean un intercambio cuando el impacto en el precio sube tanto. Es un límite del pool, no del token: el contrato cotiza el mismo precio en cualquier tamaño.",
       h1a: "Bitcoin, Ethereum y dólares.",
@@ -1149,10 +1149,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   fr: {
     landing: {
-      agentsEyebrow: "Agents IA autonomes · en direct sur Base",
-      agentsUnique: "agents qui ont payé d’eux-mêmes",
+      agentsEyebrow: "Appels API payés · en direct sur Base",
+      agentsUnique: "portefeuilles ayant payé, au total",
       agentsCalls: "appels payés réglés on-chain",
-      agentsHint: "Aucun humain n’a cliqué à leur place. Chaque appel a été payé en USDC via x402 et se règle comme un transfert sur Base : n’importe qui peut refaire le compte depuis la chaîne.",
+      agentsHint: "Chaque appel a été payé en USDC via le protocole x402 et se règle comme un transfert sur Base : n’importe qui peut refaire ces totaux depuis la chaîne. Ils sont cumulés depuis le lancement — le détail est dans l’observatoire.",
       agentsCta: "Voir l’observatoire",
       mvpFootnote2: "Un ordre bien plus grand que cette profondeur ne serait pas exécuté de manière réaliste : la plupart des interfaces DEX bloquent un échange lorsque l'impact sur le prix devient aussi élevé. C'est une limite du pool, pas du jeton : le contrat cote le même prix quelle que soit la taille.",
       h1a: "Bitcoin, Ethereum et dollars.",
@@ -1489,10 +1489,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   de: {
     landing: {
-      agentsEyebrow: "Autonome KI-Agenten · live auf Base",
-      agentsUnique: "Agenten, die von sich aus bezahlt haben",
+      agentsEyebrow: "Bezahlte API-Aufrufe · live auf Base",
+      agentsUnique: "Wallets, die bezahlt haben, insgesamt",
       agentsCalls: "bezahlte Aufrufe, on-chain abgerechnet",
-      agentsHint: "Kein Mensch hat für sie geklickt. Jeder Aufruf wurde in USDC über x402 bezahlt und wird als Transfer auf Base abgerechnet — die Zahl lässt sich von jedem aus der Chain nachrechnen.",
+      agentsHint: "Jeder Aufruf wurde in USDC über das x402-Protokoll bezahlt und wird als Transfer auf Base abgerechnet — jeder kann diese Summen aus der Chain nachrechnen. Sie sind kumuliert seit dem Start; die Aufschlüsselung steht im Observatorium.",
       agentsCta: "Zum Observatorium",
       mvpFootnote2: "Eine Order, die diese Tiefe deutlich übersteigt, würde realistisch nicht ausgeführt: die meisten DEX-Oberflächen blockieren einen Tausch, sobald der Preiseinfluss so hoch wird. Das ist eine Grenze des Pools, nicht des Tokens — der Vertrag stellt bei jeder Größe denselben Preis.",
       h1a: "Bitcoin, Ethereum und Dollar.",
@@ -1829,10 +1829,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   zh: {
     landing: {
-      agentsEyebrow: "自主 AI 代理 · Base 上实时",
-      agentsUnique: "个代理自行付费调用",
+      agentsEyebrow: "付费 API 调用 · Base 上实时",
+      agentsUnique: "个钱包累计付过费",
       agentsCalls: "次链上结算的付费调用",
-      agentsHint: "没有人替它们点击。每次调用都通过 x402 以 USDC 支付，并在 Base 上以转账结算，因此任何人都能从链上重新核对这个数字。",
+      agentsHint: "每次调用都通过 x402 协议以 USDC 支付，并在 Base 上以转账结算，任何人都能从链上重新核对这些总数。数据为上线以来的累计值——明细见观测站。",
       agentsCta: "查看观测站",
       mvpFootnote2: "远大于该深度的订单实际上无法成交：当价格影响升到这个程度时，多数 DEX 界面会直接拦截交易。这是池子的限制，不是代币的限制——合约本身在任何金额下报出的价格都相同。",
       h1a: "比特币、以太坊和美元。",
@@ -2169,10 +2169,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   ja: {
     landing: {
-      agentsEyebrow: "自律型 AI エージェント · Base 上でライブ",
-      agentsUnique: "体のエージェントが自ら支払いました",
+      agentsEyebrow: "有料 API 呼び出し · Base 上でライブ",
+      agentsUnique: "件のウォレットが累計で支払い",
       agentsCalls: "件の支払い済み呼び出しがオンチェーンで決済",
-      agentsHint: "人間が代わりにクリックしたわけではありません。各呼び出しは x402 経由で USDC で支払われ、Base 上の送金として決済されるため、この数字は誰でもチェーンから再計算できます。",
+      agentsHint: "各呼び出しは x402 プロトコル経由で USDC で支払われ、Base 上の送金として決済されるため、誰でもチェーンからこの合計を再計算できます。公開以来の累計値です。内訳はオブザーバトリーをご覧ください。",
       agentsCta: "オブザーバトリーを見る",
       mvpFootnote2: "その深さを大きく超える注文は現実には成立しません。価格への影響がここまで大きくなると、多くの DEX の画面は取引をブロックします。これはプールの限界であってトークンの限界ではありません。コントラクト自体はどの金額でも同じ価格を提示します。",
       h1a: "ビットコイン、イーサリアム、ドル。",
