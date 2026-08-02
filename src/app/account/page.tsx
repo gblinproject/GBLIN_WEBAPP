@@ -36,6 +36,9 @@ import {
   USDC_ADDRESS,
   WETH_ADDRESS,
   quoteTokenToWeth,
+  fetchOracleHealth,
+  UNCHECKED_ORACLE_HEALTH,
+  type OracleHealth,
   type TradeTokenOption,
 } from "@/components/protocol/protocol-data";
 import { BuyView } from "@/components/protocol/protocol-sections";
@@ -230,11 +233,24 @@ function AccountPageInner() {
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
   const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
+  const [oracleHealth, setOracleHealth] = useState<OracleHealth>(UNCHECKED_ORACLE_HEALTH);
 
   // Debug: log redeemOption changes
   useEffect(() => {
     console.log('[redeemOption] Changed to:', redeemOption);
   }, [redeemOption]);
+
+  // Read feed health once on mount so the ETH option is already disabled when the panel paints,
+  // rather than only failing at click time. Re-checked before the write regardless.
+  useEffect(() => {
+    let cancelled = false;
+    fetchOracleHealth().then((health) => {
+      if (cancelled) return;
+      setOracleHealth(health);
+      if (health.checked && !health.ethRedeemSafe) setRedeemOption('basket');
+    });
+    return () => { cancelled = true; };
+  }, []);
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(1);
   const [quote, setQuote] = useState('0');
@@ -690,6 +706,23 @@ function AccountPageInner() {
           return;
         }
         await ensureBase();
+
+        // KNOWN_ISSUES #5: with a feed the contract cannot price, the ETH exit dispatches its internal
+        // swap with no minimum. Checked at click time, not at render. The in-kind exit reads no oracle.
+        if (redeemOption !== 'basket') {
+          const health = await fetchOracleHealth();
+          setOracleHealth(health);
+          if (health.checked && !health.ethRedeemSafe) {
+            const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
+            setRedeemOption('basket');
+            setTradeError(
+              `Price feed unusable (${names}). ETH redemption is paused because the swap would go out ` +
+              `without a floor. Switched to basket redemption, which uses no price feed — your holding is not locked.`
+            );
+            return;
+          }
+        }
+
         const gblinAmount = ethers.parseEther(amount);
         const hash = redeemOption === 'basket'
           ? await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
@@ -1483,6 +1516,8 @@ function AccountPageInner() {
                   customTokenAddress={customTokenAddress}
                   quoteAssetLabel={quoteAssetLabel}
                   redeemOption={redeemOption}
+                  isEthRedeemBlocked={oracleHealth.checked && !oracleHealth.ethRedeemSafe}
+                  oracleHealth={oracleHealth}
                   resolvedTokenSymbol={resolvedTokenSymbol}
                   selectedToken={selectedToken}
                   setCustomTokenAddress={setCustomTokenAddress}

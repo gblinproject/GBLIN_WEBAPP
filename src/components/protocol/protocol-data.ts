@@ -50,6 +50,96 @@ export interface OnChainData {
   } | null;
 }
 
+/**
+ * Health of the three Chainlink feeds the contract prices the basket with.
+ *
+ * This mirrors `_getOraclePrice`, which returns 0 — rather than reverting — when a feed is stale,
+ * answers non-positively, or is unreachable. On the ETH exit path that zero propagates into the
+ * per-leg `amountOutMinimum`, so the internal swap goes out with no floor. The in-kind exit
+ * `sellGBLIN` reads no oracle and is unaffected, which is where we send people instead.
+ *
+ * `checked: false` means we could not read the chain. In that case nothing is blocked: refusing a
+ * redemption because our own RPC call failed would be worse than the state we are guarding against.
+ *
+ * Only a state we positively observed blocks the ETH exit — stale, or a non-positive answer. A read
+ * that fails tells us nothing about the feed (a rate-limited RPC looks identical to a dead aggregator
+ * from out here), so it downgrades the whole result to unchecked instead of counting as a fault.
+ * We therefore under-block rather than over-block: the guard is a convenience for people using our
+ * front end, not a safety property of the protocol.
+ */
+export type OracleFeedStatus = {
+  asset: string;
+  ageSeconds: number | null;
+  unusable: boolean;
+  reason: 'stale' | 'non-positive' | 'unreadable' | null;
+};
+
+export interface OracleHealth {
+  checked: boolean;
+  timeoutSeconds: number;
+  feeds: OracleFeedStatus[];
+  ethRedeemSafe: boolean;
+}
+
+export const UNCHECKED_ORACLE_HEALTH: OracleHealth = {
+  checked: false,
+  timeoutSeconds: 0,
+  feeds: [],
+  ethRedeemSafe: true,
+};
+
+export const fetchOracleHealth = async (): Promise<OracleHealth> => {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+
+    const [timeoutRaw, block] = await Promise.all([
+      contract.oracleTimeout(),
+      provider.getBlock('latest'),
+    ]);
+
+    const timeoutSeconds = Number(timeoutRaw);
+    // Price against block time, not the browser clock: a skewed local clock must not decide this.
+    const now = block ? Number(block.timestamp) : Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) return UNCHECKED_ORACLE_HEALTH;
+
+    const ASSET_NAMES = ['cbBTC', 'WETH', 'USDC'] as const;
+    const rawBasket = await Promise.all([0, 1, 2].map((i) => contract.basket(i).catch(() => null)));
+
+    const feeds = await Promise.all(
+      rawBasket.map(async (basketItem, i): Promise<OracleFeedStatus> => {
+        const asset = ASSET_NAMES[i];
+        if (!basketItem) return { asset, ageSeconds: null, unusable: false, reason: 'unreadable' };
+        try {
+          const oracle = new ethers.Contract(basketItem[1], ORACLE_ABI, provider);
+          const round = await oracle.latestRoundData();
+          const answer = BigInt(round[1]);
+          const ageSeconds = now - Number(round[3]);
+
+          // Same order of checks as _getOraclePrice, and the same strict `>` on the timeout.
+          if (ageSeconds > timeoutSeconds) return { asset, ageSeconds, unusable: true, reason: 'stale' };
+          if (answer <= 0n) return { asset, ageSeconds, unusable: true, reason: 'non-positive' };
+          return { asset, ageSeconds, unusable: false, reason: null };
+        } catch {
+          return { asset, ageSeconds: null, unusable: false, reason: 'unreadable' };
+        }
+      })
+    );
+
+    // A feed we could not read leaves us unable to make the claim at all, so we make none.
+    if (feeds.some((feed) => feed.reason === 'unreadable')) return UNCHECKED_ORACLE_HEALTH;
+
+    return {
+      checked: true,
+      timeoutSeconds,
+      feeds,
+      ethRedeemSafe: feeds.every((feed) => !feed.unusable),
+    };
+  } catch {
+    return UNCHECKED_ORACLE_HEALTH;
+  }
+};
+
 export interface TradeTokenOption {
   symbol: string;
   address: string;
@@ -132,6 +222,7 @@ export const GBLIN_ABI = [
   'function refreshWeights() public',
   'function lastYieldDistribution() view returns (uint256)',
   'function getDynamicReserve() view returns (uint256)',
+  'function oracleTimeout() view returns (uint256)',
   'function updateMaxSlippage(uint256 newMaxSlippage) external',
   'error SequencerDown()',
   'error DepositTooSmall()',

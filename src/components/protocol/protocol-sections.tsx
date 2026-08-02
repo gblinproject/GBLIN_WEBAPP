@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, ArrowRight, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
-import type { BasketItem, DashboardData, OnChainData, TransactionItem } from './protocol-data';
+import type { BasketItem, DashboardData, OnChainData, OracleHealth, TransactionItem } from './protocol-data';
 import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
@@ -79,6 +79,8 @@ interface BuyViewProps extends SharedViewProps {
   setAmount: (value: string) => void;
   quoteAssetLabel: string;
   redeemOption: 'eth' | 'basket';
+  isEthRedeemBlocked: boolean;
+  oracleHealth: OracleHealth;
   resolvedTokenSymbol: string;
   selectedToken: string;
   setCustomTokenAddress: (value: string) => void;
@@ -1001,7 +1003,7 @@ const FX_TO_USD: Record<string, number> = {
 };
 
 export function BuyView(props: BuyViewProps) {
-  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, buyTokenOptions, customTokenAddress, quoteAssetLabel, redeemOption, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken, tokenBalance } = props;
+  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, buyTokenOptions, customTokenAddress, quoteAssetLabel, redeemOption, isEthRedeemBlocked, oracleHealth, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken, tokenBalance } = props;
 
   // Detect language from <html lang> attribute (set by ProtocolShell) — lazy init avoids extra render
   const [detectedLang] = useState<string>(() => {
@@ -1257,15 +1259,39 @@ export function BuyView(props: BuyViewProps) {
 
             {/* Sell redeem option */}
             {mode === 'sell' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'eth' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('eth')} type="button">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
-                  <p className="mt-3 text-base font-semibold">ETH Only</p>
-                </button>
-                <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'basket' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('basket')} type="button">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
-                  <p className="mt-3 text-base font-semibold">Basket Tokens</p>
-                </button>
+              <div className="space-y-3">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <button
+                    aria-disabled={isEthRedeemBlocked}
+                    className={`rounded-2xl border px-4 py-4 text-left transition ${isEthRedeemBlocked ? 'cursor-not-allowed border-white/5 bg-black/30 text-zinc-600' : redeemOption === 'eth' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`}
+                    disabled={isEthRedeemBlocked}
+                    onClick={() => setRedeemOption('eth')}
+                    type="button"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
+                    <p className="mt-3 text-base font-semibold">ETH Only</p>
+                    {isEthRedeemBlocked ? (
+                      <p className="mt-1 text-[11px] font-medium text-amber-300/80">{t('trade.oracleGuard.badge')}</p>
+                    ) : null}
+                  </button>
+                  <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'basket' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('basket')} type="button">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
+                    <p className="mt-3 text-base font-semibold">Basket Tokens</p>
+                  </button>
+                </div>
+
+                {isEthRedeemBlocked ? (
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3" role="status">
+                    <p className="text-sm font-semibold text-amber-200">{t('trade.oracleGuard.title')}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-300">{t('trade.oracleGuard.body')}</p>
+                    <p className="mt-2 text-[11px] text-zinc-500">
+                      {oracleHealth.feeds
+                        .filter((feed) => feed.unusable)
+                        .map((feed) => `${feed.asset}: ${feed.reason === 'stale' && feed.ageSeconds !== null ? `${Math.floor(feed.ageSeconds / 3600)}h ${Math.floor((feed.ageSeconds % 3600) / 60)}m old` : feed.reason}`)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

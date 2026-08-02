@@ -80,6 +80,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "Output Asset",
       amountGblin: "GBLIN Amount",
       redeemOption: "Redeem Option",
+      oracleGuard: {
+        title: 'Price feed unusable — ETH redemption paused',
+        body: 'One of the price feeds the contract prices the basket with is not usable right now. On the ETH exit the contract would send its internal swap out without a minimum, so we have paused that path. Redeeming into basket tokens uses no price feed and is unaffected — your holding is not locked.',
+        badge: 'Paused',
+      },
       proRata: "Pro-Rata Basket",
       zapOut: "Zap-Out to Asset",
       slippage: "Slippage Tolerance",
@@ -318,6 +323,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "Asset di Output",
       amountGblin: "Quantità GBLIN",
       redeemOption: "Opzione di Riscatto",
+      oracleGuard: {
+        title: 'Feed di prezzo inutilizzabile — riscatto in ETH sospeso',
+        body: 'Uno dei feed di prezzo con cui il contratto valuta il paniere al momento non è utilizzabile. Sul riscatto in ETH il contratto invierebbe lo swap interno senza un minimo, quindi abbiamo sospeso quel percorso. Il riscatto in token del paniere non usa alcun feed e resta disponibile: i tuoi token non sono bloccati.',
+        badge: 'Sospeso',
+      },
       proRata: "Paniere Pro-Quota",
       zapOut: "Zap-Out verso Asset",
       slippage: "Tolleranza Slippage",
@@ -556,6 +566,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "Activo de Salida",
       amountGblin: "Cantidad GBLIN",
       redeemOption: "Opción de Canje",
+      oracleGuard: {
+        title: 'Feed de precio inutilizable — canje en ETH en pausa',
+        body: 'Uno de los feeds de precio con los que el contrato valora la cesta no es utilizable ahora mismo. En el canje a ETH el contrato enviaría su swap interno sin un mínimo, así que hemos pausado esa vía. El canje en tokens de la cesta no usa ningún feed y sigue disponible: tus tokens no están bloqueados.',
+        badge: 'En pausa',
+      },
       proRata: "Cesta Pro-Rata",
       zapOut: "Zap-Out a Activo",
       slippage: "Tolerancia de Deslizamiento",
@@ -747,6 +762,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "Actif de Sortie",
       amountGblin: "Quantité GBLIN",
       redeemOption: "Option de Rachat",
+      oracleGuard: {
+        title: 'Flux de prix inutilisable — rachat en ETH suspendu',
+        body: "L'un des flux de prix avec lesquels le contrat valorise le panier n'est pas utilisable actuellement. Sur le rachat en ETH, le contrat enverrait son swap interne sans minimum : cette voie est donc suspendue. Le rachat en jetons du panier n'utilise aucun flux de prix et reste disponible — vos jetons ne sont pas bloqués.",
+        badge: 'Suspendu',
+      },
       proRata: "Panier Pro-Rata",
       zapOut: "Zap-Out vers Actif",
       slippage: "Tolérance de Glissement",
@@ -938,6 +958,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "Ausgangs-Asset",
       amountGblin: "GBLIN Menge",
       redeemOption: "Einlöseoption",
+      oracleGuard: {
+        title: 'Preis-Feed unbrauchbar — ETH-Rücknahme pausiert',
+        body: 'Einer der Preis-Feeds, mit denen der Vertrag den Korb bewertet, ist derzeit nicht brauchbar. Beim Ausstieg in ETH würde der Vertrag seinen internen Swap ohne Mindestbetrag senden, daher haben wir diesen Weg pausiert. Die Rücknahme in Korb-Token nutzt keinen Preis-Feed und bleibt verfügbar — Ihre Token sind nicht gesperrt.',
+        badge: 'Pausiert',
+      },
       proRata: "Pro-Rata Korb",
       zapOut: "Zap-Out zu Asset",
       slippage: "Slippage-Toleranz",
@@ -1129,6 +1154,11 @@ export const translations: Record<Language, any> = {
       outputAsset: "输出资产",
       amountGblin: "GBLIN 数量",
       redeemOption: "赎回选项",
+      oracleGuard: {
+        title: '价格预言机不可用 — ETH 赎回已暂停',
+        body: '合约用于为资产篮子定价的其中一个价格预言机目前不可用。在 ETH 赎回路径上，合约会在没有最小成交量保护的情况下发出内部兑换，因此我们暂停了该路径。以篮子代币赎回不使用任何价格预言机，仍然可用 — 您的代币没有被锁定。',
+        badge: '已暂停',
+      },
       proRata: "比例篮子",
       zapOut: "Zap-Out 至资产",
       slippage: "滑点容差",
@@ -1242,6 +1272,13 @@ export const translations: Record<Language, any> = {
     }
   },
   ja: {
+    trade: {
+      oracleGuard: {
+        title: "価格フィードが利用不可 — ETH での償還を一時停止",
+        body: "コントラクトがバスケットの価格算定に使う価格フィードの一つが、現在利用できません。ETH での償還では、コントラクトが内部スワップを最小受取額なしで送信してしまうため、この経路を一時停止しました。バスケットトークンでの償還は価格フィードを使わないため影響を受けず、引き続き利用できます — 保有分がロックされることはありません。",
+        badge: "停止中",
+      },
+    },
     // ... (rest of the code remains the same)
     vault: {
       title: "黄金の金庫の内部",

@@ -20,6 +20,9 @@ import {
   WETH_ADDRESS,
   fetchMarketData,
   fetchOnChainData,
+  fetchOracleHealth,
+  UNCHECKED_ORACLE_HEALTH,
+  type OracleHealth,
   fetchTransactions,
   formatCurrency,
   formatTokenAmount,
@@ -105,6 +108,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
   const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
+  const [oracleHealth, setOracleHealth] = useState<OracleHealth>(UNCHECKED_ORACLE_HEALTH);
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(1);
   const [quote, setQuote] = useState('0');
@@ -926,6 +930,16 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             });
           });
         } else {
+          // Re-read rather than trust the render-time flag: the state can turn between paint and click.
+          // quoteSellGBLIN routes through the same conversion, so a floor derived from it would already
+          // carry the loss — the quote cannot be used to detect this.
+          const health = await fetchOracleHealth();
+          if (health.checked && !health.ethRedeemSafe) {
+            const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
+            setOracleHealth(health);
+            throw new Error(`ORACLE_UNUSABLE:${names}`);
+          }
+
           const ethOut = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
           const minAmountOut = (ethOut * (10000n - slippageBps)) / 10000n;
 
@@ -961,7 +975,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       const message = error instanceof Error ? error.message : 'Transaction failed.';
       const normalizedMessage = message.toLowerCase();
 
-      if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
+      if (message.startsWith('ORACLE_UNUSABLE:')) {
+        const names = message.slice('ORACLE_UNUSABLE:'.length);
+        setTradeError(`Price feed unusable (${names}). ETH redemption is paused because the swap would go out without a floor. Redeem in basket tokens instead — that path uses no price feed.`);
+      } else if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
         setTradeError('Transaction rejected in wallet.');
       } else if (normalizedMessage.includes('insufficient funds')) {
         setTradeError('Insufficient ETH for value plus gas.');
@@ -1148,10 +1165,36 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     await Promise.all([refreshOnChainData(), refreshTransactions()]);
   }, [address, addLog, eligibleRebalanceAssets, getProvider, isConnected, refreshOnChainData, refreshTransactions, t, sendTx]);
 
+  // A feed the contract cannot price makes the ETH exit swap out with no floor (KNOWN_ISSUES #5).
+  // The in-kind exit reads no oracle, so we move people onto it instead of leaving the choice open.
+  const isEthRedeemBlocked = oracleHealth.checked && !oracleHealth.ethRedeemSafe;
+
+  // Deliberately not folded into refreshOnChainData: that path returns early on a cache hit, which
+  // would leave the guard unevaluated on any revisit inside the TTL. A guard must not be cached.
+  useEffect(() => {
+    let cancelled = false;
+    const read = () => fetchOracleHealth().then((health) => {
+      if (cancelled) return;
+      setOracleHealth(health);
+      if (health.checked && !health.ethRedeemSafe) {
+        const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
+        addLog(`Oracle feed unusable (${names}). ETH redemption disabled; in-kind exit unaffected.`);
+      }
+    });
+    read();
+    const timer = setInterval(read, 60_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [addLog]);
+
+  useEffect(() => {
+    if (isEthRedeemBlocked && redeemOption === 'eth') setRedeemOption('basket');
+  }, [isEthRedeemBlocked, redeemOption]);
+
   const hasTradeQuote = mode === 'sell' && redeemOption === 'basket'
     ? quote !== '0' && quote !== 'Err' && quote !== 'Basket unavailable'
     : rawQuote > 0n;
-  const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote;
+  const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote
+    || (mode === 'sell' && redeemOption === 'eth' && isEthRedeemBlocked);
   // Bottone abilitato finché c'è un'opportunità su cui puntare (anche sotto-floor):
   // l'utente può tentare, il contratto decide. Disabilitato solo durante una tx in corso.
   const isArbDisabled = isArbitraging || !autoRebalanceOpportunity;
@@ -1195,9 +1238,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         gblinBalance={gblinBalance}
         inputBalance={inputBalanceDisplay}
         isLoadingQuote={isLoadingQuote}
+        isEthRedeemBlocked={isEthRedeemBlocked}
         isTradeDisabled={isTradeDisabled}
         isTransacting={isTransacting}
         mode={mode}
+        oracleHealth={oracleHealth}
         quote={quote}
         quoteAssetLabel={quoteAssetLabel}
         redeemOption={redeemOption}
