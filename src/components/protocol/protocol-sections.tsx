@@ -768,13 +768,13 @@ export function HomeView(props: HomeViewProps) {
               </div>
               <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.bugBountyDesc') || 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $50 Bug Bounty permanently open for anyone who can break the protocol mathematics.'}</p>
               <a 
-                href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
+                href="https://github.com/gblinproject/GBLIN-Protocol/tree/main/challenge"
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.1] px-3 py-2 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.15]"
               >
                 <ExternalLink className="h-3 w-3" />
-                {t('security.viewBounty') || 'View Bug Bounty'}
+                {t('security.viewBounty') || 'See the challenge'}
               </a>
             </div>
           </div>

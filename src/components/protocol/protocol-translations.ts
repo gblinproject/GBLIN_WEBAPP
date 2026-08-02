@@ -336,9 +336,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'No hidden allocations. The code is fully open-source and verified on BaseScan. Complete transparency from day one.',
       viewOnBasescan: 'View on BaseScan',
-      bugBountyTitle: '$50 Math Challenge',
-      bugBountyDesc: 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $50 Bug Bounty permanently open for anyone who can break the protocol mathematics.',
-      viewBounty: 'View Bug Bounty'
+      bugBountyTitle: "Beat Our Shield — open challenge",
+      bugBountyDesc: "The Crash Shield's parameters are governed by a 48h public timelock, and we've opened them to the world. Find a configuration that beats ours in the published backtest and passes the robustness check, and we schedule your parameters on the live mainnet contract, with your name credited permanently. No purchase, no fees, nothing to buy.",
+      viewBounty: "See the challenge"
     },
     aureus: {
       title: 'GBLIN Aureus',
@@ -739,9 +739,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Nessuna allocazione nascosta. Il codice è completamente open-source e verificato su BaseScan. Trasparenza totale dal primo giorno.',
       viewOnBasescan: 'Vedi su BaseScan',
-      bugBountyTitle: 'Sfida alla Matematica ($50)',
-      bugBountyDesc: 'Siamo così sicuri del nostro modello di ribilanciamento "Dynamic Volume Floor" che abbiamo un Bug Bounty da 50$ sempre aperto per chiunque riesca a violare la matematica del protocollo.',
-      viewBounty: 'Vedi Bug Bounty'
+      bugBountyTitle: "Beat Our Shield — sfida aperta",
+      bugBountyDesc: "I parametri del Crash Shield sono governati da un timelock pubblico di 48 ore, e li abbiamo aperti al mondo. Trova una configurazione che batte la nostra nel backtest pubblicato e supera il controllo di robustezza: schediamo i tuoi parametri sul contratto live, con il tuo nome accreditato per sempre. Nessun acquisto, nessuna commissione, niente da comprare.",
+      viewBounty: "Guarda la sfida"
     },
     aureus: {
       title: 'GBLIN Aureus',
@@ -1142,9 +1142,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Sin asignaciones ocultas. El código es completamente open-source y verificado en BaseScan. Transparencia total desde el primer día.',
       viewOnBasescan: 'Ver en BaseScan',
-      bugBountyTitle: 'Desafío Matemático ($50)',
-      bugBountyDesc: 'Estamos tan seguros de nuestro modelo de reequilibrio "Dynamic Volume Floor" que tenemos un Bug Bounty de $50 permanentemente abierto para quien pueda romper las matemáticas del protocollo.',
-      viewBounty: 'Ver Bug Bounty'
+      bugBountyTitle: "Beat Our Shield — desafío abierto",
+      bugBountyDesc: "Los parámetros del Crash Shield están gobernados por un timelock público de 48 horas, y los hemos abierto al mundo. Encuentra una configuración que supere la nuestra en el backtest publicado y pase la prueba de robustez: programaremos tus parámetros en el contrato en vivo, con tu nombre acreditado para siempre. Sin compras, sin comisiones, nada que comprar.",
+      viewBounty: "Ver el desafío"
     }
   },
   fr: {
@@ -1482,9 +1482,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Pas d\'allocations cachées. Le code est entièrement open-source et vérifié sur BaseScan. Transparence totale dès le premier jour.',
       viewOnBasescan: 'Voir sur BaseScan',
-      bugBountyTitle: 'Défi Mathématique (50$)',
-      bugBountyDesc: 'Nous sommes si confiants dans notre modèle de rééquilibrage "Dynamic Volume Floor" que nous avons un Bug Bounty de 50$ toujours ouvert pour quiconque parvient à violer les mathématiques du protocole.',
-      viewBounty: 'Voir le Bug Bounty'
+      bugBountyTitle: "Beat Our Shield — défi ouvert",
+      bugBountyDesc: "Les paramètres du Crash Shield sont régis par un timelock public de 48 heures, et nous les avons ouverts au monde. Trouvez une configuration qui bat la nôtre dans le backtest publié et passe le contrôle de robustesse : nous programmons vos paramètres sur le contrat en production, avec votre nom crédité pour toujours. Aucun achat, aucun frais, rien à acheter.",
+      viewBounty: "Voir le défi"
     }
   },
   de: {
@@ -1822,9 +1822,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: 'Keine verborgenen Zuteilungen. Der Code ist vollständig Open-Source und auf BaseScan verifiziert. Vollständige Transparenz vom ersten Tag an.',
       viewOnBasescan: 'Auf BaseScan ansehen',
-      bugBountyTitle: '$50 Mathe-Herausforderung',
-      bugBountyDesc: 'Wir sind so zuversichtlich in unserem "Dynamic Volume Floor"-Rebalancing-Modell, dass wir ein permanentes $50 Bug Bounty für jeden offen haben, der die Mathematik des Protokolls brechen kann.',
-      viewBounty: 'Bug Bounty ansehen'
+      bugBountyTitle: "Beat Our Shield — offene Herausforderung",
+      bugBountyDesc: "Die Parameter des Crash Shield werden über einen öffentlichen 48h-Timelock verwaltet, und wir haben sie für alle geöffnet. Finde eine Konfiguration, die unsere im veröffentlichten Backtest schlägt und den Robustheitstest besteht: Wir planen deine Parameter auf dem Live-Vertrag ein, mit deinem Namen dauerhaft genannt. Kein Kauf, keine Gebühren, nichts zu erwerben.",
+      viewBounty: "Zur Herausforderung"
     }
   },
   zh: {
@@ -2162,9 +2162,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & Open Source',
       openSourceDesc: '没有隐藏分配。代码完全开源并在 BaseScan 上验证。从第一天起就完全透明。',
       viewOnBasescan: '在 BaseScan 上查看',
-      bugBountyTitle: '$50 数学挑战',
-      bugBountyDesc: '我们对我们的"动态交易量底"再平衡模型非常有信心，因此我们为任何能够破解协议数学的人永久开放 $50 漏洞赏金。',
-      viewBounty: '查看漏洞赏金'
+      bugBountyTitle: "Beat Our Shield — 公开挑战",
+      bugBountyDesc: "Crash Shield 的参数由 48 小时公开时间锁治理，我们已经把它们向所有人开放。如果你能在公开的回测中找到胜过我们的参数配置，并通过稳健性检验，我们就会把你的参数安排到主网合约上，并永久署上你的名字。无需购买，没有费用，没有任何东西要买。",
+      viewBounty: "查看挑战"
     }
   },
   ja: {
@@ -2502,9 +2502,9 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       openSourceTitle: 'Zero Pre-Mint & オープンソース',
       openSourceDesc: '隠された割り当てはありません。コードは完全にオープンソースで、BaseScan で検証されています。初日から完全な透明性を確保。',
       viewOnBasescan: 'BaseScan で表示',
-      bugBountyTitle: '$50 数学チャレンジ',
-      bugBountyDesc: '私たちは "Dynamic Volume Floor" リバランス・モデルに非常に自信があるため、プロトコルの数学を破ることができる人のために $50 のバグ・バウンティを常時開放しています。',
-      viewBounty: 'バグ・バウンティを見る'
+      bugBountyTitle: "Beat Our Shield — 公開チャレンジ",
+      bugBountyDesc: "Crash Shield のパラメータは48時間の公開タイムロックで管理されており、私たちはそれを世界に開放しました。公開されたバックテストで私たちを上回り、頑健性チェックを通過する構成を見つけたら、あなたのパラメータをメインネットの稼働中コントラクトに設定し、あなたの名前を永続的にクレジットします。購入不要、手数料なし、買うものは何もありません。",
+      viewBounty: "チャレンジを見る"
     }
   }
 };
