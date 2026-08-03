@@ -451,7 +451,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/attestation": {
       accepts: accepts("$0.003"),
       description:
-        "GBLIN Risk Attestation: a perishable (10-minute), verifiable proof of the current BTC/ETH risk regime (calm | elevated | crash) derived from the on-chain Crash Shield. Attach it to your action as proof-of-diligence; any counterparty verifies it in one step (EIP-712 signature when configured, else tamper-evident id). Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+        "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-minute) proof of the current BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. A third-party ERC-8004 agent already consumes it daily as a pinned input of its published decision rule. Attach it to your action as proof-of-diligence. FREE integration sample (same shape, no payment): GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
@@ -566,7 +566,30 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const res = await x402Middleware(req);
+  let res: Response = await x402Middleware(req);
+
+  // The x402 spec expects the payment challenge in BOTH the PAYMENT-REQUIRED
+  // header and the response body; @x402/next emits it header-only, so
+  // body-reading clients fail closed (flagged by X402 Doctor as
+  // CHALLENGE_IN_BODY). Mirror the decoded header into the body — JSON flavor
+  // only, and only when the body is empty, so the HTML paywall is untouched.
+  if (res.status === 402 && !wantsHtml) {
+    const header = res.headers.get("payment-required");
+    if (header) {
+      try {
+        const bodyText = (await res.clone().text()).trim();
+        if (bodyText === "" || bodyText === "{}") {
+          const challenge = Buffer.from(header, "base64").toString("utf-8");
+          JSON.parse(challenge); // mirror only if the header decodes to valid JSON
+          const headers = new Headers(res.headers);
+          headers.set("content-type", "application/json");
+          res = new Response(challenge, { status: 402, headers });
+        }
+      } catch {
+        // mirroring is best-effort; never break the live response
+      }
+    }
+  }
 
   if (!hasPayment && req.method === "GET" && res.status === 402) {
     try {

@@ -21,6 +21,7 @@
     "web": "https://gblin.digital/agents",
     "x402Base": "https://gblin.digital/api/x402",
     "x402Manifest": "https://gblin.digital/.well-known/x402",
+    "x402AttestationSample": "https://gblin.digital/api/x402/attestation-sample",
     "llmsTxt": "https://gblin.digital/api/x402/llms.txt"
   },
   "skills": [
@@ -51,7 +52,7 @@
     {
       "id": "risk_attestation",
       "name": "Signed risk attestation",
-      "description": "EIP-712 signed proof-of-diligence an agent can attach to its own actions.",
+      "description": "EIP-712 signed proof-of-diligence, verifiable offline in one step — no trust in the server required. Consumed daily by a third-party ERC-8004 agent as a pinned input of its published decision rule. Free integration sample at /api/x402/attestation-sample.",
       "price": "0.003 USDC"
     }
   ],

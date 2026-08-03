@@ -58,13 +58,23 @@ moving capital"); any counterparty verifies it in one step — EIP-712 signature
 an attestor key is configured, else a tamper-evident attestation_id. Expires in 10
 minutes, so re-fetch each decision cycle. Free verifier: \`verify_risk_attestation\`
 in @gblin-protocol/mcp-server.
+Stable field contract (consumed in production by third-party agents — these names
+will not change without versioning): \`regime\` (calm|elevated|crash),
+\`shield_active\`, \`severity_pct\`, \`defensive_cash_pct\`, \`expires_at\`.
+A third-party ERC-8004 agent pins this attestation as a required input of its
+published decision rule and buys it daily.
+
+### GET /api/x402/attestation-sample        (FREE)
+Static integration-testing sample of the attestation: identical shape and EIP-712
+schema, \`sample: true\`, permanently expired \`expires_at\`. Wire your parser and
+verifier against this, then switch the URL to the paid route.
 
 ## Network
 
 - Chain:       Base mainnet (CAIP-2 eip155:8453)
 - Asset:       USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
 - Scheme:      exact (EIP-3009 transferWithAuthorization)
-- Protocol:    x402 v2 — payment requirements are returned in the PAYMENT-REQUIRED response header (body stays empty)
+- Protocol:    x402 v2 — payment requirements are returned in the PAYMENT-REQUIRED response header AND mirrored as JSON in the 402 body (both header-reading and body-reading clients work)
 - Facilitator: Coinbase CDP (default when configured) or PayAI (https://facilitator.payai.network); the PAYMENT-REQUIRED header always announces the active one
 
 ## Notes for agents
