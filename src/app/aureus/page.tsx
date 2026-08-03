@@ -65,6 +65,26 @@ type Stats = {
   top_trades: Trade[];
   all_trades: Trade[];
   metrics?: Metrics;
+  esperimenti?: Experiments;
+};
+type Experiments = {
+  twin_flip?: {
+    aperti: { asset: string; direction: string; entry_price: number; opened_at: number }[];
+    chiusi: number;
+    netto_usd: number;
+  };
+  twin_trail?: { chiusi: number; netto_usd: number };
+  intraday_shadow?: { chiusi: number; netto_usd: number };
+  twin_lb?: { aperti: number; chiusi: number; netto_usd: number };
+  funding_disp?: {
+    osservazioni: number;
+    aperte: { asset: string; long: string; short: string; accrued_usd: number; opened_at: number }[];
+    chiuse_v2: number;
+    netto_v2_usd: number;
+    nozionale_gamba: number;
+  };
+  memoria_asset?: Record<string, number>;
+  memoria_min_campioni?: number;
 };
 
 async function getStats(): Promise<Stats | null> {
@@ -448,6 +468,78 @@ function AureusContent() {
                     )}
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {s.esperimenti && Object.keys(s.esperimenti).length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-xl font-semibold mb-1">{t('aureus.experimentsHeading')}</h2>
+              <p className="text-xs text-gray-500 mb-4">{t('aureus.experimentsNote')}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {s.esperimenti.twin_flip && (
+                  <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-xl p-4">
+                    <div className="font-bold mb-2">{t('aureus.expTwinFlip')}</div>
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <p>{s.esperimenti.twin_flip.aperti.length} {t('aureus.expOpen')} · {s.esperimenti.twin_flip.chiusi} {t('aureus.expClosed')}</p>
+                      <p className={pnlColor(s.esperimenti.twin_flip.netto_usd)}>
+                        {t('aureus.expNet')}: {fmtUsd(s.esperimenti.twin_flip.netto_usd)}
+                      </p>
+                      {s.esperimenti.twin_flip.aperti.map((p) => (
+                        <p key={p.asset} className="text-gray-500">{p.asset} {p.direction} @ ${p.entry_price.toFixed(2)}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {s.esperimenti.intraday_shadow && (
+                  <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-xl p-4">
+                    <div className="font-bold mb-2">{t('aureus.expIntraday')}</div>
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <p>{s.esperimenti.intraday_shadow.chiusi} {t('aureus.expClosed')}</p>
+                      <p className={pnlColor(s.esperimenti.intraday_shadow.netto_usd)}>
+                        {t('aureus.expNet')}: {fmtUsd(s.esperimenti.intraday_shadow.netto_usd)}
+                      </p>
+                      <p className="text-gray-500">{t('aureus.expIntradayNote')}</p>
+                    </div>
+                  </div>
+                )}
+                {s.esperimenti.funding_disp && (
+                  <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-xl p-4">
+                    <div className="font-bold mb-2">{t('aureus.expFdisp')}</div>
+                    <div className="text-xs text-gray-400 space-y-1">
+                      <p>{s.esperimenti.funding_disp.osservazioni.toLocaleString()} {t('aureus.expObs')} · {s.esperimenti.funding_disp.aperte.length} {t('aureus.expOpen')} · {s.esperimenti.funding_disp.chiuse_v2} {t('aureus.expClosed')}</p>
+                      <p className={pnlColor(s.esperimenti.funding_disp.netto_v2_usd)}>
+                        {t('aureus.expNet')}: {fmtUsd(s.esperimenti.funding_disp.netto_v2_usd)} (${s.esperimenti.funding_disp.nozionale_gamba}/leg)
+                      </p>
+                      {s.esperimenti.funding_disp.aperte.slice(0, 4).map((p) => (
+                        <p key={p.asset} className="text-gray-500">
+                          {p.asset}: {p.long} → {p.short} · {fmtUsd(p.accrued_usd, 3)}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-xl p-4">
+                  <div className="font-bold mb-2">{t('aureus.expOther')}</div>
+                  <div className="text-xs text-gray-400 space-y-1">
+                    {s.esperimenti.twin_lb && (
+                      <p>{t('aureus.expTsmomLb')}: {s.esperimenti.twin_lb.aperti} {t('aureus.expOpen')} · {s.esperimenti.twin_lb.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.twin_lb.netto_usd)}</p>
+                    )}
+                    {s.esperimenti.twin_trail && (
+                      <p>{t('aureus.expTrail')}: {s.esperimenti.twin_trail.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.twin_trail.netto_usd)}</p>
+                    )}
+                    {s.esperimenti.memoria_asset && Object.keys(s.esperimenti.memoria_asset).length > 0 ? (
+                      <>
+                        <p className="pt-1">{t('aureus.expMemAsset')} ({t('aureus.expSamples')} {s.esperimenti.memoria_min_campioni ?? 25}):</p>
+                        {Object.entries(s.esperimenti.memoria_asset).slice(0, 5).map(([k, n]) => (
+                          <p key={k} className="text-gray-500">{k.replace('/@', ' @').replace('/', ' ')} · {n}</p>
+                        ))}
+                      </>
+                    ) : (
+                      <p className="pt-1 text-gray-500">{t('aureus.expMemAsset')}: {t('aureus.expNoData')}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           )}
