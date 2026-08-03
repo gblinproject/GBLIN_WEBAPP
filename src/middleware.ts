@@ -450,8 +450,10 @@ const x402Middleware = paymentProxy(
     },
     "/api/x402/attestation": {
       accepts: accepts("$0.003"),
+      // NB: tenere la descrizione SOTTO i 512 caratteri — a 540 il facilitator
+      // CDP rifiutava la verifica del pagamento con un 400 (03/08/2026).
       description:
-        "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-minute) proof of the current BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. A third-party ERC-8004 agent already consumes it daily as a pinned input of its published decision rule. Attach it to your action as proof-of-diligence. FREE integration sample (same shape, no payment): GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+        "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-min) proof of the BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. Consumed daily by a third-party ERC-8004 agent as a pinned input of its decision rule. FREE sample: GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
