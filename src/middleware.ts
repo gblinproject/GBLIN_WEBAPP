@@ -571,9 +571,11 @@ export async function middleware(req: NextRequest) {
   // The x402 spec expects the payment challenge in BOTH the PAYMENT-REQUIRED
   // header and the response body; @x402/next emits it header-only, so
   // body-reading clients fail closed (flagged by X402 Doctor as
-  // CHALLENGE_IN_BODY). Mirror the decoded header into the body — JSON flavor
-  // only, and only when the body is empty, so the HTML paywall is untouched.
-  if (res.status === 402 && !wantsHtml) {
+  // CHALLENGE_IN_BODY). Mirror the decoded header into the body — only when
+  // the body is empty, so a rendered HTML paywall (if any) is never replaced.
+  // Verified in production: the HTML flavor also ships an empty `{}` body, so
+  // the mirror applies to both flavors.
+  if (res.status === 402) {
     const header = res.headers.get("payment-required");
     if (header) {
       try {
