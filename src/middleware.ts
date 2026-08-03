@@ -530,7 +530,11 @@ const REQUIRED_QUERY: Record<string, Record<string, RegExp>> = {
  * that DO carry a payment header always go through the real pipeline.
  */
 const PAYMENT_HEADERS = ["payment-signature", "x-payment"] as const;
-const CACHE_402_TTL_MS = 5 * 60 * 1000;
+// 60 min: the 402 is deterministic per path and requirements only change on
+// deploy — and a deploy recycles the instances (and their in-memory cache).
+// Was 5 min, which still re-ran the full paywall pipeline ~12x/hour per
+// instance under constant crawler probing.
+const CACHE_402_TTL_MS = 60 * 60 * 1000;
 const cache402 = new Map<string, { expires: number; status: number; headers: [string, string][]; body: ArrayBuffer }>();
 
 export async function middleware(req: NextRequest) {

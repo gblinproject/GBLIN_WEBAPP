@@ -40,9 +40,12 @@ const iface = new ethers.Interface([
   'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)',
 ]);
 
-// Next.js route segment config — let Next cache the response briefly so we
-// don't hammer Basescan when multiple users hit the protocol page at once.
-export const revalidate = 30;
+// Next.js route segment config — let Next cache the response so we don't
+// hammer Basescan/RPC when multiple users hit the protocol page at once.
+// 10 min: rebalances happen roughly daily (incentivizedRebalance is a daily
+// keeper poke), so 30s revalidation was pure CPU burn — the log-scan fallback
+// pages through eth_getLogs on every regeneration.
+export const revalidate = 600;
 
 // Attribution block — additive, consumed by third parties citing our data.
 const SOURCE = {
