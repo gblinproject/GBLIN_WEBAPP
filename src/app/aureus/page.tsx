@@ -76,6 +76,13 @@ type Experiments = {
   twin_trail?: { chiusi: number; netto_usd: number };
   intraday_shadow?: { chiusi: number; netto_usd: number };
   twin_lb?: { aperti: number; chiusi: number; netto_usd: number };
+  short_sleeve?: {
+    aperti: { asset: string; entry_price: number; opened_at: number }[];
+    chiusi: number;
+    netto_usd: number;
+  };
+  cascade_sig?: { aperti: number; chiusi: number; netto_usd: number };
+  cascade_liq?: { aperti: number; chiusi: number; netto_usd: number };
   funding_disp?: {
     osservazioni: number;
     aperte: { asset: string; long: string; short: string; accrued_usd: number; opened_at: number }[];
@@ -527,6 +534,15 @@ function AureusContent() {
                     )}
                     {s.esperimenti.twin_trail && (
                       <p>{t('aureus.expTrail')}: {s.esperimenti.twin_trail.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.twin_trail.netto_usd)}</p>
+                    )}
+                    {s.esperimenti.short_sleeve && (
+                      <p>{t('aureus.expShortSleeve')}: {s.esperimenti.short_sleeve.aperti.length} {t('aureus.expOpen')} · {s.esperimenti.short_sleeve.chiusi} {t('aureus.expClosed')} · <span className={pnlColor(s.esperimenti.short_sleeve.netto_usd)}>{fmtUsd(s.esperimenti.short_sleeve.netto_usd)}</span></p>
+                    )}
+                    {s.esperimenti.cascade_sig && (
+                      <p>{t('aureus.expCascadeSig')}: {s.esperimenti.cascade_sig.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.cascade_sig.netto_usd)}</p>
+                    )}
+                    {s.esperimenti.cascade_liq && (
+                      <p>{t('aureus.expCascadeLiq')}: {s.esperimenti.cascade_liq.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.cascade_liq.netto_usd)}</p>
                     )}
                     {s.esperimenti.memoria_asset && Object.keys(s.esperimenti.memoria_asset).length > 0 ? (
                       <>
