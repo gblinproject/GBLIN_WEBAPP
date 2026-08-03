@@ -225,6 +225,24 @@ export default function AgentsPage() {
         <pre className="mt-10 p-4 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 overflow-x-auto">
           <code>npx @gblin-protocol/mcp-server</code>
         </pre>
+
+        <p className="mt-4 text-sm text-white/60">
+          No install? Use the hosted MCP (Streamable HTTP, free read-only
+          tools):{' '}
+          <code className="text-white/80 break-all">
+            https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
+          </code>{' '}
+          — also on{' '}
+          <a
+            href="https://smithery.ai/servers/gblin-protocol/mcp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-amber-200 hover:text-amber-100"
+          >
+            Smithery
+          </a>
+          .
+        </p>
       </section>
 
       {/* ───────── Why GBLIN ───────── */}

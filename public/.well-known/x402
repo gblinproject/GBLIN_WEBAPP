@@ -23,19 +23,19 @@
       "path": "/api/x402/quote",
       "method": "GET",
       "price": "0.001",
-      "description": "Quote USDC→GBLIN with fees"
+      "description": "Quote USDC\u2192GBLIN with fees"
     },
     {
       "path": "/api/x402/invest",
       "method": "GET",
       "price": "0.002",
-      "description": "4-step unsigned calldata for USDC→GBLIN"
+      "description": "4-step unsigned calldata for USDC\u2192GBLIN"
     },
     {
       "path": "/api/x402/jit",
       "method": "GET",
       "price": "0.005",
-      "description": "JIT unsigned calldata for GBLIN→USDC"
+      "description": "JIT unsigned calldata for GBLIN\u2192USDC"
     },
     {
       "path": "/api/x402/governance",
@@ -53,5 +53,13 @@
   "contact": "info@gblin.digital",
   "website": "https://gblin.digital",
   "docs": "https://gblin.digital/agents",
-  "contract": "0x36C81d7E1966310F305eA637e761Cf77F90852f0"
+  "contract": "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+  "mcp": {
+    "stdio": "npx @gblin-protocol/mcp-server",
+    "http": "https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp",
+    "smithery": "https://smithery.ai/servers/gblin-protocol/mcp",
+    "registry": "io.github.gblinproject/gblin-mcp-server",
+    "note": "Free read-only MCP tools (live risk regime, attestation sample, stats). Paid data stays on the x402 endpoints above."
+  },
+  "attestationSample": "https://gblin.digital/api/x402/attestation-sample"
 }

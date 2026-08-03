@@ -23,7 +23,10 @@ Contract:    0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet, chain id 
 Owner:       48h Timelock 0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
 Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
-MCP server:  @gblin-protocol/mcp-server (npm)
+MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
+MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
+             no install: live risk regime, attestation sample, stats — free.
+             Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
 
 ## Paid endpoints
 
