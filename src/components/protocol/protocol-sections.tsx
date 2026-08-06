@@ -631,11 +631,11 @@ export function HomeView(props: HomeViewProps) {
         </div>
       </section>
 
-      {/* ── WHAT YOU ACTUALLY PAY: mint vs pool, live from Base ── */}
-      <MintVsPoolSection t={t} />
-
       {/* ── APPRECIATION ENGINE: the 0.05% → treasury fee, explained ── */}
       <FeeEngineSection t={t} />
+
+      {/* ── WHAT YOU ACTUALLY PAY: mint vs pool, live from Base ── */}
+      <MintVsPoolSection t={t} />
 
       {/* VAULT BASKET + YIELD */}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)]">
