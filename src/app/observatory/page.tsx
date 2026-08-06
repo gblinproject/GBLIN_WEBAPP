@@ -4,7 +4,7 @@ import { GblinNumbers, LiveSection } from './observatory-client';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'The GBLIN Agent Economy Observatory separates signal from noise in agentic commerce: live x402 Bazaar probes, dated verified snapshots, third-party research and the Organic Agent Commerce Ratio (OACR). Free, public, machine-readable, CC BY 4.0.';
+  'Measured data on agentic commerce: live x402 Bazaar probes, dated snapshots, third-party research and the Organic Agent Commerce Ratio. Free, CC BY 4.0.';
 
 export const metadata: Metadata = {
   title: 'Agent Economy Observatory — GBLIN Protocol',

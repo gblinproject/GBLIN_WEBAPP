@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
+const PAGE_TITLE = 'GBLIN FAQ: BTC + ETH + USDC token on Base, minted at NAV';
 const PAGE_DESCRIPTION =
-  'GBLIN is a reserve-backed token on Base holding cbBTC, WETH and USDC. Mint and redeem directly against the contract at NAV: no pool slippage, a 0.10% one-time fee, zero management fees. Answers to the most common questions.';
+  'GBLIN is a reserve-backed token on Base holding cbBTC, WETH and USDC. Mint and redeem at NAV: no pool slippage, 0.10% one-time fee, no management fee.';
 
 export const metadata: Metadata = {
-  title: 'FAQ — GBLIN: a BTC + ETH + USDC basket token on Base, minted at NAV',
+  title: { absolute: PAGE_TITLE },
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: 'FAQ — GBLIN: a BTC + ETH + USDC basket token on Base, minted at NAV',
+    title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
     url: `${SITE_URL}/faq`,
     type: 'website',

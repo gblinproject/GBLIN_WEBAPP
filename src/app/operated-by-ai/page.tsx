@@ -3,7 +3,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is operated by AI in public: audits, fixes, releases and strategy are produced by AI systems; the human founder only signs transactions. Every operational claim on this page links to verifiable evidence — on-chain transactions, npm releases, registry entries and public commits.';
+  'GBLIN is operated by AI in public: audits, fixes and releases come from AI systems, the human founder only signs. Every claim links to verifiable evidence.';
 
 export const metadata: Metadata = {
   title: 'Operated by AI — GBLIN Protocol Transparency',

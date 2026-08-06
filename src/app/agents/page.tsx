@@ -4,10 +4,10 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is a risk-managed treasury option for AI agents on Base mainnet — managed crypto exposure with capped drawdown (for surplus capital, not a USDC substitute). Open-source MCP server with 10 tools: an on-chain market-risk signal, free risk-attestation verification, live NAV, dynamic-slippage quotes, deterministic two-step Just-In-Time GBLIN→USDC redemption for x402 payments, treasury health, governance verification, agent-to-agent skill propagation, and keeper bounties (GBLIN pays agents to rebalance). Works with Claude, Windsurf, Coinbase AgentKit, and Eliza out of the box.';
+  'A risk-managed treasury option for AI agents on Base: free MCP server with 10 tools, on-chain risk signals, live NAV quotes and JIT redemption for x402.';
 
 export const metadata: Metadata = {
-  title: 'GBLIN — The Machine Reserve · AI Agent Treasury on Base',
+  title: { absolute: 'GBLIN for AI agents — treasury and x402 tools on Base' },
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/agents` },
   openGraph: {

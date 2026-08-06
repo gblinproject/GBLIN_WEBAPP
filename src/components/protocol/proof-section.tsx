@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, ExternalLink, ShieldCheck, TrendingUp, Lock, Coins } from 'lucide-react';
 import { DISPLAY_CONTRACT_ADDRESS, WHITEPAPER_URL } from './protocol-data';
+import { NavFeesInline } from './nav-fees';
 
 type T = (key: string) => string;
 
@@ -232,6 +233,41 @@ export function FeeEngineSection({ t }: { t: T }) {
             <ExternalLink className="h-3.5 w-3.5" /> {t('feeEngine.verify')}
           </a>
         </div>
+
+        {/* What you don't pay — the number that scales with the reader, not with our size. */}
+        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
+          <p className="text-sm font-semibold text-white">{t('feeEngine.costTitle')}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-white/50">{t('feeEngine.costIntro')}</p>
+
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                <tr className="border-b border-white/[0.07]">
+                  <th className="pb-3 pr-4 font-normal">{t('feeEngine.costCol0')}</th>
+                  <th className="pb-3 pr-4 font-normal text-amber-400/80">{t('feeEngine.costCol1')}</th>
+                  <th className="pb-3 font-normal">{t('feeEngine.costCol2')}</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono text-zinc-300">
+                <tr className="border-b border-white/[0.04]">
+                  <td className="py-3 pr-4 font-sans text-zinc-400">{t('feeEngine.costRow1')}</td>
+                  <td className="py-3 pr-4 text-amber-300">$1</td>
+                  <td className="py-3 text-zinc-400">$20</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-sans text-zinc-400">{t('feeEngine.costRow2')}</td>
+                  <td className="py-3 pr-4 text-amber-300">$1</td>
+                  <td className="py-3 text-zinc-400">$100</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4 max-w-2xl text-[11px] leading-5 text-zinc-500">{t('feeEngine.costNote')}</p>
+        </div>
+
+        {/* The running total, where the mechanism above gives it context. */}
+        <NavFeesInline t={t} />
       </div>
     </section>
   );

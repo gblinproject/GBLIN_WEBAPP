@@ -8,6 +8,7 @@ import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatToken
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
 import { ProofSection, FeeEngineSection } from './proof-section';
+import { NavFeesHeroLine } from './nav-fees';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -619,6 +620,9 @@ export function HomeView(props: HomeViewProps) {
                   </div>
                 )}
               </div>
+
+              {/* Where the fee goes — and the running total, once it earns the space. */}
+              <NavFeesHeroLine t={t} />
             </div>
 
             {/* Self-hides until real counts arrive. */}

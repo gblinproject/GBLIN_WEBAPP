@@ -16,12 +16,12 @@ const OG_IMAGE =
 // Lightweight JPG + fresh filename so X/Twitterbot fetches it reliably (no stale cache).
 const OG_BANNER = `${SITE_URL}/og-gblin-v2.jpg`;
 const SITE_DESCRIPTION =
-  "GBLIN is a non-speculative on-chain index on Base Network. 45% cbBTC + 45% WETH + 10% USDC. Algorithmic rebalancing, transparent NAV, no team allocation, no VC, no presale. Wealth preservation, not speculation.";
+  "One token holding cbBTC, WETH and USDC on Base. Mint and redeem directly from the contract at NAV: same price at any size, 0.10% once, no management fee.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GBLIN — Wealth Preservation Protocol on Base | The Golden Vault",
+    default: "GBLIN — BTC + ETH + USDC in one token on Base",
     template: "%s | GBLIN",
   },
   description: SITE_DESCRIPTION,

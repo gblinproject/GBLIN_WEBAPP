@@ -4,7 +4,7 @@ import { ProtocolApp } from '@/components/protocol/protocol-app';
 export const metadata: Metadata = {
   title: 'Dashboard — Live NAV, TVL & Basket Composition',
   description:
-    'Real-time GBLIN dashboard: NAV per token, total value locked, basket weights (cbBTC / WETH / USDC), stability fund, and dynamic reserve. All data sourced directly from Base Mainnet.',
+    'Live GBLIN dashboard: NAV per token, total value locked, basket weights (cbBTC / WETH / USDC) and stability fund — read directly from Base mainnet.',
   alternates: { canonical: 'https://gblin.digital/dashboard' },
 };
 
