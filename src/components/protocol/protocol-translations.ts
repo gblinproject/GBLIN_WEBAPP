@@ -3,9 +3,10 @@ import type { Language } from '@/translations/index';
 export const protocolTranslations: Partial<Record<Language, any>> = {
   en: {
     landing: {
-      feeMechLabel: "0.10% once, then nothing",
+      ledgerEyebrow: "The vault never takes. It adds.",
+      ledgerGiven: "returned to the reserves, owned by holders",
+      ledgerTimes: "times since launch",
       feeMechBody: "Half of that fee stays in the reserves, owned by every holder. No management fee, ever.",
-      feeMechSoFar: "added to the reserves by purchases since launch",
       agentsEyebrow: "Paid API calls · live on Base",
       agentsUnique: "wallets that have paid, all time",
       agentsCalls: "paid calls settled on-chain",
@@ -439,9 +440,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   it: {
     landing: {
-      feeMechLabel: "0,10% una volta sola, poi nulla",
+      ledgerEyebrow: "Il vault non preleva mai. Aggiunge.",
+      ledgerGiven: "restituiti alle riserve, di chi detiene il token",
+      ledgerTimes: "volte dal lancio",
       feeMechBody: "Metà di quella commissione resta nelle riserve, di chi detiene il token. Nessuna commissione di gestione, mai.",
-      feeMechSoFar: "aggiunti alle riserve dagli acquisti dal lancio",
       agentsEyebrow: "Chiamate API pagate · live su Base",
       agentsUnique: "wallet che hanno pagato, in totale",
       agentsCalls: "chiamate pagate e regolate on-chain",
@@ -875,9 +877,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   es: {
     landing: {
-      feeMechLabel: "0,10% una sola vez, después nada",
+      ledgerEyebrow: "La bóveda nunca cobra. Añade.",
+      ledgerGiven: "devueltos a las reservas, de los tenedores",
+      ledgerTimes: "veces desde el lanzamiento",
       feeMechBody: "La mitad de esa comisión se queda en las reservas, propiedad de cada tenedor. Sin comisión de gestión, nunca.",
-      feeMechSoFar: "añadidos a las reservas por las compras desde el lanzamiento",
       agentsEyebrow: "Llamadas API pagadas · en vivo en Base",
       agentsUnique: "carteras que han pagado, en total",
       agentsCalls: "llamadas pagadas liquidadas on-chain",
@@ -1229,9 +1232,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   fr: {
     landing: {
-      feeMechLabel: "0,10% une seule fois, puis rien",
+      ledgerEyebrow: "Le coffre ne prélève jamais. Il ajoute.",
+      ledgerGiven: "rendus aux réserves, propriété des détenteurs",
+      ledgerTimes: "fois depuis le lancement",
       feeMechBody: "La moitié de ces frais reste dans les réserves, propriété de chaque détenteur. Aucun frais de gestion, jamais.",
-      feeMechSoFar: "ajoutés aux réserves par les achats depuis le lancement",
       agentsEyebrow: "Appels API payés · en direct sur Base",
       agentsUnique: "portefeuilles ayant payé, au total",
       agentsCalls: "appels payés réglés on-chain",
@@ -1583,9 +1587,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   de: {
     landing: {
-      feeMechLabel: "0,10% einmalig, danach nichts",
+      ledgerEyebrow: "Der Vault nimmt nie. Er gibt.",
+      ledgerGiven: "in die Reserven zurückgeflossen, den Haltern gehörend",
+      ledgerTimes: "Mal seit dem Start",
       feeMechBody: "Die Hälfte dieser Gebühr bleibt in den Reserven und gehört allen Haltern. Keine Verwaltungsgebühr, niemals.",
-      feeMechSoFar: "seit dem Start durch Käufe in die Reserven geflossen",
       agentsEyebrow: "Bezahlte API-Aufrufe · live auf Base",
       agentsUnique: "Wallets, die bezahlt haben, insgesamt",
       agentsCalls: "bezahlte Aufrufe, on-chain abgerechnet",
@@ -1937,9 +1942,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   zh: {
     landing: {
-      feeMechLabel: "仅在买入时收取一次 0.10%",
+      ledgerEyebrow: "金库从不收取，只会增加。",
+      ledgerGiven: "回到储备金，归持有者所有",
+      ledgerTimes: "次，自上线以来",
       feeMechBody: "其中一半留在储备金中，归每一位持有者所有。永远没有管理费。",
-      feeMechSoFar: "自上线以来由购买注入储备金",
       agentsEyebrow: "付费 API 调用 · Base 上实时",
       agentsUnique: "个钱包累计付过费",
       agentsCalls: "次链上结算的付费调用",
@@ -2291,9 +2297,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   ja: {
     landing: {
-      feeMechLabel: "0.10%は一度だけ、その後はゼロ",
+      ledgerEyebrow: "保管庫は決して取りません。増やします。",
+      ledgerGiven: "準備金に戻され、保有者のものに",
+      ledgerTimes: "回、ローンチ以降",
       feeMechBody: "その手数料の半分は準備金に残り、すべての保有者のものになります。管理手数料は一切ありません。",
-      feeMechSoFar: "ローンチ以降、購入によって準備金に加わった額",
       agentsEyebrow: "有料 API 呼び出し · Base 上でライブ",
       agentsUnique: "件のウォレットが累計で支払い",
       agentsCalls: "件の支払い済み呼び出しがオンチェーンで決済",

@@ -18,9 +18,11 @@
  * There is deliberately no eth_getLogs fallback: every public Base RPC caps a
  * log query at 10k blocks or less, so covering the contract's life would take
  * ~200 sequential calls per request — too slow, and too expensive in function
- * CPU. When Blockscout is unavailable we serve the last good figure, or none
- * at all. A number this page publishes must never be a synthesised zero: an
- * incomplete scan is reported as an outage, not as "no fees yet".
+ * CPU. When Blockscout is unavailable we fall back to the last live figure and
+ * then to a hand-verified baseline, both flagged `stale`. What we never do is
+ * synthesise a zero: an incomplete scan is an outage, not "no fees yet". This
+ * figure leads the home page, so it has to degrade into an older truth rather
+ * than into a lie or a blank.
  *
  * Cache: 15 minutes in memory, plus the platform fetch cache, so the upstream
  * sees roughly one request per window regardless of traffic.
@@ -39,6 +41,16 @@ const BLOCKSCOUT_URL = "https://base.blockscout.com/api";
 
 /** Block the production contract was deployed in (Base, 21 June 2026). */
 const DEPLOY_BLOCK = 47_600_000n;
+
+/**
+ * Last figure verified by hand against the chain, used when the log source is
+ * throttling or down. The sum only ever grows, so a stale baseline understates
+ * the truth and can never overstate it — the safe direction for a number we
+ * publish about ourselves. Refresh it when the live value has moved well past.
+ *
+ * Verified 6 August 2026, through block 49,608,956.
+ */
+const BASELINE = { weth: 0.000172362220579918, events: 181 };
 
 const FEED_ABI = [
   {
@@ -65,6 +77,8 @@ export interface NavFeesPayload {
   events: number;
   ethUsd: number;
   updatedAt: number;
+  /** True when the log source was unreachable and the verified baseline is served. */
+  stale?: boolean;
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1_000;
@@ -143,16 +157,41 @@ export async function GET() {
     return Response.json(payload, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
-  } catch (error) {
-    // Serve a stale payload rather than nothing: the figure is slow-moving.
+  } catch {
+    // The log source is throttling or down. Serve the last live figure if this
+    // instance has one, otherwise the hand-verified baseline. Both are real
+    // measurements; neither is a synthesised zero.
     if (cache) {
-      return Response.json(cache.payload, {
-        headers: { "Cache-Control": "public, max-age=60, s-maxage=60" },
-      });
+      return Response.json(
+        { ...cache.payload, stale: true },
+        { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
+      );
     }
-    return Response.json(
-      { error: error instanceof Error ? error.message : "unavailable" },
-      { status: 503 },
-    );
+
+    try {
+      const feed = await client.readContract({
+        address: ETH_USD_FEED,
+        abi: FEED_ABI,
+        functionName: "latestRoundData",
+      });
+      const ethUsd = Number(feed[1]) / 1e8;
+      if (Number.isFinite(ethUsd) && ethUsd > 0) {
+        return Response.json(
+          {
+            weth: BASELINE.weth,
+            usd: BASELINE.weth * ethUsd,
+            events: BASELINE.events,
+            ethUsd,
+            updatedAt: Date.now(),
+            stale: true,
+          } satisfies NavFeesPayload,
+          { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
+        );
+      }
+    } catch {
+      // Price feed unreachable too: fall through to the error below.
+    }
+
+    return Response.json({ error: "log source unavailable" }, { status: 503 });
   }
 }

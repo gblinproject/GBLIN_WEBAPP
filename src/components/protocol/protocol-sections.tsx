@@ -8,7 +8,7 @@ import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatToken
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateButton from "@/components/MigrateButton";
 import { ProofSection, FeeEngineSection } from './proof-section';
-import { NavFeesHeroLine } from './nav-fees';
+import { NavFeesHeroLedger } from './nav-fees';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -588,6 +588,9 @@ export function HomeView(props: HomeViewProps) {
               </p>
               <p className="mt-3 text-[11px] leading-5 text-zinc-500">{t('landing.navHint')}</p>
 
+              {/* Taken from holders, next to given back — the fee ledger, live. */}
+              <NavFeesHeroLedger t={t} />
+
               <div className="mt-6 border-t border-white/[0.07] pt-5">
                 <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{t('landing.backedBy')}</p>
                 {basketData.length > 0 ? (
@@ -620,9 +623,6 @@ export function HomeView(props: HomeViewProps) {
                   </div>
                 )}
               </div>
-
-              {/* Where the fee goes — and the running total, once it earns the space. */}
-              <NavFeesHeroLine t={t} />
             </div>
 
             {/* Self-hides until real counts arrive. */}

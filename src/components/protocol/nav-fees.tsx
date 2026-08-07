@@ -4,18 +4,13 @@
  * NavFees — the share of buyers' fees that stayed in the reserves and lifted
  * the NAV for every holder, summed from the contract's YieldDistributed events.
  *
- * The figure is published wherever it has context (the fee section, the vault),
- * and promotes itself into the hero only once it clears PROMOTE_USD. Next to a
- * four-figure NAV per token, a cumulative figure of a few cents reads as "this
- * is all the project ever produced" — the same reason the lifetime x402 revenue
- * lives on /observatory rather than in the hero. Nothing is hidden: the number
- * is one click away, and it moves up on its own as purchases accumulate.
+ * It leads the hero, by the founder's call: the claim above it ("the vault
+ * never takes, it adds") is what gives the figure its meaning, and the count
+ * of distributions underneath shows it is a running total rather than a
+ * one-off. Small today; it only ever grows, and it belongs to holders.
  */
 
 import { useEffect, useState } from 'react';
-
-/** Above this, in US dollars, the figure earns a place in the hero. */
-const PROMOTE_USD = 50;
 
 export interface NavFees {
   weth: number;
@@ -25,18 +20,37 @@ export interface NavFees {
   updatedAt: number;
 }
 
+/**
+ * Reads the figure, retrying a few times before giving up. The upstream log
+ * source throttles, and this number leads the hero: one unlucky request must
+ * not leave a dash sitting where the headline figure belongs.
+ */
 export function useNavFees(): NavFees | null {
   const [data, setData] = useState<NavFees | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/nav-fees')
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
-      .then((payload: NavFees) => {
+
+    const attempt = async (left: number): Promise<void> => {
+      if (cancelled) return;
+      try {
+        const res = await fetch('/api/nav-fees');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = (await res.json()) as NavFees;
         if (cancelled) return;
-        if (Number.isFinite(payload?.usd) && payload.events > 0) setData(payload);
-      })
-      .catch(() => undefined);
+        if (Number.isFinite(payload?.usd) && payload.events > 0) {
+          setData(payload);
+          return;
+        }
+        throw new Error('payload without a usable figure');
+      } catch {
+        if (cancelled || left <= 0) return;
+        await new Promise(resolve => setTimeout(resolve, 2_000));
+        return attempt(left - 1);
+      }
+    };
+
+    void attempt(3);
     return () => {
       cancelled = true;
     };
@@ -53,27 +67,38 @@ export function formatFeeUsd(usd: number): string {
 }
 
 /**
- * Hero strip. Always states the mechanism; adds the running total only once it
- * is large enough to help rather than undercut.
+ * Hero ledger: what the protocol has taken from holders, next to what it has
+ * given back. The left column is a constant zero by design; the right one is
+ * live. If the log source is unreachable the right column degrades to a dash
+ * and the mechanism sentence still stands on its own.
  */
-export function NavFeesHeroLine({ t }: { t: (key: string) => string }) {
+export function NavFeesHeroLedger({ t }: { t: (key: string) => string }) {
   const fees = useNavFees();
-  const promoted = fees !== null && fees.usd >= PROMOTE_USD;
 
   return (
     <div className="mt-6 border-t border-white/[0.07] pt-5">
-      <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500">
-        {t('landing.feeMechLabel')}
-      </p>
-      <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('landing.feeMechBody')}</p>
-      {promoted && fees ? (
-        <p className="mt-3 font-serif text-2xl leading-none tracking-tight text-amber-400">
-          {formatFeeUsd(fees.usd)}{' '}
-          <span className="font-sans text-[11px] font-normal tracking-normal text-zinc-500">
-            {t('landing.feeMechSoFar')}
-          </span>
+      <div className="flex items-start gap-2">
+        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />
+        <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/80">
+          {t('landing.ledgerEyebrow')}
         </p>
-      ) : null}
+      </div>
+
+      <div className="mt-4">
+        <p className="font-serif text-[clamp(2rem,7vw,2.8rem)] leading-none tracking-tight text-amber-400">
+          {fees ? formatFeeUsd(fees.usd) : '—'}
+        </p>
+        <p className="mt-2 text-[11px] leading-5 text-zinc-400">
+          {t('landing.ledgerGiven')}
+          {fees ? (
+            <span className="block text-zinc-500">
+              {fees.events.toLocaleString('en-US')} {t('landing.ledgerTimes')}
+            </span>
+          ) : null}
+        </p>
+      </div>
+
+      <p className="mt-4 text-[11px] leading-5 text-zinc-500">{t('landing.feeMechBody')}</p>
     </div>
   );
 }
