@@ -1,0 +1,19 @@
+{
+  "promise": "GBLIN Coherence Promise P1 — Attestation endpoint availability",
+  "version": 1,
+  "subject": "gblin.digital (GBLIN Protocol)",
+  "subject_identity": "ERC-8004 agent #59286 on Base",
+  "declared_at": "2026-08-09T00:00:00Z",
+  "statement": "The paid risk-attestation endpoint answers correctly: an unpaid GET to https://gblin.digital/api/x402/attestation returns HTTP 402 with a parseable x402 challenge, and the free sample at https://gblin.digital/api/x402/attestation-sample returns HTTP 200 with a valid attestation-shaped JSON payload.",
+  "observable": {
+    "method": "HTTP probe, no payment, no authentication",
+    "checks": [
+      { "id": "402-challenge", "url": "https://gblin.digital/api/x402/attestation", "expect": "status 402 AND non-empty challenge body" },
+      { "id": "sample-200", "url": "https://gblin.digital/api/x402/attestation-sample", "expect": "status 200 AND json.sample == true" }
+    ],
+    "frequency": "every 10 minutes",
+    "kept_when": "both checks pass in the same observation cycle"
+  },
+  "why_it_matters": "A third-party agent (Markovian Protocol, ERC-8004 #59895) consumes this endpoint daily as a mandatory input of its published decision rule and records our outages in its witnessed transparency log. This promise makes the same accountability continuous and self-imposed.",
+  "notes": "Pre-registered before observation began, per the GBLIN method: rules are committed before data is collected."
+}
