@@ -140,13 +140,13 @@ const ERROR_CACHE_TTL_MS = 30_000;
 export async function GET(): Promise<Response> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return Response.json({ ...cache.data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
+    return Response.json({ ...cache.data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600" } });
   }
 
   try {
     const data = await fetchAgentStats();
     cache = { data, fetchedAt: now };
-    return Response.json({ ...data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } });
+    return Response.json({ ...data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600" } });
   } catch (err) {
     // Never return 500 — the home page must render. Serve the previous cache
     // if available, otherwise zeros. Cache the fallback briefly so we don't
@@ -158,6 +158,6 @@ export async function GET(): Promise<Response> {
       stale: true,
       error: (err as Error).message,
       _source: SOURCE,
-    });
+    }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
   }
 }

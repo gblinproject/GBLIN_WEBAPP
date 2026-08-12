@@ -54,25 +54,30 @@ const SAMPLE = {
     "0x1111111111111111111111111111111111111111111111111111111111111111" as const,
 };
 
+// Deterministic — the sample is frozen, so compute the tamper-evident id ONCE at
+// module load instead of per request. Combined with the long Cache-Control below,
+// repeated polls are served from the CDN and never re-run viem's hashTypedData.
+const SIGN_MESSAGE = {
+  regime: SAMPLE.regimeCode,
+  severityBps: SAMPLE.severityBps,
+  defensiveCashBps: SAMPLE.defensiveCashBps,
+  blockNumber: BigInt(SAMPLE.blockNumber),
+  issuedAt: BigInt(SAMPLE.issuedAt),
+  expiresAt: BigInt(SAMPLE.expiresAt),
+  basketHash: SAMPLE.basketHash,
+} as const;
+
+const ATTESTATION_ID = hashTypedData({
+  domain: EIP712_DOMAIN,
+  types: EIP712_TYPES,
+  primaryType: "RiskAttestation",
+  message: SIGN_MESSAGE,
+});
+
 export async function GET() {
-  const signMessage = {
-    regime: SAMPLE.regimeCode,
-    severityBps: SAMPLE.severityBps,
-    defensiveCashBps: SAMPLE.defensiveCashBps,
-    blockNumber: BigInt(SAMPLE.blockNumber),
-    issuedAt: BigInt(SAMPLE.issuedAt),
-    expiresAt: BigInt(SAMPLE.expiresAt),
-    basketHash: SAMPLE.basketHash,
-  } as const;
+  const attestationId = ATTESTATION_ID;
 
-  const attestationId = hashTypedData({
-    domain: EIP712_DOMAIN,
-    types: EIP712_TYPES,
-    primaryType: "RiskAttestation",
-    message: signMessage,
-  });
-
-  return jsonResponse({
+  const res = jsonResponse({
     sample: true,
     attestation: {
       regime: "calm",
@@ -121,4 +126,11 @@ export async function GET() {
         "GET https://gblin.digital/api/x402/attestation — $0.003 USDC via x402 (HTTP 402 flow), fresh 10-minute attestation",
     },
   });
+  // Static, immutable payload — let the CDN absorb repeat polls so the function
+  // is not invoked (and viem is not re-run) on every request.
+  res.headers.set(
+    "Cache-Control",
+    "public, s-maxage=86400, stale-while-revalidate=604800",
+  );
+  return res;
 }
