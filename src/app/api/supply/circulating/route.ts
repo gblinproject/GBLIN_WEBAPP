@@ -9,11 +9,13 @@ const CONTRACT_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
 
+// Free public RPCs first; Alchemy only as a last-resort backstop so aggregator
+// polling of this endpoint doesn't drain the Alchemy plan.
 const RPC_URLS = [
-  ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : "",
-  "https://mainnet.base.org",
   "https://base.publicnode.com",
+  "https://mainnet.base.org",
   "https://base.llamarpc.com",
+  ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : "",
 ].filter(Boolean);
 
 // keccak256("totalSupply()")[0:4]

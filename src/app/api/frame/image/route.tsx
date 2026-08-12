@@ -7,11 +7,13 @@ export const revalidate = 30;
 const CONTRACT_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+// Free public RPCs first; Alchemy only as a last-resort backstop so frame
+// renders (which Farcaster clients fire often) don't drain the Alchemy plan.
 const RPC_URLS = [
-  ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : "",
-  "https://mainnet.base.org",
   "https://base.publicnode.com",
+  "https://mainnet.base.org",
   "https://base.llamarpc.com",
+  ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : "",
 ].filter(Boolean);
 
 // Precomputed 4-byte function selectors (keccak256 first 4 bytes)
@@ -85,7 +87,15 @@ async function safeCall(data: string): Promise<string> {
   return "0x";
 }
 
-async function fetchFrameStats() {
+// In-memory TTL cache: the frame shows slow-moving on-chain values, so a burst
+// of renders shares one set of reads instead of each firing 3 eth_calls. This
+// is what caps the per-second RPC rate during traffic spikes.
+type FrameStats = { gblinPerEth: number; supply: number; stability: number; keeperPayouts: number };
+let _statsCache: { at: number; data: FrameStats } | null = null;
+const STATS_TTL_MS = 60_000;
+
+async function fetchFrameStats(): Promise<FrameStats> {
+  if (_statsCache && Date.now() - _statsCache.at < STATS_TTL_MS) return _statsCache.data;
   const oneEthHex = toUint256Hex(10n ** 18n);
   const [supplyHex, stabilityHex, quoteHex] = await Promise.all([
     safeCall(SELECTORS.totalSupply),
@@ -105,7 +115,9 @@ async function fetchFrameStats() {
   }
 
   const keeperPayouts = stability > 0 ? Math.floor(stability / 0.0001) : 0;
-  return { gblinPerEth, supply, stability, keeperPayouts };
+  const data: FrameStats = { gblinPerEth, supply, stability, keeperPayouts };
+  _statsCache = { at: Date.now(), data };
+  return data;
 }
 
 export async function GET(req: Request) {
