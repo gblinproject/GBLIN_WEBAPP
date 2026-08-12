@@ -33,6 +33,9 @@ export const metadata: Metadata = {
     'JIT swap GBLIN USDC',
     'agentic economy',
     'machine reserve',
+    'Coherence Proof',
+    'EAS attestation Base',
+    'ERC-8004 agent',
   ],
 };
 
@@ -119,6 +122,13 @@ const transport = new StdioClientTransport({
 });
 const mcp = new MCPClient({ name: "my-agent", version: "1.0" });
 await mcp.connect(transport);`,
+  },
+  {
+    name: 'ElizaOS',
+    file: 'character plugins',
+    code: `# plugin-gblin is in the official ElizaOS registry
+npm install plugin-gblin@0.4.0
+# then add "plugin-gblin" to the plugins array in your character file`,
   },
 ];
 
@@ -227,8 +237,8 @@ export default function AgentsPage() {
         </pre>
 
         <p className="mt-4 text-sm text-white/60">
-          No install? Use the hosted MCP (Streamable HTTP, free read-only
-          tools):{' '}
+          No install? Use the hosted MCP (Streamable HTTP, 6 free read-only
+          tools incl. live risk regime + coherence proof):{' '}
           <code className="text-white/80 break-all">
             https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
           </code>{' '}
@@ -545,6 +555,71 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               className="text-amber-400 hover:underline"
             >
               Source on GitHub ↗
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── Coherence Proof ───────── */}
+      <section className="px-6 py-16 border-t border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-400/5 text-xs text-emerald-300 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live on Base mainnet — sealed daily on EAS
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            Coherence Proof — does GBLIN keep its promises?
+          </h2>
+          <p className="mt-4 text-white/70 max-w-3xl leading-relaxed">
+            An agent can&apos;t trust a claim it can&apos;t verify. GBLIN
+            pre-registers hash-pinned public promises, then runs an automaton
+            that probes them every 10 minutes and seals each closed day as an
+            EAS attestation on Base. Reading is free forever; the paid service
+            is being observed — the certifier submits itself to its own
+            instrument first.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="border border-white/[0.07] bg-white/[0.02] rounded-xl p-5">
+              <h3 className="font-medium text-base">P1 — attestation uptime</h3>
+              <p className="mt-2 text-sm text-white/60 leading-relaxed">
+                Is the paid Risk Attestation endpoint actually up? Probed every
+                10 minutes, tallied kept/violated per day, sealed on-chain.
+              </p>
+            </div>
+            <div className="border border-white/[0.07] bg-white/[0.02] rounded-xl p-5">
+              <h3 className="font-medium text-base">P2 — honest counters</h3>
+              <p className="mt-2 text-sm text-white/60 leading-relaxed">
+                Do the public agent-economy counters stay honest, with our own
+                wallets disclosed and excluded? Checked on the same cadence.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-6 text-sm text-white/60 max-w-3xl leading-relaxed">
+            Read it free via the{' '}
+            <code className="text-amber-400">get_coherence_report</code> tool on
+            the hosted MCP, or as JSON. GBLIN is also a discoverable ERC-8004
+            agent (#59286) on Base.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-4 text-sm">
+            <a
+              href="https://gblin-mcp.gblin-mcp-worker.workers.dev/coherence"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:underline"
+            >
+              Live coherence report ↗
+            </a>
+            <a
+              href="https://base.easscan.org/schema/view/0x9f433a96467ab75530009970e5aa938ec94d8a49f08f66e7381822d557b448ef"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:underline"
+            >
+              EAS schema on Base ↗
             </a>
           </div>
         </div>
