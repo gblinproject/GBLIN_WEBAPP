@@ -72,7 +72,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'How big is GBLIN?',
     answer:
-      'Small, and disclosed up front: total value locked is around one thousand dollars as of August 2026 (the live figure is on the homepage). That is exactly why mint and redeem at NAV matter — the product does not need deep pools to work, and early users get the same execution quality as large ones.',
+      'Small, and disclosed up front: total value locked is around one thousand dollars as of August 2026 (the live figure is on the dashboard). That is exactly why mint and redeem at NAV matter — the product does not need deep pools to work, and early users get the same execution quality as large ones.',
   },
   {
     question: 'Can AI agents use GBLIN?',
