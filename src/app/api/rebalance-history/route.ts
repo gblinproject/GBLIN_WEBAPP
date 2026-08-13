@@ -35,9 +35,16 @@ const TOKEN_NAMES: Record<string, string> = {
   [USDC.toLowerCase()]: 'USDC',
 };
 
-const REBALANCED_TOPIC = ethers.id('Rebalanced(address,address,address,uint256,uint256)');
+// I DUE DEPLOY EMETTONO EVENTI DIVERSI: V6 ha aggiunto `bounty` in coda, quindi la firma —
+// e con essa il topic0 — non coincide con quella di V5. Cercando solo la vecchia, questa
+// rotta non avrebbe MAI mostrato un rebalance di V6 (oggi non si nota perché su V6 sono
+// ancora zero, ma al primo vero la pagina sarebbe rimasta muta). Fix 13/08/2026.
+const REBALANCED_TOPIC_V5 = ethers.id('Rebalanced(address,address,address,uint256,uint256)');
+const REBALANCED_TOPIC_V6 = ethers.id('Rebalanced(address,address,address,uint256,uint256,uint256)');
+const TOPIC_FOR: Record<string, string> = { V5: REBALANCED_TOPIC_V5, V6: REBALANCED_TOPIC_V6 };
 const iface = new ethers.Interface([
   'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)',
+  'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, uint256 bounty)',
 ]);
 
 // Next.js route segment config — let Next cache the response so we don't
@@ -127,7 +134,7 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
   const perContract = await Promise.all(
     CONTRACTS.map(async ({ label, address, current }) => {
       try {
-        const url = `${BLOCKSCOUT_API}/addresses/${address}/logs?topic=${REBALANCED_TOPIC}`;
+        const url = `${BLOCKSCOUT_API}/addresses/${address}/logs?topic=${TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6}`;
         const res = await fetch(url, {
           headers: { accept: 'application/json' },
           next: { revalidate: 30 },
@@ -189,7 +196,7 @@ async function fetchFromAlchemy(fromBlock: number, toBlock: number): Promise<Raw
     try {
       const logs = await provider.getLogs({
         address: CONTRACT_ADDRESS,
-        topics: [REBALANCED_TOPIC],
+        topics: [REBALANCED_TOPIC_V6],   // il fallback RPC scansiona CONTRACT_ADDRESS = V6
         fromBlock: start,
         toBlock: end,
       });
