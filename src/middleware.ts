@@ -625,6 +625,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/x402/catalog",
     "/api/x402/treasury-state",
     "/api/x402/quote",
     "/api/x402/jit",
