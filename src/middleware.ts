@@ -421,7 +421,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/governance": {
       accepts: accepts("$0.001"),
       description:
-        "GBLIN protocol governance state: owner, 48h immutable timelock parameters, and any pending operation.",
+        "GBLIN protocol governance state: owner, the 48h timelock delay that every owner-only change must pass through, and any pending operation.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
