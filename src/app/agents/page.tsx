@@ -4,21 +4,21 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'A risk-managed treasury option for AI agents on Base: free MCP server with 10 tools, on-chain risk signals, live NAV quotes and JIT redemption for x402.';
+  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 10 tools, no API key.';
 
 export const metadata: Metadata = {
-  title: { absolute: 'GBLIN for AI agents — treasury and x402 tools on Base' },
+  title: { absolute: 'Market risk regime and treasury tools for AI agents on Base' },
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/agents` },
   openGraph: {
-    title: 'GBLIN for AI Agents — Treasury Standard on Base',
+    title: 'Market risk regime (free) and treasury tools for AI agents on Base',
     description: PAGE_DESCRIPTION,
     url: `${SITE_URL}/agents`,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'GBLIN for AI Agents — Treasury Standard on Base',
+    title: 'Market risk regime (free) and treasury tools for AI agents on Base',
     description: PAGE_DESCRIPTION,
   },
   keywords: [
@@ -127,7 +127,7 @@ await mcp.connect(transport);`,
     name: 'ElizaOS',
     file: 'character plugins',
     code: `# plugin-gblin is in the official ElizaOS registry
-npm install plugin-gblin@0.4.0
+npm install plugin-gblin@0.5.0
 # then add "plugin-gblin" to the plugins array in your character file`,
   },
 ];

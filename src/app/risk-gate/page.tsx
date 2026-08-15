@@ -3,14 +3,14 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'The Risk Gate pattern: how a third-party ERC-8004 agent made GBLIN a hard dependency without trusting us — and how any agent can copy the same verifiable pattern in minutes.';
+  'How to check the market risk regime (calm / elevated / crash) before an AI agent moves capital, and keep a signed attestation as portable proof the check happened — the pattern a third-party ERC-8004 agent already runs in production, without trusting us.';
 
 export const metadata: Metadata = {
-  title: { absolute: 'The Risk Gate pattern — verifiable risk gating for AI agents' },
+  title: { absolute: 'Check market risk before an AI agent moves capital — the Risk Gate pattern' },
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/risk-gate` },
   openGraph: {
-    title: 'The Risk Gate pattern — verifiable risk gating for AI agents',
+    title: 'Check market risk before an AI agent moves capital — the Risk Gate pattern',
     description: PAGE_DESCRIPTION,
     url: `${SITE_URL}/risk-gate`,
     type: 'article',
