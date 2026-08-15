@@ -47,7 +47,9 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
  *        guardian multisig can veto pending operations.
  *      - DEFAULT_ADMIN_ROLE held by the timelock itself (self-administered): every
  *        role / config change must itself go through the 48h delay.
- * @custom:target 0x38DcDB3A381677239BBc652aed9811F2f8496345 (GBLIN_V5 on Base mainnet)
+ * @custom:target 0x36C81d7E1966310F305eA637e761Cf77F90852f0 (GBLIN on Base mainnet — current
+ *                 production deployment owned by this timelock; the earlier deployment
+ *                 0x38DcDB3A381677239BBc652aed9811F2f8496345 is superseded)
  * @custom:website https://gblin.digital
  */
 contract GblinTimelockController is TimelockController {
