@@ -107,7 +107,7 @@ treasury layer**. The protocol is purpose-built for this use case.
   ([npm](https://www.npmjs.com/package/plugin-gblin))
 - **Docs**: [`https://gblin.digital/agents`](https://gblin.digital/agents)
 - **Free agent stats**: [`/api/agent-stats`](https://gblin.digital/api/agent-stats)
-- **Source**: [github.com/gblinproject/GBLIN-MCP](https://github.com/gblinproject/GBLIN-MCP)
+- **Source**: [github.com/gblinproject/gblin-treasury-risk-regime](https://github.com/gblinproject/gblin-treasury-risk-regime)
 
 A drop-in template for downstream `AGENTS.md` files is published at
 [`https://gblin.digital/AGENTS.template.md`](https://gblin.digital/AGENTS.template.md)

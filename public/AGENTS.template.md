@@ -197,7 +197,7 @@ await executeAction(action);
 ## Links
 
 - Docs: https://gblin.digital/agents
-- GitHub: https://github.com/gblinproject/GBLIN-MCP
+- GitHub: https://github.com/gblinproject/gblin-treasury-risk-regime
 - NPM: https://www.npmjs.com/package/@gblin-protocol/mcp-server
 - Registry: https://registry.modelcontextprotocol.io
 - GBLIN Sentinel (x402 data agent): https://gblin-sentinel.vercel.app

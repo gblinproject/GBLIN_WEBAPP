@@ -205,7 +205,7 @@ GET https://gblin.digital/api/x402/attestation-sample  # free static sample, sam
                 All agent tools
               </a>
               <a
-                href="https://github.com/gblinproject/GBLIN-MCP/tree/main/examples"
+                href="https://github.com/gblinproject/gblin-treasury-risk-regime/tree/main/examples"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 rounded-lg border border-white/20 text-sm hover:bg-white/5 transition"

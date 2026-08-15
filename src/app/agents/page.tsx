@@ -169,7 +169,7 @@ const JSON_LD = {
   description: PAGE_DESCRIPTION,
   url: `${SITE_URL}/agents`,
   downloadUrl: 'https://www.npmjs.com/package/@gblin-protocol/mcp-server',
-  codeRepository: 'https://github.com/gblinproject/GBLIN-MCP',
+  codeRepository: 'https://github.com/gblinproject/gblin-treasury-risk-regime',
   license: 'https://opensource.org/licenses/MIT',
   programmingLanguage: 'TypeScript',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -201,7 +201,7 @@ export default function AgentsPage() {
 
         <div className="mt-10 flex flex-wrap gap-3">
           <a
-            href="https://github.com/gblinproject/GBLIN-MCP"
+            href="https://github.com/gblinproject/gblin-treasury-risk-regime"
             target="_blank"
             rel="noopener noreferrer"
             className="px-5 py-2.5 rounded-lg bg-amber-500 text-black font-medium text-sm hover:opacity-90 transition"
@@ -655,7 +655,7 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
           <div>MIT licensed · No telemetry · No team allocation</div>
           <div className="flex gap-6">
             <a
-              href="https://github.com/gblinproject/GBLIN-MCP"
+              href="https://github.com/gblinproject/gblin-treasury-risk-regime"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white transition"

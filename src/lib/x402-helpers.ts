@@ -1,7 +1,7 @@
 /**
  * GBLIN x402 API — shared helpers
  *
- * Ports the core read-only logic from the GBLIN MCP server (gblinproject/GBLIN-MCP)
+ * Ports the core read-only logic from the GBLIN MCP server (gblinproject/gblin-treasury-risk-regime)
  * to a Next.js / Edge-friendly module.
  *
  * Every function is read-only against Base mainnet. No private keys ever touch

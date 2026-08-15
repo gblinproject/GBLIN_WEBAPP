@@ -260,6 +260,6 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 - Protocol discovery: https://gblin.digital/api/x402/llms.txt
 - Hosted MCP (free): https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
 - GitHub: https://github.com/gblinproject/GBLIN-Protocol
-- MCP Server: https://github.com/gblinproject/GBLIN-MCP
+- MCP Server: https://github.com/gblinproject/gblin-treasury-risk-regime
 - Basescan: https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0
 - Defillama: https://defillama.com/protocol/tvl/global-balanced-liquidity-index

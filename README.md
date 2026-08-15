@@ -25,7 +25,7 @@ Properties enforced at the contract level (see `contracts/GblinTimelockControlle
 - `DEFAULT_ADMIN_ROLE` is held by the timelock itself — every role/config change must itself go through the 48h delay.
 - `GRACE_PERIOD` of 14 days — pending operations expire if not executed in time (no zombie proposals).
 
-AI-agent integrators can verify all of this on-chain in one call via the `get_governance_state` MCP tool. See the [GBLIN MCP repo](https://github.com/gblinproject/GBLIN-MCP).
+AI-agent integrators can verify all of this on-chain in one call via the `get_governance_state` MCP tool. See the [GBLIN MCP repo](https://github.com/gblinproject/gblin-treasury-risk-regime).
 
 ## x402 — Pay-per-call API for AI Agents
 
