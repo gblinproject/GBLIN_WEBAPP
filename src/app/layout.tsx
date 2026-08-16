@@ -16,12 +16,12 @@ const OG_IMAGE =
 // Lightweight JPG + fresh filename so X/Twitterbot fetches it reliably (no stale cache).
 const OG_BANNER = `${SITE_URL}/og-gblin-v2.jpg`;
 const SITE_DESCRIPTION =
-  "One token holding cbBTC, WETH and USDC on Base. Mint and redeem directly from the contract at NAV: same price at any size, 0.10% once, no management fee.";
+  "GBLIN Protocol: one token holding cbBTC, WETH and USDC on Base, built for AI agents and treasuries. Mint and redeem directly from the contract at NAV: same price at any size, 0.10% once, no management fee.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GBLIN — BTC + ETH + USDC in one token on Base",
+    default: "GBLIN Protocol — BTC + ETH + USDC treasury token on Base",
     template: "%s | GBLIN",
   },
   description: SITE_DESCRIPTION,
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "GBLIN",
-    title: "GBLIN — Wealth Preservation Protocol on Base",
+    title: "GBLIN Protocol — BTC + ETH + USDC treasury token on Base",
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     locale: "en_US",
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "GBLIN — Wealth Preservation Protocol on Base",
+    title: "GBLIN Protocol — BTC + ETH + USDC treasury token on Base",
     description: SITE_DESCRIPTION,
     images: [OG_BANNER],
   },

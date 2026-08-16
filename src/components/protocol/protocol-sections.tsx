@@ -577,6 +577,19 @@ export function HomeView(props: HomeViewProps) {
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
+
+            {/* Address disambiguation. Rendered as static text on purpose: search engines
+                still summarise an earlier, superseded deployment as "the GBLIN contract",
+                and an identically-named token exists at that address. Machines that never
+                run JS must be able to read which one is current. */}
+            <p className="mt-4 max-w-xl text-[11px] leading-6 text-zinc-600">
+              Current GBLIN contract on Base:{' '}
+              <span className="font-mono text-zinc-400">{DISPLAY_CONTRACT_ADDRESS}</span>. An earlier
+              deployment at{' '}
+              <span className="font-mono">0x38DcDB3A381677239BBc652aed9811F2f8496345</span> carries
+              the same name and symbol but is <strong className="text-zinc-500">superseded</strong> —
+              it is not the token this site describes, and it should not be traded or integrated.
+            </p>
           </div>
 
           {/* One live stat, and what stands behind it. */}
