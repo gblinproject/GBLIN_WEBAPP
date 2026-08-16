@@ -1241,10 +1241,6 @@ function AccountPageInner() {
 
   return (
     <div className="min-h-screen bg-[#040404] text-white selection:bg-amber-500/30 selection:text-amber-100">
-      <div
-        className="fixed inset-0 -z-20 bg-cover bg-center bg-no-repeat opacity-20"
-        style={{ backgroundImage: "url('https://raw.githubusercontent.com/rubbe89/gblin-assets/main/TheGoldenVault.png')" }}
-      />
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
 
       {/* Header */}

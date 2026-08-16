@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 const SITE_URL = "https://gblin.digital";
 const OG_IMAGE =
-  "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png";
+  "https://gblin.digital/LOGO_GBLIN.png";
 // Wide 1200x630 social-share banner (avoids X/OG cropping the square logo).
 // Lightweight JPG + fresh filename so X/Twitterbot fetches it reliably (no stale cache).
 const OG_BANNER = `${SITE_URL}/og-gblin-v2.jpg`;
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
     canonical: SITE_URL,
   },
   icons: {
-    icon: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
-    shortcut: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
-    apple: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    icon: "/LOGO_GBLIN.png",
+    shortcut: "/LOGO_GBLIN.png",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
