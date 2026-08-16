@@ -40,6 +40,11 @@ const FAQ: FaqEntry[] = [
       'The mint and redeem price is the net asset value (NAV) per token, computed from the on-chain reserves using Chainlink price feeds. Everyone gets the same per-token price regardless of size: a $25 purchase and a $50,000 purchase mint at the same NAV. Anyone can verify this in 30 seconds by calling quoteBuyGBLIN() on the contract with different amounts.',
   },
   {
+    question: 'Why is the total supply of GBLIN so small?',
+    answer:
+      'By design. GBLIN has no pre-mine and no fixed supply: tokens only exist when someone deposits value, and each token is priced at NAV — currently thousands of dollars per token — so a small vault means a small supply, down to fractions of a single token. Supply equals vault value divided by NAV, nothing more. If a block explorer shows a total supply below 1 GBLIN, that is the vault being young, not a display error and not a signal that something is broken: scarcity plays no role in the price, the reserves do.',
+  },
+  {
     question: 'What fees does GBLIN charge? Is there a management fee?',
     answer:
       'A 0.10% one-time fee on minting (0.05% to the founder, 0.05% to a stability reserve that stays inside the NAV) — and that is all. There is no management fee, no streaming fee and no performance fee in the contract. For comparison, tokenized index folios on Base typically charge 1.5–2% per year: against a 2% annual fee, GBLIN’s one-time cost breaks even in about 18 days of holding.',
