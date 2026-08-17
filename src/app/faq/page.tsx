@@ -25,6 +25,11 @@ interface FaqEntry {
 
 const FAQ: FaqEntry[] = [
   {
+    question: 'What is GBLIN x402?',
+    answer:
+      'GBLIN x402 is the pay-per-call side of GBLIN: HTTP endpoints on Base that an AI agent pays for in USDC via the x402 protocol (HTTP 402 Payment Required), $0.001–$0.005 per call, settled through the Coinbase facilitator. They return protocol state, safe swap quotes, unsigned calldata to move USDC into GBLIN or back out just in time to pay an invoice, and a signed 10-minute risk attestation of the current market regime (calm / elevated / crash). Reading the regime itself is free through the MCP server; only the signed proof and the wallet-specific calls are paid. Everything the endpoints say can be checked on-chain, and one third-party ERC-8004 agent has been buying the attestation daily as an input of its published decision rule.',
+  },
+  {
     question: 'What is GBLIN?',
     answer:
       'GBLIN is a reserve-backed token on Base (an Ethereum L2). One token represents a basket of cbBTC (Coinbase-wrapped Bitcoin), WETH (wrapped Ether) and USDC held by the contract itself. You mint new tokens by depositing value into the contract and redeem them for the underlying reserves at any time — the contract is the venue, not a liquidity pool.',

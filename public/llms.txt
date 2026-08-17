@@ -26,12 +26,16 @@
 
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
-  — free read-only tools: live risk regime, attestation sample, agent-economy stats.
+  — free read-only tools: live risk regime, attestation sample, agent-economy stats, coherence report.
+- **x402 Uptime Observatory (free data):** https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory
+  — continuous liveness probes of the ~240 most recently updated x402 catalog resources (only ~1/3 answer);
+  raw JSON at /observatory.json, per-seller badge at /observatory/badge.svg?host=…, our own endpoints in
+  the same table under the same rules. Re-run it yourself: https://github.com/gblinproject/x402-catalog-probe
   Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp
 - **GitHub:** https://github.com/gblinproject/gblin-treasury-risk-regime
 - **Docs:** https://gblin.digital/agents
 - **10 MCP tools exposed:**
-  1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture ($0.002) ← start here
+  1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture (free) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
   3. `quote_safe_swap` — preview buy/sell with dynamic slippage
   4. `swap_gblin_to_usdc_jit` — atomic GBLIN→USDC calldata for x402

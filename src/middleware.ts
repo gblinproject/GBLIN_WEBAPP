@@ -594,10 +594,22 @@ export async function middleware(req: NextRequest) {
         const bodyText = (await res.clone().text()).trim();
         if (bodyText === "" || bodyText === "{}") {
           const challenge = Buffer.from(header, "base64").toString("utf-8");
-          JSON.parse(challenge); // mirror only if the header decodes to valid JSON
+          const parsed = JSON.parse(challenge); // mirror only if the header decodes to valid JSON
+          // Breadcrumb for whoever is reading this 402 in a terminal or a log: one
+          // additive, non-required, namespaced field. BODY ONLY — the header (what
+          // clients verify and sign against) stays byte-identical, and none of the
+          // spec fields (accepts[], resource, x402Version) are touched.
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            parsed.gblin_info = {
+              docs: "https://gblin.digital/api/x402/llms.txt",
+              free_market_risk_regime: "https://gblin-mcp.gblin-mcp-worker.workers.dev/regime",
+              x402_uptime_observatory: "https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory",
+              note: "Reading is free; only the paid resource above requires payment.",
+            };
+          }
           const headers = new Headers(res.headers);
           headers.set("content-type", "application/json");
-          res = new Response(challenge, { status: 402, headers });
+          res = new Response(JSON.stringify(parsed), { status: 402, headers });
         }
       } catch {
         // mirroring is best-effort; never break the live response

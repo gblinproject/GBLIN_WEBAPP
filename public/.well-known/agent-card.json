@@ -24,7 +24,10 @@
     "x402Base": "https://gblin.digital/api/x402",
     "x402Manifest": "https://gblin.digital/.well-known/x402",
     "x402AttestationSample": "https://gblin.digital/api/x402/attestation-sample",
-    "llmsTxt": "https://gblin.digital/api/x402/llms.txt"
+    "llmsTxt": "https://gblin.digital/api/x402/llms.txt",
+    "observatory": "https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory",
+    "observatoryJson": "https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory.json",
+    "observatoryProbeSource": "https://github.com/gblinproject/x402-catalog-probe"
   },
   "skills": [
     {
