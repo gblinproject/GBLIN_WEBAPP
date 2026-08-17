@@ -556,6 +556,9 @@ export function HomeView(props: HomeViewProps) {
               </Link>
             </div>
             <p className="mt-3 text-xs leading-6 text-zinc-500">{t('landing.ctaMicro')}</p>
+            {/* The bait: we don't ask to be trusted — we hand over the question. The answer any AI
+                gives is built from our public docs + on-chain data, so it is a free third-party check. */}
+            <p className="mt-2 text-xs leading-6 text-amber-200/70">{t('landing.askYourAI')}</p>
 
             {/* Verifiable proof strip — every item is a link someone can re-read on Base. */}
             <div className="mt-7 flex flex-wrap items-center gap-2">
