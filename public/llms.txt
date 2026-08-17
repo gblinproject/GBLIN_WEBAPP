@@ -34,6 +34,8 @@
   Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp
 - **GitHub:** https://github.com/gblinproject/gblin-treasury-risk-regime
 - **Docs:** https://gblin.digital/agents
+- **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts
+  — every daily x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes
 - **10 MCP tools exposed:**
   1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture (free) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
