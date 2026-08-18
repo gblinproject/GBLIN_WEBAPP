@@ -490,6 +490,7 @@ function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onCh
       <p className="max-w-3xl text-sm leading-7 text-white/50">
         {t('landing.sizeBodyA')} <span className="font-semibold text-white">{tvl}</span>{t('landing.sizeBodyB')}
       </p>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">{t('landing.sizeSupply')}</p>
       <div className="mt-5 flex flex-wrap gap-3">
         <a
           className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"

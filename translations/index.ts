@@ -89,8 +89,8 @@ export const translations = {
         desc: "No owners. No human bias. The protocol recalibrates itself via decentralized arbitrageurs and MEV bots."
       },
       appreciation: {
-        title: "Guaranteed Appreciation",
-        desc: "The 0.1% buy-fee fuels the Vault without minting new supply, mathematically increasing the intrinsic value per token."
+        title: "Fees Flow Into NAV",
+        desc: "Half of the 0.10% mint fee stays in the reserves without minting new supply, so it raises the reserve-per-token; the basket itself can still fall with BTC and ETH."
       }
     },
     vault: {
@@ -130,7 +130,7 @@ export const translations = {
       title: "Direct Protocol Minting",
       heading: "Buy GBLIN",
       subheading: "Without Intermediaries",
-      desc: "Use the native protocol interface to mint or burn GBLIN directly against the smart contract. No external liquidity pool needed. The price is always mathematically guaranteed by the NAV (Net Asset Value) of the treasury.",
+      desc: "Use the native protocol interface to mint or burn GBLIN directly against the smart contract. No external liquidity pool needed. The price is always computed from the NAV (Net Asset Value) of the reserves, read on-chain — not from a pool.",
       feature1Title: "Zero External Slippage",
       feature1Desc: "The price is calculated directly from Chainlink oracles in real-time.",
       feature2Title: "Instant Collateralization",
@@ -181,7 +181,7 @@ export const translations = {
     },
     hero: {
       title: "IL CAVEAU D'ORO",
-      subtitle: "La prima banca centrale autonoma su Base. Preservazione della ricchezza algoritmica garantita da asset crypto reali.",
+      subtitle: "La prima banca centrale autonoma su Base. Riserve algoritmiche coperte da asset crypto reali.",
       cta: "Entra nel Caveau",
       contract: "Contratto"
     },
@@ -215,7 +215,7 @@ export const translations = {
       existence: "GBLIN IN CIRCOLAZIONE",
       trade: "TRADE ON SLIPSTREAM (1%)",
       arbitrageTitle: "Opportunità di Arbitraggio",
-      arbitrageText: "Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. Acquistare GBLIN ora garantisce asset a sconto.",
+      arbitrageText: "Quando il Valore Intrinseco (NAV) è superiore al Prezzo di Mercato, il token è tecnicamente sottovalutato. In quel momento il conio dal contratto a NAV costa meno del pool — è un confronto di prezzi, non una promessa.",
       undervalued: "SOTTOVALUTATO",
       fairValue: "VALORE EQUO",
       discount: "Sconto",
@@ -258,7 +258,7 @@ export const translations = {
         desc: "Nessun proprietario. Nessun pregiudizio umano. Il protocollo si ricalibra autonomamente tramite arbitraggisti decentralizzati e bot MEV."
       },
       appreciation: {
-        title: "Apprezzamento Garantito",
+        title: "Le commissioni confluiscono nel NAV",
         desc: "La commissione di acquisto dello 0,1% alimenta il Caveau senza emettere nuova offerta, aumentando matematicamente il valore intrinseco per token."
       }
     },
@@ -427,7 +427,7 @@ export const translations = {
         desc: "Sin dueños. Sin sesgos humanos. El protocolo se recalibra a sí mismo a través de arbitradores descentralizados y bots MEV."
       },
       appreciation: {
-        title: "Apreciación Garantizada",
+        title: "Las comisiones fluyen al NAV",
         desc: "La comisión de compra del 0,1% alimenta la Bóveda sin emitir nueva oferta, aumentando matemáticamente el valor intrínseco por token."
       }
     },
@@ -874,7 +874,7 @@ export const translations = {
         desc: "Pas de propriétaires. Pas de préjugés humains. Le protocole se recalibre via des arbitres décentralisés et des bots MEV."
       },
       appreciation: {
-        title: "Appréciation Garantie",
+        title: "Les frais alimentent la NAV",
         desc: "La commission d'achat de 0,1 % alimente le Coffre sans émettre de nouvelle offre, augmentant mathématiquement la valeur intrinsèque par jeton."
       }
     },
@@ -1023,7 +1023,7 @@ export const translations = {
         desc: "Keine Eigentümer. Keine menschliche Voreingenommenheit. Das Protokoll kalibriert sich über dezentrale Arbitrageure und MEV-Bots selbst neu."
       },
       appreciation: {
-        title: "Garantierte Wertsteigerung",
+        title: "Gebühren fließen in den NAV",
         desc: "Die Kaufgebühr von 0,1 % speist den Tresor, ohne neues Angebot zu prägen, was den inneren Wert pro Token mathematisch erhöht."
       }
     },
