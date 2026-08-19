@@ -32,8 +32,8 @@ const PAYER = '0x89cA143c42c22D0B0D24D6d2BFe00050331C6ef8';
 const FEE_WALLET = '0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B';
 const LOG = 'https://log.markovianprotocol.com';
 const RECEIPTS: { day: string; utc: string; tx: string; leaf: number | null }[] = [
-  { day: '2026-07-18', utc: '08:22', tx: '0x7b29b0cc1e01daa45fd06e61445892c2b02211fee5342b36681d20a41604fa6a', leaf: 906 },
-  { day: '2026-07-18', utc: '08:22', tx: '0x4077f2f26b573a2251799aceca26cc345ba3a8932abd3a0873ae181a41432ffb', leaf: null },
+  { day: '2026-07-18', utc: '08:22', tx: '0x7b29b0cc1e01daa45fd06e61445892c2b02211fee5342b36681d20a41604fa6a', leaf: null },
+  { day: '2026-07-18', utc: '08:22', tx: '0x4077f2f26b573a2251799aceca26cc345ba3a8932abd3a0873ae181a41432ffb', leaf: 906 },
   { day: '2026-07-18', utc: '08:34', tx: '0x12800164babf077d2d2e437383097476878f3e7b6a3d7902f685150a411d5ec6', leaf: 907 },
   { day: '2026-07-18', utc: '16:46', tx: '0xc2dc5bdd9ca3fd465f34ee29617620de7c65790bbcd3a681765fd85daa174839', leaf: 1024 },
   { day: '2026-07-22', utc: '15:17', tx: '0x43c149e2e743d7336b739f8046e9be06b6fcb1f10427571c0389e6b5353d1eb3', leaf: 2377 },
@@ -53,10 +53,10 @@ const RECEIPTS: { day: string; utc: string; tx: string; leaf: number | null }[] 
   { day: '2026-08-06', utc: '15:17', tx: '0x25480eb70f6d47199a1f4af30f4c702a736d576ff98765457dad4d4d3c63fb3a', leaf: 7123 },
   { day: '2026-08-07', utc: '15:17', tx: '0x6d15420a30b17b2450469c0c50963b9042a83e6f72f01c67675639323b98bd54', leaf: 7195 },
   { day: '2026-08-08', utc: '15:17', tx: '0x9028807023bf301a01a3e186676cdf625856ac4f0c1033e4a9744baee192b5a6', leaf: 7267 },
-  { day: '2026-08-09', utc: '15:17', tx: '0x5b8c0b5926664e00c0601d16fde30c5892df1df6115d5402e726e01d1d25e6aa', leaf: null },
-  { day: '2026-08-10', utc: '15:17', tx: '0x115393cd3572baab9e511557af9cbc34472d242551ac87d70ee131f1504daf14', leaf: null },
-  { day: '2026-08-11', utc: '15:17', tx: '0x89a51dfe1bd836be5a795a35df844cf4596e52ebf4f51b8895030052e409af8e', leaf: null },
-  { day: '2026-08-12', utc: '15:17', tx: '0xc7dafff49a54167542444045dffe6d01a43694830fd6d6aef79dbf033308d5a7', leaf: null },
+  { day: '2026-08-09', utc: '15:17', tx: '0x5b8c0b5926664e00c0601d16fde30c5892df1df6115d5402e726e01d1d25e6aa', leaf: 7469 },
+  { day: '2026-08-10', utc: '15:17', tx: '0x115393cd3572baab9e511557af9cbc34472d242551ac87d70ee131f1504daf14', leaf: 7470 },
+  { day: '2026-08-11', utc: '15:17', tx: '0x89a51dfe1bd836be5a795a35df844cf4596e52ebf4f51b8895030052e409af8e', leaf: 7471 },
+  { day: '2026-08-12', utc: '15:17', tx: '0xc7dafff49a54167542444045dffe6d01a43694830fd6d6aef79dbf033308d5a7', leaf: 7472 },
   { day: '2026-08-13', utc: '15:17', tx: '0xd67aa71d14815da40076c71f038d4e003b3fb9904a5817e4a636a55602465beb', leaf: 7313 },
   { day: '2026-08-14', utc: '15:17', tx: '0xf4dccb7379146dd95719b66130515a89f4ee03c2f021e3d063c07dfcac9ebc24', leaf: 7345 },
   { day: '2026-08-15', utc: '15:17', tx: '0x5e64e3116aa51ce91596282f9538261a42e9a9330d0884e4f15f58faee993017', leaf: 7375 },
@@ -114,11 +114,17 @@ export default function ReceiptsPage() {
           </tbody>
         </table>
         <p className="mt-8 text-xs leading-6 text-zinc-500">
-          Snapshot as of 2026-08-17, corrected 2026-08-18 ({RECEIPTS.length} settlements on {days} distinct days; {withLeaf} matched to a log leaf,{' '}
+          Snapshot as of 2026-08-17, corrected 2026-08-18 and 2026-08-19 ({RECEIPTS.length} settlements on {days} distinct days; {withLeaf} matched to a log leaf,{' '}
           {RECEIPTS.length - withLeaf} without one). <strong className="text-zinc-400">Correction:</strong> the first version of this page listed 21
           settlements starting 26 July; it had read only the first page of explorer results and dropped 8 earlier ones (18–25 July). Fixed here,
-          stated here. The 5 settlements without a leaf (one of the two 08:22 calls on 18 July, and 9–12 August) are on-chain but absent from the
-          payer&apos;s log; we have asked the operator about that gap. We do not characterise the counterparty&apos;s reasoning beyond what its own
+          stated here. <strong className="text-zinc-400">Update 2026-08-19:</strong> the four settlements of 9–12 August now have leaves (#7469–#7472).
+          The operator found the cause on its side — a retired local copy of its log server was still bound to the port the stamp client
+          posts to, and won the race for exactly those four days — and re-submitted the four claims through the real pipeline on 18 August.
+          Their leaf content carries the original settlement dates; the log append timestamp is 18 August, because that is genuinely when
+          they entered the tree. We verified each leaf&apos;s transaction hash against the on-chain settlement before linking it. One settlement
+          still has no leaf: the first of the two 08:22 calls on 18 July (tx 0x7b29…, 08:22:09 UTC) — it was settled by a different sender
+          than the payer&apos;s stamp client, so it most likely never reached their pipeline; the operator&apos;s record shows two calls that
+          day and ours shows three, and we leave both records as they are. We do not characterise the counterparty&apos;s reasoning beyond what its own
           public files state; the operator was notified before this page went up and can ask for changes at any time. What the attestation is and
           how any agent can verify one: <a className="text-amber-300 underline" href="/risk-gate">/risk-gate</a>.
           Our own wallets are excluded from every public counter we publish; the payer above is not ours.
