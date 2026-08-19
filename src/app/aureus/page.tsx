@@ -96,7 +96,7 @@ type Experiments = {
 
 async function getStats(): Promise<Stats | null> {
   try {
-    const r = await fetch('/api/aureus', { cache: 'no-store' });
+    const r = await fetch('/api/aureus'); // CDN-cached (s-maxage): a polling tab must not invoke the function every time
     const j = await r.json();
     return j?.stats || null;
   } catch {
@@ -219,7 +219,7 @@ function AureusContent() {
     });
     const interval = setInterval(() => {
       getStats().then(setStats);
-    }, 30000);
+    }, 120000);
     return () => clearInterval(interval);
   }, []);
 
