@@ -83,6 +83,7 @@ type Experiments = {
   };
   cascade_sig?: { aperti: number; chiusi: number; netto_usd: number };
   cascade_liq?: { aperti: number; chiusi: number; netto_usd: number };
+  quality_ls?: { aperti: number; chiusi: number; netto_usd: number };
   funding_disp?: {
     osservazioni: number;
     aperte: { asset: string; long: string; short: string; accrued_usd: number; opened_at: number }[];
@@ -208,7 +209,9 @@ export default function AureusPage() {
 function AureusContent() {
   const { t } = useT();
   const [s, setStats] = useState<Stats | null>(null);
-  const [filter, setFilter] = useState<'today' | '7d' | '30d' | 'all'>('today');
+  // default '7d': con 'today' la sezione appariva vuota nei momenti senza chiusure
+  // giornaliere e veniva letta come "pagina rotta" (segnalazione founder 20/08)
+  const [filter, setFilter] = useState<'today' | '7d' | '30d' | 'all'>('7d');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -543,6 +546,9 @@ function AureusContent() {
                     )}
                     {s.esperimenti.cascade_liq && (
                       <p>{t('aureus.expCascadeLiq')}: {s.esperimenti.cascade_liq.chiusi} {t('aureus.expClosed')} · {fmtUsd(s.esperimenti.cascade_liq.netto_usd)}</p>
+                    )}
+                    {s.esperimenti.quality_ls && (
+                      <p>{t('aureus.expQualityLs')}: {s.esperimenti.quality_ls.aperti} {t('aureus.expOpen')} · {s.esperimenti.quality_ls.chiusi} {t('aureus.expClosed')} · <span className={pnlColor(s.esperimenti.quality_ls.netto_usd)}>{fmtUsd(s.esperimenti.quality_ls.netto_usd)}</span></p>
                     )}
                     {s.esperimenti.memoria_asset && Object.keys(s.esperimenti.memoria_asset).length > 0 ? (
                       <>
