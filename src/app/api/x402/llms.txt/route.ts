@@ -12,10 +12,11 @@ export const runtime = "nodejs";
 
 const BODY = `# GBLIN Protocol — x402 API
 
-GBLIN is a risk-managed treasury option for AI agents on Base mainnet:
-an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield.
-It is managed crypto exposure with capped drawdown — for an agent's SURPLUS
-capital, not a USDC substitute. Use these endpoints to read protocol state,
+GBLIN is a basket token for AI-agent treasuries on Base mainnet:
+an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield
+(rules-based weight cuts during drawdowns). It is crypto exposure with a coded
+drawdown response — NOT capital-protected, NOT a USDC substitute; for an agent's
+SURPLUS capital only. Use these endpoints to read protocol state,
 get safe swap quotes, and generate ready-to-broadcast calldata for Just-In-Time
 GBLIN→USDC conversions to pay x402 invoices.
 
@@ -29,7 +30,8 @@ MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP
              get_market_risk_regime · get_attestation_sample · get_agent_economy_stats ·
              get_protocol_info · get_coherence_report · seal_action (demo) · get_receipt ·
              verify_receipt. Resources: gblin://howto/attestation, gblin://howto/seal,
-             gblin://limits (60 req/min/IP). Nothing is paid over MCP.
+             gblin://limits, gblin://keys (60 req/min/IP). Nothing is paid over MCP.
+             GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i
              Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
 
 ## Paid endpoints
