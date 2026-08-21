@@ -161,7 +161,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/seal": {
       accepts: accepts("$0.01"),
       description:
-        "AI Action Receipts: seal the HASHES of an AI action (never content) into GBLIN's append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time, independently witnessed — not a compliance certificate. Reading free forever; demo 5/day: gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo. Offline verifier in github.com/gblinproject/gblin-treasury-risk-regime",
+        "AI Action Receipts: seal the HASHES of an AI action (input/output as hashes; your action label + meta are published) into GBLIN's signed append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time — not a compliance certificate. Free reads + demo: gblin-mcp.gblin-mcp-worker.workers.dev/log. Offline verifier: github.com/gblinproject/gblin-treasury-risk-regime",
       mimeType: "application/json",
     },
     "/api/x402/treasury-state": {

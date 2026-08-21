@@ -67,6 +67,6 @@
     "price": "$0.01 USDC (x402, Base)",
     "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
     "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
-    "note": "hashes only; evidence of existence and time, independently witnessed; not a compliance certificate"
+    "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: invitation open"
   }
 }

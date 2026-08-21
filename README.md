@@ -67,8 +67,12 @@ append-only transparency log and get back a portable, offline-verifiable receipt
 - **Verify offline, zero dependencies:** `verify-receipt.mjs` in
   [gblinproject/gblin-treasury-risk-regime](https://github.com/gblinproject/gblin-treasury-risk-regime).
 
-A seal proves **existence and time**, independently witnessed. It is **not** a
-compliance certificate and **not** an endorsement of the content.
+A seal proves **existence and time** in a signed append-only log anchored daily
+on Base. Input/output go in as hashes only; the `action` label, `agent_id`,
+`tool` and `meta` strings you send are published in the public log — put
+identifiers there, never secrets. It is **not** a compliance certificate and
+**not** an endorsement of the content. The checkpoint is signed by the log
+operator; independent witness cosigning is an open invitation.
 
 ## ElizaOS Integration
 

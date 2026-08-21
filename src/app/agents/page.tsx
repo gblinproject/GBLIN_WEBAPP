@@ -272,7 +272,7 @@ export default function AgentsPage() {
             {[
               {
                 title: 'AI Action Receipts — prove what your agent did',
-                body: 'Seal the hashes of any AI action (never content) into our public append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool seal_action_demo. You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time, independently witnessed: not a compliance certificate.',
+                body: 'Seal the hashes of any AI action into our public, signed append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool seal_action_demo. Input/output go in as hashes only (the action label and metadata you send are published). You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time: not a compliance certificate.',
               },
               {
                 title: 'Yield without breaking x402',
