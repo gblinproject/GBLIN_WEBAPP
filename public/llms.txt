@@ -39,8 +39,9 @@
 - **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts
   — every daily x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes
 - **MCP hosted (Streamable HTTP, no install) — 8 free tools, different from the stdio package:**
-  `get_market_risk_regime` · `get_attestation_sample` · `get_agent_economy_stats` · `get_protocol_info` ·
-  `get_coherence_report` · `seal_action` (demo, 5/day/IP) · `get_receipt` · `verify_receipt` (pure math).
+  `risk.regime.get` · `risk.attestation.sample` · `protocol.economy.stats` · `protocol.info.get` ·
+  `coherence.report.get` · `receipts.entry.seal` (demo, 5/day/IP) · `receipts.entry.get` · `receipts.entry.verify`.
+  Dot-notation tree; the old flat names still work as unlisted aliases until 2026-11-21. Prompts: risk_gate, seal_and_verify.
   Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits` (60 req/min/IP).
   Nothing is paid over MCP; paid = x402 HTTP endpoints. GET-only audit of the live surface:
   /meta (counts + manifest hash) · /tools.json · /resources.json · /conformance · /v1/verify/:index

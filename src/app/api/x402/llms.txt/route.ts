@@ -27,9 +27,9 @@ Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
 MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
              no install, 8 free tools — a DIFFERENT set from the stdio package:
-             get_market_risk_regime · get_attestation_sample · get_agent_economy_stats ·
-             get_protocol_info · get_coherence_report · seal_action (demo) · get_receipt ·
-             verify_receipt. Resources: gblin://howto/attestation, gblin://howto/seal,
+             risk.regime.get · risk.attestation.sample · protocol.economy.stats ·
+             protocol.info.get · coherence.report.get · receipts.entry.seal (demo) ·
+             receipts.entry.get · receipts.entry.verify (old flat names still work as aliases). Resources: gblin://howto/attestation, gblin://howto/seal,
              gblin://limits, gblin://keys (60 req/min/IP). Nothing is paid over MCP.
              GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i
              Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
@@ -87,7 +87,7 @@ operator; independent witness cosigning is an open invitation.
 Free demo (5/day/IP, marked demo:true): POST gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo
 Read free forever: /v1/receipt/:index · /log/checkpoint · /log/proof/:index · human page /receipt/:index
 Offline verifier (zero deps): verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime
-MCP tools (hosted): seal_action (demo) · get_receipt · verify_receipt · resource gblin://howto/seal
+MCP tools (hosted): receipts.entry.seal (demo) · receipts.entry.get · receipts.entry.verify · resource gblin://howto/seal
 
 ### GET /api/x402/attestation-sample        (FREE)
 Static integration-testing sample of the attestation: identical shape and EIP-712
