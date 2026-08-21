@@ -25,7 +25,11 @@ Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
 MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
-             no install: live risk regime, attestation sample, stats — free.
+             no install, 8 free tools — a DIFFERENT set from the stdio package:
+             get_market_risk_regime · get_attestation_sample · get_agent_economy_stats ·
+             get_protocol_info · get_coherence_report · seal_action (demo) · get_receipt ·
+             verify_receipt. Resources: gblin://howto/attestation, gblin://howto/seal,
+             gblin://limits (60 req/min/IP). Nothing is paid over MCP.
              Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
 
 ## Paid endpoints
@@ -81,7 +85,7 @@ operator; independent witness cosigning is an open invitation.
 Free demo (5/day/IP, marked demo:true): POST gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo
 Read free forever: /v1/receipt/:index · /log/checkpoint · /log/proof/:index · human page /receipt/:index
 Offline verifier (zero deps): verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime
-MCP tools: seal_action_demo · get_receipt · how_to_seal_paid
+MCP tools (hosted): seal_action (demo) · get_receipt · verify_receipt · resource gblin://howto/seal
 
 ### GET /api/x402/attestation-sample        (FREE)
 Static integration-testing sample of the attestation: identical shape and EIP-712

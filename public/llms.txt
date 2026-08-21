@@ -26,7 +26,7 @@
 
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
-  — free read-only tools: live risk regime, attestation sample, agent-economy stats, coherence report.
+  — 8 free tools (risk regime, attestation sample, stats, coherence, AI Action Receipts seal/get/verify); tool list below.
 - **AI Action Receipts (seal what your agent did):** $0.01 via x402 at https://gblin.digital/api/x402/seal —
   hashes only, portable receipt (signature + Merkle proof + signed checkpoint), root anchored daily on Base;
   free demo and free reading at https://gblin-mcp.gblin-mcp-worker.workers.dev/log
@@ -39,7 +39,12 @@
 - **Docs:** https://gblin.digital/agents
 - **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts
   — every daily x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes
-- **10 MCP tools exposed:**
+- **MCP hosted (Streamable HTTP, no install) — 8 free tools, different from the stdio package:**
+  `get_market_risk_regime` · `get_attestation_sample` · `get_agent_economy_stats` · `get_protocol_info` ·
+  `get_coherence_report` · `seal_action` (demo, 5/day/IP) · `get_receipt` · `verify_receipt` (pure math).
+  Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits` (60 req/min/IP).
+  Nothing is paid over MCP; paid = x402 HTTP endpoints.
+- **MCP stdio package `@gblin-protocol/mcp-server` (npm) — 10 tools, full treasury toolset:**
   1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture (free) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
   3. `quote_safe_swap` — preview buy/sell with dynamic slippage
