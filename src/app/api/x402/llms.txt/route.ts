@@ -89,6 +89,9 @@ Read free forever: /v1/receipt/:index · /log/checkpoint · /log/proof/:index ·
 Offline verifier (zero deps): verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime
 MCP tools (hosted): receipts.seal (demo) · receipts.get · receipts.verify · resource gblin://howto/seal
 
+Attestor address (pin this): 0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4
+Every paid attestation is signed by it; a signature recovering to another address is not ours.
+
 ### GET /api/x402/attestation-sample        (FREE)
 Static integration-testing sample of the attestation: identical shape and EIP-712
 schema, \`sample: true\`, permanently expired \`expires_at\`. Wire your parser and

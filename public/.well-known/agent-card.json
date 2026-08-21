@@ -59,7 +59,7 @@
     {
       "id": "risk_attestation",
       "name": "Signed risk attestation",
-      "description": "EIP-712 signed proof-of-diligence, verifiable offline in one step \u2014 no trust in the server required. Consumed daily by a third-party ERC-8004 agent as a pinned input of its published decision rule. Free integration sample at /api/x402/attestation-sample.",
+      "description": "EIP-712 signed proof-of-diligence, verifiable offline in one step — no trust in the server required. Consumed daily by a third-party ERC-8004 agent as a pinned input of its published decision rule. Free integration sample at /api/x402/attestation-sample.",
       "price": "0.003 USDC"
     }
   ],
@@ -79,5 +79,9 @@
   "proof": {
     "crashShieldActivation": "https://basescan.org/tx/0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca",
     "sourceVerified": "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#code"
+  },
+  "attestation": {
+    "attestorAddress": "0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4",
+    "note": "Attestations are signed by this address. Pin it: a valid signature that recovers to a DIFFERENT address is not ours. If it is ever rotated, the new address is published here and in llms.txt with the rotation date, and the old one is listed as retired."
   }
 }

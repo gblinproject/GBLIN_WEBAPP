@@ -119,6 +119,9 @@ export async function GET() {
       how: "Recompute hashTypedData over `eip712` and compare to `attestation_id` (tamper-evident). Then check expires_at > now — for this sample that check MUST fail: it is permanently expired.",
       free_mcp_tool:
         "npx @gblin-protocol/mcp-server → verify_risk_attestation (pass this whole object)",
+      live_attestor_address: "0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4",
+      live_attestor_note:
+        "The PAID attestation is signed by this address (this free sample is unsigned). Pin it before you pay: a valid signature that recovers to a different address is not ours.",
     },
     meta: {
       note: "FREE static sample for integration testing. Shape and EIP-712 schema are identical to the paid attestation; the data is frozen and expired, never a live risk signal.",

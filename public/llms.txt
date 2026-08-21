@@ -26,6 +26,8 @@
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
   — 8 free tools (risk regime, attestation sample, stats, coherence, AI Action Receipts seal/get/verify); tool list below.
+- **Attestor address (pin this): `0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4`** — every paid EIP-712 risk attestation is signed by it.
+  A signature that recovers to any other address is not ours. Rotations are published here with the date.
 - **AI Action Receipts (seal what your agent did):** $0.01 via x402 at https://gblin.digital/api/x402/seal —
   hashes only, portable receipt (signature + Merkle proof + signed checkpoint), root anchored daily on Base;
   free demo and free reading at https://gblin-mcp.gblin-mcp-worker.workers.dev/log

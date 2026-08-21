@@ -74,5 +74,11 @@
     "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
     "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
     "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: invitation open"
+  },
+  "attestor": {
+    "address": "0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4",
+    "signs": "the EIP-712 risk attestation served by /api/x402/attestation",
+    "note": "Attestations are signed by this address. Pin it: a valid signature that recovers to a DIFFERENT address is not ours. If it is ever rotated, the new address is published here and in llms.txt with the rotation date, and the old one is listed as retired.",
+    "retired": []
   }
 }
