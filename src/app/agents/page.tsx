@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 10 tools, no API key.';
+  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 13 tools, no API key.';
 
 export const metadata: Metadata = {
   title: { absolute: 'Market risk regime and treasury tools for AI agents on Base' },
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
 const TOOLS = [
   {
     name: 'get_market_risk_regime',
-    purpose: 'BTC/ETH risk regime (calm / elevated / crash) + severity + risk_on/reduce/risk_off posture, from the on-chain Crash Shield. $0.002 USDC via x402.',
+    purpose: 'BTC/ETH risk regime (calm / elevated / crash) + severity + risk_on/reduce/risk_off posture, read from the on-chain Crash Shield. FREE — the paid, signed version is the EIP-712 attestation ($0.003 USDC via x402).',
   },
   {
     name: 'get_treasury_state',
@@ -155,7 +155,7 @@ const FAQS = [
   },
   {
     q: 'Are there paid endpoints?',
-    a: 'Yes — 7 x402 HTTP endpoints are live at gblin.digital/api/x402/*. Prices range from $0.001 to $0.005 USDC per call, paid on Base mainnet. The MCP server itself remains free.',
+    a: 'Yes — 8 x402 HTTP endpoints are live at gblin.digital/api/x402/*. Prices range from $0.001 to $0.01 USDC per call, paid on Base mainnet. The MCP server itself remains free.',
   },
 ];
 
@@ -243,7 +243,7 @@ export default function AgentsPage() {
         </pre>
 
         <p className="mt-4 text-sm text-white/60">
-          No install? Use the hosted MCP (Streamable HTTP, 6 free read-only
+          No install? Use the hosted MCP (Streamable HTTP, 8 free
           tools incl. live risk regime + coherence proof):{' '}
           <code className="text-white/80 break-all">
             https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
@@ -272,7 +272,7 @@ export default function AgentsPage() {
             {[
               {
                 title: 'AI Action Receipts — prove what your agent did',
-                body: 'Seal the hashes of any AI action into our public, signed append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool seal_action_demo. Input/output go in as hashes only (the action label and metadata you send are published). You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time: not a compliance certificate.',
+                body: 'Seal the hashes of any AI action into our public, signed append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool receipts.seal (mode demo). Input/output go in as hashes only (the action label and metadata you send are published). You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time: not a compliance certificate.',
               },
               {
                 title: 'Yield without breaking x402',
@@ -337,11 +337,11 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 10 tools ───────── */}
+      {/* ───────── The 13 stdio tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 10 tools
+            The 13 tools (npm stdio package)
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold

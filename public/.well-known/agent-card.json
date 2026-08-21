@@ -29,7 +29,11 @@
     "observatoryJson": "https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory.json",
     "observatoryProbeSource": "https://github.com/gblinproject/x402-catalog-probe",
     "receiptsSeal": "https://gblin.digital/api/x402/seal",
-    "receiptsLog": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log"
+    "receiptsLog": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
+    "mcpPrompts": "risk_gate, seal_and_verify (POST prompts/list on the hosted MCP)",
+    "mcpAudit": "https://gblin-mcp.gblin-mcp-worker.workers.dev/meta (GET-only mirror of tools, resources and prompts)",
+    "witness": "https://gblin-mcp.gblin-mcp-worker.workers.dev/witness",
+    "receiptsLogForWitnesses": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/consistency?old=<m>&new=<n>"
   },
   "skills": [
     {
@@ -59,7 +63,7 @@
     {
       "id": "risk_attestation",
       "name": "Signed risk attestation",
-      "description": "EIP-712 signed proof-of-diligence, verifiable offline in one step — no trust in the server required. Consumed daily by a third-party ERC-8004 agent as a pinned input of its published decision rule. Free integration sample at /api/x402/attestation-sample.",
+      "description": "EIP-712 signed proof-of-diligence, verifiable offline in one step — no trust in the server required. Bought daily by a third-party ERC-8004 agent as a pinned input of its published decision rule until 16 Aug 2026; current status on gblin.digital/receipts. Free integration sample at /api/x402/attestation-sample.",
       "price": "0.003 USDC"
     }
   ],

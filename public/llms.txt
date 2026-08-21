@@ -39,16 +39,18 @@
 - **GitHub:** https://github.com/gblinproject/gblin-treasury-risk-regime
 - **Docs:** https://gblin.digital/agents
 - **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts
-  — every daily x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes
+  — every x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes;
+  it bought daily until 16 Aug 2026, then its settlement step stopped for every vendor (details on the page)
 - **MCP hosted (Streamable HTTP, no install) — 8 free tools, different from the stdio package:**
   `risk.regime` · `risk.attestation_sample` · `protocol.stats` · `protocol.info` ·
   `coherence.report` · `receipts.seal` (demo, 5/day/IP) · `receipts.get` · `receipts.verify`.
   Dot-notation tree; the old flat names still work as unlisted aliases until 2026-11-21. Prompts: risk_gate, seal_and_verify.
   Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits` (60 req/min/IP).
+  Prompts: `risk_gate`, `seal_and_verify`. Witness endpoints: /witness and /witness/markovian.
   Nothing is paid over MCP; paid = x402 HTTP endpoints. GET-only audit of the live surface:
   /meta (counts + manifest hash) · /tools.json · /resources.json · /conformance · /v1/verify/:index
   (all under https://gblin-mcp.gblin-mcp-worker.workers.dev).
-- **MCP stdio package `@gblin-protocol/mcp-server` (npm) — 10 tools, full treasury toolset:**
+- **MCP stdio package `@gblin-protocol/mcp-server` (npm) — 13 tools, full treasury toolset:**
   1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture (free) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
   3. `quote_safe_swap` — preview buy/sell with dynamic slippage
@@ -59,6 +61,10 @@
   8. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding
   9. `find_keeper_bounty` — check rebalance bounty availability, earn 0.0001 ETH
   10. `verify_risk_attestation` — FREE verifier for GBLIN Risk Attestations (EIP-712 recover + freshness + live drift). Mint attestations at https://gblin.digital/api/x402/attestation ($0.003)
+  11. `seal_action_demo` — free demo seal (5/day/IP) into the AI Action Receipts log
+  12. `get_receipt` — read a sealed receipt by index, with inclusion proof and signed checkpoint
+  13. `how_to_seal_paid` — instructions for unlimited paid seals ($0.01 via x402) and offline verification
+  (the stdio package keeps flat snake_case names; the hosted server uses the dot-notation tree above)
 
 ## Wallet compatibility
 
@@ -74,7 +80,7 @@ No batched UserOp or Account Abstraction dependency.
 ## x402 compatibility
 
 GBLIN MCP does NOT replace x402. x402 invoices still settle in USDC
-through the standard Coinbase facilitator. The MCP server simply produces
+through the Coinbase CDP facilitator (PayAI is the configured fallback if CDP is off). The MCP server simply produces
 the swap calldata the agent broadcasts immediately before paying.
 
 ## Useful pages

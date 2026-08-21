@@ -71,7 +71,7 @@ Stable field contract (consumed in production by third-party agents — these na
 will not change without versioning): \`regime\` (calm|elevated|crash),
 \`shield_active\`, \`severity_pct\`, \`defensive_cash_pct\`, \`expires_at\`.
 A third-party ERC-8004 agent pins this attestation as a required input of its
-published decision rule and buys it daily.
+published decision rule and bought it daily until 16 Aug 2026 (their settlement step then stopped for every vendor; see gblin.digital/receipts).
 
 ### POST /api/x402/seal                     ($0.01)
 AI ACTION RECEIPTS — seal the HASHES of an AI action into GBLIN's public,

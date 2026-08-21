@@ -5,7 +5,7 @@
   "chainId": 8453,
   "currency": "USDC",
   "currencyAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  "facilitator": "https://facilitator.payai.network",
+  "facilitator": "https://api.cdp.coinbase.com/platform/v2/x402",
   "endpoints": [
     {
       "path": "/api/x402/treasury-state",
@@ -17,25 +17,48 @@
       "path": "/api/x402/health",
       "method": "GET",
       "price": "0.002",
-      "description": "Wallet-specific balances, cooldown status"
+      "description": "Wallet-specific balances, cooldown status",
+      "requiredParams": [
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/health?wallet=0x0000000000000000000000000000000000000001",
+      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
     },
     {
       "path": "/api/x402/quote",
       "method": "GET",
       "price": "0.001",
-      "description": "Quote USDC→GBLIN with fees"
+      "description": "Quote USDC→GBLIN with fees",
+      "requiredParams": [
+        "direction",
+        "amount"
+      ],
+      "example": "https://gblin.digital/api/x402/quote?direction=buy&amount=100",
+      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
     },
     {
       "path": "/api/x402/invest",
       "method": "GET",
       "price": "0.002",
-      "description": "4-step unsigned calldata for USDC→GBLIN"
+      "description": "4-step unsigned calldata for USDC→GBLIN",
+      "requiredParams": [
+        "usdc",
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001",
+      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
     },
     {
       "path": "/api/x402/jit",
       "method": "GET",
       "price": "0.005",
-      "description": "JIT unsigned calldata for GBLIN→USDC"
+      "description": "JIT unsigned calldata for GBLIN→USDC",
+      "requiredParams": [
+        "usdc",
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001",
+      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
     },
     {
       "path": "/api/x402/governance",
@@ -65,7 +88,18 @@
     "http": "https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp",
     "smithery": "https://smithery.ai/servers/gblin-protocol/mcp",
     "registry": "io.github.gblinproject/gblin-treasury-risk-regime",
-    "note": "8 free MCP tools in a dot-notation tree (risk.regime, risk.attestation_sample, protocol.info, protocol.stats, coherence.report, receipts.seal (demo 5/day/IP), receipts.get, receipts.verify) plus 2 prompts and 4 resources. Nothing is paid over MCP: the paid attestation and unlimited seals are the x402 endpoints above."
+    "note": "8 free MCP tools in a dot-notation tree (risk.regime, risk.attestation_sample, protocol.info, protocol.stats, coherence.report, receipts.seal (demo 5/day/IP), receipts.get, receipts.verify) plus 2 prompts and 4 resources. Nothing is paid over MCP: the paid attestation and unlimited seals are the x402 endpoints above.",
+    "prompts": [
+      "risk_gate",
+      "seal_and_verify"
+    ],
+    "audit": {
+      "meta": "https://gblin-mcp.gblin-mcp-worker.workers.dev/meta",
+      "tools": "https://gblin-mcp.gblin-mcp-worker.workers.dev/tools.json",
+      "resources": "https://gblin-mcp.gblin-mcp-worker.workers.dev/resources.json",
+      "conformance": "https://gblin-mcp.gblin-mcp-worker.workers.dev/conformance",
+      "note": "GET-only mirrors of the MCP surface, for reviewers and clients that cannot POST"
+    }
   },
   "attestationSample": "https://gblin.digital/api/x402/attestation-sample",
   "receipts": {
@@ -73,12 +107,31 @@
     "price": "$0.01 USDC (x402, Base)",
     "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
     "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
-    "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: invitation open"
+    "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: invitation open",
+    "for_witnesses": {
+      "checkpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/checkpoint",
+      "consistency": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/consistency?old=<m>&new=<n>",
+      "leaves": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/leaves?start=&end=",
+      "inclusion": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/proof/<i>",
+      "verify": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/verify/<i>",
+      "note": "RFC 6962 append-only proof and raw records: rebuild the tree yourself. Independent cosigning invitation open."
+    }
   },
   "attestor": {
     "address": "0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4",
     "signs": "the EIP-712 risk attestation served by /api/x402/attestation",
     "note": "Attestations are signed by this address. Pin it: a valid signature that recovers to a DIFFERENT address is not ours. If it is ever rotated, the new address is published here and in llms.txt with the rotation date, and the old one is listed as retired.",
     "retired": []
+  },
+  "facilitatorPolicy": {
+    "active": "Coinbase CDP — used whenever CDP_API_KEY_ID/SECRET are configured, which is the current production setup",
+    "fallback": "https://facilitator.payai.network (used only if CDP is disabled via X402_ENABLE_CDP=false or the keys are absent)",
+    "note": "Payers do not need to care: any x402 v2 client (@x402/fetch, AgentKit, CDP) handles the flow from the 402 challenge alone."
+  },
+  "witness": {
+    "name": "gblin.digital/witness",
+    "endpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/witness",
+    "cosigns": "markovianprotocol.com/log",
+    "note": "We co-sign a third party's transparency log every 10 minutes, after verifying its signature and a consistency proof."
   }
 }

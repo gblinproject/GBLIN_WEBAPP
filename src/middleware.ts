@@ -465,7 +465,7 @@ const x402Middleware = paymentProxy(
       // NB: tenere la descrizione SOTTO i 512 caratteri — a 540 il facilitator
       // CDP rifiutava la verifica del pagamento con un 400 (03/08/2026).
       description:
-        "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-min) proof of the BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. Consumed daily by a third-party ERC-8004 agent as a pinned input of its decision rule. FREE sample: GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+        "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-min) proof of the BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. Bought daily by a third-party ERC-8004 agent as a pinned input of its decision rule until 16 Aug 2026 (see /receipts). FREE sample: GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
@@ -524,6 +524,18 @@ const x402Middleware = paymentProxy(
 const DECIMAL = /^\d+(\.\d+)?$/;
 const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 
+// Discovery terms for the guarded paths. A crawler that probes the bare path
+// gets a 400 (no charge) and, until now, no idea what the resource costs — which
+// is why these four endpoints were never indexed by catalogs while the
+// parameter-free ones were. The 400 now carries the payment terms and a working
+// example URL, so a probe can learn the price without paying for a bad request.
+const GUARD_TERMS: Record<string, { price: string; example: string }> = {
+  "/api/x402/invest": { price: "$0.002", example: "/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001" },
+  "/api/x402/jit": { price: "$0.005", example: "/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001" },
+  "/api/x402/quote": { price: "$0.001", example: "/api/x402/quote?direction=buy&amount=100" },
+  "/api/x402/health": { price: "$0.002", example: "/api/x402/health?wallet=0x0000000000000000000000000000000000000001" },
+};
+
 const REQUIRED_QUERY: Record<string, Record<string, RegExp>> = {
   "/api/x402/invest": { usdc: DECIMAL, wallet: ADDRESS },
   "/api/x402/jit": { usdc: DECIMAL, wallet: ADDRESS },
@@ -562,13 +574,28 @@ export async function middleware(req: NextRequest) {
 
     if (invalid.length > 0) {
       // 400 before payment: the caller is not charged for a bad request.
+      const terms = GUARD_TERMS[url.pathname];
       return Response.json(
         {
           error: "Invalid or missing query parameters. No payment was taken.",
           invalid,
           hint: `See the parameter schema at ${url.origin}/.well-known/x402`,
+          required: Object.keys(rules),
+          ...(terms
+            ? {
+                example: `${url.origin}${terms.example}`,
+                x402: {
+                  note: "This path is payable, but only with valid parameters: call the example URL to receive the HTTP 402 challenge. This 400 charges nothing.",
+                  scheme: "exact",
+                  network: NETWORK,
+                  price: terms.price,
+                  asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                  payTo: PAY_TO,
+                },
+              }
+            : {}),
         },
-        { status: 400, headers: { "cache-control": "no-store" } }
+        { status: 400, headers: { "cache-control": "public, max-age=600" } }
       );
     }
   }

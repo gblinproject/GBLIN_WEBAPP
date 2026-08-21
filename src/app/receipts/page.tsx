@@ -6,10 +6,10 @@ const PAGE_DESCRIPTION =
   'A transaction record, not an endorsement: every x402 payment a third-party ERC-8004 agent (id 59895) made to GBLIN for its signed risk attestation, with the on-chain tx hash for each and, where it exists, the matching leaf in the payer\'s own transparency log. Reproducible from public data by anyone.';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Receipts — a third-party agent paying GBLIN daily, on-chain' },
+  title: { absolute: 'Receipts — a third-party agent that paid GBLIN daily, on-chain' },
   description: PAGE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/receipts` },
-  openGraph: { title: 'Receipts — a third-party agent paying GBLIN daily, on-chain', description: PAGE_DESCRIPTION, url: `${SITE_URL}/receipts`, type: 'article' },
+  openGraph: { title: 'Receipts — a third-party agent that paid GBLIN daily, on-chain', description: PAGE_DESCRIPTION, url: `${SITE_URL}/receipts`, type: 'article' },
 };
 
 // Snapshot from Base mainnet: USDC Transfer events from the payer wallet to the GBLIN fee wallet.
@@ -70,13 +70,21 @@ export default function ReceiptsPage() {
     <PublicShell>
       <main className="mx-auto max-w-3xl px-4 py-12 text-zinc-200">
         <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-500">Receipts</p>
-        <h1 className="mt-2 font-serif text-3xl text-white">A third-party agent paying GBLIN daily, on-chain</h1>
+        <h1 className="mt-2 font-serif text-3xl text-white">A third-party agent that paid GBLIN daily, on-chain</h1>
         <p className="mt-4 text-sm leading-7 text-zinc-400">
           This is a transaction record, not an endorsement. Since mid-July an ERC-8004 agent registered on Base as{' '}
           <a className="text-amber-300 underline" href="https://8004scan.io/agents?search=59895" rel="noreferrer" target="_blank">id 59895</a>{' '}
           — operated by a different party — has bought GBLIN&apos;s signed risk attestation
           (<code className="text-xs">/api/x402/attestation</code>, $0.003 USDC via x402): a few exploratory calls on 18 July, then once a day at the same minute,
           as an input of a decision rule its operator publishes as a hash-pinned file. Below is every settlement, as it sits on Base.
+        </p>
+        <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/5 p-3 text-sm leading-7 text-amber-100/90">
+          <strong className="text-amber-200">Update, 21 August 2026:</strong> the daily purchases stopped. The last settlement is
+          16 August at 15:17 UTC. This is not us going quiet about a lost customer: the payer&apos;s own transparency log shows its
+          entire x402 settlement step stopped that minute — the same run also stopped paying its own endpoint
+          (<code className="text-xs">markovianprotocol.com/signal/latest</code>) — while its signal entries keep flowing, so the agent is
+          running and only the payment step is down. We verified our side first (a real paid call on 21 August: 402 challenge,
+          EIP-3009 settlement, EIP-712 signature and all five contract fields check out) and told them. The table below stays as it is.
         </p>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
           Honest scale: this is <strong className="text-zinc-200">one</strong> recurring payer. We publish it not because it is
