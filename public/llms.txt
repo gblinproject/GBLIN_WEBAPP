@@ -45,8 +45,8 @@
   `risk.regime` · `risk.attestation_sample` · `protocol.stats` · `protocol.info` ·
   `coherence.report` · `receipts.seal` (demo, 5/day/IP) · `receipts.get` · `receipts.verify`.
   Dot-notation tree; the old flat names still work as unlisted aliases until 2026-11-21. Prompts: risk_gate, seal_and_verify.
-  Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits` (60 req/min/IP).
-  Prompts: `risk_gate`, `seal_and_verify`. Witness endpoints: /witness and /witness/markovian.
+  Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits`, `gblin://keys` (60 req/min/IP).
+  Witness endpoints: /witness and /witness/markovian (we co-sign a third party's log).
   Nothing is paid over MCP; paid = x402 HTTP endpoints. GET-only audit of the live surface:
   /meta (counts + manifest hash) · /tools.json · /resources.json · /conformance · /v1/verify/:index
   (all under https://gblin-mcp.gblin-mcp-worker.workers.dev).
