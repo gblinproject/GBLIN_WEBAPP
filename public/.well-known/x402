@@ -61,5 +61,12 @@
     "registry": "io.github.gblinproject/gblin-mcp-server",
     "note": "Free read-only MCP tools (live risk regime, attestation sample, stats). Paid data stays on the x402 endpoints above."
   },
-  "attestationSample": "https://gblin.digital/api/x402/attestation-sample"
+  "attestationSample": "https://gblin.digital/api/x402/attestation-sample",
+  "receipts": {
+    "seal": "https://gblin.digital/api/x402/seal",
+    "price": "$0.01 USDC (x402, Base)",
+    "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
+    "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
+    "note": "hashes only; evidence of existence and time, independently witnessed; not a compliance certificate"
+  }
 }

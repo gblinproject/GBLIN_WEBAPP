@@ -271,6 +271,10 @@ export default function AgentsPage() {
           <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               {
+                title: 'AI Action Receipts — prove what your agent did',
+                body: 'Seal the hashes of any AI action (never content) into our public append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool seal_action_demo. You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time, independently witnessed: not a compliance certificate.',
+              },
+              {
                 title: 'Yield without breaking x402',
                 body: 'Hold GBLIN (basket appreciation) and JIT-swap to USDC only when invoices come in. x402 payments still settle in USDC — facilitator unchanged.',
               },

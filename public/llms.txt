@@ -27,6 +27,9 @@
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
   — free read-only tools: live risk regime, attestation sample, agent-economy stats, coherence report.
+- **AI Action Receipts (seal what your agent did):** $0.01 via x402 at https://gblin.digital/api/x402/seal —
+  hashes only, portable receipt (signature + Merkle proof + signed checkpoint), root anchored daily on Base;
+  free demo and free reading at https://gblin-mcp.gblin-mcp-worker.workers.dev/log
 - **x402 Uptime Observatory (free data):** https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory
   — continuous liveness probes of the ~240 most recently updated x402 catalog resources (only ~1/3 answer);
   raw JSON at /observatory.json, per-seller badge at /observatory/badge.svg?host=…, our own endpoints in

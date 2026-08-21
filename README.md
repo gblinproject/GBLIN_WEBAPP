@@ -49,6 +49,27 @@ GBLIN ships **6 paid HTTP endpoints** under [`/api/x402/*`](https://gblin.digita
 
 The middleware is a single file: [`src/middleware.ts`](src/middleware.ts). Each route handler lives in `src/app/api/x402/<name>/route.ts` and contains zero payment logic — the paywall is enforced upstream by `paymentProxy` from `@x402/next`.
 
+## AI Action Receipts — prove what your agent did
+
+Seal the **hashes** of any AI action (never the content) into GBLIN's public
+append-only transparency log and get back a portable, offline-verifiable receipt.
+
+- **Seal (paid, unlimited):** `POST /api/x402/seal` — $0.01 USDC via x402 on Base.
+  Body: `{action, input_hash, output_hash?, agent_id?, tool?, meta?}` (hashes = sha256 hex).
+- **Demo (free, 5/day/IP):** `POST https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo`
+  (receipts are marked `demo:true`), or the hosted MCP tool `seal_action_demo`.
+- **Read (free forever):** `/v1/receipt/:index`, `/log/checkpoint`, `/log/proof/:index`,
+  human page `/receipt/:index` on the worker; log overview at
+  [gblin-mcp.gblin-mcp-worker.workers.dev/log](https://gblin-mcp.gblin-mcp-worker.workers.dev/log).
+- **Receipt =** canonical payload + Ed25519 signature + RFC 6962 inclusion proof +
+  C2SP signed checkpoint. The tree root is **anchored daily on Base via EAS**
+  (schema `0x9f433a96…`, promiseId `keccak256("gblin-receipts-log")`).
+- **Verify offline, zero dependencies:** `verify-receipt.mjs` in
+  [gblinproject/gblin-treasury-risk-regime](https://github.com/gblinproject/gblin-treasury-risk-regime).
+
+A seal proves **existence and time**, independently witnessed. It is **not** a
+compliance certificate and **not** an endorsement of the content.
+
 ## ElizaOS Integration
 
 For agents running on **ElizaOS**, the [`plugin-gblin`](https://www.npmjs.com/package/plugin-gblin) ([repo](https://github.com/gblinproject/GBLIN_PLUGIN)) consumes these x402 endpoints natively. It exposes 3 Actions (`CHECK_GBLIN_TREASURY_HEALTH`, `INVEST_IDLE_USDC_GBLIN`, `RESCUE_USDC_FROM_GBLIN`) and 1 Provider (`GBLIN_TREASURY_CONTEXT`) — install via `npm install plugin-gblin`.

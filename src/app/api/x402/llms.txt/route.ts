@@ -67,6 +67,19 @@ will not change without versioning): \`regime\` (calm|elevated|crash),
 A third-party ERC-8004 agent pins this attestation as a required input of its
 published decision rule and buys it daily.
 
+### POST /api/x402/seal                     ($0.01)
+AI ACTION RECEIPTS — seal the HASHES of an AI action (never content) into GBLIN's
+public append-only transparency log (origin: gblin.digital/receipts-log).
+Body: {action, input_hash(sha256 hex), output_hash?, agent_id?, tool?, meta?<=512ch}.
+Returns a portable receipt: Ed25519 signature + RFC 6962 inclusion proof +
+C2SP signed checkpoint; the tree root is anchored daily on Base via EAS.
+A seal proves existence and time, independently witnessed — it is NOT a
+compliance certificate and NOT an endorsement of the content.
+Free demo (5/day/IP, marked demo:true): POST gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo
+Read free forever: /v1/receipt/:index · /log/checkpoint · /log/proof/:index · human page /receipt/:index
+Offline verifier (zero deps): verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime
+MCP tools: seal_action_demo · get_receipt · how_to_seal_paid
+
 ### GET /api/x402/attestation-sample        (FREE)
 Static integration-testing sample of the attestation: identical shape and EIP-712
 schema, \`sample: true\`, permanently expired \`expires_at\`. Wire your parser and

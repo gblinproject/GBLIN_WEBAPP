@@ -158,6 +158,12 @@ const x402Middleware = paymentProxy(
         "x402 catalog observatory: factual liveness of the ~200 most recently updated Bazaar listings, probed in rotation (~2h cadence). Per-endpoint HTTP code, latency, last-OK time, consecutive fails. No payments made by probes; no judgements — measurements only. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog",
       mimeType: "application/json",
     },
+    "/api/x402/seal": {
+      accepts: accepts("$0.01"),
+      description:
+        "AI Action Receipts: seal the HASHES of an AI action (never content) into GBLIN's append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time, independently witnessed — not a compliance certificate. Reading free forever; demo 5/day: gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo. Offline verifier in github.com/gblinproject/gblin-treasury-risk-regime",
+      mimeType: "application/json",
+    },
     "/api/x402/treasury-state": {
       accepts: accepts("$0.001"),
       description:
@@ -645,6 +651,7 @@ export const config = {
     "/api/x402/health",
     "/api/x402/governance",
     "/api/x402/attestation",
+    "/api/x402/seal",
   ],
   runtime: "nodejs",
 };
