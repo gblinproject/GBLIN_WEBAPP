@@ -19,3 +19,16 @@ Si confrontano: codice di stato, header di contratto (`payment-required`,
 Trappola gia' presa: `body.length` in JS conta i caratteri UTF-16, non i byte. La sfida
 contiene trattini lunghi da 3 byte, quindi le due misure differiscono di una dozzina e
 sembra che la sfida cambi quando invece e' stabile. Qui si usa `Buffer.byteLength`.
+
+## verifica-metodi.mjs (aggiunto 22/08/2026)
+
+`node verifica-metodi.mjs` — 45 confronti dal vivo: 9 percorsi x 5 metodi (GET, POST, PUT,
+DELETE, OPTIONS), bordo contro origin, corpo + stato + header `payment-required`.
+
+Serve perche' le Project Routing Rule di Vercel non sanno filtrare per metodo (le condizioni
+sono solo Header, Cookie, Query, Host): al bordo arriva tutto. Il 22/08 questo ha prodotto una
+regressione vera — `POST /api/x402/seal`, l'endpoint a pagamento dei sigilli, rispondeva 404
+invece della sfida — trovata prima che la incontrasse un cliente. L'origin echeggia il metodo
+in due campi dei metadati Bazaar e dentro l'header `payment-required`; il bordo fa lo stesso.
+
+Le fixture golden restano catturate in GET: questo script copre il resto senza duplicarle.
