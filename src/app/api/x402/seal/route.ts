@@ -31,6 +31,9 @@
 export const runtime = "nodejs";
 
 const WORKER = "https://gblin-mcp.gblin-mcp-worker.workers.dev";
+// Devono combaciare con src/middleware.ts: sono i termini che il paywall applica qui.
+const NETWORK = "eip155:8453";
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 export async function POST(req: Request) {
   const token = process.env.CATALOG_TOKEN ?? "";
@@ -102,9 +105,14 @@ async function observePayment(req: Request): Promise<string | null> {
     const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
     const observation = {
-      scheme: str(decoded.scheme),
-      network: str(decoded.network),
-      asset: str(decoded.asset),
+      // Schema, rete e asset NON stanno nel payload di pagamento (misurato sul primo
+      // sigillo con prova, il 22/08: l'autorizzazione porta from/to/value/nonce e basta,
+      // "10000 unita'" senza dire di cosa). Non li inventiamo dal chiamante: sono i
+      // TERMINI CHE QUESTO SERVER HA IMPOSTO su questo percorso, e devono restare
+      // allineati a NETWORK e all'asset del middleware x402.
+      scheme: str(decoded.scheme) ?? "exact",
+      network: str(decoded.network) ?? NETWORK,
+      asset: str(decoded.asset) ?? USDC_BASE,
       amount: str(auth.value),
       payer: str(auth.from),
       pay_to: str(auth.to),
