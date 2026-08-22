@@ -1,0 +1,10 @@
+{
+  "path": "/api/x402/invest",
+  "accept": "text/html,application/xhtml+xml",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "bytes": 629,
+  "body": "{\"error\":\"Invalid or missing query parameters. No payment was taken.\",\"invalid\":[\"usdc\",\"wallet\"],\"hint\":\"See the parameter schema at https://gblin.digital/.well-known/x402\",\"required\":[\"usdc\",\"wallet\"],\"example\":\"https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001\",\"x402\":{\"note\":\"This path is payable, but only with valid parameters: call the example URL to receive the HTTP 402 challenge. This 400 charges nothing.\",\"scheme\":\"exact\",\"network\":\"eip155:8453\",\"price\":\"$0.002\",\"asset\":\"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913\",\"payTo\":\"0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B\"}}"
+}
