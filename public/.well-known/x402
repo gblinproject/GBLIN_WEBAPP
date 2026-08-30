@@ -107,14 +107,14 @@
     "price": "$0.01 USDC (x402, Base)",
     "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
     "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
-    "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: invitation open",
+    "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: one witness cosigns (markovianprotocol.com/witness), more welcome",
     "for_witnesses": {
       "checkpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/checkpoint",
       "consistency": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/consistency?old=<m>&new=<n>",
       "leaves": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/leaves?start=&end=",
       "inclusion": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log/proof/<i>",
       "verify": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/verify/<i>",
-      "note": "RFC 6962 append-only proof and raw records: rebuild the tree yourself. Independent cosigning invitation open."
+      "note": "RFC 6962 append-only proof and raw records: rebuild the tree yourself. One independent witness cosigns today; more are welcome."
     }
   },
   "attestor": {

@@ -6,9 +6,11 @@
  * signature + RFC 6962 inclusion proof + C2SP signed checkpoint. The tree
  * root is anchored daily on Base via EAS. Reading and verification are free
  * forever (worker /v1/receipt/:index, /log/*; offline verifier in the
- * gblin-treasury-risk-regime repo). A seal proves existence and time,
- * independently witnessed — it is NOT a compliance certificate and NOT an
- * endorsement of the content.
+ * gblin-treasury-risk-regime repo). A seal proves existence and time — it is
+ * NOT a compliance certificate and NOT an endorsement of the content. The
+ * checkpoint is cosigned by a third-party witness, which attests only that the
+ * log stayed append-only between the sizes that witness saw: never that a
+ * sealed action is true.
  *
  * Payment is enforced by the x402 middleware (same pipeline as /attestation).
  * This route only forwards the validated JSON to the Worker, which owns the
@@ -50,16 +52,49 @@ export async function POST(req: Request) {
     return Response.json({ error: "invalid JSON body" }, { status: 400 });
   }
   const observed = await observePayment(req);
-  const r = await fetch(`${WORKER}/internal/seal?token=${token}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(observed ? { "x-gblin-payment-observed": observed } : {}),
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const out = await r.json();
+  // Il chiamante ha GIA' pagato quando arriviamo qui: qualsiasi inciampo a valle deve tornargli
+  // come errore leggibile, mai come 500 generico della piattaforma. Prima ne' il fetch (timeout
+  // 20s incluso) ne' r.json() erano protetti.
+  let r: Response;
+  try {
+    r = await fetch(`${WORKER}/internal/seal?token=${token}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(observed ? { "x-gblin-payment-observed": observed } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (e) {
+    const timeout = e instanceof Error && /timeout|abort/i.test(e.name + e.message);
+    return Response.json(
+      {
+        error: timeout
+          ? "seal service did not answer in 20s"
+          : "seal service unreachable",
+        paid: true,
+        retry:
+          "Your payment settled but no receipt was written. Retry the same body; if it fails again, contact gblin.digital and quote your payment nonce.",
+      },
+      { status: 504, headers: { "cache-control": "no-store" } },
+    );
+  }
+  const raw = await r.text();
+  let out: unknown;
+  try {
+    out = JSON.parse(raw);
+  } catch {
+    return Response.json(
+      {
+        error: "seal service returned a non-JSON response",
+        upstream_status: r.status,
+        upstream_body: raw.slice(0, 300),
+        paid: true,
+      },
+      { status: 502, headers: { "cache-control": "no-store" } },
+    );
+  }
   return Response.json(out, {
     status: r.status,
     headers: { "cache-control": "no-store" },

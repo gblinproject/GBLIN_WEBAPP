@@ -152,17 +152,115 @@ const paywall = new PaywallBuilder()
 
 const x402Middleware = paymentProxy(
   {
+    // Queste due rotte non dichiaravano l'estensione Bazaar e per questo NON comparivano nel
+    // catalogo Coinbase: verificato il 30/08/2026 scandendo tutte le 3000 risorse. Un endpoint
+    // senza `extensions.bazaar` non e' nemmeno candidato all'indicizzazione (doc CDP,
+    // buildBazaarDeclaration: "carries enough information for Bazaar to index the route").
     "/api/x402/catalog": {
       accepts: accepts("$0.005"),
       description:
         "x402 catalog observatory: factual liveness of the ~200 most recently updated Bazaar listings, probed in rotation (~2h cadence). Per-endpoint HTTP code, latency, last-OK time, consecutive fails. No payments made by probes; no judgements — measurements only. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog",
       mimeType: "application/json",
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: {},
+          inputSchema: { type: "object", properties: {}, required: [] },
+          output: {
+            example: {
+              probed: 200,
+              alive: 198,
+              cadence_hours: 2,
+              sample: [
+                {
+                  resource: "https://example.com/api/paid",
+                  http: 402,
+                  latency_ms: 143,
+                  last_ok: "2026-08-30T09:00:00.000Z",
+                  consecutive_fails: 0,
+                },
+              ],
+            },
+          },
+        }),
+      },
     },
     "/api/x402/seal": {
       accepts: accepts("$0.01"),
       description:
         "AI Action Receipts: seal the HASHES of an AI action (input/output as hashes; your action label + meta are published) into GBLIN's signed append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time — not a compliance certificate. Free reads + demo: gblin-mcp.gblin-mcp-worker.workers.dev/log. Offline verifier: github.com/gblinproject/gblin-treasury-risk-regime",
       mimeType: "application/json",
+      extensions: {
+        ...declareDiscoveryExtension({
+          bodyType: "json", // il metodo (POST) lo compila bazaarResourceServerExtension
+          input: {
+            action: "summarise-contract",
+            input_hash:
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              action: {
+                type: "string",
+                maxLength: 128,
+                description:
+                  "Short public label for what the AI did. PUBLISHED in the log: identifiers only, never secrets.",
+              },
+              input_hash: {
+                type: "string",
+                pattern: "^(0x)?[0-9a-fA-F]{64}$",
+                description: "sha256 of your input, 64 hex chars (0x prefix optional)",
+              },
+              output_hash: {
+                type: "string",
+                pattern: "^((0x)?[0-9a-fA-F]{64})?$",
+                description: "sha256 of your output, 64 hex chars (optional)",
+              },
+              agent_id: {
+                type: "string",
+                maxLength: 128,
+                description: "Your agent identifier (optional). PUBLISHED.",
+              },
+              tool: {
+                type: "string",
+                maxLength: 128,
+                description: "Tool or model used (optional). PUBLISHED.",
+              },
+              meta: {
+                type: "string",
+                maxLength: 512,
+                description: "Extra JSON object as a string (optional). PUBLISHED.",
+              },
+            },
+            required: ["action", "input_hash"],
+          },
+          output: {
+            example: {
+              format: "gblin-receipt/v1",
+              payload: {
+                v: 1,
+                log: "gblin.digital/receipts-log",
+                index: 42,
+                ts: "2026-08-30T09:00:00.000Z",
+                action: "summarise-contract",
+                input_hash:
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                output_hash: null,
+              },
+              leaf: "<base64 sha256(0x00 || canonical)>",
+              index: 42,
+              tree_size: 43,
+              root: "<base64 Merkle root>",
+              signature: "<base64 Ed25519 over the canonical record>",
+              verifier_key: "gblin.digital/receipts-log+00c6e18c+...",
+              inclusion_proof: ["<base64 node>", "<base64 node>"],
+              checkpoint: "<C2SP signed note>",
+              verify:
+                "offline: see verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime (zero deps)",
+            },
+          },
+        }),
+      },
     },
     "/api/x402/treasury-state": {
       accepts: accepts("$0.001"),
