@@ -665,7 +665,21 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const rules = REQUIRED_QUERY[url.pathname];
 
-  if (rules) {
+  // La guardia sui parametri vale SOLO per chi sta pagando (30/08/2026).
+  //
+  // Prima girava per tutti, e teneva questi quattro percorsi FUORI dal catalogo Bazaar per
+  // costruzione: il validatore ufficiale di Coinbase li rifiuta con "Endpoint returned HTTP 400
+  // instead of 402", e un crawler non vedeva nemmeno il prezzo. Sembrava un compromesso —
+  // o la guardia o la visibilita' — e invece non lo e': legandola alla presenza di un header
+  // di pagamento si ottengono entrambe le cose.
+  //   anonimo (crawler, validatore, curioso)  -> cade nella pipeline x402 -> 402 con la sfida
+  //   pagante con parametri sbagliati         -> 400 QUI, prima di verify/settle
+  // Nel secondo caso il cliente ha firmato un'autorizzazione EIP-3009 che non viene mai
+  // sottoposta al facilitator: nessun addebito, esattamente come prima. La promessa scritta
+  // dentro il 400 ("No payment was taken") resta vera.
+  const staPagando = PAYMENT_HEADERS.some((h) => req.headers.get(h));
+
+  if (rules && staPagando) {
     const invalid = Object.entries(rules)
       .filter(([param, pattern]) => !pattern.test(url.searchParams.get(param) ?? ""))
       .map(([param]) => param);
@@ -698,11 +712,22 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const hasPayment = PAYMENT_HEADERS.some((h) => req.headers.get(h));
+  const hasPayment = staPagando;
   const wantsHtml = (req.headers.get("accept") ?? "").includes("text/html");
   const cacheKey = `${url.pathname}:${wantsHtml ? "html" : "json"}`;
 
-  if (!hasPayment && req.method === "GET") {
+  // La sfida ECHEGGIA l'URL completo in `resource.url`, query string inclusa, ma la chiave qui
+  // sopra guarda solo il percorso. Finche' i quattro percorsi guardati rispondevano 400 agli
+  // anonimi la cosa non si vedeva; da quando rispondono la sfida (30/08/2026) si vede eccome:
+  // la prima richiesta con `?direction=buy&amount=100` riempiva lo slot, e ogni richiesta
+  // SENZA parametri riceveva per un'ora una sfida che dichiarava un `resource` diverso da
+  // quello chiesto. Byte non deterministici, proprio quelli che il Bazaar indicizza.
+  // Si cachea SOLO la forma canonica senza query — che e' quella che vedono crawler,
+  // validatore e fixture golden. Con una query si calcola ogni volta: sono poche richieste,
+  // e cachearle per chiave completa aprirebbe la porta a chiavi infinite.
+  const cacheabile = url.search === "";
+
+  if (!hasPayment && req.method === "GET" && cacheabile) {
     const hit = cache402.get(cacheKey);
     if (hit && hit.expires > Date.now()) {
       return new Response(hit.body.slice(0), { status: hit.status, headers: hit.headers });
@@ -748,7 +773,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (!hasPayment && req.method === "GET" && res.status === 402) {
+  if (!hasPayment && req.method === "GET" && res.status === 402 && cacheabile) {
     try {
       const clone = res.clone();
       const body = await clone.arrayBuffer();

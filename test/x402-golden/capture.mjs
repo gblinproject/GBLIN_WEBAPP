@@ -8,13 +8,15 @@
 //   node capture.mjs            # riscrive le fixture (solo quando il cambio E' voluto)
 //   node verify.mjs [base]      # confronta il live con le fixture (CI / pre-deploy)
 import { writeFileSync } from "node:fs";
-import { PATHS, BASE, fetchOne, fixtureName } from "./common.mjs";
+import { PATHS, BASE, fetchOne, fixtureName, controllaCattura } from "./common.mjs";
 
 const base = process.argv[2] || BASE;
 for (const p of PATHS) {
   for (const flavor of ["json", "html"]) {
-    const r = await fetchOne(base, p, flavor, true); // dall'ORIGINE, mai dal bordo
-    writeFileSync(fixtureName(p, flavor), JSON.stringify(r, null, 2) + "\n");
+    const r = await fetchOne(base, p, flavor, true);
+    controllaCattura(`${p} ${flavor}`, r); // dall'ORIGINE, mai dal bordo
+    const { daBordo, ...fixture } = r; // daBordo e' diagnostica, non contratto
+    writeFileSync(fixtureName(p, flavor), JSON.stringify(fixture, null, 2) + "\n");
     console.log(`${String(p).padEnd(16)} ${flavor.padEnd(5)} ${r.status}  ${r.bytes} byte`);
   }
 }
