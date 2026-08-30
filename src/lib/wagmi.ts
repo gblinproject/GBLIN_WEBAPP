@@ -24,7 +24,21 @@ const wcProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
   "9629f33d439505415769d9d29d7b788e";
 const { connectors: lifiConnectors } = createDefaultWagmiConfig({
-  metaMask: {},
+  // `dapp` NON e' decorativo: senza, il build stampa a ogni pagina
+  // "Error initializing MetaMaskConnectMultichain: You must provide dapp url".
+  // Il motivo sta nel connettore di wagmi 3.7.3 (@wagmi/connectors/metaMask.js ~244):
+  //   typeof window === 'undefined' ? { name: 'wagmi' } : { name: hostname, url: href }
+  // cioe' sul SERVER passa il nome ma NON l'url, e @metamask/connect-multichain lo pretende
+  // ("if (!options.dapp?.url) throw"). In pre-renderizzazione window non esiste, quindi lancia.
+  // Dichiarandolo qui l'errore sparisce E la finestra di conferma di MetaMask mostra il nostro
+  // nome invece di "wagmi" o dell'hostname di turno — come gia' fa WalletConnect qui sotto.
+  metaMask: {
+    dapp: {
+      name: "GBLIN Protocol",
+      url: "https://gblin.digital",
+      iconUrl: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.svg",
+    },
+  },
   coinbase: { appName: "GBLIN Protocol" },
   baseAccount: { appName: "GBLIN Protocol" },
   walletConnect: {
