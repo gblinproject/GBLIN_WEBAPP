@@ -201,33 +201,51 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
  * degraded fallback slower than the failure it replaces. Events surfaced here
  * are therefore always tagged as the current contract, which is accurate.
  */
+/**
+ * Ripiego RPC quando Blockscout non risponde. Copre solo una finestra RECENTE, e va detto.
+ *
+ * 30/08/2026 — com'era prima: 5.184.000 blocchi (30 giorni) a finestre di 9.000, IN SEQUENZA.
+ * Sono 576 chiamate eth_getLogs una dopo l'altra, e cercavano solo su CONTRACT_ADDRESS, cioe' il
+ * deploy attuale, che di rebalance ne ha ZERO. Quindi il ripiego impiegava piu' di un minuto per
+ * garantirsi di non trovare niente, e con Blockscout giu' era l'unica cosa che girava: e' lui che
+ * faceva sforare il tetto di 60 secondi della generazione statica e faceva fallire il build.
+ *
+ * Ora: ~2 giorni di blocchi, in PARALLELO. Dieci chiamate invece di 576. La storia completa la sa
+ * solo Blockscout (nessun RPC pubblico regge una scansione di mesi), quindi quando ripieghiamo lo
+ * dichiariamo con `partial: true` invece di far sembrare "zero rebalance" cio' che e' "non ho
+ * potuto guardare abbastanza indietro".
+ */
+const FALLBACK_BLOCKS = 86_400; // ~2 giorni su Base (~2s a blocco)
+
 async function fetchFromAlchemy(fromBlock: number, toBlock: number): Promise<RawLog[]> {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const WINDOW = 9_000;
-  const out: RawLog[] = [];
+  const finestre: Array<[number, number]> = [];
   for (let start = fromBlock; start <= toBlock; start += WINDOW) {
-    const end = Math.min(start + WINDOW - 1, toBlock);
-    try {
-      const logs = await provider.getLogs({
-        address: CONTRACT_ADDRESS,
-        topics: [REBALANCED_TOPIC_V6],   // il fallback RPC scansiona CONTRACT_ADDRESS = V6
-        fromBlock: start,
-        toBlock: end,
-      });
-      for (const l of logs) {
-        out.push({
+    finestre.push([start, Math.min(start + WINDOW - 1, toBlock)]);
+  }
+  const risultati = await Promise.all(
+    finestre.map(async ([start, end]) => {
+      try {
+        const logs = await provider.getLogs({
+          address: CONTRACT_ADDRESS,
+          topics: [REBALANCED_TOPIC_V6],   // il fallback RPC scansiona CONTRACT_ADDRESS = V6
+          fromBlock: start,
+          toBlock: end,
+        });
+        return logs.map((l) => ({
           topics: l.topics as string[],
           data: l.data,
           transactionHash: l.transactionHash,
           blockNumber: l.blockNumber,
-        });
+        })) as RawLog[];
+      } catch {
+        // Una finestra andata male non deve uccidere le altre.
+        return [] as RawLog[];
       }
-    } catch {
-      // Swallow per-window errors so a single bad RPC call doesn't kill the whole history.
-      continue;
-    }
-  }
-  return out;
+    }),
+  );
+  return risultati.flat();
 }
 
 export async function GET() {
@@ -272,7 +290,7 @@ async function raccogli() {
       source = 'alchemy';
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - 5_184_000);
+      const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
       raw = await fetchFromAlchemy(fromBlock, currentBlock);
     }
 
@@ -308,6 +326,14 @@ async function raccogli() {
       events: decoded.filter(Boolean),
       source,
       count: decoded.length,
+      // Con Blockscout giu' vediamo solo ~2 giorni indietro: un elenco vuoto qui significa
+      // "niente di recente", NON "non ci sono mai stati rebalance".
+      ...(source === 'alchemy'
+        ? {
+            partial: true,
+            covers: `last ~${Math.round((FALLBACK_BLOCKS * 2) / 86400)} days only (Blockscout unavailable; full history needs it)`,
+          }
+        : {}),
       _source: SOURCE,
     };
   }

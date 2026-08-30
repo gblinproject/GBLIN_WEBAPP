@@ -13,7 +13,7 @@ import { PATHS, BASE, fetchOne, fixtureName } from "./common.mjs";
 const base = process.argv[2] || BASE;
 for (const p of PATHS) {
   for (const flavor of ["json", "html"]) {
-    const r = await fetchOne(base, p, flavor);
+    const r = await fetchOne(base, p, flavor, true); // dall'ORIGINE, mai dal bordo
     writeFileSync(fixtureName(p, flavor), JSON.stringify(r, null, 2) + "\n");
     console.log(`${String(p).padEnd(16)} ${flavor.padEnd(5)} ${r.status}  ${r.bytes} byte`);
   }

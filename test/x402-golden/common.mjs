@@ -10,9 +10,18 @@ const CONTRACT_HEADERS = ["payment-required", "www-authenticate", "content-type"
 
 export const fixtureName = (p, flavor) => new URL(`./${p}.${flavor}.json`, import.meta.url).pathname;
 
-export async function fetchOne(base, path, flavor) {
+// `daOrigin` serve alla CATTURA e solo a lei. Dal 22/08/2026 la sfida 402 anonima la serve il
+// Worker al bordo: una GET normale legge quindi il BORDO, non l'origine. Catturare cosi' fa
+// mordere la coda allo strumento — le fixture non imparano mai le modifiche fatte su Vercel, e
+// il generatore del bordo le rigenera identiche a se stesse. Successo apparente, zero effetto.
+// (Preso il 30/08/2026: la dichiarazione Bazaar su seal e catalog non entrava mai nel bordo.)
+// Un `x-payment` non valido non matcha la regola di riscrittura, quindi arriva all'origine, che
+// ripropone la STESSA sfida byte per byte. La VERIFICA invece deve restare anonima: li' vogliamo
+// misurare proprio cio' che vede il mondo.
+export async function fetchOne(base, path, flavor, daOrigin = false) {
   const accept = flavor === "html" ? "text/html,application/xhtml+xml" : "application/json";
-  const res = await fetch(`${base}/api/x402/${path}`, { headers: { accept } });
+  const richiesta = daOrigin ? { accept, "x-payment": "non-valido" } : { accept };
+  const res = await fetch(`${base}/api/x402/${path}`, { headers: richiesta });
   const body = await res.text();
   const headers = {};
   for (const h of CONTRACT_HEADERS) { const v = res.headers.get(h); if (v) headers[h] = v; }
