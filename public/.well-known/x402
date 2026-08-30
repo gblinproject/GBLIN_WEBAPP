@@ -22,7 +22,7 @@
         "wallet"
       ],
       "example": "https://gblin.digital/api/x402/health?wallet=0x0000000000000000000000000000000000000001",
-      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
+      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
     },
     {
       "path": "/api/x402/quote",
@@ -34,7 +34,7 @@
         "amount"
       ],
       "example": "https://gblin.digital/api/x402/quote?direction=buy&amount=100",
-      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
+      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
     },
     {
       "path": "/api/x402/invest",
@@ -46,7 +46,7 @@
         "wallet"
       ],
       "example": "https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001",
-      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
+      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
     },
     {
       "path": "/api/x402/jit",
@@ -58,7 +58,7 @@
         "wallet"
       ],
       "example": "https://gblin.digital/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001",
-      "note": "Without these parameters the endpoint returns 400 (no charge) instead of the 402 challenge: fetch the example URL to see the terms."
+      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
     },
     {
       "path": "/api/x402/governance",

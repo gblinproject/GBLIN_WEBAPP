@@ -13,23 +13,23 @@
 //
 // Uso: node verifica-metodi.mjs
 
-const SEMPLICI = ["attestation", "catalog", "governance", "seal", "treasury-state"];
-const GUARDATI = {
-  quote: "direction=buy&amount=100",
-  jit: "usdc=10&wallet=0x0000000000000000000000000000000000000001",
-  invest: "usdc=10&wallet=0x0000000000000000000000000000000000000001",
-  health: "wallet=0x0000000000000000000000000000000000000001",
-};
+// 30/08/2026: quote/jit/invest/health erano interrogati CON i parametri d'esempio, perche' senza
+// l'origin rispondeva 400. Ora la guardia scatta solo per chi paga, quindi l'anonimo riceve sempre
+// la sfida e i parametri vanno TOLTI: la sfida echeggia l'URL completo in `resource.url`, quindi
+// interrogare l'origin con la query e il bordo senza confrontava due domande diverse. Si vedeva
+// dall'aritmetica: la differenza era esattamente la lunghezza della query, 25/58/58/50 byte.
+const PERCORSI = ["attestation", "catalog", "governance", "seal", "treasury-state", "quote", "jit", "invest", "health"];
 const METODI = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
 
 let diversi = 0, totale = 0;
 for (const metodo of METODI) {
-  for (const nome of [...SEMPLICI, ...Object.keys(GUARDATI)]) {
-    const q = GUARDATI[nome] ? "?" + GUARDATI[nome] : "";
-    const url = `https://gblin.digital/api/x402/${nome}${q}`;
+  for (const nome of PERCORSI) {
+    const url = `https://gblin.digital/api/x402/${nome}`;
     const bordo = await fetch(url, { method: metodo, headers: { accept: "application/json" } });
-    // Un pagamento non valido non matcha la regola di riscrittura: arriva all'origin.
-    const origin = await fetch(url, { method: metodo, headers: { accept: "application/json", "x-payment": "non-valido" } });
+    // Header di pagamento VUOTO: presente per la routing rule (quindi arriva all'origin), falsy per
+    // il nostro middleware (quindi niente guardia sui parametri, e la sfida e' quella anonima).
+    // Con un valore NON vuoto l'origin risponderebbe 400 sui quattro percorsi guardati.
+    const origin = await fetch(url, { method: metodo, headers: { accept: "application/json", "x-payment": "" } });
     const [bb, ob] = [await bordo.text(), await origin.text()];
     const hb = bordo.headers.get("payment-required") || "";
     const ho = origin.headers.get("payment-required") || "";
