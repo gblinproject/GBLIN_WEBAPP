@@ -47,12 +47,26 @@ const iface = new ethers.Interface([
   'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, uint256 bounty)',
 ]);
 
-// Next.js route segment config — let Next cache the response so we don't
-// hammer Basescan/RPC when multiple users hit the protocol page at once.
-// 10 min: rebalances happen roughly daily (incentivizedRebalance is a daily
-// keeper poke), so 30s revalidation was pure CPU burn — the log-scan fallback
-// pages through eth_getLogs on every regeneration.
-export const revalidate = 600;
+// Next.js route segment config.
+//
+// 30/08/2026 — QUESTA ROTTA HA FATTO FALLIRE UN DEPLOY. Con `revalidate` e nessuna API
+// dinamica, Next la PRE-RENDERIZZA durante il build: la generazione statica su Vercel ha un
+// tetto di 60 secondi, e qui dentro si parla con Blockscout e, se Blockscout non risponde, si
+// pagina attraverso 5,18 milioni di blocchi via eth_getLogs. Il build dipendeva quindi dalla
+// velocita' di un servizio terzo, e un giorno quel servizio e' stato lento.
+//
+// `force-dynamic` toglie la pre-renderizzazione: il build non parla piu' con la catena. La
+// cache non si perde, si sposta sulla CDN con gli header qui sotto (stesso effetto sulla CPU
+// che cercavamo il 03/08 alzando revalidate a 600s), e `stale-while-revalidate` fa servire la
+// copia vecchia mentre quella nuova si ricostruisce, quindi nessuno aspetta la scansione.
+export const dynamic = 'force-dynamic';
+
+// Oltre questo, la richiesta si arrende e risponde in modo degradato ma DICHIARATO, invece di
+// restare appesa: appeso costa CPU fatturata e, al build, faceva fallire tutto.
+const DEADLINE_MS = 20_000;
+
+const CACHE_OK = 'public, s-maxage=600, stale-while-revalidate=3600';
+const CACHE_DEGRADATO = 'public, s-maxage=30'; // riprova presto, non cristallizzare un vuoto
 
 // Attribution block — additive, consumed by third parties citing our data.
 const SOURCE = {
@@ -217,7 +231,37 @@ async function fetchFromAlchemy(fromBlock: number, toBlock: number): Promise<Raw
 }
 
 export async function GET() {
+  const scaduto = Symbol('scaduto');
+  const deadline = new Promise<typeof scaduto>((r) =>
+    setTimeout(() => r(scaduto), DEADLINE_MS),
+  );
   try {
+    const esito = await Promise.race([raccogli(), deadline]);
+    if (esito === scaduto) {
+      return NextResponse.json(
+        {
+          events: [],
+          source: null,
+          count: 0,
+          degraded: true,
+          reason: `upstream did not answer within ${DEADLINE_MS / 1000}s (Blockscout, then the RPC log scan); this is a timeout on our side, not a statement that there are no rebalances`,
+          _source: SOURCE,
+        },
+        { status: 200, headers: { 'cache-control': CACHE_DEGRADATO } },
+      );
+    }
+    return NextResponse.json(esito, { headers: { 'cache-control': CACHE_OK } });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch history';
+    return NextResponse.json(
+      { error: message, events: [] },
+      { status: 500, headers: { 'cache-control': CACHE_DEGRADATO } },
+    );
+  }
+}
+
+async function raccogli() {
+  {
     let raw: RawLog[] = [];
     let source: 'blockscout' | 'alchemy' = 'blockscout';
 
@@ -260,15 +304,12 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({
+    return {
       events: decoded.filter(Boolean),
       source,
       count: decoded.length,
       _source: SOURCE,
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch history';
-    return NextResponse.json({ error: message, events: [] }, { status: 500 });
+    };
   }
 }
 
