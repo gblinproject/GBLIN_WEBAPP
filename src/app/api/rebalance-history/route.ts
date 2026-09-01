@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server';
+import { blockscoutV2Url } from '@/lib/blockscout';
 import { ethers } from 'ethers';
 
 // Server-side only: prefer the secret ALCHEMY_API_KEY, fall back to the public
 // one so the route still works if only the NEXT_PUBLIC_ var is configured.
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY ?? process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
+/**
+ * Le letture normali (numero di blocco, timestamp) possono passare da Alchemy.
+ * Il ripiego a LOG no: dal 2026 il piano gratuito di Alchemy limita `eth_getLogs` a DIECI
+ * blocchi, quindi ogni finestra da 9.000 falliva dentro un catch e la rotta pubblicava
+ * "0 rebalance" senza aver guardato niente. I nodi pubblici accettano 10.000 blocchi.
+ */
 const RPC_URL = ALCHEMY_KEY
   ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://mainnet.base.org';
+const RPC_LOGS = ['https://base.drpc.org', 'https://mainnet.base.org'];
 // Blockscout Base (open-source, free, no block-range limit, decodes events for us).
-const BLOCKSCOUT_API = 'https://base.blockscout.com/api/v2';
+// L'indirizzo (ed eventuale chiave, se configurata in BLOCKSCOUT_API_URL) esce da un solo
+// posto: src/lib/blockscout.ts.
 
 /**
  * Rebalance history is read from BOTH deployments on purpose.
@@ -148,7 +157,9 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
   const perContract = await Promise.all(
     CONTRACTS.map(async ({ label, address, current }) => {
       try {
-        const url = `${BLOCKSCOUT_API}/addresses/${address}/logs?topic=${TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6}`;
+        const url = blockscoutV2Url(`addresses/${address}/logs`, {
+          topic: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6,
+        });
         const res = await fetch(url, {
           headers: { accept: 'application/json' },
           next: { revalidate: 30 },
@@ -217,35 +228,53 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
  */
 const FALLBACK_BLOCKS = 86_400; // ~2 giorni su Base (~2s a blocco)
 
-async function fetchFromAlchemy(fromBlock: number, toBlock: number): Promise<RawLog[]> {
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const WINDOW = 9_000;
+/**
+ * Ripiego a log su NODI PUBBLICI (non Alchemy, che sul piano gratuito accetta 10 blocchi per
+ * chiamata). Finestre da 10.000 blocchi in parallelo, con un secondo nodo di scorta.
+ *
+ * Restituisce anche quante finestre hanno fallito: se falliscono tutte, chi chiama NON deve
+ * poter scambiare la lista vuota per "nessun rebalance". Era il difetto vecchio.
+ */
+async function fetchFromRpc(
+  fromBlock: number,
+  toBlock: number,
+): Promise<{ logs: RawLog[]; finestre: number; fallite: number }> {
+  const WINDOW = 10_000;
   const finestre: Array<[number, number]> = [];
   for (let start = fromBlock; start <= toBlock; start += WINDOW) {
     finestre.push([start, Math.min(start + WINDOW - 1, toBlock)]);
   }
+
+  let fallite = 0;
   const risultati = await Promise.all(
-    finestre.map(async ([start, end]) => {
-      try {
-        const logs = await provider.getLogs({
-          address: CONTRACT_ADDRESS,
-          topics: [REBALANCED_TOPIC_V6],   // il fallback RPC scansiona CONTRACT_ADDRESS = V6
-          fromBlock: start,
-          toBlock: end,
-        });
-        return logs.map((l) => ({
-          topics: l.topics as string[],
-          data: l.data,
-          transactionHash: l.transactionHash,
-          blockNumber: l.blockNumber,
-        })) as RawLog[];
-      } catch {
-        // Una finestra andata male non deve uccidere le altre.
-        return [] as RawLog[];
+    finestre.map(async ([start, end], i) => {
+      // I nodi si alternano per finestra, e su errore si prova l'altro.
+      for (let tentativo = 0; tentativo < RPC_LOGS.length; tentativo++) {
+        const url = RPC_LOGS[(i + tentativo) % RPC_LOGS.length];
+        try {
+          const provider = new ethers.JsonRpcProvider(url);
+          const logs = await provider.getLogs({
+            address: CONTRACT_ADDRESS,
+            topics: [REBALANCED_TOPIC_V6],   // il ripiego guarda solo il deploy attuale
+            fromBlock: start,
+            toBlock: end,
+          });
+          return logs.map((l) => ({
+            topics: l.topics as string[],
+            data: l.data,
+            transactionHash: l.transactionHash,
+            blockNumber: l.blockNumber,
+          })) as RawLog[];
+        } catch {
+          // si prova il nodo successivo
+        }
       }
+      fallite += 1;
+      return [] as RawLog[];
     }),
   );
-  return risultati.flat();
+
+  return { logs: risultati.flat(), finestre: finestre.length, fallite };
 }
 
 export async function GET() {
@@ -281,17 +310,22 @@ export async function GET() {
 async function raccogli() {
   {
     let raw: RawLog[] = [];
-    let source: 'blockscout' | 'alchemy' = 'blockscout';
+    let source: 'blockscout' | 'rpc' = 'blockscout';
+    let finestreFallite = 0;
+    let finestreTotali = 0;
 
     try {
       raw = await fetchFromBlockscout();
     } catch {
-      // Blockscout unavailable — fall back to Alchemy over the last ~30 days.
-      source = 'alchemy';
+      // Blockscout non risponde: si ripiega sui nodi pubblici, su una finestra recente.
+      source = 'rpc';
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const currentBlock = await provider.getBlockNumber();
       const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
-      raw = await fetchFromAlchemy(fromBlock, currentBlock);
+      const esito = await fetchFromRpc(fromBlock, currentBlock);
+      raw = esito.logs;
+      finestreFallite = esito.fallite;
+      finestreTotali = esito.finestre;
     }
 
     // Blockscout returns newest-first already; for Alchemy we sort by block desc.
@@ -299,6 +333,10 @@ async function raccogli() {
       source === 'blockscout'
         ? raw
         : [...raw].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+
+    // Se il ripiego non e' riuscito a leggere NEMMENO una finestra, non abbiamo guardato
+    // niente: una lista vuota qui sarebbe una bugia, non una misura.
+    const cieco = source === 'rpc' && finestreTotali > 0 && finestreFallite === finestreTotali;
 
     // Keep the 5 most recent events.
     const mostRecent = sorted.slice(0, 5);
@@ -328,10 +366,15 @@ async function raccogli() {
       count: decoded.length,
       // Con Blockscout giu' vediamo solo ~2 giorni indietro: un elenco vuoto qui significa
       // "niente di recente", NON "non ci sono mai stati rebalance".
-      ...(source === 'alchemy'
+      ...(source === 'rpc'
         ? {
             partial: true,
-            covers: `last ~${Math.round((FALLBACK_BLOCKS * 2) / 86400)} days only (Blockscout unavailable; full history needs it)`,
+            covers: cieco
+              ? 'nothing: every log window failed, so this list means "we could not look", not "no rebalances"'
+              : `last ~${Math.round((FALLBACK_BLOCKS * 2) / 86400)} days only (Blockscout unavailable; full history needs it)`,
+            windows_failed: finestreFallite,
+            windows_total: finestreTotali,
+            ...(cieco ? { degraded: true } : {}),
           }
         : {}),
       _source: SOURCE,

@@ -29,6 +29,7 @@
  */
 
 import { formatEther } from "viem";
+import { blockscoutLegacyUrl } from "@/lib/blockscout";
 import { client, ETH_USD_FEED, GBLIN } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -37,7 +38,6 @@ export const runtime = "nodejs";
 const YIELD_TOPIC =
   "0xe8ed0a697f15301f06fd3d30bc896682e7826c5397076a3eda05844cfc356480";
 
-const BLOCKSCOUT_URL = "https://base.blockscout.com/api";
 
 /** Block the production contract was deployed in (Base, 21 June 2026). */
 const DEPLOY_BLOCK = 47_600_000n;
@@ -92,9 +92,15 @@ let cache: { at: number; payload: NavFeesPayload } | null = null;
  * distributed" apart from "we could not read the chain".
  */
 async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
-  const url =
-    `${BLOCKSCOUT_URL}?module=logs&action=getLogs` +
-    `&fromBlock=${DEPLOY_BLOCK}&toBlock=latest&address=${GBLIN}&topic0=${YIELD_TOPIC}`;
+  // L'indirizzo (ed eventuale chiave) arriva da BLOCKSCOUT_API_URL — vedi src/lib/blockscout.ts.
+  const url = blockscoutLegacyUrl({
+    module: "logs",
+    action: "getLogs",
+    fromBlock: String(DEPLOY_BLOCK),
+    toBlock: "latest",
+    address: GBLIN,
+    topic0: YIELD_TOPIC,
+  });
 
   const res = await fetch(url, {
     signal: AbortSignal.timeout(10_000),

@@ -1689,15 +1689,22 @@ export function RebalanceView(props: RebalanceViewProps) {
 function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // La rotta dichiara `degraded` quando NON e' riuscita a leggere i log: in quel caso una
+  // lista vuota non significa "nessun ribilanciamento", e non va raccontata come tale.
+  const [cieco, setCieco] = useState(false);
 
   useEffect(() => {
     fetch('/api/rebalance-history')
       .then((res) => res.json())
       .then((data) => {
         setHistory(data.events || []);
+        setCieco(Boolean(data.degraded));
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setCieco(true);
+        setLoading(false);
+      });
   }, []);
 
   return (
@@ -1750,7 +1757,9 @@ function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
         {loading ? (
           <p className="text-sm text-zinc-500">{t('rebalance.historyLoading')}</p>
         ) : history.length === 0 ? (
-          <p className="text-sm text-zinc-500">{t('rebalance.historyEmpty')}</p>
+          <p className="text-sm text-zinc-500">
+            {t(cieco ? 'rebalance.historyUnavailable' : 'rebalance.historyEmpty')}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
