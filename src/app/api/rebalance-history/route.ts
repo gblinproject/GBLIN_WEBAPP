@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { blockscoutFetch, blockscoutV2Url } from '@/lib/blockscout';
+import { blockscoutFetch, blockscoutLegacyUrl, blockscoutV2Url } from '@/lib/blockscout';
 import { ethers } from 'ethers';
 
 // Server-side only: prefer the secret ALCHEMY_API_KEY, fall back to the public
@@ -232,6 +232,63 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
 const FALLBACK_BLOCKS = 86_400; // ~2 giorni su Base (~2s a blocco)
 
 /**
+ * Secondo canale su Blockscout: la vecchia API in stile etherscan.
+ *
+ * 01/09/2026 — misurato: le due API dello stesso Blockscout cadono in momenti diversi. In una
+ * finestra in cui `/api/v2/.../logs` rispondeva 500 su entrambi i contratti, `/api?module=logs`
+ * restituiva regolarmente i log. Provarla prima di scendere all'RPC vale la storia COMPLETA
+ * invece di una finestra di due giorni: con `fromBlock=0` non ha limiti di intervallo.
+ *
+ * Restituisce gia' dal piu' recente, come la v2, cosi' il resto della pipeline non cambia.
+ */
+async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
+  const perContract = await Promise.all(
+    CONTRACTS.map(async ({ label, address, current }) => {
+      const { res } = await blockscoutFetch(
+        (pubblico) =>
+          blockscoutLegacyUrl(
+            {
+              module: 'logs',
+              action: 'getLogs',
+              fromBlock: '0',
+              toBlock: 'latest',
+              address,
+              topic0: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6,
+            },
+            pubblico,
+          ),
+        { headers: { accept: 'application/json' }, next: { revalidate: 30 } },
+      );
+      if (!res.ok) throw new Error(`Blockscout legacy HTTP ${res.status}`);
+
+      const json = (await res.json()) as { result?: unknown; message?: string };
+      // "No records found" arriva con status 0: e' una risposta valida che vale zero log.
+      if (!Array.isArray(json.result)) {
+        if ((json.message ?? '').toLowerCase().includes('no records')) return [];
+        throw new Error(`Blockscout legacy: ${json.message ?? 'risposta inattesa'}`);
+      }
+
+      return (json.result as Array<Record<string, unknown>>).map((item) => ({
+        topics:
+          (item.topics as string[] | undefined)?.filter((t): t is string => typeof t === 'string') ??
+          [],
+        data: String(item.data ?? '0x'),
+        transactionHash: String(item.transactionHash ?? ''),
+        blockNumber: String(item.blockNumber ?? '0'),
+        timeStamp: String(item.timeStamp ?? '0'),
+        contract: label,
+        contractAddress: address,
+        isCurrentContract: current,
+      })) as RawLog[];
+    }),
+  );
+
+  return perContract
+    .flat()
+    .sort((a, b) => Number(BigInt(String(b.blockNumber))) - Number(BigInt(String(a.blockNumber))));
+}
+
+/**
  * Ripiego a log su NODI PUBBLICI (non Alchemy, che sul piano gratuito accetta 10 blocchi per
  * chiamata). Finestre da 10.000 blocchi in parallelo, con un secondo nodo di scorta.
  *
@@ -320,15 +377,27 @@ async function raccogli() {
     try {
       raw = await fetchFromBlockscout();
     } catch {
-      // Blockscout non risponde: si ripiega sui nodi pubblici, su una finestra recente.
-      source = 'rpc';
-      const provider = new ethers.JsonRpcProvider(RPC_URL);
-      const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
-      const esito = await fetchFromRpc(fromBlock, currentBlock);
-      raw = esito.logs;
-      finestreFallite = esito.fallite;
-      finestreTotali = esito.finestre;
+      // La v2 non risponde: prima di rinunciare alla storia completa si prova l'altra API
+      // dello stesso Blockscout, che cade in momenti diversi (verificato).
+      let legacyRiuscita = false;
+      try {
+        raw = await fetchFromBlockscoutLegacy();
+        legacyRiuscita = true; // `source` resta 'blockscout': stessa fonte, stessa completezza
+      } catch {
+        // e solo ora i nodi pubblici, che vedono indietro molto meno
+      }
+
+      if (!legacyRiuscita) {
+        // Ripiego sui nodi pubblici, su una finestra recente.
+        source = 'rpc';
+        const provider = new ethers.JsonRpcProvider(RPC_URL);
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
+        const esito = await fetchFromRpc(fromBlock, currentBlock);
+        raw = esito.logs;
+        finestreFallite = esito.fallite;
+        finestreTotali = esito.finestre;
+      }
     }
 
     // Blockscout returns newest-first already; for Alchemy we sort by block desc.
