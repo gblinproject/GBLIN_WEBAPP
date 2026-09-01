@@ -188,7 +188,16 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
               { topic: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6 },
               pubblico,
             ),
-          { headers: { accept: 'application/json' }, next: { revalidate: 30 } },
+          {
+            headers: { accept: 'application/json' },
+            next: { revalidate: 30 },
+            // Tetto esplicito e stretto: senza, una singola chiamata lenta si mangia la
+            // deadline dell'intera rotta e nessuno arriva mai ai nodi pubblici. Quattro
+            // secondi bastano — le risposte buone misurate stanno fra 0,5 e 5,4 secondi, e
+            // il ripiego sul Blockscout pubblico oggi riesce 0 volte su 15, quindi non vale
+            // la pena aspettarlo a lungo.
+            signal: AbortSignal.timeout(4_000),
+          },
         );
         if (!res.ok) throw new Error(`Blockscout HTTP ${res.status}`);
 
@@ -280,7 +289,16 @@ async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
             },
             pubblico,
           ),
-        { headers: { accept: 'application/json' }, next: { revalidate: 30 } },
+        {
+            headers: { accept: 'application/json' },
+            next: { revalidate: 30 },
+            // Tetto esplicito e stretto: senza, una singola chiamata lenta si mangia la
+            // deadline dell'intera rotta e nessuno arriva mai ai nodi pubblici. Quattro
+            // secondi bastano — le risposte buone misurate stanno fra 0,5 e 5,4 secondi, e
+            // il ripiego sul Blockscout pubblico oggi riesce 0 volte su 15, quindi non vale
+            // la pena aspettarlo a lungo.
+            signal: AbortSignal.timeout(4_000),
+          },
       );
       if (!res.ok) throw new Error(`Blockscout legacy HTTP ${res.status}`);
 
@@ -403,30 +421,29 @@ async function raccogli(limit: number) {
     let finestreFallite = 0;
     let finestreTotali = 0;
 
-    try {
-      raw = await fetchFromBlockscout();
-    } catch {
-      // La v2 non risponde: prima di rinunciare alla storia completa si prova l'altra API
-      // dello stesso Blockscout, che cade in momenti diversi (verificato).
-      let legacyRiuscita = false;
-      try {
-        raw = await fetchFromBlockscoutLegacy();
-        legacyRiuscita = true; // `source` resta 'blockscout': stessa fonte, stessa completezza
-      } catch {
-        // e solo ora i nodi pubblici, che vedono indietro molto meno
-      }
+    // Le due API di Blockscout si interrogano INSIEME, non una dopo l'altra: cadono in
+    // momenti diversi, e in sequenza il caso peggiore (due API x due host, ciascuna col suo
+    // ripiego) sfondava la deadline di 20s — la rotta rispondeva `degraded` senza essere
+    // nemmeno arrivata ai nodi pubblici. In parallelo il caso peggiore si dimezza.
+    // `allSettled` e non `any`: la v2 puo' RIUSCIRE restituendo una lista vuota, e fra due
+    // risposte valide va tenuta quella che ha visto piu' eventi, non la prima arrivata.
+    const esiti = await Promise.allSettled([fetchFromBlockscout(), fetchFromBlockscoutLegacy()]);
+    const riuscite = esiti
+      .filter((e): e is PromiseFulfilledResult<RawLog[]> => e.status === 'fulfilled')
+      .map((e) => e.value);
 
-      if (!legacyRiuscita) {
-        // Ripiego sui nodi pubblici, su una finestra recente.
-        source = 'rpc';
-        const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const currentBlock = await provider.getBlockNumber();
-        const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
-        const esito = await fetchFromRpc(fromBlock, currentBlock);
-        raw = esito.logs;
-        finestreFallite = esito.fallite;
-        finestreTotali = esito.finestre;
-      }
+    if (riuscite.length > 0) {
+      raw = riuscite.reduce((a, b) => (b.length > a.length ? b : a));
+    } else {
+      // Ripiego sui nodi pubblici, su una finestra recente.
+      source = 'rpc';
+      const provider = new ethers.JsonRpcProvider(RPC_URL);
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
+      const esito = await fetchFromRpc(fromBlock, currentBlock);
+      raw = esito.logs;
+      finestreFallite = esito.fallite;
+      finestreTotali = esito.finestre;
     }
 
     // Blockscout returns newest-first already; for Alchemy we sort by block desc.
