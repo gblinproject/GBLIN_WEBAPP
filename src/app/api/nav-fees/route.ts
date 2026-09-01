@@ -29,7 +29,7 @@
  */
 
 import { formatEther } from "viem";
-import { blockscoutLegacyUrl } from "@/lib/blockscout";
+import { blockscoutFetch, blockscoutLegacyUrl } from "@/lib/blockscout";
 import { client, ETH_USD_FEED, GBLIN } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -79,6 +79,8 @@ export interface NavFeesPayload {
   updatedAt: number;
   /** True when the log source was unreachable and the verified baseline is served. */
   stale?: boolean;
+  /** Perché la lettura non è riuscita (es. "log source answered HTTP 429"). Mai URL né chiavi. */
+  reason?: string;
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1_000;
@@ -93,19 +95,23 @@ let cache: { at: number; payload: NavFeesPayload } | null = null;
  */
 async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
   // L'indirizzo (ed eventuale chiave) arriva da BLOCKSCOUT_API_URL — vedi src/lib/blockscout.ts.
-  const url = blockscoutLegacyUrl({
-    module: "logs",
-    action: "getLogs",
-    fromBlock: String(DEPLOY_BLOCK),
-    toBlock: "latest",
-    address: GBLIN,
-    topic0: YIELD_TOPIC,
-  });
-
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(10_000),
-    next: { revalidate: 900 },
-  });
+  // Se la sorgente configurata non risponde si riprova sul Blockscout pubblico: una variabile
+  // sbagliata non deve poter peggiorare il servizio rispetto a non averla messa affatto.
+  const { res } = await blockscoutFetch(
+    (pubblico) =>
+      blockscoutLegacyUrl(
+        {
+          module: "logs",
+          action: "getLogs",
+          fromBlock: String(DEPLOY_BLOCK),
+          toBlock: "latest",
+          address: GBLIN,
+          topic0: YIELD_TOPIC,
+        },
+        pubblico,
+      ),
+    { signal: AbortSignal.timeout(10_000), next: { revalidate: 900 } },
+  );
   if (!res.ok) throw new Error(`log source answered HTTP ${res.status}`);
 
   const body = (await res.json()) as { status?: string; message?: string; result?: unknown };
@@ -163,13 +169,16 @@ export async function GET() {
     return Response.json(payload, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
-  } catch {
+  } catch (err) {
     // The log source is throttling or down. Serve the last live figure if this
     // instance has one, otherwise the hand-verified baseline. Both are real
     // measurements; neither is a synthesised zero.
+    // `reason` dice PERCHE' (HTTP 429, 500, 401…): senza, dal di fuori un guasto della fonte
+    // e una configurazione sbagliata sono indistinguibili. Non contiene mai URL né chiavi.
+    const reason = (err as Error)?.message ?? "unknown";
     if (cache) {
       return Response.json(
-        { ...cache.payload, stale: true },
+        { ...cache.payload, stale: true, reason },
         { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
       );
     }
@@ -190,6 +199,7 @@ export async function GET() {
             ethUsd,
             updatedAt: Date.now(),
             stale: true,
+            reason,
           } satisfies NavFeesPayload,
           { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
         );

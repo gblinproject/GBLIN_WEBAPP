@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { blockscoutV2Url } from '@/lib/blockscout';
+import { blockscoutFetch, blockscoutV2Url } from '@/lib/blockscout';
 import { ethers } from 'ethers';
 
 // Server-side only: prefer the secret ALCHEMY_API_KEY, fall back to the public
@@ -157,13 +157,16 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
   const perContract = await Promise.all(
     CONTRACTS.map(async ({ label, address, current }) => {
       try {
-        const url = blockscoutV2Url(`addresses/${address}/logs`, {
-          topic: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6,
-        });
-        const res = await fetch(url, {
-          headers: { accept: 'application/json' },
-          next: { revalidate: 30 },
-        });
+        // Sorgente configurata, con ricaduta sul Blockscout pubblico se non risponde.
+        const { res } = await blockscoutFetch(
+          (pubblico) =>
+            blockscoutV2Url(
+              `addresses/${address}/logs`,
+              { topic: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6 },
+              pubblico,
+            ),
+          { headers: { accept: 'application/json' }, next: { revalidate: 30 } },
+        );
         if (!res.ok) throw new Error(`Blockscout HTTP ${res.status}`);
 
         const json = (await res.json()) as { items?: BlockscoutLogItem[] };

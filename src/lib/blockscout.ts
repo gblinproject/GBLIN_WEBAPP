@@ -48,8 +48,10 @@ function leggiSorgente(): Sorgente {
  * URL per l'API in stile etherscan (`/api?module=…&action=…`).
  * I parametri passati qui vincono su quelli configurati, tranne `apikey`.
  */
-export function blockscoutLegacyUrl(params: Record<string, string>): string {
-  const { origin, query } = leggiSorgente();
+export function blockscoutLegacyUrl(params: Record<string, string>, pubblico = false): string {
+  const { origin, query } = pubblico
+    ? { origin: DEFAULT_ORIGIN, query: new URLSearchParams() }
+    : leggiSorgente();
   const url = new URL('/api', origin);
   for (const [k, v] of query) url.searchParams.set(k, v);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -60,8 +62,14 @@ export function blockscoutLegacyUrl(params: Record<string, string>): string {
  * URL per l'API REST v2 (`/api/v2/<percorso>`).
  * `path` è la parte dopo `/api/v2/`, senza barra iniziale.
  */
-export function blockscoutV2Url(path: string, params: Record<string, string> = {}): string {
-  const { origin, query } = leggiSorgente();
+export function blockscoutV2Url(
+  path: string,
+  params: Record<string, string> = {},
+  pubblico = false,
+): string {
+  const { origin, query } = pubblico
+    ? { origin: DEFAULT_ORIGIN, query: new URLSearchParams() }
+    : leggiSorgente();
   const url = new URL(`/api/v2/${path.replace(/^\/+/, '')}`, origin);
   for (const [k, v] of query) url.searchParams.set(k, v);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -72,4 +80,34 @@ export function blockscoutV2Url(path: string, params: Record<string, string> = {
 export function blockscoutConfigurato(): boolean {
   const { origin, query } = leggiSorgente();
   return origin !== DEFAULT_ORIGIN || query.has('apikey');
+}
+
+/**
+ * Stessa richiesta, prima con la sorgente configurata e — solo se quella fallisce e solo se
+ * è diversa dal pubblico — una seconda volta sul Blockscout pubblico.
+ *
+ * Serve a garantire un'invariante: **una variabile d'ambiente sbagliata non deve poter
+ * peggiorare il servizio rispetto a non averla messa affatto.** Un URL con un refuso, una
+ * chiave scaduta o un'istanza spenta si manifesterebbero altrimenti come un guasto
+ * permanente e silenzioso, indistinguibile da un Blockscout giù.
+ *
+ * `costruisci` riceve la funzione che genera l'URL per la sorgente da provare.
+ */
+export async function blockscoutFetch(
+  costruisci: (pubblico: boolean) => string,
+  init?: RequestInit & { next?: { revalidate?: number } },
+): Promise<{ res: Response; usatoPubblico: boolean }> {
+  const haConfigurazione = blockscoutConfigurato();
+
+  if (haConfigurazione) {
+    try {
+      const res = await fetch(costruisci(false), init);
+      if (res.ok) return { res, usatoPubblico: false };
+    } catch {
+      // rete o URL inutilizzabile: si prova il pubblico
+    }
+  }
+
+  const res = await fetch(costruisci(haConfigurazione ? true : false), init);
+  return { res, usatoPubblico: haConfigurazione };
 }
