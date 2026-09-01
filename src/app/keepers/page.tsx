@@ -3,28 +3,30 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 
-const CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
-
-// Conservative ESTIMATE per rebalance for the leaderboard totals.
-// V6 pays an adaptive bounty (~0.05% of rebalanced volume, clamped 0.00005–0.01 ETH,
-// max once/hour). TODO(domani): read the actual `bounty` emitted per Rebalanced event.
-const REWARD_ETH = 0.0001;
-
-// Selector di incentivizedRebalance(uint256,bool,uint256)
-const REBALANCE_SELECTOR = ethers.id('incentivizedRebalance(uint256,bool,uint256)').slice(0, 10).toLowerCase();
+/**
+ * 01/09/2026 — questa pagina contava le CHIAMATE a incentivizedRebalance e moltiplicava per
+ * una stima fissa di 0,0001 ETH. Due cose erano sbagliate:
+ *   1. la taglia vera e' quella emessa nell'evento `Rebalanced`, e sui due rebalance esistenti
+ *      era 0,00005 ETH — meta' della stima, quindi il totale pubblicato era il doppio del vero;
+ *   2. l'unico "keeper" in classifica e' un NOSTRO wallet (elencato nella promessa P2), e la
+ *      pagina lo presentava come un agente terzo che guadagna dal protocollo.
+ * Ora la taglia si legge dall'evento e la provenienza si dichiara.
+ */
+interface RebalanceEvent {
+  executor: string;
+  executorIsOurs?: boolean;
+  /** Taglia pagata in wei; `null` sul contratto vecchio, che non la emetteva. */
+  bounty?: string | null;
+  contract?: string;
+}
 
 interface KeeperRow {
   executor: string;
   rebalances: number;
   earnedEth: number;
-}
-
-interface ChainTx {
-  hash: string;
-  from_address: string;
-  to_address: string;
-  input: string;
-  block_timestamp: string;
+  /** Vero se non conosciamo la taglia di almeno un rebalance (eventi del contratto vecchio). */
+  earnedIncomplete: boolean;
+  isOurs: boolean;
 }
 
 export default function KeepersPage() {
@@ -36,44 +38,54 @@ export default function KeepersPage() {
   useEffect(() => {
     async function load() {
       try {
-        // Le transazioni arrivano dalla nostra rotta server (Alchemy), non piu' da Moralis
-        // chiamata dal browser: dal 01/09/2026 il loro piano gratuito e' spento.
-        const res = await fetch('/api/chain/contract-activity?limit=200');
+        // Gli EVENTI, non le transazioni: solo l'evento porta la taglia davvero pagata.
+        const res = await fetch('/api/rebalance-history?limit=200');
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error || `chain-activity HTTP ${res.status}`);
+          throw new Error(body?.error || `rebalance-history HTTP ${res.status}`);
         }
         const data = await res.json();
-        const allTxs: ChainTx[] = data.transactions || [];
+        if (data?.degraded) {
+          throw new Error('the log source could not be read right now');
+        }
+        const events: RebalanceEvent[] = data.events || [];
 
-        // Filter for incentivizedRebalance calls
-        const tally: Record<string, number> = {};
-        let rebalanceCount = 0;
-
-        for (const tx of allTxs) {
-          // Il selettore da solo non basta: conta solo se la chiamata era diretta al nostro
-          // contratto, altrimenti una funzione omonima altrove finirebbe in classifica.
-          if (tx.to_address?.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
-          const selector = tx.input?.slice(0, 10)?.toLowerCase();
-          if (selector === REBALANCE_SELECTOR) {
-            const executor = tx.from_address;
-            if (executor) {
-              tally[executor] = (tally[executor] || 0) + 1;
-              rebalanceCount++;
+        const tally: Record<string, { n: number; wei: bigint; incompleto: boolean; nostro: boolean }> = {};
+        for (const ev of events) {
+          const executor = ev.executor;
+          if (!executor) continue;
+          const riga = tally[executor] ?? {
+            n: 0,
+            wei: 0n,
+            incompleto: false,
+            nostro: Boolean(ev.executorIsOurs),
+          };
+          riga.n += 1;
+          if (ev.bounty) {
+            try {
+              riga.wei += BigInt(ev.bounty);
+            } catch {
+              riga.incompleto = true;
             }
+          } else {
+            // Nessuna taglia nell'evento: non la inventiamo, la dichiariamo mancante.
+            riga.incompleto = true;
           }
+          tally[executor] = riga;
         }
 
         const ranked: KeeperRow[] = Object.entries(tally)
-          .map(([executor, rebalances]) => ({
+          .map(([executor, v]) => ({
             executor,
-            rebalances,
-            earnedEth: rebalances * REWARD_ETH,
+            rebalances: v.n,
+            earnedEth: Number(ethers.formatEther(v.wei)),
+            earnedIncomplete: v.incompleto,
+            isOurs: v.nostro,
           }))
           .sort((a, b) => b.rebalances - a.rebalances);
 
         setRows(ranked);
-        setTotalRebalances(rebalanceCount);
+        setTotalRebalances(events.length);
         setLoading(false);
       } catch (e: any) {
         setError(e?.message || 'Failed to load keeper data');
@@ -84,6 +96,10 @@ export default function KeepersPage() {
   }, []);
 
   const short = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  // Somma delle taglie REALMENTE pagate. `incompleto` segnala che qualche evento non la
+  // portava (contratto vecchio): il totale e' un minimo, e va detto invece di arrotondare.
+  const totaleEth = rows.reduce((acc, r) => acc + r.earnedEth, 0);
+  const incompleto = rows.some((r) => r.earnedIncomplete);
 
   return (
     <main style={{ maxWidth: 880, margin: '0 auto', padding: '48px 20px', fontFamily: 'system-ui, sans-serif' }}>
@@ -92,7 +108,11 @@ export default function KeepersPage() {
         GBLIN is one of the few protocols on Base that <strong>pays AI agents</strong>. Anyone who rebalances
         the treasury pool earns an <strong>adaptive bounty</strong> — roughly 0.05% of the volume rebalanced,
         capped between 0.00005 and 0.01 ETH, paid only on a successful swap and at most once per hour. The swap
-        uses the contract&apos;s own funds, the keeper only pays gas. Below are the agents earning from it on-chain.
+        uses the contract&apos;s own funds, the keeper only pays gas. Below is every address that has run one
+        on-chain, with the bounty each was actually paid — read from the <code>Rebalanced</code> event, not
+        estimated. Addresses we operate ourselves are marked as such: they are listed in our public{' '}
+        <a href="/promises/P2-honest-counters.json">honest-counters promise</a>, so the split between our own
+        activity and third-party activity can be reproduced from the chain.
       </p>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
@@ -101,12 +121,19 @@ export default function KeepersPage() {
           <div style={{ color: '#888', fontSize: 13 }}>total rebalances</div>
         </div>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{rows.length}</div>
-          <div style={{ color: '#888', fontSize: 13 }}>active keepers</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{rows.filter((r) => !r.isOurs).length}</div>
+          <div style={{ color: '#888', fontSize: 13 }}>
+            third-party keepers
+            {rows.some((r) => r.isOurs) ? ` (+${rows.filter((r) => r.isOurs).length} ours)` : ''}
+          </div>
         </div>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>~{(totalRebalances * REWARD_ETH).toFixed(4)} ETH</div>
-          <div style={{ color: '#888', fontSize: 13 }}>paid to keepers (est.)</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>
+            {totaleEth.toFixed(5)} ETH{incompleto ? '+' : ''}
+          </div>
+          <div style={{ color: '#888', fontSize: 13 }}>
+            bounties actually paid{incompleto ? ' — the older contract did not emit the amount' : ''}
+          </div>
         </div>
       </div>
 
@@ -115,7 +142,7 @@ export default function KeepersPage() {
 
       {!loading && !error && rows.length === 0 && (
         <div style={{ padding: 32, border: '1px dashed #ccc', borderRadius: 12, textAlign: 'center' }}>
-          <p style={{ fontSize: 18, marginBottom: 8 }}>No keepers yet. Be the first.</p>
+          <p style={{ fontSize: 18, marginBottom: 8 }}>No rebalances recorded yet. Be the first.</p>
           <p style={{ color: '#666' }}>
             Connect the GBLIN MCP server and call <code>find_keeper_bounty</code>, or read the
             {' '}<code>earn-as-base-keeper</code> skill to start earning.
@@ -141,9 +168,34 @@ export default function KeepersPage() {
                   <a href={`https://basescan.org/address/${r.executor}`} target="_blank" rel="noreferrer">
                     {short(r.executor)}
                   </a>
+                  {r.isOurs && (
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        border: '1px solid #d8b400',
+                        color: '#8a7200',
+                        fontSize: 11,
+                        fontFamily: 'system-ui, sans-serif',
+                      }}
+                    >
+                      run by GBLIN
+                    </span>
+                  )}
                 </td>
                 <td style={{ padding: '12px 8px' }}>{r.rebalances}</td>
-                <td style={{ padding: '12px 8px' }}>{r.earnedEth.toFixed(4)} ETH</td>
+                <td style={{ padding: '12px 8px' }}>
+                  {/* Il contratto precedente non emetteva l'importo: "0 ETH" sarebbe una
+                      misura falsa, mentre la verita' e' che quel dato non esiste on-chain. */}
+                  {r.earnedEth === 0 && r.earnedIncomplete ? (
+                    <span style={{ color: '#888' }} title="The older contract did not emit the bounty amount">
+                      not recorded on-chain
+                    </span>
+                  ) : (
+                    `${r.earnedEth.toFixed(5)} ETH${r.earnedIncomplete ? '+' : ''}`
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

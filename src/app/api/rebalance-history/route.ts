@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { blockscoutFetch, blockscoutLegacyUrl, blockscoutV2Url } from '@/lib/blockscout';
+import promise from '../../../../public/promises/P2-honest-counters.json';
+
+/**
+ * I nostri wallet, letti dalla promessa P2 e non ricopiati: e' la stessa lista che rende
+ * riproducibile lo split fra attivita' nostra ed esterna sui contatori dei pagamenti.
+ * Un rebalance eseguito da un nostro bot non e' "un agente che guadagna dal protocollo".
+ */
+const OUR_WALLETS = new Set((promise.our_wallets ?? []).map((w: string) => w.toLowerCase()));
 import { ethers } from 'ethers';
 
 // Server-side only: prefer the secret ALCHEMY_API_KEY, fall back to the public
@@ -129,8 +137,23 @@ function decodeLog(log: RawLog, blockTimestampHint?: number) {
   const tsSource = log.timeStamp ?? blockTimestampHint ?? 0;
   const ts = typeof tsSource === 'string' ? parseInt(tsSource, 16) || Number(tsSource) : tsSource;
 
+  // La V6 emette anche la taglia pagata; la V5 no (evento a cinque argomenti).
+  let bounty: string | null = null;
+  try {
+    const raw = parsed.args.bounty as bigint | undefined;
+    if (raw !== undefined) bounty = raw.toString();
+  } catch {
+    // firma senza bounty: resta null, e chi legge non deve inventarsi una stima
+  }
+
+  const executor = parsed.args.executor as string;
+
   return {
-    executor: parsed.args.executor as string,
+    executor,
+    /** Vero se a ribilanciare e' stato un nostro wallet (lista in P2), non un terzo. */
+    executorIsOurs: OUR_WALLETS.has(executor.toLowerCase()),
+    /** Taglia realmente pagata, in wei. `null` sulla V5, che non la emetteva. */
+    bounty,
     tokenIn: tokenLabel(tokenIn),
     tokenOut: tokenLabel(tokenOut),
     amountIn: parsed.args.amountIn.toString(),
@@ -337,13 +360,19 @@ async function fetchFromRpc(
   return { logs: risultati.flat(), finestre: finestre.length, fallite };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const scaduto = Symbol('scaduto');
   const deadline = new Promise<typeof scaduto>((r) =>
     setTimeout(() => r(scaduto), DEADLINE_MS),
   );
   try {
-    const esito = await Promise.race([raccogli(), deadline]);
+    // `limit` serve alla classifica dei keeper, che ha bisogno di tutti gli eventi e non
+    // dei soli cinque mostrati in home. Il tetto tiene la rotta dentro la sua deadline.
+    const richiesti = Number(new URL(request.url).searchParams.get('limit') ?? '5');
+    const limit = Number.isFinite(richiesti)
+      ? Math.min(Math.max(Math.trunc(richiesti), 1), 200)
+      : 5;
+    const esito = await Promise.race([raccogli(limit), deadline]);
     if (esito === scaduto) {
       return NextResponse.json(
         {
@@ -367,7 +396,7 @@ export async function GET() {
   }
 }
 
-async function raccogli() {
+async function raccogli(limit: number) {
   {
     let raw: RawLog[] = [];
     let source: 'blockscout' | 'rpc' = 'blockscout';
@@ -410,8 +439,8 @@ async function raccogli() {
     // niente: una lista vuota qui sarebbe una bugia, non una misura.
     const cieco = source === 'rpc' && finestreTotali > 0 && finestreFallite === finestreTotali;
 
-    // Keep the 5 most recent events.
-    const mostRecent = sorted.slice(0, 5);
+    // I piu' recenti: cinque per la home, tutti quando li chiede la classifica keeper.
+    const mostRecent = sorted.slice(0, limit);
 
     // When the source is Alchemy we lack timestamps — fetch blocks only for the
     // subset we return so we don't over-query RPC.
