@@ -891,16 +891,17 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
 // entra nel NAV ad ogni acquisto dal contratto). V6 emette YieldDistributed(uint256) su ogni buy.
 // Usiamo l'indicizzatore Blockscout (una sola chiamata, nessun limite di range come getLogs sull'RPC).
 export const fetchTotalYieldDistributed = async (): Promise<number | null> => {
-  // La lettura sta su /api/chain/yield-distributed: Blockscout risponde a intermittenza e
-  // dal browser un suo 500 diventava uno ZERO pubblicato (il ripiego getLogs non ripiega
-  // piu': Alchemy free limita eth_getLogs a 10 blocchi). `null` = non lo sappiamo adesso,
-  // che e' diverso da "non abbiamo mai distribuito nulla".
+  // La fonte e' /api/nav-fees, che questo identico numero (somma degli eventi YieldDistributed)
+  // lo calcola da prima e meglio: Blockscout in una chiamata, cache 15 minuti, e come ultimo
+  // ripiego una baseline verificata a mano. Prima la lettura la faceva il browser con un
+  // ripiego getLogs che dal 2026 non ripiega piu' (Alchemy free limita eth_getLogs a 10
+  // blocchi): un errore di rete diventava uno ZERO pubblicato.
+  // `null` = non lo sappiamo adesso, che e' diverso da "non abbiamo mai distribuito nulla".
   try {
-    const res = await fetch('/api/chain/yield-distributed');
+    const res = await fetch('/api/nav-fees');
     if (!res.ok) return null;
     const data = await res.json();
-    if (data?.total_wei == null) return null;
-    return Number(ethers.formatEther(BigInt(data.total_wei)));
+    return typeof data?.weth === 'number' ? data.weth : null;
   } catch {
     return null;
   }
