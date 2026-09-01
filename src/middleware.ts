@@ -47,6 +47,7 @@ import {
   bazaarResourceServerExtension,
 } from "@x402/extensions/bazaar";
 import { createFacilitatorConfig } from "@coinbase/x402";
+import treasuryStateOutputContract from "@/lib/treasury-state-output-contract.json";
 
 const PAY_TO = (process.env.X402_PAY_TO_WALLET ?? "") as Address;
 
@@ -295,6 +296,9 @@ const x402Middleware = paymentProxy(
                 as_of_unix: 1747600000,
               },
             },
+            // Require only root fields the HTTP 200 handler always assigns.
+            // Nested basket / meta keys stay optional (no overclaim).
+            schema: treasuryStateOutputContract.schema,
           },
         }),
       },

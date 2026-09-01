@@ -38,7 +38,49 @@
         "description": "NAV in USD, basket composition with dynamic weights, Crash Shield status.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "nav_usd",
+                    "eth_price_usd",
+                    "crash_shield_active",
+                    "slippage_buffer_pct",
+                    "slippage_reason",
+                    "basket",
+                    "meta"
+                  ],
+                  "properties": {
+                    "nav_usd": {
+                      "type": "number",
+                      "description": "Net asset value in USD per GBLIN"
+                    },
+                    "eth_price_usd": {
+                      "type": "number"
+                    },
+                    "crash_shield_active": {
+                      "type": "boolean"
+                    },
+                    "slippage_buffer_pct": {
+                      "type": "number"
+                    },
+                    "slippage_reason": {
+                      "type": "string"
+                    },
+                    "basket": {
+                      "type": "array",
+                      "description": "Current basket entries with dynamic weights"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "description": "Contract and chain metadata for this reading"
+                    }
+                  }
+                }
+              }
+            }
           },
           "402": {
             "description": "Payment Required (x402, USDC on Base)"
