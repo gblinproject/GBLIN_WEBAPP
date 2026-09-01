@@ -29,7 +29,7 @@
  */
 
 import { formatEther } from "viem";
-import { blockscoutFetch, blockscoutLegacyUrl } from "@/lib/blockscout";
+import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSorgente } from "@/lib/blockscout";
 import { client, ETH_USD_FEED, GBLIN } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -81,6 +81,8 @@ export interface NavFeesPayload {
   stale?: boolean;
   /** Perché la lettura non è riuscita (es. "log source answered HTTP 429"). Mai URL né chiavi. */
   reason?: string;
+  /** Quale sorgente serve i log: `pro` (chiave configurata), `custom`, o `public`. */
+  log_source?: string;
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1_000;
@@ -158,7 +160,7 @@ async function build(): Promise<NavFeesPayload> {
 
 export async function GET() {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
-    return Response.json(cache.payload, {
+    return Response.json({ ...cache.payload, log_source: blockscoutSorgente() }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   }
@@ -166,7 +168,9 @@ export async function GET() {
   try {
     const payload = await build();
     cache = { at: Date.now(), payload };
-    return Response.json(payload, {
+    // `log_source` dice quale sorgente sta servendo i log (pro | custom | public): serve a
+    // verificare da fuori che una chiave configurata sia davvero in uso. Non rivela nulla.
+    return Response.json({ ...payload, log_source: blockscoutSorgente() }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   } catch (err) {
@@ -178,7 +182,7 @@ export async function GET() {
     const reason = (err as Error)?.message ?? "unknown";
     if (cache) {
       return Response.json(
-        { ...cache.payload, stale: true, reason },
+        { ...cache.payload, stale: true, reason, log_source: blockscoutSorgente() },
         { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
       );
     }
@@ -200,6 +204,7 @@ export async function GET() {
             updatedAt: Date.now(),
             stale: true,
             reason,
+            log_source: blockscoutSorgente(),
           } satisfies NavFeesPayload,
           { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
         );

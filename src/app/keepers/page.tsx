@@ -34,6 +34,14 @@ export default function KeepersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalRebalances, setTotalRebalances] = useState(0);
+  /**
+   * La rotta dichiara `partial` quando la fonte della storia completa non risponde e si e'
+   * potuto leggere solo una finestra recente. Senza questo, con Blockscout giu' la pagina
+   * annunciava "0 rebalance, sii il primo" mentre on-chain ce n'erano 37: la stessa bugia
+   * per omissione che stiamo togliendo da tutti i contatori.
+   */
+  const [parziale, setParziale] = useState(false);
+  const [copertura, setCopertura] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -49,6 +57,8 @@ export default function KeepersPage() {
           throw new Error('the log source could not be read right now');
         }
         const events: RebalanceEvent[] = data.events || [];
+        setParziale(Boolean(data.partial));
+        setCopertura(typeof data.covers === 'string' ? data.covers : null);
 
         const tally: Record<string, { n: number; wei: bigint; incompleto: boolean; nostro: boolean }> = {};
         for (const ev of events) {
@@ -118,7 +128,9 @@ export default function KeepersPage() {
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{totalRebalances}</div>
-          <div style={{ color: '#888', fontSize: 13 }}>total rebalances</div>
+          <div style={{ color: '#888', fontSize: 13 }}>
+            {parziale ? 'rebalances in the window we could read' : 'total rebalances'}
+          </div>
         </div>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{rows.filter((r) => !r.isOurs).length}</div>
@@ -137,10 +149,41 @@ export default function KeepersPage() {
         </div>
       </div>
 
+      {!loading && parziale && rows.length > 0 && (
+        <p
+          style={{
+            padding: '12px 16px',
+            marginBottom: 24,
+            border: '1px solid #e8d48a',
+            background: '#fdf8e6',
+            borderRadius: 10,
+            fontSize: 13,
+            color: '#6b5a12',
+          }}
+        >
+          Partial view: the explorer that serves the full history is not answering, so these numbers cover
+          only {copertura ?? 'a short recent window'}. Older rebalances are missing from this table, not
+          from the chain.
+        </p>
+      )}
+
       {loading && <p>Loading on-chain keeper activity...</p>}
       {error && <p style={{ color: '#c00' }}>Error: {error}</p>}
 
-      {!loading && !error && rows.length === 0 && (
+      {!loading && !error && rows.length === 0 && parziale && (
+        <div style={{ padding: 32, border: '1px dashed #ccc', borderRadius: 12 }}>
+          <p style={{ fontSize: 18, marginBottom: 8 }}>
+            We could not read the full history right now.
+          </p>
+          <p style={{ color: '#666' }}>
+            The block explorer that serves the complete log is not answering, so we fell back to a short
+            recent window and found nothing in it. That is not the same as &ldquo;nobody has ever
+            rebalanced&rdquo; — the leaderboard will fill back in once the source recovers.
+          </p>
+        </div>
+      )}
+
+      {!loading && !error && rows.length === 0 && !parziale && (
         <div style={{ padding: 32, border: '1px dashed #ccc', borderRadius: 12, textAlign: 'center' }}>
           <p style={{ fontSize: 18, marginBottom: 8 }}>No rebalances recorded yet. Be the first.</p>
           <p style={{ color: '#666' }}>

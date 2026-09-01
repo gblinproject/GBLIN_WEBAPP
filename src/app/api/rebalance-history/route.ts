@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { blockscoutFetch, blockscoutLegacyUrl, blockscoutV2Url } from '@/lib/blockscout';
+import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSorgente, blockscoutV2Url } from '@/lib/blockscout';
 import promise from '../../../../public/promises/P2-honest-counters.json';
 
 /**
@@ -464,6 +464,8 @@ async function raccogli(limit: number) {
     return {
       events: decoded.filter(Boolean),
       source,
+      /** Quale sorgente serve i log: `pro` (chiave configurata), `custom`, o `public`. */
+      log_source: blockscoutSorgente(),
       count: decoded.length,
       // Con Blockscout giu' vediamo solo ~2 giorni indietro: un elenco vuoto qui significa
       // "niente di recente", NON "non ci sono mai stati rebalance".
