@@ -47,6 +47,15 @@ function leggiSorgente(): Sorgente {
     return { origin: PRO_ORIGIN, prefix: PRO_PREFIX, query };
   }
 
+  // Il valore è la CHIAVE, non un URL. Capita, ed è un errore silenzioso da incubo: senza
+  // questo controllo `new URL('https://proapi_xxx')` è formalmente valido, quindi ogni
+  // richiesta partirebbe verso un host inesistente invece di segnalare l'errore.
+  if (/^proapi_/i.test(raw) || !/[./]/.test(raw)) {
+    const query = new URLSearchParams();
+    query.set('apikey', raw);
+    return { origin: PRO_ORIGIN, prefix: PRO_PREFIX, query };
+  }
+
   try {
     // Senza schema `new URL` fallisce: lo mettiamo noi invece di rifiutare il valore.
     const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
