@@ -191,12 +191,16 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
           {
             headers: { accept: 'application/json' },
             next: { revalidate: 30 },
-            // Tetto esplicito e stretto: senza, una singola chiamata lenta si mangia la
-            // deadline dell'intera rotta e nessuno arriva mai ai nodi pubblici. Quattro
-            // secondi bastano — le risposte buone misurate stanno fra 0,5 e 5,4 secondi, e
-            // il ripiego sul Blockscout pubblico oggi riesce 0 volte su 15, quindi non vale
-            // la pena aspettarlo a lungo.
-            signal: AbortSignal.timeout(4_000),
+            // Tetto esplicito: senza, una singola chiamata lenta si mangia la deadline
+            // dell'intera rotta e nessuno arriva mai ai nodi pubblici.
+            //
+            // SEI secondi, non quattro. Misurato il 01/09 sull'host PRO: le risposte che
+            // RIESCONO arrivano fra 0,6 e 4,4 secondi, quindi un taglio a 4s scartava
+            // risposte valide e mandava la rotta sul ripiego con la storia dimezzata — che
+            // è esattamente il guasto che avevo appena finito di correggere. Il conto sulla
+            // deadline regge lo stesso: due API in parallelo, ciascuna al massimo due
+            // tentativi da 6s, fanno 12s, più ~3s di nodi pubblici, contro i 20s di tetto.
+            signal: AbortSignal.timeout(6_000),
           },
         );
         if (!res.ok) throw new Error(`Blockscout HTTP ${res.status}`);
@@ -292,12 +296,16 @@ async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
         {
             headers: { accept: 'application/json' },
             next: { revalidate: 30 },
-            // Tetto esplicito e stretto: senza, una singola chiamata lenta si mangia la
-            // deadline dell'intera rotta e nessuno arriva mai ai nodi pubblici. Quattro
-            // secondi bastano — le risposte buone misurate stanno fra 0,5 e 5,4 secondi, e
-            // il ripiego sul Blockscout pubblico oggi riesce 0 volte su 15, quindi non vale
-            // la pena aspettarlo a lungo.
-            signal: AbortSignal.timeout(4_000),
+            // Tetto esplicito: senza, una singola chiamata lenta si mangia la deadline
+            // dell'intera rotta e nessuno arriva mai ai nodi pubblici.
+            //
+            // SEI secondi, non quattro. Misurato il 01/09 sull'host PRO: le risposte che
+            // RIESCONO arrivano fra 0,6 e 4,4 secondi, quindi un taglio a 4s scartava
+            // risposte valide e mandava la rotta sul ripiego con la storia dimezzata — che
+            // è esattamente il guasto che avevo appena finito di correggere. Il conto sulla
+            // deadline regge lo stesso: due API in parallelo, ciascuna al massimo due
+            // tentativi da 6s, fanno 12s, più ~3s di nodi pubblici, contro i 20s di tetto.
+            signal: AbortSignal.timeout(6_000),
           },
       );
       if (!res.ok) throw new Error(`Blockscout legacy HTTP ${res.status}`);
@@ -427,14 +435,34 @@ async function raccogli(limit: number) {
     // nemmeno arrivata ai nodi pubblici. In parallelo il caso peggiore si dimezza.
     // `allSettled` e non `any`: la v2 puo' RIUSCIRE restituendo una lista vuota, e fra due
     // risposte valide va tenuta quella che ha visto piu' eventi, non la prima arrivata.
-    const esiti = await Promise.allSettled([fetchFromBlockscout(), fetchFromBlockscoutLegacy()]);
-    const riuscite = esiti
-      .filter((e): e is PromiseFulfilledResult<RawLog[]> => e.status === 'fulfilled')
-      .map((e) => e.value);
+    const v2 = fetchFromBlockscout();
+    const legacy = fetchFromBlockscoutLegacy();
 
-    if (riuscite.length > 0) {
-      raw = riuscite.reduce((a, b) => (b.length > a.length ? b : a));
-    } else {
+    // Si riparte appena UNA delle due porta dei log: aspettarle entrambe faceva arrivare la
+    // rotta a 20 secondi misurati, cioè sul filo della deadline, anche quando la risposta
+    // buona era già in mano dopo due. Una risposta VUOTA non vince la corsa (la v2 può
+    // riuscire restituendo zero elementi): in quel caso si aspetta anche l'altra.
+    const conLog = (p: Promise<RawLog[]>) =>
+      p.then((r) => {
+        if (r.length === 0) throw new Error('nessun log');
+        return r;
+      });
+
+    let riuscite: RawLog[][] = [];
+    try {
+      raw = await Promise.any([conLog(v2), conLog(legacy)]);
+      riuscite = [raw];
+    } catch {
+      // Nessuna delle due ha portato log: può voler dire "davvero zero" oppure "entrambe
+      // fallite". Le differenzia solo guardare come sono finite.
+      const esiti = await Promise.allSettled([v2, legacy]);
+      riuscite = esiti
+        .filter((e): e is PromiseFulfilledResult<RawLog[]> => e.status === 'fulfilled')
+        .map((e) => e.value);
+      if (riuscite.length > 0) raw = riuscite[0];
+    }
+
+    if (riuscite.length === 0) {
       // Ripiego sui nodi pubblici, su una finestra recente.
       source = 'rpc';
       const provider = new ethers.JsonRpcProvider(RPC_URL);
