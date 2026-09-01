@@ -26,7 +26,6 @@ import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import {
   CONTRACT_ADDRESS,
-  MORALIS_API_KEY,
   shortenAddress,
   LOGO_URL,
   TRADE_TOKEN_OPTIONS,
@@ -784,20 +783,20 @@ function AccountPageInner() {
     if (!address) return;
     setLoadingTx(true);
     try {
-      const headers = { accept: "application/json", "X-API-Key": MORALIS_API_KEY };
-      const erc20Url = `https://deep-index.moralis.io/api/v2.2/${address}/erc20/transfers?chain=base&contract_addresses=${CONTRACT_ADDRESS}&order=DESC&limit=25`;
-      const contractTxUrl = `https://deep-index.moralis.io/api/v2.2/${address}?chain=base&order=DESC&limit=25&to_address=${CONTRACT_ADDRESS}`;
-
-      const [erc20Res, contractRes] = await Promise.all([
-        fetch(erc20Url, { headers }),
-        fetch(contractTxUrl, { headers }),
-      ]);
+      // Dal 01/09/2026 la fonte e' /api/chain/address-activity (Alchemy lato server):
+      // Moralis ha spento il piano gratuito e la sua chiave girava nel browser.
+      const activityRes = await fetch(
+        `/api/chain/address-activity?address=${address}&limit=25`,
+      );
+      const activity = activityRes.ok
+        ? await activityRes.json()
+        : { transactions: [], erc20Transfers: [] };
 
       // Build map: hash → { erc20Amount, timestamp, type from input }
       const txMap = new Map<string, { hash: string; amount: number; timestamp: number; type: Transaction["type"] }>();
 
-      if (contractRes.ok) {
-        const data = await contractRes.json();
+      {
+        const data = { result: activity.transactions ?? [] };
         for (const tx of (data.result || [])) {
           // Filtro esplicito: SOLO transazioni verso il contratto corrente (V6).
           // I selettori (sellGBLINForEth, buyGBLIN…) sono identici tra V5 e V6, quindi senza
@@ -814,8 +813,8 @@ function AccountPageInner() {
         }
       }
 
-      if (erc20Res.ok) {
-        const data = await erc20Res.json();
+      {
+        const data = { result: activity.erc20Transfers ?? [] };
         for (const tx of (data.result || [])) {
           // Solo trasferimenti del token V6 (Moralis a volte ignora contract_addresses).
           if (tx.address && tx.address.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
@@ -863,7 +862,7 @@ function AccountPageInner() {
       setPendingTx(false);
       setStep3EthAmount("");
       showSuccess("Transazione completata!");
-      // Refresh transactions after a delay to allow Moralis to index
+      // Ricarica dopo qualche secondo: l'indicizzazione non e' istantanea
       setTimeout(() => fetchTransactions(), 3000);
     }
   }, [pendingTx, isSending, fetchTransactions]);

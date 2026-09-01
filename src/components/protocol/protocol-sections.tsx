@@ -299,10 +299,17 @@ function AgentPulse({ t }: { t: (key: string) => string }) {
     let cancelled = false;
     fetch('/api/agent-stats')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
-      .then((data: { total_paid_calls?: number; total_unique_agents?: number }) => {
+      .then((data: {
+        total_paid_calls?: number;
+        total_unique_agents?: number;
+        organic?: { paid_calls?: number; unique_agents?: number };
+      }) => {
         if (cancelled) return;
-        const calls = Number(data?.total_paid_calls ?? 0);
-        const agents = Number(data?.total_unique_agents ?? 0);
+        // Si mostra il dato ORGANICO: i pagamenti dai nostri wallet (elencati nella promessa
+        // P2) sono un terzo del totale, e in vetrina gonfierebbero il numero. Il cumulativo
+        // resta pubblicato nell'endpoint, come P2 richiede.
+        const calls = Number(data?.organic?.paid_calls ?? data?.total_paid_calls ?? 0);
+        const agents = Number(data?.organic?.unique_agents ?? data?.total_unique_agents ?? 0);
         if (calls > 0 || agents > 0) setStats({ calls, agents });
       })
       .catch(() => undefined);
@@ -954,7 +961,7 @@ export function DashboardView(props: DashboardViewProps) {
         <div className="mt-4 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-            <p className="mt-2 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
+            <p className="mt-2 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{onChainData?.totalYieldDistributed == null ? '—' : `${formatTokenAmount(onChainData.totalYieldDistributed, 6)} WETH`}</p>
           </div>
           <p className="max-w-md text-sm leading-6 text-zinc-300">{t('dashboard.totalYieldDesc')}</p>
         </div>
@@ -991,7 +998,7 @@ export function DashboardView(props: DashboardViewProps) {
             {/* HERO — redistribuito a TUTTI i holder (yield che entra nel NAV) */}
             <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
               <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-              <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
+              <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{onChainData?.totalYieldDistributed == null ? '—' : `${formatTokenAmount(onChainData.totalYieldDistributed, 6)} WETH`}</p>
               <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('dashboard.totalYieldDesc')}</p>
             </div>
             <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -1843,7 +1850,7 @@ export function VaultView(props: VaultViewProps) {
           {/* HERO — quanto è stato redistribuito a TUTTI i holder (il nostro punto di forza) */}
           <div className="mt-6 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
             <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
-            <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{formatTokenAmount(onChainData?.totalYieldDistributed || 0, 6)} WETH</p>
+            <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{onChainData?.totalYieldDistributed == null ? '—' : `${formatTokenAmount(onChainData.totalYieldDistributed, 6)} WETH`}</p>
             <p className="mt-3 text-sm leading-6 text-zinc-300">{t('yield.automationDesc')}</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">

@@ -120,17 +120,37 @@ export function LiveSection() {
 
 export function GblinNumbers() {
   const [stats, setStats] = useState<GblinVerified['stats']>(null);
+  // Lo split interno/esterno e' il senso della promessa P2: pubblichiamo la lista dei nostri
+  // wallet proprio perche' chiunque possa rifarlo. Farlo fare al lettore era scortese.
+  const [split, setSplit] = useState<{
+    organic_calls: number;
+    organic_agents: number;
+    organic_usdc: number;
+    internal_calls: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/agent-stats')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((j: { total_paid_calls?: number; total_unique_agents?: number; total_usdc_earned?: number }) => {
+      .then((j: {
+        total_paid_calls?: number;
+        total_unique_agents?: number;
+        total_usdc_earned?: number;
+        organic?: { paid_calls?: number; unique_agents?: number; usdc?: number };
+        internal?: { paid_calls?: number; unique_agents?: number };
+      }) => {
         if (cancelled) return;
         setStats({
           total_paid_calls: Number(j.total_paid_calls ?? 0),
           total_unique_agents: Number(j.total_unique_agents ?? 0),
           total_usdc_earned: Number(j.total_usdc_earned ?? 0),
+        });
+        setSplit({
+          organic_calls: Number(j.organic?.paid_calls ?? 0),
+          organic_agents: Number(j.organic?.unique_agents ?? 0),
+          organic_usdc: Number(j.organic?.usdc ?? 0),
+          internal_calls: Number(j.internal?.paid_calls ?? 0),
         });
       })
       .catch(() => undefined);
@@ -152,14 +172,39 @@ export function GblinNumbers() {
   }
 
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-3">
-      <StatCard label="Paid x402 calls received" value={stats.total_paid_calls.toLocaleString('en-US')} />
-      <StatCard label="Unique paying agents" value={stats.total_unique_agents.toLocaleString('en-US')} />
-      <StatCard
-        label="USDC earned"
-        value={`$${stats.total_usdc_earned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-        note="Every payment is a USDC transfer to the fee wallet on Base — verifiable on-chain"
-      />
-    </div>
+    <>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Paid x402 calls from external wallets"
+          value={(split?.organic_calls ?? stats.total_paid_calls).toLocaleString('en-US')}
+        />
+        <StatCard
+          label="External paying wallets"
+          value={(split?.organic_agents ?? stats.total_unique_agents).toLocaleString('en-US')}
+        />
+        <StatCard
+          label="USDC earned from external wallets"
+          value={`$${(split?.organic_usdc ?? stats.total_usdc_earned).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          note="Every payment is a USDC transfer to the fee wallet on Base — verifiable on-chain"
+        />
+      </div>
+      {split ? (
+        <p className="mt-3 text-xs leading-5 text-zinc-500">
+          Cumulative total including our own wallets:{' '}
+          {stats.total_paid_calls.toLocaleString('en-US')} calls from{' '}
+          {stats.total_unique_agents.toLocaleString('en-US')} wallets ($
+          {stats.total_usdc_earned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}),
+          of which {split.internal_calls.toLocaleString('en-US')} are ours. The wallet list is
+          published in{' '}
+          <a
+            className="underline decoration-amber-500/40 underline-offset-4"
+            href="/promises/P2-honest-counters.json"
+          >
+            promise P2
+          </a>
+          , so anyone can reproduce this split from the chain.
+        </p>
+      ) : null}
+    </>
   );
 }

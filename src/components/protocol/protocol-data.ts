@@ -41,7 +41,7 @@ export interface OnChainData {
   stabilityFund: string;
   dynamicReserve: string;
   basketData: BasketItem[];
-  totalYieldDistributed: number;
+  totalYieldDistributed: number | null;
   apyData?: {
     totalVolume: number;
     transactionCount: number;
@@ -171,9 +171,9 @@ export const AERODROME_POOL = '0x6Ac18D5e90278D2477027B5769EFb2fF0711FFbB'; // A
 export const UNISWAP_POOL = '0xAb305c45F4E42A73909a49a6775e3f7782239dAE';   // Uniswap V3 V6
 export const AERODROME_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481';
 export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
-// Moralis JWT — currently consumed client-side, so it must be NEXT_PUBLIC_.
-// TODO(security): proxy Moralis calls through /api/moralis to keep JWT server-only.
-export const MORALIS_API_KEY = process.env.NEXT_PUBLIC_MORALIS_API_KEY ?? '';
+// Moralis: RIMOSSA il 01/09/2026. Il loro piano gratuito e' stato spento e ogni chiamata
+// rispondeva 401. Le letture on-chain passano ora dalle rotte /api/chain/* (Alchemy lato
+// server), il che chiude anche il vecchio TODO: nessuna chiave di dati sta piu' nel browser.
 export const BASE_CHAIN_ID = 8453;
 export const WHITEPAPER_URL = 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/README.md';
 export const LOGO_URL = '/LOGO_GBLIN.png';
@@ -662,19 +662,9 @@ export const fetchMarketData = async (): Promise<DashboardData> => {
       priceUsd = ethOut * ethPriceUsd;
     } catch {}
 
-    const statsUrl = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/stats?chain=base`;
-    const statsRes = await fetch(statsUrl, {
-      headers: {
-        accept: 'application/json',
-        'X-API-Key': MORALIS_API_KEY
-      }
-    });
-
+    // Il volume 24h veniva da Moralis con DexScreener come ripiego. Dal 01/09/2026 Moralis
+    // e' spento (401/404) e resta il solo DexScreener, che quel numero lo dava comunque.
     let volume24h = 0;
-    if (statsRes.ok) {
-      const statsData = await statsRes.json();
-      volume24h = statsData?.volume_24h_usd || 0;
-    }
 
     if (priceUsd === 0 || volume24h === 0) {
       try {
@@ -702,18 +692,17 @@ export const fetchMarketData = async (): Promise<DashboardData> => {
 
 export const fetchTransactions = async (): Promise<TransactionItem[]> => {
   try {
-    const txUrl = `https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}?chain=base&order=DESC&limit=10`;
-    const erc20Url = `https://deep-index.moralis.io/api/v2.2/erc20/${CONTRACT_ADDRESS}/transfers?chain=base&order=DESC&limit=10`;
-
-    const [txRes, erc20Res] = await Promise.all([
-      fetch(txUrl, { headers: { accept: 'application/json', 'X-API-Key': MORALIS_API_KEY } }),
-      fetch(erc20Url, { headers: { accept: 'application/json', 'X-API-Key': MORALIS_API_KEY } })
-    ]);
+    // Dal 01/09/2026 la fonte e' la nostra rotta server (Alchemy): Moralis ha spento il
+    // piano gratuito e la chiave stava comunque nel browser. Una sola richiesta, cache CDN.
+    const activityRes = await fetch('/api/chain/contract-activity?limit=10');
+    const activity = activityRes.ok
+      ? await activityRes.json()
+      : { transactions: [], erc20Transfers: [] };
 
     const txMap = new Map<string, { hash: string; timestamp: number; contractTx: any | null; erc20Transfers: any[] }>();
 
-    if (txRes.ok) {
-      const data = await txRes.json();
+    {
+      const data = { result: activity.transactions ?? [] };
       if (data && Array.isArray(data.result)) {
         data.result.forEach((tx: any) => {
           const normalizedTx = {
@@ -734,8 +723,8 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
       }
     }
 
-    if (erc20Res.ok) {
-      const data = await erc20Res.json();
+    {
+      const data = { result: activity.erc20Transfers ?? [] };
       if (data && Array.isArray(data.result)) {
         data.result.forEach((tx: any) => {
           const normalizedTx = {
@@ -892,7 +881,7 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       stabilityFund: '0',
       dynamicReserve: '0',
       basketData: [],
-      totalYieldDistributed: 0,
+      totalYieldDistributed: null,
       apyData: null
     };
   }
@@ -901,43 +890,18 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
 // Totale ridistribuito a TUTTI i holder (somma degli eventi YieldDistributed = lo yield che
 // entra nel NAV ad ogni acquisto dal contratto). V6 emette YieldDistributed(uint256) su ogni buy.
 // Usiamo l'indicizzatore Blockscout (una sola chiamata, nessun limite di range come getLogs sull'RPC).
-export const fetchTotalYieldDistributed = async (): Promise<number> => {
-  const iface = new ethers.Interface(["event YieldDistributed(uint256 amount)"]);
-  const topic = iface.getEvent("YieldDistributed")!.topicHash;
-
-  // 1) Blockscout API (preferita: copre tutta la storia in un colpo)
+export const fetchTotalYieldDistributed = async (): Promise<number | null> => {
+  // La lettura sta su /api/chain/yield-distributed: Blockscout risponde a intermittenza e
+  // dal browser un suo 500 diventava uno ZERO pubblicato (il ripiego getLogs non ripiega
+  // piu': Alchemy free limita eth_getLogs a 10 blocchi). `null` = non lo sappiamo adesso,
+  // che e' diverso da "non abbiamo mai distribuito nulla".
   try {
-    const url = `https://base.blockscout.com/api?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${CONTRACT_ADDRESS}&topic0=${topic}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.result)) {
-        let total = 0n;
-        for (const log of data.result) {
-          try { total += ethers.getBigInt(log.data); } catch { /* skip */ }
-        }
-        return Number(ethers.formatEther(total));
-      }
-    }
-  } catch { /* fall through */ }
-
-  // 2) Fallback: getLogs a chunk (per RPC pubblici che limitano il range)
-  try {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const current = await provider.getBlockNumber();
-    const SPAN = 700000, CHUNK = 9000;
-    const from = Math.max(0, current - SPAN);
-    const ranges: [number, number][] = [];
-    for (let s = from; s <= current; s += CHUNK + 1) ranges.push([s, Math.min(s + CHUNK, current)]);
-    let total = 0n;
-    for (let i = 0; i < ranges.length; i += 8) {
-      const batch = await Promise.all(ranges.slice(i, i + 8).map(([f, t]) =>
-        provider.getLogs({ address: CONTRACT_ADDRESS, topics: [topic], fromBlock: f, toBlock: t }).catch(() => [])
-      ));
-      for (const logs of batch) for (const log of logs) { try { total += ethers.getBigInt(log.data); } catch { /* skip */ } }
-    }
-    return Number(ethers.formatEther(total));
+    const res = await fetch('/api/chain/yield-distributed');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.total_wei == null) return null;
+    return Number(ethers.formatEther(BigInt(data.total_wei)));
   } catch {
-    return 0;
+    return null;
   }
 };

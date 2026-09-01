@@ -1,163 +1,165 @@
 /**
  * GET /api/agent-stats
  *
- * Returns KPI counters for the "AI Agents" section on the home page.
+ * Contatori dei pagamenti x402 ricevuti dal fee wallet, per la sezione "AI Agents".
  *
- * Mirrors the Dune query (id: 7564984):
- *   contract_address = USDC on Base
- *   to               = 0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B  (fee wallet)
- *   from            != zero address
+ * Fonte: Alchemy (`alchemy_getAssetTransfers`) — vedi src/lib/chain-activity.ts.
+ * 01/09/2026: sostituisce Moralis, che ha spento il piano gratuito.
  *
- * Implementation: paginated calls to Moralis `/erc20/transfers` filtered by
- * the x402 fee wallet. Moralis is already configured for the rest of the
- * app (see protocol-data.ts).
- *
- * Cache: 5 minutes in-memory.
+ * COSA CONTA, E PERCHE' DUE NUMERI
+ * La promessa P2 (hash-pinnata, public/promises/P2-honest-counters.json) dichiara che i
+ * contatori pubblici sono CUMULATIVI DALL'INIZIO e INCLUDONO i nostri wallet, e che la
+ * lista dei nostri wallet è pubblicata perché un estraneo possa riprodurre lo split fra
+ * attività interna ed esterna. Quindi:
+ *   - `total_*` resta cumulativo e include i nostri wallet: cambiarlo renderebbe falsa una
+ *     promessa già incisa on-chain (servirebbe una P2 v2 con un nuovo promiseId).
+ *   - `organic` è quello split, calcolato qui invece di lasciarlo come compito al lettore.
+ * La lista dei wallet interni è letta DAL FILE DELLA PROMESSA, non ricopiata: una sola
+ * fonte, e se il file cambia il conteggio cambia con lui.
  */
 
-export const runtime = "nodejs";
+import { inboundTokenPayments, USDC_BASE, FEE_WALLET } from '@/lib/chain-activity';
+import promise from '../../../../public/promises/P2-honest-counters.json';
 
-// Re-uses the existing Moralis key. The client-side var name is kept for
-// compatibility, but server code can also read it from MORALIS_API_KEY.
-const MORALIS_API_KEY =
-  process.env.MORALIS_API_KEY ?? process.env.NEXT_PUBLIC_MORALIS_API_KEY ?? "";
-const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-const FEE_WALLET = "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-// ─── In-memory cache ─────────────────────────────────────────────────────────
-const CACHE_TTL_MS = 5 * 60 * 1_000; // 5 minutes
-let cache: {
-  data: AgentStats;
-  fetchedAt: number;
-} | null = null;
+const OUR_WALLETS = new Set(
+  (promise.our_wallets ?? []).map((w: string) => w.toLowerCase()),
+);
+
+// ─── Cache in memoria ────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 5 * 60 * 1_000;
+const ERROR_CACHE_TTL_MS = 30_000;
+let cache: { data: AgentStats; fetchedAt: number } | null = null;
+
+interface Split {
+  paid_calls: number;
+  unique_agents: number;
+  usdc: number;
+}
 
 export interface AgentStats {
   total_paid_calls: number;
   total_unique_agents: number;
-  total_usdc_earned: number; // in USDC (human-readable)
+  total_usdc_earned: number;
+  /** Solo pagatori esterni: i wallet elencati nella promessa P2 sono esclusi. */
+  organic: Split;
+  /** La quota generata dai nostri wallet, dichiarata invece che nascosta. */
+  internal: Split;
+  our_wallets_source: string;
+  last_payment_at: string | null;
 }
 
-interface MoralisErc20Transfer {
-  from_address: string;
-  to_address: string;
-  value: string;
-  address: string; // token contract
-}
-
-interface MoralisErc20TransfersResponse {
-  cursor: string | null;
-  page: number;
-  page_size: number;
-  result: MoralisErc20Transfer[];
-}
-
-// Cap how many pages we fetch so the function always completes within the
-// Vercel Hobby 10s budget. 5 pages × 100 transfers = 500 rows — far more
-// than the current x402 volume.
-const MAX_PAGES = 5;
-const PAGE_SIZE = 100;
-
-async function fetchAgentStats(): Promise<AgentStats> {
-  if (!MORALIS_API_KEY) {
-    throw new Error(
-      "MORALIS_API_KEY env var is required (set NEXT_PUBLIC_MORALIS_API_KEY)"
-    );
-  }
-
-  const uniqueAgents = new Set<string>();
-  let totalCalls = 0;
-  let totalUsdcMicro = 0n;
-
-  let cursor: string | null = null;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const url = new URL(
-      `https://deep-index.moralis.io/api/v2.2/${FEE_WALLET}/erc20/transfers`
-    );
-    url.searchParams.set("chain", "base");
-    url.searchParams.set("contract_addresses", USDC);
-    url.searchParams.set("order", "DESC");
-    url.searchParams.set("limit", String(PAGE_SIZE));
-    if (cursor) url.searchParams.set("cursor", cursor);
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        accept: "application/json",
-        "X-API-Key": MORALIS_API_KEY,
-      },
-      signal: AbortSignal.timeout(7_000),
-    });
-    if (!res.ok) {
-      throw new Error(`Moralis HTTP ${res.status}: ${await res.text()}`);
-    }
-    const json = (await res.json()) as MoralisErc20TransfersResponse;
-    const rows = json.result ?? [];
-
-    for (const row of rows) {
-      const from = row.from_address?.toLowerCase();
-      const to = row.to_address?.toLowerCase();
-      if (!from || !to) continue;
-      if (to !== FEE_WALLET.toLowerCase()) continue; // only inbound
-      if (from === ZERO_ADDRESS.toLowerCase()) continue;
-      uniqueAgents.add(from);
-      totalCalls += 1;
-      try {
-        totalUsdcMicro += BigInt(row.value);
-      } catch {
-        // skip malformed value
-      }
-    }
-
-    if (!json.cursor || rows.length < PAGE_SIZE) break;
-    cursor = json.cursor;
-  }
-
-  return {
-    total_paid_calls: totalCalls,
-    total_unique_agents: uniqueAgents.size,
-    total_usdc_earned: Number(totalUsdcMicro) / 1e6,
-  };
-}
-
+const EMPTY_SPLIT: Split = { paid_calls: 0, unique_agents: 0, usdc: 0 };
 const EMPTY_STATS: AgentStats = {
   total_paid_calls: 0,
   total_unique_agents: 0,
   total_usdc_earned: 0,
+  organic: EMPTY_SPLIT,
+  internal: EMPTY_SPLIT,
+  our_wallets_source: 'https://gblin.digital/promises/P2-honest-counters.json',
+  last_payment_at: null,
 };
 
-// Attribution block — additive, consumed by third parties citing our data.
+// Blocco di attribuzione — additivo, consumato da terzi che citano i nostri dati.
 const SOURCE = {
-  name: "GBLIN Agent Economy Observatory",
-  url: "https://gblin.digital/observatory",
-  data_endpoint: "https://gblin.digital/api/agent-stats",
-  docs: "https://gblin.digital/llms.txt",
+  name: 'GBLIN Agent Economy Observatory',
+  url: 'https://gblin.digital/observatory',
+  data_endpoint: 'https://gblin.digital/api/agent-stats',
+  docs: 'https://gblin.digital/llms.txt',
   license: "CC BY 4.0 — cite 'GBLIN Agent Economy Observatory'",
   disclosure:
-    "GBLIN operates 11 paid x402 endpoints; own traffic is excluded from organic counts; methodology is public",
+    'GBLIN operates paid x402 endpoints. Per promise P2, total_* counters are cumulative since launch and include payments made by our own wallets; the `organic` block excludes them, using the wallet list published in P2. Methodology is public.',
 } as const;
-const ERROR_CACHE_TTL_MS = 30_000;
+
+async function fetchAgentStats(): Promise<AgentStats> {
+  const payments = await inboundTokenPayments(FEE_WALLET, USDC_BASE);
+
+  const agents = { all: new Set<string>(), organic: new Set<string>(), internal: new Set<string>() };
+  let totalMicro = 0n;
+  let organicMicro = 0n;
+  let internalMicro = 0n;
+  let organicCalls = 0;
+  let internalCalls = 0;
+  let lastAt: string | null = null;
+
+  for (const p of payments) {
+    // Un trasferimento del fee wallet verso se stesso non è un pagamento ricevuto.
+    if (p.from === FEE_WALLET.toLowerCase()) continue;
+
+    let micro = 0n;
+    try {
+      micro = BigInt(p.value);
+    } catch {
+      // valore malformato: la chiamata conta, l'importo no
+    }
+
+    agents.all.add(p.from);
+    totalMicro += micro;
+    if (p.timestamp && (!lastAt || p.timestamp > lastAt)) lastAt = p.timestamp;
+
+    if (OUR_WALLETS.has(p.from)) {
+      agents.internal.add(p.from);
+      internalCalls += 1;
+      internalMicro += micro;
+    } else {
+      agents.organic.add(p.from);
+      organicCalls += 1;
+      organicMicro += micro;
+    }
+  }
+
+  const usdc = (v: bigint) => Number(v) / 1e6;
+
+  return {
+    total_paid_calls: organicCalls + internalCalls,
+    total_unique_agents: agents.all.size,
+    total_usdc_earned: usdc(totalMicro),
+    organic: {
+      paid_calls: organicCalls,
+      unique_agents: agents.organic.size,
+      usdc: usdc(organicMicro),
+    },
+    internal: {
+      paid_calls: internalCalls,
+      unique_agents: agents.internal.size,
+      usdc: usdc(internalMicro),
+    },
+    our_wallets_source: 'https://gblin.digital/promises/P2-honest-counters.json',
+    last_payment_at: lastAt,
+  };
+}
 
 export async function GET(): Promise<Response> {
   const now = Date.now();
   if (cache && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return Response.json({ ...cache.data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600" } });
+    return Response.json(
+      { ...cache.data, _source: SOURCE },
+      { headers: { 'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600' } },
+    );
   }
 
   try {
     const data = await fetchAgentStats();
     cache = { data, fetchedAt: now };
-    return Response.json({ ...data, _source: SOURCE }, { headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600" } });
+    return Response.json(
+      { ...data, _source: SOURCE },
+      { headers: { 'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600' } },
+    );
   } catch (err) {
-    // Never return 500 — the home page must render. Serve the previous cache
-    // if available, otherwise zeros. Cache the fallback briefly so we don't
-    // retry every single request when the RPC is degraded.
+    // Mai un 500: la home deve renderizzare. Si serve la cache precedente, altrimenti zeri
+    // DICHIARATI come tali — uno zero non deve poter passare per "nessuno ha pagato".
     const fallback = cache?.data ?? EMPTY_STATS;
     cache = { data: fallback, fetchedAt: now - (CACHE_TTL_MS - ERROR_CACHE_TTL_MS) };
-    return Response.json({
-      ...fallback,
-      stale: true,
-      error: (err as Error).message,
-      _source: SOURCE,
-    }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+    return Response.json(
+      {
+        ...fallback,
+        stale: true,
+        error: (err as Error).message,
+        _source: SOURCE,
+      },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+    );
   }
 }

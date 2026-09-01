@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, MORALIS_API_KEY } from '@/components/protocol/protocol-data';
+
+const CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
 
 // Conservative ESTIMATE per rebalance for the leaderboard totals.
 // V6 pays an adaptive bounty (~0.05% of rebalanced volume, clamped 0.00005–0.01 ETH,
@@ -18,7 +19,7 @@ interface KeeperRow {
   earnedEth: number;
 }
 
-interface MoralisTx {
+interface ChainTx {
   hash: string;
   from_address: string;
   to_address: string;
@@ -35,46 +36,24 @@ export default function KeepersPage() {
   useEffect(() => {
     async function load() {
       try {
-        if (!MORALIS_API_KEY) {
-          throw new Error('MORALIS_API_KEY not configured');
+        // Le transazioni arrivano dalla nostra rotta server (Alchemy), non piu' da Moralis
+        // chiamata dal browser: dal 01/09/2026 il loro piano gratuito e' spento.
+        const res = await fetch('/api/chain/contract-activity?limit=200');
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || `chain-activity HTTP ${res.status}`);
         }
-
-        const headers = {
-          accept: 'application/json',
-          'X-API-Key': MORALIS_API_KEY,
-        };
-
-        // Fetch transactions to the GBLIN contract
-        // We fetch multiple pages to get a reasonable history
-        const allTxs: MoralisTx[] = [];
-        let cursor: string | null = null;
-        const MAX_PAGES = 5;
-
-        for (let page = 0; page < MAX_PAGES; page++) {
-          const url = new URL(`https://deep-index.moralis.io/api/v2.2/${CONTRACT_ADDRESS}`);
-          url.searchParams.set('chain', 'base');
-          url.searchParams.set('order', 'DESC');
-          url.searchParams.set('limit', '100');
-          if (cursor) url.searchParams.set('cursor', cursor);
-
-          const res = await fetch(url.toString(), { headers });
-          if (!res.ok) {
-            throw new Error(`Moralis HTTP ${res.status}`);
-          }
-
-          const data = await res.json();
-          const txs: MoralisTx[] = data.result || [];
-          allTxs.push(...txs);
-
-          if (!data.cursor || txs.length < 100) break;
-          cursor = data.cursor;
-        }
+        const data = await res.json();
+        const allTxs: ChainTx[] = data.transactions || [];
 
         // Filter for incentivizedRebalance calls
         const tally: Record<string, number> = {};
         let rebalanceCount = 0;
 
         for (const tx of allTxs) {
+          // Il selettore da solo non basta: conta solo se la chiamata era diretta al nostro
+          // contratto, altrimenti una funzione omonima altrove finirebbe in classifica.
+          if (tx.to_address?.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
           const selector = tx.input?.slice(0, 10)?.toLowerCase();
           if (selector === REBALANCE_SELECTOR) {
             const executor = tx.from_address;
