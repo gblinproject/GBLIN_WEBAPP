@@ -1,0 +1,32 @@
+{
+  "required": [
+    "nav_usd",
+    "eth_price_usd",
+    "crash_shield_active",
+    "slippage_buffer_pct",
+    "slippage_reason",
+    "basket",
+    "meta"
+  ],
+  "schema": {
+    "type": "object",
+    "required": [
+      "nav_usd",
+      "eth_price_usd",
+      "crash_shield_active",
+      "slippage_buffer_pct",
+      "slippage_reason",
+      "basket",
+      "meta"
+    ],
+    "properties": {
+      "nav_usd": { "type": "number" },
+      "eth_price_usd": { "type": "number" },
+      "crash_shield_active": { "type": "boolean" },
+      "slippage_buffer_pct": { "type": "number" },
+      "slippage_reason": { "type": "string" },
+      "basket": { "type": "array" },
+      "meta": { "type": "object" }
+    }
+  }
+}
