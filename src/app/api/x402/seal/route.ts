@@ -37,21 +37,86 @@ const WORKER = "https://gblin-mcp.gblin-mcp-worker.workers.dev";
 const NETWORK = "eip155:8453";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
+/** Il minimo che serve per rimborsare e per farsi credere: chi ha pagato e con che nonce. */
+type Prova = { payer: string; nonce: string; amount?: string; asset?: string; network?: string };
+
+function provaDa(osservato: string | null): Prova | null {
+  if (!osservato) return null;
+  try {
+    const o = JSON.parse(Buffer.from(osservato, "base64").toString("utf-8")) as Record<string, string>;
+    if (!o.payer || !o.authorization_nonce) return null;
+    return { payer: o.payer, nonce: o.authorization_nonce, amount: o.amount, asset: o.asset, network: o.network };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cosa si aggiunge a un errore quando chi lo riceve HA GIA' PAGATO.
+ *
+ * Il 05/09/2026 qualcuno ha pagato 0,01 USDC per un sigillo e non ha ricevuto niente. Non
+ * sapevamo nemmeno come fosse fallito, perche' questo percorso non registrava nulla e non
+ * diceva nulla. Da qui in poi ogni fallimento su una chiamata pagata porta con se' il nonce,
+ * che e' verificabile on-chain (USDC su Base emette AuthorizationUsed(authorizer, nonce)) e
+ * quindi vale piu' della nostra parola.
+ */
+function pagato(p: Prova | null) {
+  if (!p) return {};
+  return {
+    paid: true,
+    payment_nonce: p.nonce,
+    refund:
+      "You paid and received nothing. This is recorded in our refund ledger (counts public at " +
+      "gblin-mcp.gblin-mcp-worker.workers.dev/refunds). Quote this nonce to gblin.digital — it is " +
+      "provable on-chain from AuthorizationUsed(authorizer, nonce).",
+  };
+}
+
+/**
+ * Riporta l'esito al Worker, che tiene i contatori e il registro dei rimborsi.
+ * Fallisce in silenzio e con un tetto di tempo stretto: la contabilita' non deve mai
+ * aggiungere ritardo o un secondo errore a chi ne ha gia' preso uno.
+ */
+async function segnala(motivo: string, p: Prova | null): Promise<void> {
+  const token = process.env.CATALOG_TOKEN ?? "";
+  if (!token) return;
+  try {
+    await fetch(`${WORKER}/internal/esito?token=${token}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chiave: "seal-paid",
+        motivo,
+        percorso: "/api/x402/seal",
+        pagamento: p ? { payer: p.payer, nonce: p.nonce, amount: p.amount, asset: p.asset, network: p.network } : undefined,
+      }),
+      signal: AbortSignal.timeout(1500),
+    });
+  } catch {
+    /* la contabilita' non e' un motivo per peggiorare la giornata di chi ha pagato */
+  }
+}
+
 export async function POST(req: Request) {
   const token = process.env.CATALOG_TOKEN ?? "";
   if (!token) {
     return Response.json(
-      { error: "seal service not configured (CATALOG_TOKEN missing)" },
-      { status: 503 },
+      { error: "seal service not configured (CATALOG_TOKEN missing)", ...pagato(provaDa(await observePayment(req))) },
+      { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
+  const observed = await observePayment(req);
+  const prova = provaDa(observed);
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: "invalid JSON body" }, { status: 400 });
+    await segnala("json", prova);
+    return Response.json(
+      { error: "invalid JSON body", ...pagato(prova) },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    );
   }
-  const observed = await observePayment(req);
   // Il chiamante ha GIA' pagato quando arriviamo qui: qualsiasi inciampo a valle deve tornargli
   // come errore leggibile, mai come 500 generico della piattaforma. Prima ne' il fetch (timeout
   // 20s incluso) ne' r.json() erano protetti.
@@ -68,14 +133,12 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     const timeout = e instanceof Error && /timeout|abort/i.test(e.name + e.message);
+    await segnala("upstream", prova);
     return Response.json(
       {
-        error: timeout
-          ? "seal service did not answer in 20s"
-          : "seal service unreachable",
-        paid: true,
-        retry:
-          "Your payment settled but no receipt was written. Retry the same body; if it fails again, contact gblin.digital and quote your payment nonce.",
+        error: timeout ? "seal service did not answer in 20s" : "seal service unreachable",
+        retry: "Retry the same body. If it fails again, quote your nonce and we refund.",
+        ...pagato(prova),
       },
       { status: 504, headers: { "cache-control": "no-store" } },
     );
@@ -85,31 +148,52 @@ export async function POST(req: Request) {
   try {
     out = JSON.parse(raw);
   } catch {
+    await segnala("upstream", prova);
     return Response.json(
       {
         error: "seal service returned a non-JSON response",
         upstream_status: r.status,
         upstream_body: raw.slice(0, 300),
-        paid: true,
+        ...pagato(prova),
       },
       { status: 502, headers: { "cache-control": "no-store" } },
     );
   }
-  return Response.json(out, {
+  // Il Worker conta gia' l'esito e registra il rimborso: qui aggiungiamo solo il nonce se lui
+  // non l'ha visto (percorso in cui l'osservazione del pagamento non era leggibile).
+  const corpo =
+    r.status === 200 || (out && typeof out === "object" && "paid" in (out as object))
+      ? out
+      : { ...(out as object), ...pagato(prova) };
+  return Response.json(corpo, {
     status: r.status,
     headers: { "cache-control": "no-store" },
   });
 }
 
-export async function GET() {
+/**
+ * Ogni metodo che non sia POST riceve lo STESSO 405.
+ *
+ * Prima solo GET aveva un handler e gli altri cadevano nel 405 predefinito di Next, con un
+ * corpo diverso: due risposte diverse per lo stesso errore, e il bordo non poteva rispecchiarle
+ * entrambe. Il corpo qui sotto e' replicato in worker/src/x402-challenge.mjs (SOLO_POST_BODY):
+ * se cambia uno, va cambiato l'altro, o origin e bordo divergono.
+ */
+function soloPost() {
   return Response.json(
     {
       error: "POST only",
       how: "POST JSON {action, input_hash, output_hash?, agent_id?, tool?, meta?} with x402 payment ($0.01). Free demo (5/day/IP): POST https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo. Docs: /api/x402/llms.txt",
     },
-    { status: 405 },
+    { status: 405, headers: { allow: "POST", "cache-control": "public, max-age=300" } },
   );
 }
+
+export const GET = soloPost;
+export const HEAD = soloPost;
+export const PUT = soloPost;
+export const PATCH = soloPost;
+export const DELETE = soloPost;
 
 /**
  * Extract the payment facts from the already-verified x402 header.

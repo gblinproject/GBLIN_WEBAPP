@@ -27,15 +27,22 @@ export const fixtureName = (p, flavor) => new URL(`./${p}.${flavor}.json`, impor
 // ATTENZIONE: e' comportamento OSSERVATO, non documentato da Vercel (la doc copre presenza e
 // valore, non il valore vuoto). Per questo sotto ci sono due asserzioni che fanno fallire la
 // cattura invece di scrivere fixture avvelenate.
+// Percorsi che accettano un solo verbo: la loro sfida esiste SOLO su quel verbo, e catturarla
+// in GET darebbe un 405. Dal 06/09/2026 seal e' fra questi — prima la chiave era path-only e la
+// sfida usciva su ogni metodo, dichiarando "method: GET" a chi ci scopriva in GET. Un agente che
+// seguiva i nostri stessi metadati pagava e riceveva un 405.
+export const VERBO = { seal: "POST" };
+
 export async function fetchOne(base, path, flavor, daOrigin = false) {
   const accept = flavor === "html" ? "text/html,application/xhtml+xml" : "application/json";
   const richiesta = daOrigin ? { accept, "x-payment": "" } : { accept };
-  const res = await fetch(`${base}/api/x402/${path}`, { headers: richiesta });
+  const method = VERBO[path] || "GET";
+  const res = await fetch(`${base}/api/x402/${path}`, { method, headers: richiesta });
   const body = await res.text();
   const headers = {};
   for (const h of CONTRACT_HEADERS) { const v = res.headers.get(h); if (v) headers[h] = v; }
   const daBordo = !!res.headers.get("x-gblin-edge-challenge");
-  return { path: `/api/x402/${path}`, accept, status: res.status, headers, bytes: Buffer.byteLength(body, "utf8"), body, daBordo };
+  return { path: `/api/x402/${path}`, accept, method, status: res.status, headers, bytes: Buffer.byteLength(body, "utf8"), body, daBordo };
 }
 
 // Due asserzioni, non una. La prima da sola non basta: dice solo DA DOVE arriva la risposta, non

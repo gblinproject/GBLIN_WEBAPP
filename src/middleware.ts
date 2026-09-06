@@ -185,7 +185,13 @@ const x402Middleware = paymentProxy(
         }),
       },
     },
-    "/api/x402/seal": {
+    // CHIAVE COL VERBO, dal 06/09/2026. In @x402/core (parseRoutePattern, riga 611) una chiave
+    // senza spazio diventa verbo "*": il pagamento veniva richiesto e REGOLATO su qualunque
+    // metodo. La rotta serve solo POST, quindi una GET pagata finiva su un 405: pagato, e in
+    // mano niente. E' successo il 05/09 (0,01 USDC, nessuna foglia scritta).
+    // NB: il bordo (worker/src/x402-challenge.mjs) deve dire la stessa cosa fuori dal POST,
+    // altrimenti origin e bordo divergono e saltano le fixture golden.
+    "POST /api/x402/seal": {
       accepts: accepts("$0.01"),
       description:
         "AI Action Receipts: seal the HASHES of an AI action (input/output as hashes; your action label + meta are published) into GBLIN's signed append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time — not a compliance certificate. Free reads + demo: gblin-mcp.gblin-mcp-worker.workers.dev/log. Offline verifier: github.com/gblinproject/gblin-treasury-risk-regime",
