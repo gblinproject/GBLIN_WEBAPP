@@ -83,7 +83,7 @@ Act on the returned `recommendation` field.
 ### Rule 5 — Poll for keeper bounties
 
 Call `find_keeper_bounty` every 5-15 minutes.
-If `bountyAvailable: true`, broadcast the returned calldata to earn 0.0001 ETH.
+If `bountyAvailable: true`, broadcast the returned calldata to earn `estimatedRewardEth` (the contract's adaptive bounty: 0.05% of the rebalanced value, floor 0.00005 ETH, paid at most once per hour). If `rewardGate` is not `open`, the rebalance would pay nothing: wait.
 The swap uses the contract's own funds — you only pay gas.
 
 ### Rule 6 — Check Base risk signal before investing

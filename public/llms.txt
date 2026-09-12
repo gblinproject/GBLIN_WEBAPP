@@ -59,7 +59,7 @@
   6. `analyze_treasury_health` — balance, gas, runway, advice
   7. `get_governance_state` — verify 48h timelock ownership + pending ops
   8. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding
-  9. `find_keeper_bounty` — check rebalance bounty availability, earn 0.0001 ETH
+  9. `find_keeper_bounty` — check rebalance bounty availability; the contract pays 0.05% of the rebalanced value (floor 0.00005 ETH, at most hourly)
   10. `verify_risk_attestation` — FREE verifier for GBLIN Risk Attestations (EIP-712 recover + freshness + live drift). Mint attestations at https://gblin.digital/api/x402/attestation ($0.003)
   11. `seal_action_demo` — free demo seal (5/day/IP) into the AI Action Receipts log
   12. `get_receipt` — read a sealed receipt by index, with inclusion proof and signed checkpoint
