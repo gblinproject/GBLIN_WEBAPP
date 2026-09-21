@@ -19,6 +19,7 @@ import {
   TOKENS,
   TRADE_TOKEN_OPTIONS,
   WETH_ADDRESS,
+  ZAP_ADDRESS,
   fetchMarketData,
   fetchOnChainData,
   fetchOracleHealth,
@@ -46,6 +47,9 @@ import {
   type RebalanceCard,
   type RebalanceOpportunity
 } from './protocol-sections';
+
+// Uniswap V3 fee tier the Zap's swap adapter uses for every leg (0.05%).
+const VENUE_FEE_500 = ethers.AbiCoder.defaultAbiCoder().encode(['uint24'], [500]) as `0x${string}`;
 
 interface ProtocolAppProps {
   view: ProtocolView;
@@ -931,15 +935,35 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           const ethOut = await quoteSellShares(getProvider(), gblinAmount).catch(() => 0n);
           const minAmountOut = (ethOut * (10000n - slippageBps)) / 10000n;
 
-          // Thirdweb: Sell GBLIN for ETH
+          // The ETH exit lives in the Zap: it redeems in kind on the vault and sells every leg, all or
+          // nothing. The Zap pulls the shares, so it needs the allowance; the in-kind path burns the caller's own.
+          const gblinErc = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, provider);
+          const shareAllowance: bigint = await gblinErc.allowance(address, ZAP_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
+          if (shareAllowance < gblinAmount) {
+            addLog('Approval required for GBLIN → Zap.');
+            const approveSharesTx = prepareContractCall({
+              contract: { address: CONTRACT_ADDRESS as `0x${string}` },
+              method: "function approve(address spender, uint256 amount) returns (bool)",
+              params: [ZAP_ADDRESS as `0x${string}`, gblinAmount],
+            });
+            let approvalHash = '';
+            await new Promise<void>((resolve, reject) => {
+              sendTx(approveSharesTx, {
+                onSuccess: (data) => { approvalHash = data.transactionHash; resolve(); },
+                onError: (err: Error) => reject(err),
+              });
+            });
+            addLog(`Approval sent: ${shortenAddress(approvalHash)}`);
+            await provider.waitForTransaction(approvalHash, 1, 60000);
+          }
+
+          // One routing entry per basket row, index for index; WETH and abandoned rows ignore it.
           const sellTx = prepareContractCall({
-            contract: {
-              address: CONTRACT_ADDRESS as `0x${string}`,
-            },
-            method: "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
-            params: [gblinAmount, minAmountOut],
+            contract: { address: ZAP_ADDRESS as `0x${string}` },
+            method: "function sellGBLINForEth(uint256 shares, uint256 minEthOut, bytes[] venueData, address receiver) returns (uint256 ethOut)",
+            params: [gblinAmount, minAmountOut, Array.from({ length: basketData.length || 3 }, () => VENUE_FEE_500), address as `0x${string}`],
           });
-          
+
           await new Promise<void>((resolve, reject) => {
             sendTx(sellTx, {
               onSuccess: (data) => {
