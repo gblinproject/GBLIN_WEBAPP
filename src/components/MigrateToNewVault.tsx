@@ -196,19 +196,31 @@ function MigrateBanner() {
     const minEthOut = quote - (quote * SELL_SLIPPAGE_BPS) / 10_000n;
     await simulateContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut], account, chainId: base.id });
 
+    // One confirmation when the wallet supports it. The second call spends more ETH than the
+    // account holds before the batch: the first call is what funds it, and an atomic batch is
+    // all-or-nothing, so this is sound. Some wallets still price and warn on the calls one by
+    // one and refuse, which is why the two-step path below stays as the fallback rather than
+    // the migration stopping there.
     if (await supportsAtomicBatch(account)) {
-      setStatus(`Migrating from the ${s.label} in one confirmation…`);
-      const minOut = await minSharesFor(minEthOut);
-      const { id } = await sendCalls(wagmiConfig, {
-        account, chainId: base.id, forceAtomic: true,
-        calls: [
-          { to: s.address, data: (encodeFunctionData({ abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
-          { to: NEW_VAULT, value: minEthOut, data: (encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
-        ],
-      });
-      const res = await waitForCallsStatus(wagmiConfig, { id });
-      if (res.status !== "success") throw new Error("The batch did not go through; nothing was migrated.");
-      return;
+      try {
+        setStatus(`Migrating from the ${s.label} in one confirmation…`);
+        const minOut = await minSharesFor(minEthOut);
+        const { id } = await sendCalls(wagmiConfig, {
+          account, chainId: base.id, forceAtomic: true,
+          calls: [
+            { to: s.address, data: (encodeFunctionData({ abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
+            { to: NEW_VAULT, value: minEthOut, data: (encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
+          ],
+        });
+        const res = await waitForCallsStatus(wagmiConfig, { id });
+        if (res.status !== "success") throw new Error("batch not successful");
+        return;
+      } catch (e) {
+        // A refusal in the wallet is a decision, not a fault: it is not retried another way.
+        if (explain(e) === null) throw e;
+        // Nothing moved: the batch is atomic, so falling back cannot sell twice.
+        setStatus("The one-confirmation route was refused by the wallet. Falling back to two confirmations…");
+      }
     }
 
     setStatus(`1/2 Selling on the ${s.label}…`);
