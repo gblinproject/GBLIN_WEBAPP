@@ -51,7 +51,12 @@ const SOURCES: Source[] = [
 
 const SELL_SLIPPAGE_BPS = 200n;   // minimum ETH out = NAV quote − 2%
 const BUY_SLIPPAGE_BPS = 100n;    // minimum shares out = Lens quote − 1%
-const GAS_RESERVE = 30_000_000_000_000n; // 0.00003 ETH kept for the second transaction on Base
+// ETH kept back so the second transaction can always be paid for. The deposit costs around
+// 570,000 gas, which at a quiet gas price is a fraction of a cent -- but a reserve sized on the
+// quiet price leaves nothing when the price rises, and the holder is then stranded with the
+// proceeds in the wallet and no way to pay for the deposit. This is deliberately generous
+// relative to what is being migrated: what is left over stays in the wallet either way.
+const GAS_RESERVE = 300_000_000_000_000n; // 0.0003 ETH
 const PROBE_WEI = 1_000_000_000n; // 1 gwei: enough to prove the new vault accepts a deposit
 // Below this the old contract cannot sell the legs for ETH (a few satoshi of cbBTC: Uniswap rounds the fee up and the
 // sale reverts). Such positions are offered the in-kind exit instead.
