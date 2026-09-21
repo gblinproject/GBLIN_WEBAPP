@@ -74,29 +74,42 @@ export function formatFeeUsd(usd: number): string {
  */
 export function NavFeesHeroLedger({ t }: { t: (key: string) => string }) {
   const fees = useNavFees();
+  const big = !!fees && fees.usd >= 0.005;
 
   return (
     <div className="mt-6 border-t border-white/[0.07] pt-5">
       <div className="flex items-start gap-2">
-        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" />
-        <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/80">
+        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+        <p className="g-eyebrow g-eyebrow-gold">
           {t('landing.ledgerEyebrow')}
         </p>
       </div>
 
-      <div className="mt-4">
-        <p className="font-serif text-[clamp(2rem,7vw,2.8rem)] leading-none tracking-tight text-amber-400">
-          {fees ? formatFeeUsd(fees.usd) : '—'}
-        </p>
-        <p className="mt-2 text-[11px] leading-5 text-zinc-400">
-          {t('landing.ledgerGiven')}
-          {fees ? (
+      {/* Below a cent the figure is true but useless, and a giant gold zero is the loudest
+          thing on the page. The sentence carries it instead; the number stays in the fee
+          section, where the mechanism around it gives it meaning. */}
+      {big ? (
+        <div className="mt-4">
+          <p className="tnum font-mono text-[clamp(1.9rem,6vw,2.5rem)] font-medium leading-none tracking-tight text-amber-300">
+            {formatFeeUsd(fees.usd)}
+          </p>
+          <p className="mt-2 text-[11px] leading-5 text-zinc-400">
+            {t('landing.ledgerGiven')}
             <span className="block text-zinc-500">
               {fees.events.toLocaleString('en-US')} {t('landing.ledgerTimes')}
             </span>
+          </p>
+        </div>
+      ) : (
+        <p className="mt-3 text-[13px] leading-6 text-zinc-300">
+          {t('landing.ledgerGiven')}
+          {fees ? (
+            <span className="tnum text-zinc-500">
+              {' '}— {formatFeeUsd(fees.usd)}, {fees.events.toLocaleString('en-US')} {t('landing.ledgerTimes')}
+            </span>
           ) : null}
         </p>
-      </div>
+      )}
 
       <p className="mt-4 text-[11px] leading-5 text-zinc-500">{t('landing.feeMechBody')}</p>
     </div>
@@ -113,10 +126,10 @@ export function NavFeesInline({ t }: { t: (key: string) => string }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
-      <p className="text-[10px] font-mono uppercase tracking-[0.26em] text-zinc-500">
+      <p className="g-eyebrow">
         {t('feeEngine.liveLabel')}
       </p>
-      <p className="mt-2 font-serif text-3xl leading-none tracking-tight text-amber-400">
+      <p className={`tnum mt-2 font-mono leading-none tracking-tight ${fees.usd >= 0.005 ? 'text-3xl text-amber-300' : 'text-xl text-zinc-300'}`}>
         {formatFeeUsd(fees.usd)}
       </p>
       <p className="mt-2 text-[11px] font-mono text-zinc-500">

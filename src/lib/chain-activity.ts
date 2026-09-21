@@ -1,25 +1,23 @@
 /**
- * Attività on-chain letta da Alchemy — sostituisce Moralis.
+ * On-chain activity read through Alchemy.
  *
- * 01/09/2026: Moralis ha spento il piano gratuito ("Your Moralis Free usage is paused",
- * HTTP 401 su ogni chiamata). Quattro superfici della webapp leggevano da lì.
+ * Method: `alchemy_getAssetTransfers` tells WHICH transactions touch an address, then a
+ * JSON-RPC batch of `eth_getTransactionByHash` provides the `input` (which transfers do not
+ * carry) — the input is what distinguishes a buy from a sell from a rebalance.
  *
- * Metodo: `alchemy_getAssetTransfers` per sapere QUALI transazioni toccano un indirizzo,
- * poi un batch JSON-RPC di `eth_getTransactionByHash` per l'`input` (che i transfer non
- * portano) — è l'input che dice se una tx è un buy, un sell o un rebalance.
+ * WHY NOT eth_getLogs: the Alchemy free tier caps it at 10 blocks per call and public nodes
+ * at 10,000 (roughly five hours of Base blocks). Covering a full address history in windows
+ * takes hundreds of calls and minutes of wall time, which does not fit in a serverless
+ * route. `alchemy_getAssetTransfers` has no such cap: the same history in one page, in
+ * well under a second.
  *
- * PERCHE' NON eth_getLogs: dal 2026 il piano free di Alchemy lo limita a 10 blocchi per
- * chiamata e i nodi pubblici a 10.000 (~5 ore su Base). Coprire la storia del fee wallet
- * a chunk richiede ~270 chiamate e 125 secondi misurati: non sta in una rotta serverless.
- * `alchemy_getAssetTransfers` non ha quel limite: la stessa storia in una pagina, 871 ms.
+ * STATED LIMIT: this is a proprietary Alchemy method with no public equivalent. If Alchemy
+ * does not answer there is no fallback — consumers of these functions must report the
+ * degradation instead of letting an empty list read as "nothing happened".
  *
- * LIMITE DICHIARATO: è un metodo proprietario Alchemy, non ha un equivalente pubblico. Se
- * Alchemy non risponde non esiste un ripiego — chi consuma queste funzioni deve dichiarare
- * il degrado invece di far passare una lista vuota per "non è successo niente".
- *
- * Il formato restituito imita quello di Moralis (`from_address`, `block_timestamp`, …)
- * perché i componenti che lo consumano sono scritti su quella forma: cambia la fonte,
- * non il parsing a valle.
+ * The returned shape uses snake_case fields (`from_address`, `block_timestamp`, …) because
+ * the components that consume it are written against that shape: the source changes, the
+ * downstream parsing does not.
  */
 
 const ALCHEMY_KEY =
@@ -28,14 +26,15 @@ const ALCHEMY_KEY =
 const RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 
 /**
- * Indirizzi canonici, ripetuti qui e non importati da protocol-data.ts di proposito: quel
- * modulo tira dentro ethers e le traduzioni, che in una rotta server sono peso inutile.
+ * Canonical addresses, deliberately duplicated here instead of imported from
+ * `protocol-data.ts`: that module pulls in ethers and the translation bundle, which are
+ * dead weight inside a server route.
  */
-export const GBLIN_CONTRACT = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
+export const GBLIN_CONTRACT = '0xc2181d975c05c8c724b334bcED0764c0b86B1D53';
 export const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const FEE_WALLET = '0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B';
 
-/** Transazione nel formato che i componenti si aspettavano da Moralis. */
+/** Transaction in the shape the consuming components expect. */
 export interface ChainTx {
   hash: string;
   from_address: string;
@@ -45,13 +44,13 @@ export interface ChainTx {
   block_timestamp: string;
 }
 
-/** Trasferimento ERC-20 nel formato che i componenti si aspettavano da Moralis. */
+/** ERC-20 transfer in the shape the consuming components expect. */
 export interface ChainErc20Transfer {
   transaction_hash: string;
   from_address: string;
   to_address: string;
   value: string;
-  address: string; // contratto del token
+  address: string; // token contract
   block_timestamp: string;
 }
 
@@ -76,7 +75,7 @@ export class ChainActivityError extends Error {}
 
 async function rpc<T>(body: unknown, timeoutMs = 12_000): Promise<T> {
   if (!ALCHEMY_KEY) {
-    throw new ChainActivityError('ALCHEMY_API_KEY non configurata');
+    throw new ChainActivityError('ALCHEMY_API_KEY is not configured');
   }
   const res = await fetch(RPC_URL, {
     method: 'POST',
@@ -99,7 +98,7 @@ async function call<T>(method: string, params: unknown[]): Promise<T> {
     params,
   });
   if (json.error) {
-    throw new ChainActivityError(`Alchemy ${method}: ${json.error.message ?? 'errore'}`);
+    throw new ChainActivityError(`Alchemy ${method}: ${json.error.message ?? 'unknown error'}`);
   }
   return json.result as T;
 }
@@ -115,9 +114,8 @@ interface TransfersParams {
 }
 
 /**
- * Pagina `alchemy_getAssetTransfers`. Il tetto di pagine è una rete di sicurezza sul tempo
- * della rotta, non una scelta di prodotto: chi chiama deve sapere che oltre quel punto la
- * lista è troncata.
+ * Pages through `alchemy_getAssetTransfers`. The page cap is a safety net on route latency,
+ * not a product decision: callers must assume the list is truncated beyond that point.
  */
 export async function getAssetTransfers({
   fromAddress,
@@ -159,8 +157,8 @@ export async function getAssetTransfers({
 }
 
 /**
- * `eth_getTransactionByHash` in batch JSON-RPC — una richiesta HTTP ogni 100 hash invece
- * di una per hash (misurato: 3 hash in 40 ms).
+ * `eth_getTransactionByHash` as a JSON-RPC batch — one HTTP request per 100 hashes instead
+ * of one request per hash.
  */
 async function getTransactions(hashes: string[]): Promise<Map<string, { from: string; to: string | null; input: string; value: string }>> {
   const map = new Map<string, { from: string; to: string | null; input: string; value: string }>();
@@ -189,7 +187,7 @@ async function getTransactions(hashes: string[]): Promise<Map<string, { from: st
   return map;
 }
 
-/** Valore grezzo di un trasferimento ERC-20 in unità minime, come stringa decimale. */
+/** Raw ERC-20 transfer value in minimal units, as a decimal string. */
 function rawValue(t: AlchemyTransfer): string {
   const hex = t.rawContract?.value;
   if (!hex) return '0';
@@ -201,8 +199,8 @@ function rawValue(t: AlchemyTransfer): string {
 }
 
 /**
- * Unisce i trasferimenti (che dicono QUALI tx toccano l'indirizzo) con i dettagli delle tx
- * (che dicono COSA facevano). Ordine: dalla più recente.
+ * Joins transfers (which say WHICH transactions touch the address) with transaction details
+ * (which say WHAT they did). Ordered from the most recent.
  */
 async function build(transfers: AlchemyTransfer[], limit: number): Promise<ChainActivity> {
   transfers.sort((a, b) => parseInt(b.blockNum, 16) - parseInt(a.blockNum, 16));
@@ -253,7 +251,7 @@ async function build(transfers: AlchemyTransfer[], limit: number): Promise<Chain
   };
 }
 
-/** Attività recente del contratto GBLIN: tx che lo toccano + trasferimenti che ne derivano. */
+/** Recent activity of the GBLIN contract: transactions touching it and the resulting transfers. */
 export async function contractActivity(contract: string, limit = 10): Promise<ChainActivity> {
   const [outgoing, incoming] = await Promise.all([
     getAssetTransfers({ fromAddress: contract, maxCount: Math.max(limit * 4, 100), maxPages: 1 }),
@@ -262,7 +260,7 @@ export async function contractActivity(contract: string, limit = 10): Promise<Ch
   return build([...outgoing, ...incoming], limit);
 }
 
-/** Attività di un indirizzo qualunque, limitata al token indicato. */
+/** Activity of an arbitrary address, restricted to the given token. */
 export async function addressActivity(
   address: string,
   token: string,
@@ -271,16 +269,16 @@ export async function addressActivity(
   const [sent, received, sentEth] = await Promise.all([
     getAssetTransfers({ fromAddress: address, contractAddresses: [token], category: ['erc20'], maxPages: 1 }),
     getAssetTransfers({ toAddress: address, contractAddresses: [token], category: ['erc20'], maxPages: 1 }),
-    // I buy pagano in ETH: senza questa gamba una compera non comparirebbe finché il
-    // trasferimento GBLIN di ritorno non viene indicizzato.
+    // Buys are paid in ETH: without this leg a purchase would not show up until the
+    // returning GBLIN transfer is indexed.
     getAssetTransfers({ fromAddress: address, toAddress: token, category: ['external'], maxPages: 1 }),
   ]);
   return build([...sent, ...received, ...sentEth], limit);
 }
 
 /**
- * Storia completa dei pagamenti x402 ricevuti da un wallet, per token.
- * Nessun troncamento: è un contatore pubblico, deve contare tutto.
+ * Full history of x402 payments received by a wallet, for one token.
+ * Never truncated: it feeds a public counter, so it must count everything.
  */
 export async function inboundTokenPayments(
   wallet: string,

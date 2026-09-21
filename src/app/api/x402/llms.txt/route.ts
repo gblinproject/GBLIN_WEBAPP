@@ -20,7 +20,7 @@ SURPLUS capital only. Use these endpoints to read protocol state,
 get safe swap quotes, and generate ready-to-broadcast calldata for Just-In-Time
 GBLIN→USDC conversions to pay x402 invoices.
 
-Contract:    0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet, chain id 8453)
+Contract:    0xc2181d975c05c8c724b334bcED0764c0b86B1D53 (Base mainnet, chain id 8453)
 Owner:       48h Timelock 0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
 Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol

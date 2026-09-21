@@ -4,53 +4,76 @@
  * Answers: how much of the fee paid by buyers has stayed in the reserves and
  * lifted the NAV for every holder?
  *
- * The contract splits its 0.10% mint fee in two halves. The founder half leaves
- * the vault. The stability half is handled by `_splitFee`: a slice tops up the
- * keeper bounty buffer (`stabilityFund`, which is explicitly excluded from
- * redeemable reserves), and whatever is left over simply stays in the vault as
- * holder-owned WETH. That leftover is announced by `YieldDistributed(uint256)`
- * and is the only honest measure of "fees that became NAV".
+ * The vault splits its 0.10% mint fee in two halves. The protocol half is minted
+ * as shares to the fee recipient and leaves the holders' side. The stability
+ * half is not paid to anyone: it stays in the vault, so it lifts the NAV of
+ * every share. Nothing announces it on its own, so it is computed from what
+ * does: each `Minted(receiver, value, shares)` carries the deposit value, and
+ * the stability rate is read from the vault.
  *
- * Note for anyone reading the numbers: `stabilityFund` is NOT this figure —
- * it is the keeper buffer, and it belongs to future keepers, not to holders.
+ * This is a FLOOR, not an estimate. An in-kind deposit pays more than the ETH
+ * rate — the in-kind floor plus a deviation tax — and all of that surplus also
+ * stays in the vault. Counting every mint at the ETH rate therefore understates
+ * the true figure and never overstates it.
  *
  * Logs come from Blockscout, which serves the whole history in a single call.
  * There is deliberately no eth_getLogs fallback: every public Base RPC caps a
  * log query at 10k blocks or less, so covering the contract's life would take
- * ~200 sequential calls per request — too slow, and too expensive in function
- * CPU. When Blockscout is unavailable we fall back to the last live figure and
- * then to a hand-verified baseline, both flagged `stale`. What we never do is
- * synthesise a zero: an incomplete scan is an outage, not "no fees yet". This
- * figure leads the home page, so it has to degrade into an older truth rather
- * than into a lie or a blank.
+ * hundreds of sequential calls per request — too slow, and too expensive in
+ * function CPU. When Blockscout is unavailable the route falls back to the last
+ * live figure, and then to a hand-verified baseline, both flagged `stale`. A
+ * zero is never synthesised: an incomplete scan is an outage, not "no fees
+ * yet". This figure leads the home page, so it has to degrade into an older
+ * truth rather than into a wrong number or a blank.
  *
  * Cache: 15 minutes in memory, plus the platform fetch cache, so the upstream
  * sees roughly one request per window regardless of traffic.
  */
 
 import { formatEther } from "viem";
-import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSorgente } from "@/lib/blockscout";
-import { client, ETH_USD_FEED, GBLIN } from "@/lib/x402-helpers";
+import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSource } from "@/lib/blockscout";
+import { client, ETH_USD_FEED, GBLIN, GBLIN_LENS } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
 
-/** keccak256("YieldDistributed(uint256)") */
-const YIELD_TOPIC =
-  "0xe8ed0a697f15301f06fd3d30bc896682e7826c5397076a3eda05844cfc356480";
+/** keccak256("Minted(address,uint256,uint256)") — the vault's mint event. */
+const MINTED_TOPIC =
+  "0x25b428dfde728ccfaddad7e29e4ac23c24ed7fd1a6e3e3f91894a9a073f5dfff";
+
+/** The stability rate lives in the Lens, beside the other fee settings. */
+const CONFIG_ABI = [
+  {
+    name: "configFees",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vault", type: "address" }],
+    outputs: [
+      { name: "protocolFee", type: "uint256" },
+      { name: "stabilityFee", type: "uint256" },
+      { name: "minDeposit", type: "uint256" },
+      { name: "oracleAge", type: "uint256" },
+      { name: "oracleAgeTrade", type: "uint256" },
+      { name: "sellCooldown", type: "uint256" },
+      { name: "basketCap", type: "uint256" },
+    ],
+  },
+] as const;
 
 
-/** Block the production contract was deployed in (Base, 21 June 2026). */
-const DEPLOY_BLOCK = 47_600_000n;
+/** Block that created the vault in service: there is nothing to read before it. */
+const DEPLOY_BLOCK = 51_563_253n;
 
 /**
  * Last figure verified by hand against the chain, used when the log source is
  * throttling or down. The sum only ever grows, so a stale baseline understates
- * the truth and can never overstate it — the safe direction for a number we
- * publish about ourselves. Refresh it when the live value has moved well past.
+ * the truth and can never overstate it — the safe direction for a self-reported
+ * number. Refresh it once the live value has moved well past.
  *
- * Verified 6 August 2026, through block 49,608,956.
+ * The vault in service started with no history, so the hand-verified baseline
+ * is zero. It is only ever served with `stale: true` and a reason, so a reader
+ * can still tell an outage from a real zero.
  */
-const BASELINE = { weth: 0.000172362220579918, events: 181 };
+const BASELINE = { weth: 0, events: 0 };
 
 const FEED_ABI = [
   {
@@ -79,9 +102,9 @@ export interface NavFeesPayload {
   updatedAt: number;
   /** True when the log source was unreachable and the verified baseline is served. */
   stale?: boolean;
-  /** Perché la lettura non è riuscita (es. "log source answered HTTP 429"). Mai URL né chiavi. */
+  /** Why the read failed (e.g. "log source answered HTTP 429"). Never a URL, never a key. */
   reason?: string;
-  /** Quale sorgente serve i log: `pro` (chiave configurata), `custom`, o `public`. */
+  /** Which source is serving the logs: `pro` (key configured), `custom`, or `public`. */
   log_source?: string;
 }
 
@@ -96,11 +119,12 @@ let cache: { at: number; payload: NavFeesPayload } | null = null;
  * distributed" apart from "we could not read the chain".
  */
 async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
-  // L'indirizzo (ed eventuale chiave) arriva da BLOCKSCOUT_API_URL — vedi src/lib/blockscout.ts.
-  // Se la sorgente configurata non risponde si riprova sul Blockscout pubblico: una variabile
-  // sbagliata non deve poter peggiorare il servizio rispetto a non averla messa affatto.
+  // The endpoint (and any key) comes from BLOCKSCOUT_API_URL — see
+  // src/lib/blockscout.ts. If the configured source does not answer, the public
+  // Blockscout is retried: a misconfigured variable must never leave the service
+  // worse off than not setting it at all.
   const { res } = await blockscoutFetch(
-    (pubblico) =>
+    (usePublic) =>
       blockscoutLegacyUrl(
         {
           module: "logs",
@@ -108,9 +132,9 @@ async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
           fromBlock: String(DEPLOY_BLOCK),
           toBlock: "latest",
           address: GBLIN,
-          topic0: YIELD_TOPIC,
+          topic0: MINTED_TOPIC,
         },
-        pubblico,
+        usePublic,
       ),
     { signal: AbortSignal.timeout(10_000), next: { revalidate: 900 } },
   );
@@ -122,12 +146,18 @@ async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
     throw new Error(body.message ?? "log source returned no usable result");
   }
 
+  // `Minted` carries (value, shares) in its data, value first; the receiver is indexed.
   const logs = body.result as Array<{ data?: string }>;
+  const stabilityBps = await client
+    .readContract({ address: GBLIN_LENS, abi: CONFIG_ABI, functionName: "configFees", args: [GBLIN] })
+    .then((c) => (c as readonly bigint[])[1])
+    .catch(() => 5n);
+
   let total = 0n;
   for (const log of logs) {
-    if (typeof log.data === "string" && log.data !== "0x") {
-      total += BigInt(log.data);
-    }
+    if (typeof log.data !== "string" || log.data.length < 66) continue;
+    const value = BigInt("0x" + log.data.slice(2, 66));
+    total += (value * stabilityBps) / 10_000n;
   }
   return { total, events: logs.length };
 }
@@ -160,7 +190,7 @@ async function build(): Promise<NavFeesPayload> {
 
 export async function GET() {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
-    return Response.json({ ...cache.payload, log_source: blockscoutSorgente() }, {
+    return Response.json({ ...cache.payload, log_source: blockscoutSource() }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   }
@@ -168,21 +198,23 @@ export async function GET() {
   try {
     const payload = await build();
     cache = { at: Date.now(), payload };
-    // `log_source` dice quale sorgente sta servendo i log (pro | custom | public): serve a
-    // verificare da fuori che una chiave configurata sia davvero in uso. Non rivela nulla.
-    return Response.json({ ...payload, log_source: blockscoutSorgente() }, {
+    // `log_source` states which source is serving the logs (pro | custom |
+    // public), so an external reader can confirm that a configured key is
+    // actually in use. It discloses nothing else.
+    return Response.json({ ...payload, log_source: blockscoutSource() }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   } catch (err) {
     // The log source is throttling or down. Serve the last live figure if this
     // instance has one, otherwise the hand-verified baseline. Both are real
     // measurements; neither is a synthesised zero.
-    // `reason` dice PERCHE' (HTTP 429, 500, 401…): senza, dal di fuori un guasto della fonte
-    // e una configurazione sbagliata sono indistinguibili. Non contiene mai URL né chiavi.
+    // `reason` states WHY (HTTP 429, 500, 401…): without it, an upstream outage
+    // and a misconfiguration are indistinguishable from the outside. It never
+    // contains a URL or a key.
     const reason = (err as Error)?.message ?? "unknown";
     if (cache) {
       return Response.json(
-        { ...cache.payload, stale: true, reason, log_source: blockscoutSorgente() },
+        { ...cache.payload, stale: true, reason, log_source: blockscoutSource() },
         { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
       );
     }
@@ -204,7 +236,7 @@ export async function GET() {
             updatedAt: Date.now(),
             stale: true,
             reason,
-            log_source: blockscoutSorgente(),
+            log_source: blockscoutSource(),
           } satisfies NavFeesPayload,
           { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
         );

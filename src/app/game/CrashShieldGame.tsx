@@ -255,7 +255,7 @@ export default function CrashShieldGame() {
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 9 }}>
                 <ActionCard href="/buy-gblin" icon={<Sparkles size={16} />} title="Mint GBLIN" subtitle="Buy the basket" tone="amber" />
-                <ActionCard href="/rebalance" icon={<Shield size={16} />} title="Trigger rebalance" subtitle="Earn keeper bounty" tone="blue" />
+                <ActionCard href="/rebalance" icon={<Shield size={16} />} title="Fill the auction" subtitle="Trade at a premium" tone="blue" />
               </div>
               <button onClick={start} style={btnGhost}>
                 <RotateCcw size={14} style={{ verticalAlign: -2, marginRight: 6 }} />

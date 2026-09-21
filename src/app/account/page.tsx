@@ -26,6 +26,10 @@ import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import {
   CONTRACT_ADDRESS,
+  LENS_ADDRESS,
+  ZAP_ADDRESS,
+  quoteBuyShares,
+  quoteSellShares,
   shortenAddress,
   LOGO_URL,
   TRADE_TOKEN_OPTIONS,
@@ -61,12 +65,20 @@ const shellContainer = "mx-auto w-full max-w-[1720px]";
 
 // Human-readable ABIs for direct wagmi/viem writes (single wallet stack)
 const GBLIN_WRITE_ABI = parseAbi([
-  "function buyGBLIN(uint256 minGblinOut) payable",
-  "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
+  "function buyGBLIN(uint256 minOut) payable",
+  "function buyGBLINWithWeth(uint256 amount, uint256 minOut, address receiver)",
+  "function buyGBLINInKind(address token, uint256 amountIn, uint256 minOut)",
   "function sellGBLIN(uint256 gblinAmount)",
-  "function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut)",
   "function transfer(address to, uint256 amount) returns (bool)",
 ]);
+// The vault never swaps. Buying with an arbitrary token and exiting to ETH go through the Zap, which
+// sells the legs on a venue; the vault's own side stays a mint at NAV or a redemption in kind.
+const ZAP_WRITE_ABI = parseAbi([
+  "function buyGBLINWithToken(address tokenIn, uint256 amountIn, uint256 minWethOut, uint256 minOut, bytes venueData, address receiver) returns (uint256 out)",
+  "function sellGBLINForEth(uint256 shares, uint256 minEthOut, bytes[] venueData, address receiver) returns (uint256 ethOut)",
+]);
+// Routing data the Zap hands to the swap adapter: the Uniswap V3 fee tier of the pair, ABI-encoded.
+const VENUE_FEE_500 = ethers.AbiCoder.defaultAbiCoder().encode(["uint24"], [500]) as `0x${string}`;
 // User clicked "Reject" in the wallet — not an error, just a cancelled action.
 function isUserRejection(msg: string): boolean {
   return /user rejected|user denied|rejected the request|denied transaction|action_rejected|code.*4001/i.test(msg);
@@ -111,18 +123,17 @@ function isSupportedLanguage(value: string | null): value is Language {
 // same wallet connection. One stack, one connect, one wallet popup.
 const queryClient = new QueryClient();
 
-// MUI theme for the LI.FI wallet menu (its modal reads theme.breakpoints and
-// theme.vars — it CRASHES without a cssVariables theme in context; that crash
-// during SSR was the /account 500).
+// MUI theme for the LI.FI wallet menu: its modal reads theme.breakpoints and
+// theme.vars, and throws without a cssVariables theme in context.
 const lifiMuiTheme = createTheme({
   cssVariables: true,
   palette: { mode: "dark" },
 });
 
 export default function AccountPage() {
-  // Client-only gate: wagmi connectors + the LI.FI wallet menu touch
-  // window/IndexedDB and MUI media queries that break Next SSR (500 on
-  // GET /account). Render nothing on the server, mount everything client-side.
+  // Client-only gate: the wagmi connectors and the LI.FI wallet menu touch
+  // window/IndexedDB and MUI media queries, none of which exist during server
+  // rendering. Render nothing on the server and mount everything on the client.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
@@ -294,23 +305,10 @@ function AccountPageInner() {
 
   // Quote GBLIN output from WETH input
   const quoteMintFromWeth = useCallback(async (wethAmount: bigint) => {
-    const provider = getProvider();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-    const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
-      contract.quoteBuyGBLIN(wethAmount),
-      contract.totalSupply(),
-      contract.balanceOf(CONTRACT_ADDRESS)
-    ]);
-
-    const quotedGblinOut: bigint = result[0];
-    const totalSupply = BigInt(totalSupplyRaw.toString());
-    const contractBalance = BigInt(contractBalanceRaw.toString());
-    const activeSupply = totalSupply - contractBalance;
-
-    if (activeSupply === 0n) {
-      return quotedGblinOut > 1000n ? quotedGblinOut - 1000n : 0n;
-    }
-    return quotedGblinOut;
+    // The Lens prices the mint exactly as the vault does and reverts while the vault cannot price
+    // itself, which is what the caller needs to know before signing anything.
+    const { out } = await quoteBuyShares(getProvider(), wethAmount);
+    return out;
   }, [getProvider]);
 
   // Format basket redeem quote for display
@@ -325,10 +323,11 @@ function AccountPageInner() {
     const cbBtcAsset = basketData.find((asset: any) => asset.name === 'cbBTC') ?? null;
     const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const usdcAsset = basketData.find((asset: any) => asset.name === 'USDC') ?? null;
-    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
+
 
     const cbBtcOut = (cbBtcAsset ? Number(cbBtcAsset.balance) : 0) * shareRatio;
-    const wethOut = Math.max((wethAsset ? Number(wethAsset.balance) : 0) - stabilityFundValue, 0) * shareRatio;
+    // Nothing is withheld: the redemption is a plain pro-rata slice of every row.
+    const wethOut = (wethAsset ? Number(wethAsset.balance) : 0) * shareRatio;
     const usdcOut = (usdcAsset ? Number(usdcAsset.balance) : 0) * shareRatio;
 
     return {
@@ -424,10 +423,10 @@ function AccountPageInner() {
 
   // Read GBLIN price via quoteSell
   const { data: quoteData } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: parseAbi(["function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)"]),
-    functionName: "quoteSellGBLIN",
-    args: [ethers.parseEther("1")],
+    address: LENS_ADDRESS as `0x${string}`,
+    abi: parseAbi(["function quoteSell(address vault, uint256 gblinAmount) view returns (uint256)"]),
+    functionName: "quoteSell",
+    args: [CONTRACT_ADDRESS as `0x${string}`, ethers.parseEther("1")],
     chainId: base.id,
   });
 
@@ -543,7 +542,7 @@ function AccountPageInner() {
         } else {
           // Sell mode
           const gblinAmount = ethers.parseEther(amount);
-          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+          const ethOut: bigint = await quoteSellShares(provider, gblinAmount).catch(() => 0n);
           console.log('[Quote] Sell quote:', { gblinAmount: amount, ethOut: ethOut.toString(), ethOutFormatted: ethers.formatEther(ethOut) });
 
           if (redeemOption === 'basket') {
@@ -607,10 +606,10 @@ function AccountPageInner() {
 
     try {
       if (tradeMode === 'buy') {
-        // SMART ROUTING (founder request): if the funds are ALREADY on Base,
-        // buy directly from the wallet — no LI.FI, no bridge fee, instant.
-        // Priority: native ETH -> WETH -> USDC (all via the proven on-chain
-        // paths). Anything else (other tokens, other chains) -> LI.FI widget.
+        // Routing: when the funds are already on Base, buy straight from the
+        // wallet, which avoids a bridge and its fee. Order of preference is
+        // native ETH, then WETH, then USDC, all through on-chain paths; any
+        // other token or chain falls through to the LI.FI widget.
         // `amount` is ETH-denominated by the form math.
         const ethAmount = ethers.parseEther(amount);
         const quotedGblinOut = await quoteMintFromWeth(ethAmount);
@@ -618,10 +617,10 @@ function AccountPageInner() {
         const usdValue = parseFloat(amount) * ethPriceUsd;
         const provider = getProvider();
 
-        // 1) Native ETH on Base. Margin = gas only (~$0.02-0.06 on Base): the
-        // tx sends exactly ethAmount and minGblinOut already guards the price,
-        // so no % buffer. The old 1% + 0.0001 ETH margin (~$0.20) wrongly sent
-        // users with "just enough" ETH to LI.FI for a pointless same-chain swap.
+        // 1) Native ETH on Base. The only headroom kept back is gas: the call
+        // sends exactly ethAmount and minAmountOut already guards the price, so
+        // no percentage buffer is added. A larger buffer would push a caller who
+        // holds just enough ETH into a bridge for a same-chain purchase.
         if (ethBalance >= parseFloat(amount) + 0.00003) {
           await ensureBase();
           const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
@@ -636,16 +635,14 @@ function AccountPageInner() {
           return;
         }
 
-        // Shared ERC20 path: approve (if needed) + buyGBLINWithToken.
-        // Full mint mechanics (keeper reserve + diversification + NAV accretion),
-        // proven on-chain by the first LI.FI purchase.
-        const buyWithErc20 = async (token: `0x${string}`, amountIn: bigint, path: `0x${string}`) => {
+        // WETH goes straight into the vault: it is the unit of account, so there is nothing to swap.
+        const buyWithWeth = async (amountIn: bigint) => {
           await ensureBase();
-          const erc = new ethers.Contract(token, ERC20_ABI, provider);
+          const erc = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
           const allowance: bigint = await erc.allowance(address, CONTRACT_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
           if (allowance < amountIn) {
             const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
-              address: token,
+              address: WETH_ADDRESS as `0x${string}`,
               abi: ERC20_APPROVE_ABI,
               functionName: 'approve',
               args: [CONTRACT_ADDRESS as `0x${string}`, amountIn],
@@ -656,8 +653,35 @@ function AccountPageInner() {
           const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: GBLIN_WRITE_ABI,
+            functionName: 'buyGBLINWithWeth',
+            args: [amountIn, minAmountOut, address as `0x${string}`],
+            chainId: base.id,
+          });
+          setTradeTxHash(hash);
+        };
+
+        // Any other token goes through the Zap: it swaps to WETH on the adapter and mints at NAV. The
+        // allowance is given to the Zap, never to the vault, and the swap's price risk stays with
+        // `minWethOut` — the vault's side is priced by the oracle alone.
+        const buyWithErc20 = async (token: `0x${string}`, amountIn: bigint, minWethOut: bigint) => {
+          await ensureBase();
+          const erc = new ethers.Contract(token, ERC20_ABI, provider);
+          const allowance: bigint = await erc.allowance(address, ZAP_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
+          if (allowance < amountIn) {
+            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+              address: token,
+              abi: ERC20_APPROVE_ABI,
+              functionName: 'approve',
+              args: [ZAP_ADDRESS as `0x${string}`, amountIn],
+              chainId: base.id,
+            });
+            await provider.waitForTransaction(approveHash, 1, 60000);
+          }
+          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+            address: ZAP_ADDRESS as `0x${string}`,
+            abi: ZAP_WRITE_ABI,
             functionName: 'buyGBLINWithToken',
-            args: [path, amountIn, 0n, minAmountOut],
+            args: [token, amountIn, minWethOut, minAmountOut, VENUE_FEE_500, address as `0x${string}`],
             chainId: base.id,
           });
           setTradeTxHash(hash);
@@ -672,18 +696,20 @@ function AccountPageInner() {
           ethers.getBytes(a), ethers.getBytes(ethers.toBeHex(fee, 3)), ethers.getBytes(b),
         ])) as `0x${string}`;
 
-        // 2) WETH on Base (dummy WETH path -> contract skips the internal swap)
+        // 2) WETH on Base: the vault takes it directly, at NAV.
         const wethBal = await balanceOf(WETH_ADDRESS);
         if (wethBal >= ethAmount) {
-          await buyWithErc20(WETH_ADDRESS as `0x${string}`, ethAmount, encodePath(WETH_ADDRESS, 0, WETH_ADDRESS));
+          await buyWithWeth(ethAmount);
           return;
         }
 
-        // 3) USDC on Base (USDC -> WETH 0.05% pool; +0.3% buffer for the pool fee)
+        // 3) USDC on Base, through the Zap (USDC -> WETH, 0.05% pool; +0.3% buffer for the pool fee).
+        // The WETH floor is the requested amount less the caller's own slippage: below it the swap is
+        // refused and nothing is minted.
         const usdcNeeded = BigInt(Math.max(1, Math.round(usdValue * 1.003 * 1e6)));
         const usdcBal = await balanceOf(USDC_ADDRESS);
         if (usdcBal >= usdcNeeded) {
-          await buyWithErc20(USDC_ADDRESS as `0x${string}`, usdcNeeded, encodePath(USDC_ADDRESS, 500, WETH_ADDRESS));
+          await buyWithErc20(USDC_ADDRESS as `0x${string}`, usdcNeeded, (ethAmount * (10000n - slippageBps)) / 10000n);
           return;
         }
 
@@ -706,8 +732,9 @@ function AccountPageInner() {
         }
         await ensureBase();
 
-        // KNOWN_ISSUES #5: with a feed the contract cannot price, the ETH exit dispatches its internal
-        // swap with no minimum. Checked at click time, not at render. The in-kind exit reads no oracle.
+        // When a feed the contract cannot price is in the basket, the ETH exit dispatches its
+        // internal swap with no minimum, so the check runs at click time rather than at render.
+        // The in-kind exit reads no oracle and stays available.
         if (redeemOption !== 'basket') {
           const health = await fetchOracleHealth();
           setOracleHealth(health);
@@ -723,6 +750,22 @@ function AccountPageInner() {
         }
 
         const gblinAmount = ethers.parseEther(amount);
+        if (redeemOption !== 'basket') {
+          // The Zap pulls the shares, so it needs the allowance; the in-kind path burns the caller's own.
+          const sellProvider = getProvider();
+          const gblinErc = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, sellProvider);
+          const shareAllowance: bigint = await gblinErc.allowance(address, ZAP_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
+          if (shareAllowance < gblinAmount) {
+            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: ERC20_APPROVE_ABI,
+              functionName: 'approve',
+              args: [ZAP_ADDRESS as `0x${string}`, gblinAmount],
+              chainId: base.id,
+            });
+            await sellProvider.waitForTransaction(approveHash, 1, 60000);
+          }
+        }
         const hash = redeemOption === 'basket'
           ? await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
               address: CONTRACT_ADDRESS as `0x${string}`,
@@ -732,10 +775,17 @@ function AccountPageInner() {
               chainId: base.id,
             })
           : await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
-              address: CONTRACT_ADDRESS as `0x${string}`,
-              abi: GBLIN_WRITE_ABI,
+              // All or nothing, through the Zap: it redeems in kind on the vault and sells every leg.
+              // One routing entry per basket row, index for index; WETH and abandoned rows ignore it.
+              address: ZAP_ADDRESS as `0x${string}`,
+              abi: ZAP_WRITE_ABI,
               functionName: 'sellGBLINForEth',
-              args: [gblinAmount, (rawQuote * (10000n - slippageBps)) / 10000n],
+              args: [
+                gblinAmount,
+                (rawQuote * (10000n - slippageBps)) / 10000n,
+                Array.from({ length: onChainData?.basketData?.length ?? 3 }, () => VENUE_FEE_500),
+                address as `0x${string}`,
+              ],
               chainId: base.id,
             });
         setTradeTxHash(hash);
@@ -764,27 +814,32 @@ function AccountPageInner() {
   const balanceUsd = balance * gblinPriceUsd;
 
   // Selector map for identifying tx type from input data
-  const REBALANCE_SELECTOR = ethers.id("incentivizedRebalance(uint256,bool,uint256)").slice(0, 10).toLowerCase();
+  // Selectors of the vault in service and of the Zap, plus the ones of the previous contracts, so that
+  // a wallet's older history keeps its labels instead of falling back to "transfer".
+  const REBALANCE_SELECTOR = ethers.id("bid(uint256,bool,uint256,uint256,bytes)").slice(0, 10).toLowerCase();
   const BUY_SELECTORS = new Set([
     ethers.id("buyGBLIN(uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("buyGBLINWithToken(bytes,uint256,uint256,uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("buyGBLINInKind(address,uint256,uint256)").slice(0, 10).toLowerCase(), // V6 in-kind
-    ethers.id("mintInKind(uint256)").slice(0, 10).toLowerCase(),                     // V5 legacy
+    ethers.id("buyGBLINWithWeth(uint256,uint256,address)").slice(0, 10).toLowerCase(),
+    ethers.id("buyGBLINInKind(address,uint256,uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("buyGBLINWithToken(address,uint256,uint256,uint256,bytes,address)").slice(0, 10).toLowerCase(), // Zap
+    ethers.id("buyGBLINWithToken(bytes,uint256,uint256,uint256)").slice(0, 10).toLowerCase(),                // previous
+    ethers.id("mintInKind(uint256)").slice(0, 10).toLowerCase(),                                             // previous
   ]);
   const SELL_SELECTORS = new Set([
     ethers.id("sellGBLIN(uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("sellGBLINForEth(uint256,uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("sellGBLINForToken(uint256,address,uint24,uint256)").slice(0, 10).toLowerCase(),
-    ethers.id("redeemInKind(uint256)").slice(0, 10).toLowerCase(),
+    ethers.id("sellGBLINForEth(uint256,uint256,bytes[],address)").slice(0, 10).toLowerCase(),                // Zap
+    ethers.id("claimPending(address)").slice(0, 10).toLowerCase(),
+    ethers.id("sellGBLINForEth(uint256,uint256)").slice(0, 10).toLowerCase(),                                // previous
+    ethers.id("sellGBLINForToken(uint256,address,uint24,uint256)").slice(0, 10).toLowerCase(),               // previous
+    ethers.id("redeemInKind(uint256)").slice(0, 10).toLowerCase(),                                           // previous
   ]);
 
-  // Fetch user transactions via Moralis (ERC-20 transfers + contract txs for rebalance)
+  // Fetch the caller's transactions: ERC-20 transfers plus the contract calls behind them.
   const fetchTransactions = useCallback(async () => {
     if (!address) return;
     setLoadingTx(true);
     try {
-      // Dal 01/09/2026 la fonte e' /api/chain/address-activity (Alchemy lato server):
-      // Moralis ha spento il piano gratuito e la sua chiave girava nel browser.
+      // Read through the server route, which keeps the RPC key out of the browser.
       const activityRes = await fetch(
         `/api/chain/address-activity?address=${address}&limit=25`,
       );
@@ -798,9 +853,9 @@ function AccountPageInner() {
       {
         const data = { result: activity.transactions ?? [] };
         for (const tx of (data.result || [])) {
-          // Filtro esplicito: SOLO transazioni verso il contratto corrente (V6).
-          // I selettori (sellGBLINForEth, buyGBLIN…) sono identici tra V5 e V6, quindi senza
-          // questo controllo le vecchie tx V5 passavano (Moralis non sempre rispetta to_address).
+          // Keep only calls addressed to the vault in service. Several selectors are shared with
+          // the previous contracts, so without this filter their history would be labelled as
+          // activity on the current one.
           if (tx.to_address?.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
           const selector = tx.input?.slice(0, 10)?.toLowerCase();
           const ts = new Date(tx.block_timestamp).getTime();
@@ -816,7 +871,7 @@ function AccountPageInner() {
       {
         const data = { result: activity.erc20Transfers ?? [] };
         for (const tx of (data.result || [])) {
-          // Solo trasferimenti del token V6 (Moralis a volte ignora contract_addresses).
+          // Transfers of the token in service only: the source may return others.
           if (tx.address && tx.address.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
           const amount = parseFloat(ethers.formatUnits(tx.value, 18));
           const ts = new Date(tx.block_timestamp).getTime();
@@ -861,8 +916,8 @@ function AccountPageInner() {
       // Transaction completed
       setPendingTx(false);
       setStep3EthAmount("");
-      showSuccess("Transazione completata!");
-      // Ricarica dopo qualche secondo: l'indicizzazione non e' istantanea
+      showSuccess(t("account.txCompleted"));
+      // Reload after a short delay: indexing is not immediate.
       setTimeout(() => fetchTransactions(), 3000);
     }
   }, [pendingTx, isSending, fetchTransactions]);
@@ -1001,7 +1056,7 @@ function AccountPageInner() {
       }
     } catch (err) {
       console.error("[transak] offramp error:", err);
-      setTransakError(err instanceof Error ? err.message : "Errore Transak");
+      setTransakError(err instanceof Error ? err.message : "Transak error");
       if (newWindow) newWindow.close();
     } finally {
       setTransakLoading(false);
@@ -1150,11 +1205,11 @@ function AccountPageInner() {
         const orderStatus = statusData?.status as string | undefined;
         const blocked = ["EXPIRED", "CANCELLED", "FAILED", "REFUNDED"];
         if (orderStatus && blocked.includes(orderStatus.toUpperCase())) {
-          throw new Error(`Ordine Transak ${orderStatus} — non inviare ETH. Crea un nuovo ordine.`);
+          throw new Error(`Transak order ${orderStatus} — do not send ETH. Create a new order.`);
         }
       }
 
-      // Reserve gas: if the requested amount equals (or exceeds) our balance, subtract a gas buffer
+      // Reserve gas: when the requested amount reaches the available balance, subtract a gas buffer
       const GAS_BUFFER = 0.00005; // ~0.00005 ETH for Base L2 gas
       let sendAmount = parseFloat(transakOrder.cryptoAmount);
       if (sendAmount >= ethBalance) {
@@ -1173,7 +1228,7 @@ function AccountPageInner() {
       setTransakOrder(null);
       setTransakError(null);
       fetchEthBalance();
-      setTxSuccess(t("account.transakTransferSuccess") || "ETH inviati a Transak! Riceverai EUR sul tuo conto.");
+      setTxSuccess(t("account.transakTransferSuccess") || "ETH sent to Transak! You will receive EUR on your account.");
     } catch (err) {
       console.error("[transak] transfer error:", err);
       setTransakError(err instanceof Error ? err.message : "Transfer failed");
@@ -1187,16 +1242,16 @@ function AccountPageInner() {
     if (!account) return;
     setCoinbaseError(null);
     if (!coinbaseAddress || !/^0x[a-fA-F0-9]{40}$/.test(coinbaseAddress)) {
-      setCoinbaseError(t("account.errorInvalidAddress") || "Indirizzo non valido");
+      setCoinbaseError(t("account.errorInvalidAddress") || "Invalid wallet address");
       return;
     }
     const amount = parseFloat(coinbaseAmount);
     if (!amount || amount <= 0) {
-      setCoinbaseError(t("account.errorInvalidAmount") || "Importo non valido");
+      setCoinbaseError(t("account.errorInvalidAmount") || "Invalid amount");
       return;
     }
     if (amount >= ethBalance) {
-      setCoinbaseError(t("account.errorInsufficientEth") || "Importo superiore al saldo (considera il gas)");
+      setCoinbaseError(t("account.errorInsufficientEth") || "Amount exceeds balance (consider gas fees)");
       return;
     }
     setCoinbaseSending(true);
@@ -1211,17 +1266,17 @@ function AccountPageInner() {
       setCoinbaseAddress("");
       setCoinbaseAmount("");
       fetchEthBalance();
-      setTxSuccess(t("account.coinbaseSendSuccess") || "ETH inviati con successo! Controlla il tuo account Coinbase.");
+      setTxSuccess(t("account.coinbaseSendSuccess") || "ETH sent successfully! Check your Coinbase account.");
     } catch (err) {
       console.error("[coinbase-send] error:", err);
-      setCoinbaseError(err instanceof Error ? err.message : "Invio fallito");
+      setCoinbaseError(err instanceof Error ? err.message : "Send failed");
     } finally {
       setCoinbaseSending(false);
     }
   }, [account, coinbaseAddress, coinbaseAmount, ethBalance, fetchEthBalance, t]);
 
   // ─── TABS (always visible) ─────────────────────────────────────────────────
-  // Trade tab label maps to "Compra / Vendi" (IT) and equivalents per language
+  // The trade tab label is taken from the active translation for buy/sell.
   const tradeTabLabel = ({
     it: "Compra / Vendi",
     en: "Buy / Sell",
@@ -1249,7 +1304,7 @@ function AccountPageInner() {
             <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40 sm:h-10 sm:w-10">
               <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
             </span>
-            <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-lg font-bold tracking-tight text-transparent sm:text-xl">GBLIN</p>
+            <p className="text-lg font-medium tracking-[0.18em] text-amber-200 sm:text-xl">GBLIN</p>
           </Link>
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             {address ? (
@@ -1319,7 +1374,7 @@ function AccountPageInner() {
             <p className="mt-2 text-lg text-zinc-400">
               {address
                 ? <>{balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} GBLIN{gblinPriceUsd > 0 && <span className="ml-3 text-sm text-zinc-500">· {t("account.pricePerToken")}: {formatLocal(gblinPriceUsd)}</span>}</>
-                : <span className="text-zinc-600">{t("account.loginHeadline") || "Connetti wallet per vedere il saldo"}</span>
+                : <span className="text-zinc-600">{t("account.loginHeadline") || "Connect a wallet to see the balance"}</span>
               }
             </p>
           </div>
@@ -1465,6 +1520,7 @@ function AccountPageInner() {
               {/* ── WALLET MODE: only path now ── */}
               <BuyView
                   t={t}
+                  language={language}
                   mode={tradeMode}
                   setMode={setTradeMode}
                   amount={amount}
@@ -1491,9 +1547,9 @@ function AccountPageInner() {
                   marketData={{ priceUsd: gblinPriceUsd, ethPriceUsd, volume24h: 0, change24h: 0, txCount: 0 }}
                   onChainData={{
                     ...onChainData,
-                    // Real on-chain NAV per token: quoteSellGBLIN(1 GBLIN) in ETH
-                    // (read from the vault) x live ETH price. The old audit
-                    // replaced a FAKE value with a dash; this is the honest one.
+                    // NAV per share read on chain: the Lens quote for one share, in
+                    // ETH, multiplied by the live ETH price. A dash is rendered when
+                    // the quote is unavailable, never a placeholder figure.
                     nav: gblinPriceUsd > 0
                       ? `$${gblinPriceUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : '—',
@@ -1672,26 +1728,26 @@ function AccountPageInner() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-zinc-900 p-8">
             <h3 className="mb-4 text-xl font-bold text-white text-center">
-              {t("account.transakConfirmTitle") || "Conferma Trasferimento"}
+              {t("account.transakConfirmTitle") || "Confirm Transfer"}
             </h3>
             <p className="mb-6 text-sm text-zinc-400 text-center">
-              {t("account.transakConfirmDesc") || "Transak richiede l'invio degli ETH per completare la vendita. Conferma per inviare."}
+              {t("account.transakConfirmDesc") || "Transak requires you to send ETH to complete the sale. Confirm to proceed."}
             </p>
             <div className="space-y-3 mb-6">
               <div className="flex justify-between rounded-xl bg-black/30 p-3">
-                <span className="text-sm text-zinc-500">Importo</span>
+                <span className="text-sm text-zinc-500">Amount</span>
                 <span className="text-sm font-semibold text-white">{parseFloat(transakOrder.cryptoAmount).toFixed(6)} {transakOrder.cryptoCurrency}</span>
               </div>
               <div className="flex justify-between rounded-xl bg-black/30 p-3">
-                <span className="text-sm text-zinc-500">Riceverai</span>
+                <span className="text-sm text-zinc-500">YouReceive</span>
                 <span className="text-sm font-semibold text-emerald-400">{transakOrder.fiatAmount} {transakOrder.fiatCurrency}</span>
               </div>
               <div className="flex justify-between rounded-xl bg-black/30 p-3">
-                <span className="text-sm text-zinc-500">Rete</span>
+                <span className="text-sm text-zinc-500">Network</span>
                 <span className="text-sm text-white">{transakOrder.network}</span>
               </div>
               <div className="flex justify-between rounded-xl bg-black/30 p-3">
-                <span className="text-sm text-zinc-500">Destinazione</span>
+                <span className="text-sm text-zinc-500">Destination</span>
                 <span className="text-xs text-zinc-300 font-mono">{transakOrder.walletAddress.slice(0, 10)}...{transakOrder.walletAddress.slice(-8)}</span>
               </div>
             </div>
@@ -1708,7 +1764,7 @@ function AccountPageInner() {
                 disabled={transakSending}
                 className="flex-1 rounded-xl border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-400 transition hover:bg-zinc-800 disabled:opacity-50"
               >
-                {t("account.cancel") || "Annulla"}
+                {t("account.cancel") || "Cancel"}
               </button>
               <button
                 onClick={confirmTransakTransfer}
@@ -1718,7 +1774,7 @@ function AccountPageInner() {
                 {transakSending ? (
                   <span className="flex items-center justify-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" />{t("account.processing")}</span>
                 ) : (
-                  t("account.transakConfirmBtn") || "Conferma e Invia"
+                  t("account.transakConfirmBtn") || "Confirm & Send"
                 )}
               </button>
             </div>

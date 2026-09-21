@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif, Jost } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientContextProvider } from "@/components/ClientContextProvider";
@@ -7,7 +7,12 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import FarcasterMiniAppReady from "@/components/FarcasterMiniAppReady";
 import FarcasterInstallBanner from "@/components/FarcasterInstallBanner";
 
-const inter = Inter({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
+// Geometric, wide and light: the display voice of the headlines, clearly
+// distinct from the neo-grotesque used for reading.
+const jost = Jost({ subsets: ["latin"], weight: ["200", "300", "400"], variable: "--font-jost", display: "swap" });
+const instrument = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-instrument", display: "swap" });
 
 const SITE_URL = "https://gblin.digital";
 const OG_IMAGE =
@@ -16,7 +21,7 @@ const OG_IMAGE =
 // Lightweight JPG + fresh filename so X/Twitterbot fetches it reliably (no stale cache).
 const OG_BANNER = `${SITE_URL}/og-gblin-v2.jpg`;
 const SITE_DESCRIPTION =
-  "GBLIN Protocol: one token holding cbBTC, WETH and USDC on Base, built for AI agents and treasuries. Mint and redeem directly from the contract at NAV: same price at any size, 0.10% once, no management fee.";
+  "GBLIN Protocol: one token holding cbBTC, WETH and USDC on Base, built for AI agents and treasuries. Mint and redeem directly from the contract at net asset value: the same price at any size, 0.10% to mint, 0.50% a year, and nothing taken when you redeem.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -113,7 +118,7 @@ const STRUCTURED_DATA = {
       logo: OG_IMAGE,
       description: SITE_DESCRIPTION,
       sameAs: [
-        "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+        "https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
       ],
     },
     {
@@ -167,7 +172,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${geist.variable} ${geistMono.variable} ${instrument.variable} ${jost.variable} font-sans`}>
         <ClientContextProvider>{children}</ClientContextProvider>
         <PWAInstallPrompt />
         <FarcasterMiniAppReady />

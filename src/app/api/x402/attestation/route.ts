@@ -50,9 +50,11 @@ const TTL_SECONDS = 600; // 10 minutes — perishable by design
 // (@gblin-protocol/mcp-server → verify_risk_attestation). Do not reorder fields.
 const EIP712_DOMAIN = {
   name: "GBLIN Risk Attestation",
-  version: "1",
+  // Domain version 2 binds the attestation to the vault in service; version 1 was bound to the previous
+  // deployment. Verifiers read the domain from the `eip712` object of the response.
+  version: "2",
   chainId: 8453,
-  verifyingContract: GBLIN, // GBLIN_V6 production contract on Base
+  verifyingContract: GBLIN,
 } as const;
 
 const EIP712_TYPES = {
@@ -213,7 +215,7 @@ export async function GET() {
         free_mcp_tool:
           "npx @gblin-protocol/mcp-server → verify_risk_attestation (pass this whole object)",
         basescan:
-          "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#readContract",
+          "https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53#readContract",
       },
       meta: {
         note: "Attach this to your action as proof you checked market risk. Re-fetch when expired.",

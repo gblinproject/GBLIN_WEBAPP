@@ -30,25 +30,14 @@ function LifiEventsLogger() {
 }
 
 // GBLIN V6 vault (also the ERC20 token itself) and USDC on Base
-const GBLIN_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
+const GBLIN_ADDRESS = "0xc2181d975c05c8c724b334bcED0764c0b86B1D53";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const BASE_CHAIN_ID = 8453;
 
-const WETH_BASE = "0x4200000000000000000000000000000000000006";
 
 const GBLIN_IFACE = new ethers.Interface([
-  "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
+  "function buyGBLINInKind(address token, uint256 amountIn, uint256 minOut)",
 ]);
-
-// Uniswap V3 path: USDC --0.05% pool--> WETH (same 500-fee pool the vault's own
-// basket config uses for USDC). 20b token + 3b fee + 20b token.
-const USDC_TO_WETH_PATH = ethers.hexlify(
-  ethers.concat([
-    ethers.getBytes(USDC_BASE),
-    ethers.getBytes(ethers.toBeHex(500, 3)),
-    ethers.getBytes(WETH_BASE),
-  ])
-);
 
 interface LifiBuyWidgetProps {
   /** USDC needed on Base for the buy, in USDC wei (6 decimals) */
@@ -70,14 +59,11 @@ interface LifiBuyWidgetProps {
  */
 export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidgetProps) {
   const config = useMemo<WidgetConfig>(() => {
-    // buyGBLINWithToken: the vault pulls the USDC, swaps it USDC->WETH on the
-    // 0.05% Uniswap pool, then runs the FULL mint mechanics (_mintGBLIN):
-    // keeper reserve top-up via _splitFee, on-buy diversification into the
-    // 45/45/10 basket, and NAV accretion — unlike buyGBLINInKind, which skips
-    // the fee split and diversification. minWethOut is 0 because minGblinOut
-    // already bounds the whole output (a sandwiched inner swap lowers gblinOut
-    // below the floor and reverts). If the call reverts for any reason, the
-    // LI.FI executor's fallback delivers the USDC to the user's wallet.
+    // The vault never swaps, and USDC is one of its basket rows: the executor's USDC goes in as an
+    // in-kind deposit, priced at NAV by the oracle with no pool in the path. The fee is the in-kind
+    // floor plus a deviation tax that only bites if the deposit pushes the row past its target, and
+    // `minGblinOut` bounds the whole output. If the call reverts for any reason, the LI.FI executor's
+    // fallback delivers the USDC to the user's wallet.
     // Single source of truth for the vault call: used for the QUOTE (static
     // `contractCalls` below) AND rebuilt at EXECUTION time by the
     // `getContractCalls` hook with the exact delivered USDC amount.
@@ -85,15 +71,14 @@ export default function LifiBuyWidget({ usdcAmount, minGblinOut }: LifiBuyWidget
       fromAmount: amountIn.toString(),
       fromTokenAddress: USDC_BASE,
       toContractAddress: GBLIN_ADDRESS,
-      toContractCallData: GBLIN_IFACE.encodeFunctionData("buyGBLINWithToken", [
-        USDC_TO_WETH_PATH,
+      toContractCallData: GBLIN_IFACE.encodeFunctionData("buyGBLINInKind", [
+        USDC_BASE,
         amountIn,
-        0n,
         minGblinOut,
       ]),
-      // Higher than the in-kind path: covers the internal USDC->WETH swap
-      // plus the on-buy diversification swaps inside _mintGBLIN.
-      toContractGasLimit: "1200000",
+      // An in-kind deposit prices the basket and mints: no swap, no pool, so the ceiling is well above
+      // what it needs and costs nothing when unused.
+      toContractGasLimit: "900000",
       // The executor approves USDC to the vault before calling it.
       toApprovalAddress: GBLIN_ADDRESS,
       // GBLIN (the vault IS the ERC20) is the call's output token:

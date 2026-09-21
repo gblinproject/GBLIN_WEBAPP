@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 const SITE_URL = 'https://gblin.digital';
 const PAGE_TITLE = 'GBLIN FAQ: BTC + ETH + USDC token on Base, minted at NAV';
 const PAGE_DESCRIPTION =
-  'GBLIN is a reserve-backed token on Base holding cbBTC, WETH and USDC. Mint and redeem at NAV: no pool slippage, 0.10% one-time fee, no management fee.';
+  'GBLIN is a reserve-backed token on Base holding cbBTC, WETH and USDC. Mint and redeem at NAV: no pool slippage, 0.10% to mint, 0.50% a year, and nothing taken when you redeem.';
 
 export const metadata: Metadata = {
   title: { absolute: PAGE_TITLE },
@@ -42,7 +42,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'How is the GBLIN price set? Is it minted at NAV?',
     answer:
-      'The mint and redeem price is the net asset value (NAV) per token, computed from the on-chain reserves using Chainlink price feeds. Everyone gets the same per-token price regardless of size: a $25 purchase and a $50,000 purchase mint at the same NAV. Anyone can verify this in 30 seconds by calling quoteBuyGBLIN() on the contract with different amounts.',
+      'The mint and redeem price is the net asset value (NAV) per token, computed from the on-chain reserves using Chainlink price feeds. Everyone gets the same per-token price regardless of size: a $25 purchase and a $50,000 purchase mint at the same NAV. Anyone can verify this in 30 seconds by calling quoteBuy(vault, amount) on the GBLIN Lens with different amounts.',
   },
   {
     question: 'Why is the total supply of GBLIN so small?',
@@ -52,7 +52,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'What fees does GBLIN charge? Is there a management fee?',
     answer:
-      'A 0.10% one-time fee on minting (0.05% to the founder, 0.05% to a stability reserve that stays inside the NAV) — and that is all. There is no management fee, no streaming fee and no performance fee in the contract. For comparison, tokenized index folios on Base typically charge 1.5–2% per year: against a 2% annual fee, GBLIN’s one-time cost breaks even in about 18 days of holding.',
+      'A 0.10% one-time fee on minting (0.05% minted as shares to the fee recipient, 0.05% left in the reserves, which lifts the value of every share) and a 0.50% yearly management fee, also minted as shares and never withdrawn from the reserves. Redeeming in kind costs nothing, and the contract has no performance fee. For comparison, tokenized index folios on Base typically charge 1.5–2% per year: against a 2% annual fee, GBLIN’s one-time cost breaks even in about 18 days of holding.',
   },
   {
     question: 'Is there slippage when buying GBLIN?',
@@ -92,7 +92,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'What is the GBLIN contract address on Base?',
     answer:
-      'The production contract on Base is 0x36C81d7E1966310F305eA637e761Cf77F90852f0. Always verify the address from gblin.digital rather than from search results or social posts, and start with a small test mint if you are new.',
+      'The production contract on Base is 0xc2181d975c05c8c724b334bcED0764c0b86B1D53. Always verify the address from gblin.digital rather than from search results or social posts, and start with a small test mint if you are new.',
   },
 ];
 

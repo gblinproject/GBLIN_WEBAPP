@@ -17,6 +17,8 @@ import {
   TIMELOCK_ABI,
   client,
   jsonResponse,
+  GBLIN_LENS,
+  LENS_ABI,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -30,9 +32,10 @@ export async function GET() {
         functionName: "owner",
       }),
       client.readContract({
-        address: GBLIN,
-        abi: GBLIN_ABI,
-        functionName: "founderWallet",
+        address: GBLIN_LENS,
+        abi: LENS_ABI,
+        functionName: "feeRecipient",
+        args: [GBLIN],
       }),
     ]);
 
@@ -68,7 +71,7 @@ export async function GET() {
       owner: ownerNorm,
       owner_is_timelock: ownerIsTimelock,
       owner_is_renounced: ownerIsRenounced,
-      founder_wallet: getAddress(founder),
+      fee_recipient: getAddress(founder as `0x${string}`),
       trust_summary: ownerIsRenounced
         ? "Ownership fully renounced — no admin can touch the contract."
         : ownerIsTimelock

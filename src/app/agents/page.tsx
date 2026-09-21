@@ -58,7 +58,7 @@ const TOOLS = [
   },
   {
     name: 'invest_usdc_to_gblin',
-    purpose: 'Convert USDC earnings back to GBLIN with MEV-safe minOut values. Returns two sequential steps (approve + buyGBLINWithToken).',
+    purpose: 'Convert USDC earnings back to GBLIN with MEV-safe minOut values. Returns two sequential steps: approve the Zap, then one call that swaps and mints at NAV.',
   },
   {
     name: 'analyze_treasury_health',
@@ -73,8 +73,8 @@ const TOOLS = [
     purpose: 'Generate a portable JSON skill seed to onboard a peer agent. Embeds a referral code — when the peer executes its first GBLIN tx, a share of the protocol fee is attributed to you via ERC-8021 Builder Code.',
   },
   {
-    name: 'find_keeper_bounty',
-    purpose: 'GBLIN pays you: check if a rebalance bounty is available right now. Returns ready-to-send calldata. The swap uses the contract\'s own funds — the keeper only pays gas (~$0.01 on Base) and earns an adaptive bounty (~0.05% of the volume rebalanced, capped 0.00005–0.01 ETH).',
+    name: 'get_auction_state',
+    purpose: 'Read the vault\'s Dutch auction: open or not, current premium over the oracle price, and side and gap per basket row. Bidding means trading with the vault toward its target weights; the premium is the reward and nothing is paid out of the vault.',
   },
   {
     name: 'verify_risk_attestation',
@@ -217,7 +217,7 @@ export default function AgentsPage() {
             npm package
           </a>
           <a
-            href="https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0"
+            href="https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53"
             target="_blank"
             rel="noopener noreferrer"
             className="px-5 py-2.5 rounded-lg border border-white/20 text-sm hover:bg-white/5 transition"
@@ -280,11 +280,11 @@ export default function AgentsPage() {
               },
               {
                 title: 'Two-step swap (V6), any wallet',
-                body: 'On V6 the redemption is sellGBLINForEth (GBLIN->ETH) plus a Uniswap WETH->USDC swap: two steps. EOAs sign twice; smart accounts (ERC-4337) and EIP-7702 can batch both into one UserOp.',
+                body: 'The redemption goes through the Zap: approve the shares, redeem in kind and sell every leg for ETH in one call (all or nothing), then a Uniswap WETH->USDC swap. EOAs sign three times; smart accounts (ERC-4337) and EIP-7702 can batch all of it into one UserOp.',
               },
               {
                 title: 'On-chain quotes, no oracles to trust',
-                body: 'NAV is computed from `quoteSellGBLIN` × the Chainlink ETH/USD feed (24h staleness guard). Tool aborts on stale or negative answers.',
+                body: 'NAV is computed from the Lens `quoteSell` × the Chainlink ETH/USD feed. The vault refuses to price itself while a feed is stale, and the tool passes that refusal on instead of guessing.',
               },
               {
                 title: 'MEV-safe by default',
@@ -390,7 +390,7 @@ const invest = await mcp.callTool({
   name: "invest_usdc_to_gblin",
   arguments: { usdc_amount: "10.00", wallet_address: agent.address },
 });
-// Returns 2-step calldata: approve + buyGBLINWithToken
+// Returns 2-step calldata: approve the Zap, then swap-and-mint in one call
 // Broadcast both txs with your wallet
 
 // --- later, when an x402 invoice arrives ---
@@ -408,7 +408,7 @@ const jit = await mcp.callTool({
 // {
 //   action: "single_atomic_tx",
 //   action: "sequential_txs", steps: [sellGBLINForEth, WETH->USDC]
-//   target (V6): 0x36C81d7E...52f0
+//   target: 0xc2181d97...1D53
 //   expected: { usdc_out: "0.5128", slippage_buffer_pct: 2.5 },
 //   compatibility: { eoa: true, erc4337: true, eip7702: true }
 // }
@@ -523,12 +523,12 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               {
                 path: '/api/data/gblin-analytics',
                 price: '$0.001',
-                desc: 'GBLIN treasury state: supply, basket weights, stability fund, keeper availability',
+                desc: 'GBLIN treasury state: supply, basket weights, NAV reliability, auction state',
               },
               {
                 path: '/api/data/keeper-opps',
                 price: '$0.001',
-                desc: 'Live keeper bounty check — includes MCP tool reference for execution',
+                desc: 'Live auction state per row — premium, side and gap, with the bid to send',
               },
             ].map((ep) => (
               <div key={ep.path} className="border border-white/[0.07] bg-white/[0.02]rounded-xl p-5">

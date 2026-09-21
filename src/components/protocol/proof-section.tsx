@@ -13,139 +13,250 @@
  * Numbers and symbols are language-neutral and kept inline.
  */
 
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowUpRight, ExternalLink, ShieldCheck, TrendingUp, Lock, Coins } from 'lucide-react';
-import { DISPLAY_CONTRACT_ADDRESS, WHITEPAPER_URL } from './protocol-data';
+import { DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatPercent, WHITEPAPER_URL } from './protocol-data';
 import { NavFeesInline } from './nav-fees';
+import { BACKTEST_SERIES, BACKTEST_START } from './backtest-series';
 
 type T = (key: string) => string;
 
 const DUNE_URL = 'https://dune.com/gblin/dashboard';
 const DEFILLAMA_URL = 'https://defillama.com/protocol/tvl/global-balanced-liquidity-index';
 
+/** One colour per series, read by both the chart and the figures under it. */
+const SERIES_COLOUR = { gblin: '#ffe4a1', btc: '#ff9f33', eth: '#9fb2ff' } as const;
+
 type Row = {
-  key: string;
+  key: keyof typeof SERIES_COLOUR;
   labelKey: string;
   subKey: string;
   finalValue: number;
-  finalLabel: string;
-  drawdown: string;
+  drawdownPct: number;
   winner?: boolean;
 };
 
 const ROWS: Row[] = [
-  { key: 'gblin', labelKey: 'proof.gblinLabel', subKey: 'proof.gblinSub', finalValue: 1_546_640, finalLabel: '$1,546,640', drawdown: '−50.3%', winner: true },
-  { key: 'btc', labelKey: 'proof.btcLabel', subKey: 'proof.btcSub', finalValue: 1_301_533, finalLabel: '$1,301,533', drawdown: '−83.8%' },
-  { key: 'eth', labelKey: 'proof.ethLabel', subKey: 'proof.ethSub', finalValue: 1_183_376, finalLabel: '$1,183,376', drawdown: '−94.0%' },
+  { key: 'gblin', labelKey: 'proof.gblinLabel', subKey: 'proof.gblinSub', finalValue: 1_546_640, drawdownPct: 50.3, winner: true },
+  { key: 'btc', labelKey: 'proof.btcLabel', subKey: 'proof.btcSub', finalValue: 1_301_533, drawdownPct: 83.8 },
+  { key: 'eth', labelKey: 'proof.ethLabel', subKey: 'proof.ethSub', finalValue: 1_183_376, drawdownPct: 94.0 },
 ];
 
-const MAX = ROWS[0].finalValue;
 
-export function ProofSection({ t }: { t: T }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    const id = window.setTimeout(() => setMounted(true), 120);
-    return () => window.clearTimeout(id);
-  }, []);
+
+/**
+ * The ten-year backtest drawn on a logarithmic scale, from the same series the
+ * published figures come from. Three bars of text could not show what the shield
+ * actually does, which is not end higher but fall less.
+ */
+function drawdownOf(idx: 1 | 2 | 3) {
+  let peak = 0;
+  return BACKTEST_SERIES.map((p) => {
+    peak = Math.max(peak, p[idx]);
+    return ((p[idx] - peak) / peak) * 100;
+  });
+}
+
+function BacktestChart({ t }: { t: T }) {
+  // One view only: the fall. That is what the shield does, and the closing
+  // value of all three strategies is spelled out in the figures below.
+  const falls = [drawdownOf(1), drawdownOf(2), drawdownOf(3)];
+  const w = 720;
+  const h = 330;
+  const padL = 52;
+  // Room on the right for the name of each line, the way a terminal labels them.
+  const padR = 62;
+  const padT = 18;
+  const padB = 30;
+  const n = BACKTEST_SERIES.length - 1;
+  const x = (i: number) => padL + (i / n) * (w - padL - padR);
+  // Drawdown runs 0 to -100 on a plain scale: no log, because the distance from the
+  // peak is the quantity being compared.
+  const yFall = (v: number) => padT + (-v / 100) * (h - padT - padB);
+  const path = (idx: 1 | 2 | 3) =>
+    falls[idx - 1].map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${yFall(v).toFixed(1)}`).join(' ');
+  const fallTicks = [0, -25, -50, -75, -100];
+  const years = ['2016', '2018', '2020', '2022', '2024', '2026'];
+  const yearIndex = (yr: string) => BACKTEST_SERIES.findIndex((p) => p[0].startsWith(yr));
+  const lines: Array<{ d: string; color: string; width: number; label: string; short: string; endY: number }> = [
+    { d: path(1), color: SERIES_COLOUR.gblin, width: 2.6, label: t('proof.gblinLabel'), short: 'GBLIN', endY: yFall(falls[0][n]) },
+    { d: path(2), color: SERIES_COLOUR.btc, width: 1.6, label: t('proof.btcLabel'), short: 'BTC', endY: yFall(falls[1][n]) },
+    { d: path(3), color: SERIES_COLOUR.eth, width: 1.6, label: t('proof.ethLabel'), short: 'ETH', endY: yFall(falls[2][n]) },
+  ];
+
+  // Crosshair: without it the chart is a poster. Pointer only, no library.
+  const box = useRef<SVGSVGElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const el = box.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * w;
+    const i = Math.round(((px - padL) / (w - padL - padR)) * n);
+    setHover(i >= 0 && i <= n ? i : null);
+  };
+  const point = hover !== null ? BACKTEST_SERIES[hover] : null;
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-amber-500/25 bg-[#080808]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
-      <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-500/10 blur-[90px]" />
-      <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-amber-500/[0.06] blur-[80px]" />
-
-      <div className="relative p-7 sm:p-10 lg:p-12">
-        <div className="flex flex-wrap items-center gap-2 mb-5">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-300">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {t('proof.backtestBadge')}
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-zinc-400">
-            {t('proof.daysBadge')}
-          </span>
-        </div>
-
-        <h2 className="font-serif text-[clamp(2rem,5vw,3.4rem)] leading-[0.95] tracking-tight text-white max-w-3xl">
-          {t('proof.headA')}{' '}
-          <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text italic text-transparent">
-            {t('proof.headHi')}
-          </span>{' '}
-          {t('proof.headB')}
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">{t('proof.intro')}</p>
-
-        <div className="mt-9 space-y-5">
-          {ROWS.map((row) => {
-            const pct = Math.max(6, Math.round((row.finalValue / MAX) * 100));
-            return (
-              <div key={row.key}>
-                <div className="flex items-end justify-between gap-3 mb-2">
-                  <div className="min-w-0">
-                    <p className={`text-sm font-bold tracking-tight ${row.winner ? 'text-amber-300' : 'text-white/85'}`}>
-                      {t(row.labelKey)}
-                      {row.winner && (
-                        <span className="ml-2 align-middle rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
-                          {t('proof.winner')}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-zinc-500">{t(row.subKey)}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`font-serif text-xl sm:text-2xl leading-none tracking-tight ${row.winner ? 'text-amber-400' : 'text-white'}`}>
-                      {row.finalLabel}
-                    </p>
-                    <p className="mt-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                      {t('proof.maxDd')} <span className={row.winner ? 'text-emerald-400' : 'text-rose-400/80'}>{row.drawdown}</span>
-                    </p>
-                  </div>
+    <div>
+      <p className="g-eyebrow mb-4 text-right">{t('proof.viewFall')}</p>
+      <svg
+        className="w-full touch-none"
+        onPointerLeave={() => setHover(null)}
+        onPointerMove={onMove}
+        ref={box}
+        role="img"
+        viewBox={`0 0 ${w} ${h}`}
+      >
+        <rect
+          fill="none"
+          height={h - padT - padB}
+          stroke="rgba(244,240,231,0.07)"
+          width={w - padL - padR}
+          x={padL}
+          y={padT}
+        />
+        {fallTicks.map((v) => {
+          const yy = yFall(v);
+          return (
+            <g key={v}>
+              <line stroke="rgba(255,255,255,0.07)" x1={padL} x2={w - padR} y1={yy} y2={yy} />
+              <text fill="#8f887b" fontFamily="var(--font-mono)" fontSize="10" x={4} y={yy + 3}>
+                {`${v}%`}
+              </text>
+            </g>
+          );
+        })}
+        {years.map((yr) => {
+          const i = yearIndex(yr);
+          if (i < 0) return null;
+          return (
+            <text fill="#6f695e" fontFamily="var(--font-mono)" fontSize="10" key={yr} textAnchor="middle" x={x(i)} y={h - 8}>
+              {yr}
+            </text>
+          );
+        })}
+        {/* Drawn back to front: ours is the subject, so it is painted last and
+            nothing crosses over it. */}
+        {[...lines].reverse().map((l) => (
+          <path d={l.d} fill="none" key={l.label} stroke={l.color} strokeLinejoin="round" strokeWidth={l.width} />
+        ))}
+        {/* The name sits at the end of its own line, so no legend is needed. */}
+        {lines.map((l) => (
+          <g key={`end-${l.short}`}>
+            <circle cx={w - padR + 6} cy={l.endY} fill={l.color} r="3" />
+            <text fill={l.color} fontFamily="var(--font-mono)" fontSize="10" x={w - padR + 14} y={l.endY + 3.5}>
+              {l.short}
+            </text>
+          </g>
+        ))}
+        {point ? (
+          <g>
+            <line stroke="rgba(244,239,228,0.25)" x1={x(hover as number)} x2={x(hover as number)} y1={padT} y2={h - padB} />
+            {([1, 2, 3] as const).map((idx) => (
+              <circle
+                cx={x(hover as number)}
+                cy={yFall(falls[idx - 1][hover as number])}
+                fill={lines[idx - 1].color}
+                key={idx}
+                r={3}
+              />
+            ))}
+          </g>
+        ) : null}
+      </svg>
+      <div className="mt-3 min-h-[68px]">
+        {point ? (
+          <div className="inline-block rounded-sm border border-[color:var(--line-strong)] bg-[#0b0b0a] px-4 py-3">
+            <p className="tnum font-mono text-[11px] text-zinc-500">{point[0]}</p>
+            <div className="mt-2 space-y-1.5">
+              {lines.map((l, i) => (
+                <div className="flex items-center gap-3 text-[11px]" key={l.label}>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: l.color }} />
+                  <span className="min-w-[38px] text-zinc-400">{l.short}</span>
+                  <span className="tnum font-mono text-zinc-100">
+                    {`\u2212${formatPercent(Math.abs(falls[i][hover as number]), 1)}`}
+                  </span>
                 </div>
-                <div className="h-3 w-full overflow-hidden rounded-full border border-white/[0.06] bg-white/[0.03]">
-                  <div
-                    className={`h-full rounded-full transition-[width] duration-1000 ease-out ${
-                      row.winner
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.45)]'
-                        : 'bg-gradient-to-r from-zinc-600 to-zinc-500'
-                    }`}
-                    style={{ width: mounted ? `${pct}%` : '0%' }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-9 grid gap-3 sm:grid-cols-3">
-          {[
-            { v: '+$245,107', k: t('proof.vsBtc'), i: <TrendingUp className="h-4 w-4" /> },
-            { v: '+$363,264', k: t('proof.vsEth'), i: <TrendingUp className="h-4 w-4" /> },
-            { v: '≈ ½', k: t('proof.halfDd'), i: <ShieldCheck className="h-4 w-4" /> },
-          ].map((h) => (
-            <div key={h.k} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-3">
-                {h.i}
-              </div>
-              <p className="font-serif text-2xl tracking-tight text-amber-400 leading-none">{h.v}</p>
-              <p className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">{h.k}</p>
+              ))}
             </div>
-          ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-600">{t('proof.hoverHint')}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ProofSection({ t }: { t: T }) {
+  return (
+    <section className="g-section">
+      <div className="g-card overflow-hidden">
+        <div className="p-6 sm:p-8 lg:p-10">
+          {/* The label rule sits inside the panel, as on the reference. */}
+          <div className="flex items-center gap-6">
+            <span className="g-eyebrow g-eyebrow-gold shrink-0">{t('ui.home.perfEyebrow')}</span>
+            <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
+            <span className="g-eyebrow hidden shrink-0 sm:block">{t('proof.daysBadge')}</span>
+          </div>
+
+          <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-14">
+            {/* The claim, in three lines, then the way to check it. */}
+            <div className="min-w-0 lg:self-center">
+              <h2 className="font-display text-[clamp(1.9rem,3.4vw,2.6rem)] font-light uppercase leading-[1.1] tracking-[0.03em] text-[color:var(--ink)]">
+                {t('proof.headA')}
+                <br />
+                {t('proof.headHi')}
+              </h2>
+              <p className="mt-6 max-w-[30rem] text-[15px] leading-7 text-zinc-400">{t('proof.intro')}</p>
+              {/* What the shield is for, stated before the figures. */}
+              <p className="mt-4 max-w-[30rem] text-sm leading-7 text-zinc-500">{t('proof.ethNote')}</p>
+              <a className="g-pill mt-8" href={WHITEPAPER_URL} rel="noopener noreferrer" target="_blank">
+                {t('proof.whitepaper')}
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            </div>
+
+            {/* The series that produced those figures. */}
+            <div className="min-w-0">
+              <BacktestChart t={t} />
+
+              {/* The three outcomes, on one line under the chart. */}
+              <div className="mt-6 grid grid-cols-3 gap-4 border-t border-[color:var(--line)] pt-5">
+                {ROWS.map((row) => (
+                  <div key={row.key}>
+                    <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: SERIES_COLOUR[row.key] }}>
+                      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: SERIES_COLOUR[row.key] }} />
+                      {t(row.labelKey)}
+                    </p>
+                    <p className="tnum mt-2 font-mono text-lg font-light leading-none" style={{ color: SERIES_COLOUR[row.key] }}>
+                      {formatCurrency(row.finalValue, 0)}
+                    </p>
+                    <p className="tnum mt-1.5 text-[11px] text-zinc-500">
+                      {t('proof.maxDd')} −{formatPercent(Math.abs(row.drawdownPct), 1)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-          <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70 mb-2">{t('proof.methodTitle')}</p>
-          <p className="text-xs leading-6 text-white/55">
+        <div className="border-t border-[color:var(--line)] px-6 py-6 sm:px-8 lg:px-10">
+          <p className="g-eyebrow">{t('proof.methodTitle')}</p>
+          <p className="mt-3 max-w-4xl text-xs leading-6 text-zinc-600">
             {t('proof.methodBody')}
-            <span className="block mt-2 text-zinc-600">{t('proof.disclaimer')}</span>
+            <span className="mt-2 block">{t('proof.disclaimer')}</span>
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            <a href={DEFILLAMA_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300 transition hover:bg-emerald-500/[0.12]">
-              <ExternalLink className="h-3.5 w-3.5" /> DefiLlama
+          <div className="mt-5 flex flex-wrap gap-2">
+            <a className="g-chip" href={DEFILLAMA_URL} rel="noopener noreferrer" target="_blank">
+              DefiLlama
+              <ExternalLink className="h-3 w-3" />
             </a>
-            <a href={DUNE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 transition hover:border-amber-500/25 hover:text-amber-300">
-              <ExternalLink className="h-3.5 w-3.5" /> Dune
-            </a>
-            <a href={WHITEPAPER_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300 transition hover:bg-amber-500/[0.12]">
-              <ArrowUpRight className="h-3.5 w-3.5" /> {t('proof.whitepaper')}
+            <a className="g-chip" href={DUNE_URL} rel="noopener noreferrer" target="_blank">
+              Dune
+              <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
@@ -155,120 +266,97 @@ export function ProofSection({ t }: { t: T }) {
 }
 
 export function FeeEngineSection({ t }: { t: T }) {
+  // The three figures the reader is actually buying: what a purchase costs, what
+  // the builder keeps, what goes back into the reserves.
+  const flow = [
+    { value: '0.10%', label: t('feeEngine.flowBuy'), gold: false },
+    { value: '0.05%', label: t('feeEngine.flowDev'), gold: false },
+    { value: '0.05%', label: t('feeEngine.flowTreasury'), gold: true },
+  ];
+
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-white/[0.07] bg-[#080808]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-      <div className="absolute -right-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-amber-500/[0.06] blur-[80px]" />
-
-      <div className="relative p-7 sm:p-10 lg:p-12">
-        <div className="flex flex-wrap items-center gap-2 mb-5">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-300">
-            <TrendingUp className="h-3.5 w-3.5" />
-            {t('feeEngine.badge')}
-          </span>
-        </div>
-
-        <h2 className="font-serif text-[clamp(1.8rem,4.5vw,3rem)] leading-[0.98] tracking-tight text-white max-w-3xl">
-          {t('feeEngine.headA')}{' '}
-          <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text italic text-transparent">
-            {t('feeEngine.headHi')}
-          </span>
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">{t('feeEngine.intro')}</p>
-
-        <div className="mt-9 grid items-stretch gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 text-center flex flex-col items-center justify-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.05] text-white mb-3">
-              <Coins className="h-5 w-5" />
-            </div>
-            <p className="font-serif text-2xl text-white leading-none">0.10%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">{t('feeEngine.flowBuy')}</p>
-          </div>
-
-          <div className="hidden lg:flex items-center justify-center text-amber-500/50">
-            <ArrowUpRight className="h-6 w-6 rotate-45" />
-          </div>
-
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 text-center flex flex-col items-center justify-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-300 mb-3">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <p className="font-serif text-2xl text-white leading-none">0.05%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">{t('feeEngine.flowDev')}</p>
-          </div>
-
-          <div className="hidden lg:flex items-center justify-center text-amber-500/50">
-            <ArrowUpRight className="h-6 w-6 rotate-45" />
-          </div>
-
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-6 text-center flex flex-col items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.12)]">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300 mb-3">
-              <Lock className="h-5 w-5" />
-            </div>
-            <p className="font-serif text-2xl text-amber-400 leading-none">0.05%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-wider text-amber-300/80">{t('feeEngine.flowTreasury')}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-transparent p-6">
-          <p className="text-sm leading-7 text-white/70">{t('feeEngine.punchline')}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              { v: '0%', k: t('feeEngine.b1k') },
-              { v: t('feeEngine.b2v'), k: t('feeEngine.b2k') },
-              { v: 'NAV ↑', k: t('feeEngine.b3k') },
-            ].map((c) => (
-              <div key={c.k} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
-                <p className="font-serif text-xl text-amber-400 leading-none">{c.v}</p>
-                <p className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">{c.k}</p>
-              </div>
-            ))}
-          </div>
-          <a
-            href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 transition hover:border-amber-500/25 hover:text-amber-300"
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> {t('feeEngine.verify')}
-          </a>
-        </div>
-
-        {/* What you don't pay — the number that scales with the reader, not with our size. */}
-        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
-          <p className="text-sm font-semibold text-white">{t('feeEngine.costTitle')}</p>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-white/50">{t('feeEngine.costIntro')}</p>
-
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left text-sm">
-              <thead className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                <tr className="border-b border-white/[0.07]">
-                  <th className="pb-3 pr-4 font-normal">{t('feeEngine.costCol0')}</th>
-                  <th className="pb-3 pr-4 font-normal text-amber-400/80">{t('feeEngine.costCol1')}</th>
-                  <th className="pb-3 font-normal">{t('feeEngine.costCol2')}</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono text-zinc-300">
-                <tr className="border-b border-white/[0.04]">
-                  <td className="py-3 pr-4 font-sans text-zinc-400">{t('feeEngine.costRow1')}</td>
-                  <td className="py-3 pr-4 text-amber-300">$1</td>
-                  <td className="py-3 text-zinc-400">$20</td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-4 font-sans text-zinc-400">{t('feeEngine.costRow2')}</td>
-                  <td className="py-3 pr-4 text-amber-300">$1</td>
-                  <td className="py-3 text-zinc-400">$100</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <p className="mt-4 max-w-2xl text-[11px] leading-5 text-zinc-500">{t('feeEngine.costNote')}</p>
-        </div>
-
-        {/* The running total, where the mechanism above gives it context. */}
-        <NavFeesInline t={t} />
+    <section className="g-section">
+      <div className="flex items-center gap-6">
+        <span className="g-eyebrow shrink-0 text-[color:var(--ink)]">{t('feeEngine.badge')}</span>
+        <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
       </div>
+
+      <h2 className="font-display mt-7 max-w-[24ch] text-[clamp(1.6rem,3vw,2.25rem)] font-light leading-[1.15] text-[color:var(--ink)]">
+        {t('feeEngine.headA')} <span className="text-amber-300">{t('feeEngine.headHi')}</span>
+      </h2>
+      <p className="mt-5 max-w-[42rem] text-[15px] leading-7 text-zinc-500">{t('feeEngine.intro')}</p>
+
+      {/* Three numbers, large, separated by rules instead of boxes. */}
+      <div className="mt-12 grid gap-10 border-y border-[color:var(--line)] py-10 md:grid-cols-3 md:gap-0">
+        {flow.map((item, i) => (
+          <div className={`md:px-10 ${i > 0 ? 'md:border-l md:border-[color:var(--line)]' : 'md:pl-0'} ${i === 2 ? 'md:pr-0' : ''}`} key={item.label}>
+            <p className={`tnum font-mono text-[clamp(2.2rem,4.6vw,3.25rem)] font-light leading-none ${item.gold ? 'text-amber-200' : 'text-[color:var(--ink)]'}`}>
+              {item.value}
+            </p>
+            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-zinc-500">{item.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-8 max-w-[46rem] text-[15px] leading-7 text-zinc-400">{t('feeEngine.punchline')}</p>
+
+      <div className="mt-8 grid gap-8 sm:grid-cols-3">
+        {[
+          { v: '0%', k: t('feeEngine.b1k') },
+          { v: t('feeEngine.b2v'), k: t('feeEngine.b2k') },
+          { v: 'NAV ↑', k: t('feeEngine.b3k') },
+        ].map((c) => (
+          <div key={c.k}>
+            <p className="tnum font-mono text-xl font-light leading-none text-amber-200">{c.v}</p>
+            <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-zinc-500">{c.k}</p>
+          </div>
+        ))}
+      </div>
+
+      <a
+        className="g-pill mt-9"
+        href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        {t('feeEngine.verify')}
+        <ExternalLink className="h-3.5 w-3.5" />
+      </a>
+
+      {/* What you don't pay — the number that scales with the reader, not with our size. */}
+      <div className="mt-14 border-t border-[color:var(--line)] pt-10">
+        <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-[color:var(--ink)]">{t('feeEngine.costTitle')}</p>
+        <p className="mt-4 max-w-[42rem] text-sm leading-7 text-zinc-500">{t('feeEngine.costIntro')}</p>
+
+        <div className="mt-8 overflow-x-auto">
+          <table className="w-full min-w-[420px] max-w-3xl text-left text-sm">
+            <thead className="g-eyebrow">
+              <tr className="border-b border-[color:var(--line)]">
+                <th className="pb-3 pr-4 font-medium">{t('feeEngine.costCol0')}</th>
+                <th className="pb-3 pr-4 font-medium text-amber-300">{t('feeEngine.costCol1')}</th>
+                <th className="pb-3 font-medium">{t('feeEngine.costCol2')}</th>
+              </tr>
+            </thead>
+            <tbody className="tnum font-mono text-zinc-300">
+              <tr className="border-b border-[color:var(--line)]">
+                <td className="py-4 pr-4 font-sans text-zinc-500">{t('feeEngine.costRow1')}</td>
+                <td className="py-4 pr-4 text-lg font-light text-amber-200">$6</td>
+                <td className="py-4 text-lg font-light text-zinc-400">$20</td>
+              </tr>
+              <tr>
+                <td className="py-4 pr-4 font-sans text-zinc-500">{t('feeEngine.costRow2')}</td>
+                <td className="py-4 pr-4 text-lg font-light text-amber-200">$26</td>
+                <td className="py-4 text-lg font-light text-zinc-400">$100</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-5 max-w-[42rem] text-[11px] leading-5 text-zinc-600">{t('feeEngine.costNote')}</p>
+      </div>
+
+      {/* The running total, where the mechanism above gives it context. */}
+      <NavFeesInline t={t} />
     </section>
   );
 }

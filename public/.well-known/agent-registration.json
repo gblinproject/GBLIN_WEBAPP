@@ -89,7 +89,7 @@
         "analyze_treasury_health",
         "get_governance_state",
         "share_skill_with_peer",
-        "find_keeper_bounty",
+        "get_auction_state",
         "get_market_risk_regime",
         "verify_risk_attestation",
         "seal_action_demo",
@@ -122,7 +122,9 @@
   },
   "contracts": {
     "chain": "eip155:8453",
-    "token": "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+    "token": "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
+    "lens": "0xfCFea8027019E8551A1f09AD91532471F5D26f61",
+    "zap": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
     "owner_timelock_48h": "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
     "fee_wallet": "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B"
   },

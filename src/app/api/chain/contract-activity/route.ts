@@ -1,17 +1,14 @@
 /**
  * GET /api/chain/contract-activity?limit=10
  *
- * Attività recente del contratto GBLIN: le transazioni che lo toccano più i trasferimenti
- * ERC-20 che ne derivano. Serve la tabella "recent transactions" della home e la classifica
- * dei keeper.
+ * Recent activity of the GBLIN contract: the transactions that touch it plus the ERC-20 transfers
+ * they produce. Backs the recent-transactions table and the keeper leaderboard.
  *
- * 01/09/2026: prende il posto delle chiamate Moralis che i componenti facevano DAL BROWSER
- * con la chiave in chiaro (`NEXT_PUBLIC_MORALIS_API_KEY`). Passando dal server la chiave
- * Alchemy resta segreta e la risposta si cachea sulla CDN invece di essere rifatta da ogni
- * visitatore — che era il TODO(security) già scritto in protocol-data.ts.
+ * The read happens on the server so that the RPC key is never exposed to the browser and the
+ * response is cached on the CDN instead of being recomputed for every visitor.
  *
- * `dynamic = 'force-dynamic'`: senza, Next pre-renderizzerebbe la rotta AL BUILD e il build
- * dipenderebbe dalla velocità di Alchemy (è così che il build è fallito il 30/08).
+ * `dynamic = 'force-dynamic'` is required: without it Next pre-renders the route at build time,
+ * which would make the build depend on the availability of a third-party RPC provider.
  */
 
 import { contractActivity, ChainActivityError, GBLIN_CONTRACT } from '@/lib/chain-activity';
@@ -33,9 +30,9 @@ export async function GET(request: Request): Promise<Response> {
       { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' } },
     );
   } catch (err) {
-    const message = err instanceof ChainActivityError ? err.message : 'errore imprevisto';
-    // 503 e non 200-con-lista-vuota: una lista vuota qui significherebbe "nessuna
-    // transazione", che è un'affermazione diversa da "non ho potuto guardare".
+    const message = err instanceof ChainActivityError ? err.message : 'unexpected error';
+    // 503 rather than 200 with an empty list: an empty list would assert "no transactions", which
+    // is a different claim from "the source could not be read".
     return Response.json(
       { transactions: [], erc20Transfers: [], degraded: true, error: message },
       { status: 503, headers: { 'Cache-Control': 'public, s-maxage=30' } },

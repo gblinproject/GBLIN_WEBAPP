@@ -13,7 +13,7 @@ GBLIN (Global Balanced Liquidity Index) is a treasury-backed index token on Base
 
 Fetch unsigned calldata from the GBLIN x402 API, then execute via Base MCP's `send_calls`.
 
-**Contract (Base mainnet):** `0x36C81d7E1966310F305eA637e761Cf77F90852f0`
+**Contract (Base mainnet):** `0xc2181d975c05c8c724b334bcED0764c0b86B1D53`
 **Supported chain:** Base mainnet (`8453` / `0x2105`)
 **API base:** `https://gblin.digital`
 
@@ -109,7 +109,7 @@ A perishable (10-minute) proof of the current BTC/ETH risk regime (`calm` | `ele
 GET https://gblin.digital/api/x402/invest?usdc=<decimal>&wallet=<wallet_address>
 ```
 
-Returns a 4-step ordered batch of unsigned calldata. The contract mints against WETH, so the path is: approve USDC → swap USDC→WETH → approve WETH → buy GBLIN. Every step carries a non-zero `minOut` to prevent MEV sandwiching.
+Returns a 2-step ordered batch of unsigned calldata. The vault never swaps, so an arbitrary token goes through the Zap: approve USDC to the Zap, then one call that swaps USDC→WETH on the adapter and mints at NAV. Every step carries a non-zero `minOut`.
 
 Response shape:
 
@@ -117,10 +117,8 @@ Response shape:
 {
   "action": "sequential_txs",
   "steps": [
-    { "step": 1, "description": "Approve USDC to SwapRouter02", "target": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "calldata": "0x...", "value": "0" },
-    { "step": 2, "description": "Swap USDC → WETH via exactInputSingle", "target": "0x2626664c2603336E57B271c5C0b26F421741e481", "calldata": "0x...", "value": "0" },
-    { "step": 3, "description": "Approve WETH to GBLIN", "target": "0x4200000000000000000000000000000000000006", "calldata": "0x...", "value": "0" },
-    { "step": 4, "description": "buyGBLINWithToken with WETH", "target": "0x36C81d7E1966310F305eA637e761Cf77F90852f0", "calldata": "0x...", "value": "0" }
+    { "step": 1, "description": "Approve USDC to the GBLIN Zap", "target": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "calldata": "0x...", "value": "0" },
+    { "step": 2, "description": "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", "target": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200", "calldata": "0x...", "value": "0" }
   ],
   "expected": { "usdc_in": "…", "weth_min": "…", "gblin_expected": "…", "gblin_min": "…", "slippage_buffer_pct": 0, "slippage_reason": "…" },
   "security": { "mev_protected": true, "min_outs_set": true }
@@ -133,7 +131,7 @@ Response shape:
 GET https://gblin.digital/api/x402/jit?usdc=<decimal>&wallet=<wallet_address>
 ```
 
-Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **two steps** (`sellGBLINForEth`, then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs twice; an ERC-4337 / EIP-7702 account can batch both into one operation. Requires the 2-minute cooldown since the last deposit to have elapsed.
+Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **three steps** (approve the shares to the Zap, `GBLINZap.sellGBLINForEth` — redeem in kind and sell every leg, all or nothing — then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs twice; an ERC-4337 / EIP-7702 account can batch both into one operation. Requires the 2-minute cooldown since the last deposit to have elapsed.
 
 ```json
 {
@@ -244,7 +242,7 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 
 | Contract | Address |
 |---|---|
-| GBLIN | `0x36C81d7E1966310F305eA637e761Cf77F90852f0` |
+| GBLIN | `0xc2181d975c05c8c724b334bcED0764c0b86B1D53` |
 | Timelock 48h | `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd` |
 | WETH | `0x4200000000000000000000000000000000000006` |
 | USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
@@ -261,5 +259,5 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 - Hosted MCP (free): https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
 - GitHub: https://github.com/gblinproject/GBLIN-Protocol
 - MCP Server: https://github.com/gblinproject/gblin-treasury-risk-regime
-- Basescan: https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0
+- Basescan: https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53
 - Defillama: https://defillama.com/protocol/tvl/global-balanced-liquidity-index

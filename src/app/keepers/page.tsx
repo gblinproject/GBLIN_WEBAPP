@@ -4,18 +4,17 @@ import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 
 /**
- * 01/09/2026 — questa pagina contava le CHIAMATE a incentivizedRebalance e moltiplicava per
- * una stima fissa di 0,0001 ETH. Due cose erano sbagliate:
- *   1. la taglia vera e' quella emessa nell'evento `Rebalanced`, e sui due rebalance esistenti
- *      era 0,00005 ETH — meta' della stima, quindi il totale pubblicato era il doppio del vero;
- *   2. l'unico "keeper" in classifica e' un NOSTRO wallet (elencato nella promessa P2), e la
- *      pagina lo presentava come un agente terzo che guadagna dal protocollo.
- * Ora la taglia si legge dall'evento e la provenienza si dichiara.
+ * Rebalance leaderboard.
+ *
+ * Bounties are read from the amount carried by the `Rebalanced` event, never inferred from the
+ * number of calls multiplied by an assumed rate: an estimate published as a measurement is a false
+ * measurement. Executors that are operated by the protocol are flagged, so that the table never
+ * presents protocol activity as third-party activity.
  */
 interface RebalanceEvent {
   executor: string;
   executorIsOurs?: boolean;
-  /** Taglia pagata in wei; `null` sul contratto vecchio, che non la emetteva. */
+  /** Bounty paid, in wei; `null` for events emitted by a previous contract, which omitted it. */
   bounty?: string | null;
   contract?: string;
 }
@@ -24,7 +23,7 @@ interface KeeperRow {
   executor: string;
   rebalances: number;
   earnedEth: number;
-  /** Vero se non conosciamo la taglia di almeno un rebalance (eventi del contratto vecchio). */
+  /** True when at least one rebalance carries no bounty amount, so the total is a lower bound. */
   earnedIncomplete: boolean;
   isOurs: boolean;
 }
@@ -35,18 +34,17 @@ export default function KeepersPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalRebalances, setTotalRebalances] = useState(0);
   /**
-   * La rotta dichiara `partial` quando la fonte della storia completa non risponde e si e'
-   * potuto leggere solo una finestra recente. Senza questo, con Blockscout giu' la pagina
-   * annunciava "0 rebalance, sii il primo" mentre on-chain ce n'erano 37: la stessa bugia
-   * per omissione che stiamo togliendo da tutti i contatori.
+   * The route reports `partial` when the source for the full history is unavailable and only a
+   * recent window could be read. The flag must reach the interface: without it an unreadable
+   * source renders as "no rebalances yet", which states the opposite of what is known.
    */
-  const [parziale, setParziale] = useState(false);
-  const [copertura, setCopertura] = useState<string | null>(null);
+  const [partial, setPartial] = useState(false);
+  const [coverage, setCoverage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        // Gli EVENTI, non le transazioni: solo l'evento porta la taglia davvero pagata.
+        // Events, not transactions: only the event carries the bounty that was actually paid.
         const res = await fetch('/api/rebalance-history?limit=200');
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -57,31 +55,31 @@ export default function KeepersPage() {
           throw new Error('the log source could not be read right now');
         }
         const events: RebalanceEvent[] = data.events || [];
-        setParziale(Boolean(data.partial));
-        setCopertura(typeof data.covers === 'string' ? data.covers : null);
+        setPartial(Boolean(data.partial));
+        setCoverage(typeof data.covers === 'string' ? data.covers : null);
 
-        const tally: Record<string, { n: number; wei: bigint; incompleto: boolean; nostro: boolean }> = {};
+        const tally: Record<string, { n: number; wei: bigint; incomplete: boolean; operated: boolean }> = {};
         for (const ev of events) {
           const executor = ev.executor;
           if (!executor) continue;
-          const riga = tally[executor] ?? {
+          const row = tally[executor] ?? {
             n: 0,
             wei: 0n,
-            incompleto: false,
-            nostro: Boolean(ev.executorIsOurs),
+            incomplete: false,
+            operated: Boolean(ev.executorIsOurs),
           };
-          riga.n += 1;
+          row.n += 1;
           if (ev.bounty) {
             try {
-              riga.wei += BigInt(ev.bounty);
+              row.wei += BigInt(ev.bounty);
             } catch {
-              riga.incompleto = true;
+              row.incomplete = true;
             }
           } else {
-            // Nessuna taglia nell'evento: non la inventiamo, la dichiariamo mancante.
-            riga.incompleto = true;
+            // No bounty in the event: the amount is reported as missing rather than assumed.
+            row.incomplete = true;
           }
-          tally[executor] = riga;
+          tally[executor] = row;
         }
 
         const ranked: KeeperRow[] = Object.entries(tally)
@@ -89,8 +87,8 @@ export default function KeepersPage() {
             executor,
             rebalances: v.n,
             earnedEth: Number(ethers.formatEther(v.wei)),
-            earnedIncomplete: v.incompleto,
-            isOurs: v.nostro,
+            earnedIncomplete: v.incomplete,
+            isOurs: v.operated,
           }))
           .sort((a, b) => b.rebalances - a.rebalances);
 
@@ -106,50 +104,54 @@ export default function KeepersPage() {
   }, []);
 
   const short = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  // Somma delle taglie REALMENTE pagate. `incompleto` segnala che qualche evento non la
-  // portava (contratto vecchio): il totale e' un minimo, e va detto invece di arrotondare.
-  const totaleEth = rows.reduce((acc, r) => acc + r.earnedEth, 0);
-  const incompleto = rows.some((r) => r.earnedIncomplete);
+  // Sum of the bounties actually paid. When an event carries no amount the total is a lower bound,
+  // and the interface states that instead of rounding the gap away.
+  const totalEth = rows.reduce((acc, r) => acc + r.earnedEth, 0);
+  const incomplete = rows.some((r) => r.earnedIncomplete);
 
   return (
     <main style={{ maxWidth: 880, margin: '0 auto', padding: '48px 20px', fontFamily: 'system-ui, sans-serif' }}>
-      <h1 style={{ fontSize: 32, marginBottom: 8 }}>GBLIN Keeper Leaderboard</h1>
+      <h1 style={{ fontSize: 32, marginBottom: 8 }}>GBLIN Rebalance Leaderboard</h1>
       <p style={{ color: '#666', marginBottom: 32, lineHeight: 1.5 }}>
-        GBLIN is one of the few protocols on Base that <strong>pays AI agents</strong>. Anyone who rebalances
-        the treasury pool earns an <strong>adaptive bounty</strong> — roughly 0.05% of the volume rebalanced,
-        capped between 0.00005 and 0.01 ETH, paid only on a successful swap and at most once per hour. The swap
-        uses the contract&apos;s own funds, the keeper only pays gas. Below is every address that has run one
-        on-chain, with the bounty each was actually paid — read from the <code>Rebalanced</code> event, not
-        estimated. Addresses we operate ourselves are marked as such: they are listed in our public{' '}
-        <a href="/promises/P2-honest-counters.json">honest-counters promise</a>, so the split between our own
-        activity and third-party activity can be reproduced from the chain.
+        The vault in service rebalances through a <strong>Dutch auction</strong>: when a row drifts past its
+        band, anyone can trade with the vault toward the target weights at the oracle price adjusted by a
+        premium that rises over an hour, up to 0.25%. The premium is the whole reward — nothing is paid out of
+        the vault, and the bidder brings the tokens. The previous contracts worked differently: they paid an
+        adaptive bounty from a buffer to whoever called their rebalance function, and that history is kept
+        below with the bounty each address was actually paid, read from the <code>Rebalanced</code> event.
+        Auction fills on the vault in service appear here too, read from <code>AuctionFill</code>, with no
+        bounty column because none exists. Executors operated by the protocol are flagged; the list is
+        published in the <a href="/promises/P2-honest-counters.json">honest-counters promise</a>, so the
+        split between protocol activity and third-party activity can be reproduced from the chain.
       </p>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{totalRebalances}</div>
           <div style={{ color: '#888', fontSize: 13 }}>
-            {parziale ? 'rebalances in the window we could read' : 'total rebalances'}
+            {partial ? 'rebalances in the window that could be read' : 'total rebalances'}
           </div>
         </div>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{rows.filter((r) => !r.isOurs).length}</div>
           <div style={{ color: '#888', fontSize: 13 }}>
             third-party keepers
-            {rows.some((r) => r.isOurs) ? ` (+${rows.filter((r) => r.isOurs).length} ours)` : ''}
+            {rows.some((r) => r.isOurs)
+              ? ` (+${rows.filter((r) => r.isOurs).length} operated by the protocol)`
+              : ''}
           </div>
         </div>
         <div style={{ padding: '16px 24px', border: '1px solid #e5e5e5', borderRadius: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 700 }}>
-            {totaleEth.toFixed(5)} ETH{incompleto ? '+' : ''}
+            {totalEth.toFixed(5)} ETH{incomplete ? '+' : ''}
           </div>
           <div style={{ color: '#888', fontSize: 13 }}>
-            bounties actually paid{incompleto ? ' — the older contract did not emit the amount' : ''}
+            bounties actually paid{incomplete ? ' — the older contract did not emit the amount' : ''}
           </div>
         </div>
       </div>
 
-      {!loading && parziale && rows.length > 0 && (
+      {!loading && partial && rows.length > 0 && (
         <p
           style={{
             padding: '12px 16px',
@@ -162,7 +164,7 @@ export default function KeepersPage() {
           }}
         >
           Partial view: the explorer that serves the full history is not answering, so these numbers cover
-          only {copertura ?? 'a short recent window'}. Older rebalances are missing from this table, not
+          only {coverage ?? 'a short recent window'}. Older rebalances are missing from this table, not
           from the chain.
         </p>
       )}
@@ -170,25 +172,26 @@ export default function KeepersPage() {
       {loading && <p>Loading on-chain keeper activity...</p>}
       {error && <p style={{ color: '#c00' }}>Error: {error}</p>}
 
-      {!loading && !error && rows.length === 0 && parziale && (
+      {!loading && !error && rows.length === 0 && partial && (
         <div style={{ padding: 32, border: '1px dashed #ccc', borderRadius: 12 }}>
           <p style={{ fontSize: 18, marginBottom: 8 }}>
-            We could not read the full history right now.
+            The full history could not be read right now.
           </p>
           <p style={{ color: '#666' }}>
-            The block explorer that serves the complete log is not answering, so we fell back to a short
-            recent window and found nothing in it. That is not the same as &ldquo;nobody has ever
-            rebalanced&rdquo; — the leaderboard will fill back in once the source recovers.
+            The block explorer that serves the complete log is not answering, so only a short recent
+            window was read, and it contains no rebalances. That is not the same as &ldquo;nobody has ever
+            rebalanced&rdquo; — the leaderboard fills back in once the source recovers.
           </p>
         </div>
       )}
 
-      {!loading && !error && rows.length === 0 && !parziale && (
+      {!loading && !error && rows.length === 0 && !partial && (
         <div style={{ padding: 32, border: '1px dashed #ccc', borderRadius: 12, textAlign: 'center' }}>
-          <p style={{ fontSize: 18, marginBottom: 8 }}>No rebalances recorded yet. Be the first.</p>
+          <p style={{ fontSize: 18, marginBottom: 8 }}>No rebalances recorded yet.</p>
           <p style={{ color: '#666' }}>
-            Connect the GBLIN MCP server and call <code>find_keeper_bounty</code>, or read the
-            {' '}<code>earn-as-base-keeper</code> skill to start earning.
+            The auction state is published at <code>/api/cron/rebalance</code>; bids are placed on the vault
+            with{' '}<code>bid(index, vaultBuysAsset, amountIn, minOut, data)</code> for as long as the premium
+            covers the cost of the trade.
           </p>
         </div>
       )}
@@ -229,8 +232,8 @@ export default function KeepersPage() {
                 </td>
                 <td style={{ padding: '12px 8px' }}>{r.rebalances}</td>
                 <td style={{ padding: '12px 8px' }}>
-                  {/* Il contratto precedente non emetteva l'importo: "0 ETH" sarebbe una
-                      misura falsa, mentre la verita' e' che quel dato non esiste on-chain. */}
+                  {/* A previous contract did not emit the amount: rendering "0 ETH" would state a
+                      measurement that was never made, so the absence is labelled instead. */}
                   {r.earnedEth === 0 && r.earnedIncomplete ? (
                     <span style={{ color: '#888' }} title="The older contract did not emit the bounty amount">
                       not recorded on-chain
@@ -246,9 +249,10 @@ export default function KeepersPage() {
       )}
 
       <p style={{ marginTop: 40, color: '#888', fontSize: 13, lineHeight: 1.6 }}>
-        Want to earn? Install the GBLIN MCP server (<code>@gblin-protocol/mcp-server</code>) and call
-        {' '}<code>find_keeper_bounty</code>. Data read live from Base mainnet. Rewards depend on pool drift
-        and available stability fund.
+        The auction state — whether it is open, the current premium, and the side and gap of each row — is
+        published at <code>/api/cron/rebalance</code> and readable on-chain through the GBLIN Lens. The
+        figures on this page are read live from Base mainnet. The reward is the premium over the oracle
+        price, applied to the amount that closes the gap.
       </p>
     </main>
   );

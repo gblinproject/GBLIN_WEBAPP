@@ -1,59 +1,57 @@
-// NOTA: contiamo i BYTE con Buffer.byteLength, non body.length — quest'ultimo conta i
-// caratteri UTF-16, e la sfida contiene trattini lunghi da 3 byte: le due misure
-// differiscono di una dozzina e sembrerebbe una sfida instabile quando non lo e'.
+// Sizes are measured in BYTES with Buffer.byteLength, never body.length: the latter
+// counts UTF-16 code units, and the challenge contains 3-byte dashes, so the two
+// measurements differ by a dozen and a stable challenge looks unstable.
 export const BASE = "https://gblin.digital";
-// I nove percorsi coperti dal middleware x402 (stesso elenco del matcher).
+// The nine paths covered by the x402 middleware (same list as the matcher).
 export const PATHS = ["catalog","treasury-state","quote","jit","invest","health","governance","attestation","seal"];
-// Header che fanno parte del contratto pubblico: la sfida x402 vive nell'header
-// PAYMENT-REQUIRED oltre che nel corpo, e il tipo di contenuto decide il "flavor".
+// Headers that are part of the public contract: the x402 challenge lives in the
+// PAYMENT-REQUIRED header as well as in the body, and the content type decides the "flavor".
 const CONTRACT_HEADERS = ["payment-required", "www-authenticate", "content-type", "x-payment-required"];
 
 export const fixtureName = (p, flavor) => new URL(`./${p}.${flavor}.json`, import.meta.url).pathname;
 
-// `daOrigin` serve alla CATTURA e solo a lei, e usa un header di pagamento VUOTO.
+// `fromOrigin` belongs to CAPTURE and to capture only, and it sends an EMPTY payment header.
 //
-// PERCHE' VUOTO e non un valore finto: dal 22/08/2026 la sfida 402 anonima la serve il Worker al
-// bordo, quindi una GET normale legge il BORDO e lo strumento si morde la coda (preso il 30/08:
-// lo script diceva "18/18 identiche" senza aver fatto nulla). Per raggiungere l'origine bisogna
-// aggirare la routing rule, che scatta sull'ASSENZA degli header di pagamento. Ma dal 30/08 la
-// guardia sui parametri scatta sulla loro PRESENZA NON VUOTA. Le due condizioni non coincidono, e
-// nella fessura ci sta esattamente un header vuoto:
-//   Vercel  -> l'header c'e' -> la regola non matcha -> va all'origine
-//   noi     -> req.headers.get() da "" (falsy) -> non sta pagando -> sfida anonima, niente guardia
-// Misurato: 8 colpi su 8 arrivano all'origine; e un valore di soli spazi e' equivalente al vuoto,
-// perche' l'API Headers lo taglia per specifica. La VERIFICA resta anonima: li' vogliamo misurare
-// cio' che vede il mondo.
+// Why empty rather than a fake value: the anonymous 402 challenge is served by the edge worker,
+// so a plain GET reads the EDGE and the tool captures its own output. Reaching the origin means
+// bypassing the routing rule, which triggers on the ABSENCE of the payment headers, while the
+// parameter guard triggers on their NON-EMPTY presence. The two conditions do not coincide, and
+// an empty header fits exactly in the gap:
+//   routing -> the header exists -> the rule does not match -> the request reaches the origin
+//   origin  -> headers.get() returns "" (falsy) -> not paying -> anonymous challenge, no guard
+// A whitespace-only value behaves the same, because the Headers API trims it per spec.
+// VERIFICATION stays anonymous: there the point is to measure what the world sees.
 //
-// ATTENZIONE: e' comportamento OSSERVATO, non documentato da Vercel (la doc copre presenza e
-// valore, non il valore vuoto). Per questo sotto ci sono due asserzioni che fanno fallire la
-// cattura invece di scrivere fixture avvelenate.
-// Percorsi che accettano un solo verbo: la loro sfida esiste SOLO su quel verbo, e catturarla
-// in GET darebbe un 405. Dal 06/09/2026 seal e' fra questi — prima la chiave era path-only e la
-// sfida usciva su ogni metodo, dichiarando "method: GET" a chi ci scopriva in GET. Un agente che
-// seguiva i nostri stessi metadati pagava e riceveva un 405.
-export const VERBO = { seal: "POST" };
+// This is OBSERVED behaviour, not documented (the documentation covers presence and value, not
+// the empty value). Hence the two assertions below, which fail the capture rather than write
+// poisoned fixtures.
+// Paths that accept a single verb: their challenge exists only on that verb, and capturing it
+// with GET would return 405. A path-only route key makes the challenge answer every method while
+// advertising "method: GET", so an agent that follows the advertised metadata pays and then
+// receives a 405.
+export const VERB = { seal: "POST" };
 
-export async function fetchOne(base, path, flavor, daOrigin = false) {
+export async function fetchOne(base, path, flavor, fromOrigin = false) {
   const accept = flavor === "html" ? "text/html,application/xhtml+xml" : "application/json";
-  const richiesta = daOrigin ? { accept, "x-payment": "" } : { accept };
-  const method = VERBO[path] || "GET";
-  const res = await fetch(`${base}/api/x402/${path}`, { method, headers: richiesta });
+  const requestHeaders = fromOrigin ? { accept, "x-payment": "" } : { accept };
+  const method = VERB[path] || "GET";
+  const res = await fetch(`${base}/api/x402/${path}`, { method, headers: requestHeaders });
   const body = await res.text();
   const headers = {};
   for (const h of CONTRACT_HEADERS) { const v = res.headers.get(h); if (v) headers[h] = v; }
-  const daBordo = !!res.headers.get("x-gblin-edge-challenge");
-  return { path: `/api/x402/${path}`, accept, method, status: res.status, headers, bytes: Buffer.byteLength(body, "utf8"), body, daBordo };
+  const fromEdge = !!res.headers.get("x-gblin-edge-challenge");
+  return { path: `/api/x402/${path}`, accept, method, status: res.status, headers, bytes: Buffer.byteLength(body, "utf8"), body, fromEdge };
 }
 
-// Due asserzioni, non una. La prima da sola non basta: dice solo DA DOVE arriva la risposta, non
-// che sia la forma canonica. La seconda serve perche' la sfida echeggia l'URL completo, query
-// inclusa, e una cattura fatta per sbaglio con i parametri passerebbe indisturbata.
-export function controllaCattura(path, r) {
-  if (r.daBordo) {
+// Two assertions, not one. The first alone only says WHERE the response came from, not that it
+// is the canonical form. The second is needed because the challenge echoes the full URL, query
+// included, so a capture made by mistake with parameters would pass unnoticed.
+export function assertCapture(path, r) {
+  if (r.fromEdge) {
     throw new Error(
-      `${path}: ha risposto il BORDO, non l'origine. La cattura si sarebbe morsa la coda e le ` +
-      `fixture sarebbero diventate una copia di se stesse. Probabile causa: Vercel non considera ` +
-      `piu' "presente" un header di valore vuoto. NON committare nulla e rivedi il metodo.`
+      `${path}: the EDGE answered, not the origin. The capture would have bitten its own tail ` +
+      `and the fixtures would have become a copy of themselves. Likely cause: Vercel no longer ` +
+      `treats an empty-valued header as "present". Do NOT commit anything and review the method.`
     );
   }
   let j = null;
@@ -61,8 +59,9 @@ export function controllaCattura(path, r) {
   const u = j && j.resource && j.resource.url;
   if (typeof u === "string" && u.includes("?")) {
     throw new Error(
-      `${path}: la sfida catturata dichiara resource.url CON query string (${u}). La forma ` +
-      `canonica — quella che vedono crawler, validatore e Bazaar — non ne ha. Cattura senza parametri.`
+      `${path}: the captured challenge declares resource.url WITH a query string (${u}). The ` +
+      `canonical form - the one crawlers, the validator and the Bazaar see - has none. ` +
+      `Capture without parameters.`
     );
   }
 }

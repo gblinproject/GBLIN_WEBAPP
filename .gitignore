@@ -70,3 +70,9 @@ scripts/x402-baptize.mjs
 
 # graphify (knowledge graph locale, non versionato)
 graphify-out/
+
+# working screenshots from the attached browsers
+.playwright-mcp/
+
+# local design-hook configuration
+.impeccable/

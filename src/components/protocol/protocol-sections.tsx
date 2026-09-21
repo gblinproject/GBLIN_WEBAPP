@@ -1,14 +1,18 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
+import { ethers } from 'ethers';
 import { useState, useEffect, useCallback } from 'react';
+import { useConnect } from 'wagmi';
 import type { ReactNode } from 'react';
-import { Activity, ArrowRight, Copy, Download, ExternalLink, Landmark, RefreshCw, Shield, TrendingUp, Wallet, Zap, Lock } from 'lucide-react';
+import { Activity, ArrowRight, Check, TrendingUp, ChevronDown, Copy, ExternalLink, Landmark, RefreshCw, Shield, Wallet, X, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, OracleHealth, TransactionItem } from './protocol-data';
-import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, formatCurrency, formatTokenAmount, shortenAddress, WHITEPAPER_URL } from './protocol-data';
+import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, ERC20_ABI, formatCurrency, formatPercent, formatTokenAmount, RPC_URL, shortenAddress, TRADE_TOKEN_OPTIONS, WHITEPAPER_URL } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
-import MigrateButton from "@/components/MigrateButton";
+import MigrateToNewVault from "@/components/MigrateToNewVault";
 import { ProofSection, FeeEngineSection } from './proof-section';
 import { NavFeesHeroLedger } from './nav-fees';
+import { ReserveCore } from './reserve-core';
+import { AssetMark } from './asset-mark';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
@@ -42,11 +46,19 @@ export interface RebalanceOpportunity {
   targetEthAmount: number;
   executableInputAmount: number;
   eligible: boolean;
+  /** Gap between the row and its target, in ETH of value: what a bid can close. */
   minSwapRequiredEth: number;
+  /** Token the bidder hands to the vault: the asset when the vault buys it, WETH when the vault sells it. */
+  inputToken: string;
+  inputDecimals: number;
+  /** True when the vault buys the asset and pays WETH; the first argument of `bid`. */
+  vaultBuysAsset: boolean;
 }
 
 interface SharedViewProps {
   t: (key: string) => string;
+  /** Active interface language: decimal separators and dates follow it. */
+  language: string;
   marketData: DashboardData | null;
   onChainData: OnChainData | null;
   basketData: BasketItem[];
@@ -121,14 +133,14 @@ interface RebalanceViewProps extends SharedViewProps {
 
 interface VaultViewProps extends SharedViewProps {}
 
-const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
+const shellCard = 'g-card-elevated';
 
-const sectionTitle = 'font-serif text-[clamp(2rem,5vw,3.5rem)] tracking-tight text-white';
-const sectionBody = 'max-w-2xl text-sm leading-7 text-white/60 sm:text-base';
+const sectionTitle = 'text-[1.75rem] font-semibold leading-tight tracking-[-0.03em] text-white sm:text-[2.25rem]';
+const sectionBody = 'max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base';
 
 function formatWeight(value: number | null) {
   if (value === null || !Number.isFinite(value)) return '--';
-  return `${value.toFixed(2)}%`;
+  return formatPercent(value);
 }
 
 function formatDateLabel(timestamp: number) {
@@ -137,74 +149,147 @@ function formatDateLabel(timestamp: number) {
 }
 
 function MetricCard({ label, value, hint, loading }: { label: string; value: string; hint?: string; loading?: boolean }) {
+  // Mono is for figures. On a phrase it reads like a terminal glitch, so words get the
+  // text face and a smaller size instead.
+  const numeric = /^[^A-Za-z]*$/.test(value.replace(/[a-z]{1,3}$/i, ''));
   return (
-    <div className={`${shellCard} relative overflow-hidden p-5`}>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      <div className="absolute -right-8 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl" />
-      <p className="relative text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500">{label}</p>
-      <p className="relative mt-4 font-serif text-3xl leading-none tracking-tight text-white sm:text-[2.35rem]">{loading ? '...' : value}</p>
-      {hint ? <p className="relative mt-3 text-sm text-white/55">{hint}</p> : null}
+    <div className="g-card flex h-full flex-col p-5">
+      <p className="g-eyebrow">{label}</p>
+      <p
+        className={`mt-3 leading-tight text-white ${
+          numeric ? 'tnum font-mono text-2xl font-medium tracking-tight sm:text-[1.75rem]' : 'text-lg font-semibold tracking-tight sm:text-xl'
+        } ${loading ? 'animate-pulse text-zinc-500' : ''}`}
+      >
+        {loading ? '…' : value}
+      </p>
+      {hint ? <p className="mt-auto pt-2 text-xs leading-5 text-zinc-500">{hint}</p> : null}
     </div>
   );
 }
 
-function HighlightCard({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
-  return (
-    <div className={`${shellCard} relative overflow-hidden p-6`}>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.08),transparent_30%)]" />
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-400/20 bg-amber-500/10 text-amber-200">
-        {icon}
-      </div>
-      <p className="relative mt-5 font-serif text-[1.35rem] tracking-tight text-white">{title}</p>
-      <p className="relative mt-3 text-sm leading-7 text-white/60">{body}</p>
-    </div>
-  );
-}
 
 function SectionHeading({ eyebrow, title, body, actions }: { eyebrow?: string; title: string; body?: string; actions?: ReactNode }) {
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
       <div className="max-w-3xl">
-        {eyebrow ? <p className="text-[10px] font-mono uppercase tracking-[0.32em] text-amber-300/80">{eyebrow}</p> : null}
-        <h2 className={`mt-3 ${sectionTitle}`}>{title}</h2>
-        {body ? <p className={`mt-4 ${sectionBody}`}>{body}</p> : null}
+        {eyebrow ? <p className="g-eyebrow g-eyebrow-gold">{eyebrow}</p> : null}
+        <h2 className={`mt-2 ${sectionTitle}`}>{title}</h2>
+        {body ? <p className={`mt-3 ${sectionBody}`}>{body}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
     </div>
   );
 }
 
-function BasketCard({ asset }: { asset: BasketItem }) {
+/**
+ * The basket drawn, not listed. The page had no graphic at all: nine sections of
+ * boxed text read as documentation rather than a product, and the one number that
+ * matters had a thin progress bar under it. Inline SVG on live weights, so it costs
+ * no dependency and cannot drift from the data beside it.
+ */
+/**
+ * One horizontal break in a page that is otherwise a stack of cards, and the place
+ * where the figures that used to be repeated in the hero now live once.
+ */
+function LiveTicker({ t, onChainData, basket }: { t: (key: string) => string; onChainData: OnChainData | null; basket: BasketItem[] }) {
+  const [agents, setAgents] = useState<{ calls: number; wallets: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/agent-stats')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((d: { total_paid_calls?: number; total_unique_agents?: number; organic?: { paid_calls?: number; unique_agents?: number } }) => {
+        if (cancelled) return;
+        const calls = Number(d?.organic?.paid_calls ?? d?.total_paid_calls ?? 0);
+        const wallets = Number(d?.organic?.unique_agents ?? d?.total_unique_agents ?? 0);
+        if (calls > 0) setAgents({ calls, wallets });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const items: Array<{ k: string; v: string }> = [
+    { k: t('ui.home.statNav'), v: onChainData?.nav || '—' },
+    { k: t('ui.home.statTvl'), v: formatCurrency(onChainData?.tvl || 0) },
+    ...basket.map((a) => ({ k: a.name, v: formatWeight(a.realWeight) })),
+    { k: t('ui.home.statFee'), v: `${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% ${t('ui.home.perYear')}` },
+    ...(agents
+      ? [{ k: t('ui.home.agentsEyebrow'), v: `${agents.calls} ${t('ui.home.agentsStat').replace('{n}', String(agents.wallets))}` }]
+      : []),
+    {
+      k: t('ui.home.statAuction'),
+      v: onChainData
+        ? onChainData.auctionOpen
+          ? `${t('ui.home.auctionOpen')} · ${onChainData.auctionPremiumBps} bps`
+          : t('ui.home.auctionClosed')
+        : '—',
+    },
+    { k: 'Base', v: shortenAddress(DISPLAY_CONTRACT_ADDRESS) },
+  ];
+
+  // The strip runs inside the page column, not edge to edge. The track is
+  // duplicated because the animation shifts it by half its width, so the loop
+  // closes without a jump.
+  const entry = (it: { k: string; v: string }, key: string) => (
+    <span className="inline-flex items-baseline gap-2 px-4 sm:gap-3 sm:px-7" key={key}>
+      <span className="g-eyebrow">{it.k}</span>
+      <span className="tnum font-mono text-[12px] text-[color:var(--ink)] sm:text-[13px]">{it.v}</span>
+      <span aria-hidden="true" className="ml-2 h-1 w-1 rounded-full bg-[color:var(--line-gold)] sm:ml-4" />
+    </span>
+  );
+
   return (
-    <div className={`${shellCard} h-full p-4 sm:p-5`}>
-      <div className="flex items-start justify-between gap-4">
+    <div className="g-ticker overflow-hidden border-y border-[color:var(--line)] py-4">
+      <div className="g-ticker-track">
+        {items.map((it, i) => entry(it, `a${i}`))}
+        {items.map((it, i) => (
+          <span aria-hidden="true" key={`b${i}`}>
+            {entry(it, `b-${i}`)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+
+function BasketCard({ asset, t, showPrice = true }: { asset: BasketItem; t: (key: string) => string; showPrice?: boolean }) {
+  const target = asset.baseWeight / 100;
+  const delta = asset.realWeight - target;
+  const rows = [
+    { k: t('ui.basket.value'), v: formatCurrency(asset.tvl) },
+    { k: t('ui.basket.target'), v: formatWeight(target) },
+    { k: t('ui.home.delta'), v: `${delta >= 0 ? '+' : '−'}${formatPercent(Math.abs(delta)).replace('%', '')} pp` },
+    ...(showPrice ? [{ k: t('ui.basket.dynamic'), v: formatWeight(asset.dynamicWeight / 100) }] : []),
+  ];
+  return (
+    <div className="g-card g-hover h-full p-5">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-serif text-lg tracking-tight text-white sm:text-xl">{asset.name}</p>
-          <p className="mt-1 truncate text-xs text-zinc-400">{shortenAddress(asset.address)}</p>
+          <p className="text-base font-semibold tracking-tight text-white">{asset.name}</p>
+          {showPrice ? (
+            <>
+              <p className="g-eyebrow mt-1">{t('ui.basket.price')}</p>
+              <p className="tnum mt-0.5 text-xl font-semibold text-white">{formatCurrency(asset.price, 2)}</p>
+            </>
+          ) : null}
         </div>
-        <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-300">
+        <span className="tnum shrink-0 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
           {formatWeight(asset.realWeight)}
-        </div>
+        </span>
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-2.5">
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3">
-          <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">TVL</p>
-          <p className="mt-2 break-words text-sm font-semibold leading-tight text-white sm:text-base">{formatCurrency(asset.tvl)}</p>
-        </div>
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3">
-          <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">Price</p>
-          <p className="mt-2 break-words text-sm font-semibold leading-tight text-white sm:text-base">{formatCurrency(asset.price, 2)}</p>
-        </div>
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3">
-          <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">Dynamic</p>
-          <p className="mt-2 break-words text-sm font-semibold leading-tight text-white sm:text-base">{formatWeight(asset.dynamicWeight / 100)}</p>
-        </div>
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3">
-          <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">Base</p>
-          <p className="mt-2 break-words text-sm font-semibold leading-tight text-white sm:text-base">{formatWeight(asset.baseWeight / 100)}</p>
-        </div>
-      </div>
+      <dl className="mt-4 divide-y divide-white/[0.06]">
+        {rows.map((r) => (
+          <div className="flex items-center justify-between py-2 text-sm" key={r.k}>
+            <dt className="text-zinc-500">{r.k}</dt>
+            <dd className="tnum font-medium text-zinc-200">{r.v}</dd>
+          </div>
+        ))}
+      </dl>
+      {asset.shielded ? <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-amber-300">{t('ui.basket.shield')}</p> : null}
     </div>
   );
 }
@@ -217,7 +302,7 @@ function TransactionTable({ t, transactions, isTransactionsLoading }: { t: (key:
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm text-zinc-300">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+          <thead className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
             <tr>
               <th className="px-5 py-4 font-medium">{t('dashboard.txType')}</th>
               <th className="px-5 py-4 font-medium">{t('dashboard.txHash')}</th>
@@ -305,9 +390,9 @@ function AgentPulse({ t }: { t: (key: string) => string }) {
         organic?: { paid_calls?: number; unique_agents?: number };
       }) => {
         if (cancelled) return;
-        // Si mostra il dato ORGANICO: i pagamenti dai nostri wallet (elencati nella promessa
-        // P2) sono un terzo del totale, e in vetrina gonfierebbero il numero. Il cumulativo
-        // resta pubblicato nell'endpoint, come P2 richiede.
+        // The ORGANIC figure is the one displayed: calls paid from protocol-operated wallets
+        // are a sizeable share of the total and would inflate a headline number. The cumulative
+        // total stays published on the endpoint, where the distinction is documented.
         const calls = Number(data?.organic?.paid_calls ?? data?.total_paid_calls ?? 0);
         const agents = Number(data?.organic?.unique_agents ?? data?.total_unique_agents ?? 0);
         if (calls > 0 || agents > 0) setStats({ calls, agents });
@@ -322,30 +407,30 @@ function AgentPulse({ t }: { t: (key: string) => string }) {
 
   return (
     <Link
-      className="group mt-4 block rounded-[1.75rem] border border-emerald-500/20 bg-emerald-500/[0.04] p-6 transition hover:border-emerald-500/40 hover:bg-emerald-500/[0.07] sm:p-7"
+      className="group g-card g-hover mt-4 block p-5"
       href="/observatory"
     >
       {/* items-start keeps the dot on the first line when the label wraps on mobile. */}
       <div className="flex items-start gap-2">
-        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 animate-pulse" />
-        <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-emerald-400/80">{t('landing.agentsEyebrow')}</p>
+        <span className="gblin-blink mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+        <p className="g-eyebrow">{t('landing.agentsEyebrow')}</p>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4">
         <div>
-          <p className="font-serif text-[clamp(1.9rem,7vw,2.6rem)] leading-none tracking-tight text-white">
+          <p className="tnum text-2xl font-semibold leading-none tracking-tight text-white">
             {stats.agents.toLocaleString('en-US')}
           </p>
           <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('landing.agentsUnique')}</p>
         </div>
         <div>
-          <p className="font-serif text-[clamp(1.9rem,7vw,2.6rem)] leading-none tracking-tight text-white">
+          <p className="tnum text-2xl font-semibold leading-none tracking-tight text-white">
             {stats.calls.toLocaleString('en-US')}
           </p>
           <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('landing.agentsCalls')}</p>
         </div>
       </div>
       <p className="mt-4 text-[11px] leading-5 text-zinc-500">{t('landing.agentsHint')}</p>
-      <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300/80 transition group-hover:text-emerald-200">
+      <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 transition group-hover:text-amber-200">
         {t('landing.agentsCta')}
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -397,11 +482,10 @@ function MintVsPoolSection({ t }: { t: (key: string) => string }) {
   const rows = data?.rows ?? [];
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.05] via-[#080808] to-[#080808]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+    <section className="g-card-elevated relative overflow-hidden">
       <div className="p-6 sm:p-8">
-        <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-400/70 mb-2">{t('landing.mvpEyebrow')}</p>
-        <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-3">{t('landing.mvpTitle')}</h2>
+        <p className="g-eyebrow g-eyebrow-gold mb-2">{t('landing.mvpEyebrow')}</p>
+        <h2 className={`${sectionTitle} mb-3`}>{t('landing.mvpTitle')}</h2>
         <p className="max-w-2xl text-sm leading-7 text-white/50 mb-6">{t('landing.mvpIntro')}</p>
 
         <div className="overflow-x-auto">
@@ -409,7 +493,7 @@ function MintVsPoolSection({ t }: { t: (key: string) => string }) {
             <thead>
               <tr className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">
                 <th className="pb-3 pr-4 font-normal">{t('landing.mvpColSize')}</th>
-                <th className="pb-3 pr-4 font-normal text-emerald-400/80">{t('landing.mvpColMint')}</th>
+                <th className="pb-3 pr-4 font-normal text-amber-300">{t('landing.mvpColMint')}</th>
                 <th className="pb-3 pr-4 font-normal">{t('landing.mvpColPool')}</th>
                 <th className="pb-3 font-normal">{t('landing.mvpColDiff')}</th>
               </tr>
@@ -426,9 +510,9 @@ function MintVsPoolSection({ t }: { t: (key: string) => string }) {
                 : rows.map(row => (
                     <tr className="border-t border-white/[0.06]" key={row.usd}>
                       <td className="py-4 pr-4 font-serif text-lg text-white">${row.usd.toLocaleString('en-US')}</td>
-                      <td className="py-4 pr-4 font-mono text-sm text-emerald-300">
+                      <td className="py-4 pr-4 font-mono text-sm text-amber-300">
                         {formatCurrency(row.mintUsd, 2)}
-                        <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-500/60">/ token</span>
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-zinc-500">/ token</span>
                       </td>
                       <td className="py-4 pr-4 font-mono text-sm text-zinc-400">
                         {formatCurrency(row.poolUsd, 2)}
@@ -454,30 +538,8 @@ function MintVsPoolSection({ t }: { t: (key: string) => string }) {
           {t('landing.mvpFootnote2')}
         </p>
 
-        {/* The DEX routes, kept honest and kept second. */}
-        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
-          <p className="text-sm font-semibold text-white">{t('landing.mvpPoolsTitle')}</p>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-white/50">{t('landing.mvpPoolsBody')}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <a
-              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
-              href="https://aerodrome.finance/swap?from=eth&to=0x36C81d7E1966310F305eA637e761Cf77F90852f0&chain0=8453&chain1=8453"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {t('landing.mvpAero')} <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            <a
-              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
-              href="https://app.uniswap.org/explore/pools/base/0xAb305c45F4E42A73909a49a6775e3f7782239dAE"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {t('landing.mvpUni')} <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-          <p className="mt-4 text-[11px] leading-6 text-zinc-600">{t('hero.uniswapBotNote')}</p>
-        </div>
+        {/* No DEX routes: the vault in service has no secondary market, and the pools of the previous
+            contracts hold a different token. Linking them here would send a buyer to the wrong one. */}
       </div>
     </section>
   );
@@ -491,29 +553,22 @@ function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onCh
   const tvl = formatCurrency(onChainData?.tvl || 0);
 
   return (
-    <section className="rounded-2xl border border-white/[0.07] bg-[#080808] p-6 sm:p-8">
-      <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-2">{t('landing.sizeEyebrow')}</p>
-      <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-3 max-w-2xl">{t('landing.sizeTitle')}</h2>
-      <p className="max-w-3xl text-sm leading-7 text-white/50">
-        {t('landing.sizeBodyA')} <span className="font-semibold text-white">{tvl}</span>{t('landing.sizeBodyB')}
+    <section className="g-section">
+      <div className="flex items-center gap-6">
+        <span className="g-eyebrow shrink-0 text-[color:var(--ink)]">{t('landing.sizeEyebrow')}</span>
+        <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
+      </div>
+      <h2 className="font-display mt-7 max-w-[24ch] text-[clamp(1.6rem,3vw,2.25rem)] font-light leading-[1.15] text-[color:var(--ink)]">{t('landing.sizeTitle')}</h2>
+      <p className="mt-5 max-w-[42rem] text-[15px] leading-7 text-zinc-500">
+        {t('landing.sizeBodyA')} <span className="tnum font-mono text-[color:var(--ink)]">{tvl}</span>{t('landing.sizeBodyB')}
       </p>
-      <p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">{t('landing.sizeSupply')}</p>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <a
-          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
-          href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          {t('landing.sizeCta')} <ExternalLink className="h-3.5 w-3.5" />
+      <p className="mt-4 max-w-[42rem] text-[15px] leading-7 text-zinc-500">{t('landing.sizeSupply')}</p>
+      <div className="mt-8 flex flex-wrap gap-2">
+        <a className="g-chip" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noopener noreferrer" target="_blank">
+          {t('landing.sizeCta')} <ExternalLink className="h-3 w-3" />
         </a>
-        <a
-          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white/20 hover:text-white"
-          href={`https://basescan.org/token/${DISPLAY_CONTRACT_ADDRESS}#balances`}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          {t('landing.sizeHolders')} <ExternalLink className="h-3.5 w-3.5" />
+        <a className="g-chip" href={`https://basescan.org/token/${DISPLAY_CONTRACT_ADDRESS}#balances`} rel="noopener noreferrer" target="_blank">
+          {t('landing.sizeHolders')} <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     </section>
@@ -521,409 +576,293 @@ function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onCh
 }
 
 export function HomeView(props: HomeViewProps) {
-  const { t, onChainData, basketData, lastYieldDistribution, discountPercentage, isMarketLoading, isOnChainLoading, isConnected, address, openWallet, disconnectWallet, copyContract, copied } = props;
+  const { t, onChainData, basketData, isOnChainLoading, copyContract, copied } = props;
+
+  const why = [
+    { icon: <Landmark className="h-4 w-4" />, title: t('ui.home.why1T'), body: t('ui.home.why1B') },
+    { icon: <Shield className="h-4 w-4" />, title: t('ui.home.why2T'), body: t('ui.home.why2B') },
+    { icon: <Activity className="h-4 w-4" />, title: t('ui.home.why3T'), body: t('ui.home.why3B') },
+    { icon: <TrendingUp className="h-4 w-4" />, title: t('ui.home.why4T'), body: t('ui.home.why4B') },
+  ];
+  const security = [
+    { title: t('ui.home.sec1Title'), body: t('ui.home.sec1Body'), href: `https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`, label: t('landing.proofVerify') },
+    { title: t('ui.home.sec2Title'), body: t('ui.home.sec2Body'), href: 'https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd', label: t('ui.home.linkTimelock') },
+    { title: t('ui.home.sec3Title'), body: t('ui.home.sec3Body'), href: 'https://github.com/gblinproject/GBLIN-Protocol', label: t('ui.home.linkSource') },
+    { title: t('ui.home.sec4Title'), body: t('ui.home.sec4Body'), href: 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/audits/README.md', label: t('ui.home.linkReview') },
+  ];
+  const resources = [
+    { label: t('site.whitepaper'), href: WHITEPAPER_URL },
+    { label: t('site.basescan'), href: `https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}` },
+    { label: 'GitHub', href: 'https://github.com/gblinproject' },
+    { label: 'DefiLlama', href: 'https://defillama.com/protocol/tvl/global-balanced-liquidity-index' },
+  ];
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-
-      {/* HERO */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/[0.07] bg-[#080808] p-7 sm:p-10 lg:p-14">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(245,158,11,0.13),transparent)]" />
-        <div className="absolute -right-20 top-0 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
-        <div className="absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-amber-500/5 blur-[60px]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-        <div className="relative grid grid-cols-1 gap-10 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+    <div>
+      {/* ---------------------------------------------------------------- HERO */}
+      <section className="g-hero relative isolate pb-12 pt-4 lg:pb-20 lg:pt-8">
+        {/* The light the hero sits on, taken from the render rather than drawn:
+            screen blending keeps only what is brighter than the page, so the
+            black of the strip adds nothing and only the glow reaches through. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-1/2 -z-10 h-[190px] w-screen -translate-x-1/2 bg-no-repeat opacity-60 mix-blend-screen"
+          style={{
+            backgroundImage: 'url("/images/gblin/hero-horizon.jpg")',
+            backgroundSize: '100% 100%',
+            backgroundPosition: 'center bottom',
+            // Faded at both ends: the brightest row of the photograph fell on
+            // the clipped bottom edge and left a hard rule across the page.
+            WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 56%, rgba(0,0,0,0.5) 82%, transparent 100%)',
+            maskImage: 'linear-gradient(180deg, transparent 0%, #000 56%, rgba(0,0,0,0.5) 82%, transparent 100%)',
+          }}
+        />
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] lg:gap-6">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-7">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                {t('dashboard.verified')}
+            <p className="g-eyebrow g-eyebrow-gold">{t('ui.home.heroEyebrow')}</p>
+            <h1 className="gblin-fade-up font-display mt-7 text-balance text-[clamp(2.3rem,5.1vw,4.1rem)] font-light uppercase leading-[1.06] tracking-[0.03em] text-[color:var(--ink)] [text-wrap:balance]">
+              {t('landing.h1a')}
+              <br />
+              <span className="text-amber-300">{t('landing.h1b')}</span>
+            </h1>
+            <p className="mt-7 max-w-[34rem] text-[15px] leading-7 text-zinc-400 sm:text-base sm:leading-8">{t('landing.sub')}</p>
+
+            <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
+              <Link className="g-btn g-btn-primary" href="/buy-gblin">
+                {t('landing.cta')}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link className="g-link" href="/vault">
+                {t('landing.ctaSecondary')}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            {/* The one figure that matters, read from the contract. */}
+            <div className="mt-12 flex flex-wrap items-end gap-x-8 gap-y-4">
+              <div>
+                <p className="g-eyebrow">{t('ui.home.statNav')}</p>
+                <p className={`tnum mt-2 font-mono text-[clamp(2.1rem,4.4vw,2.9rem)] font-light leading-none text-amber-200 ${isOnChainLoading ? 'animate-pulse text-zinc-700' : ''}`}>
+                  {isOnChainLoading ? '—' : onChainData?.nav || '—'}
+                </p>
+              </div>
+              <div className="pb-1">
+                <p className="g-eyebrow">{t('ui.home.statAuction')}</p>
+                <p className="mt-2 flex items-center gap-2 text-sm text-zinc-300">
+                  {onChainData?.auctionOpen ? <span className="gblin-blink h-1.5 w-1.5 rounded-full bg-amber-300" /> : null}
+                  {onChainData ? (onChainData.auctionOpen ? `${t('ui.home.auctionOpen')} · ${onChainData.auctionPremiumBps} bps` : t('ui.home.auctionClosed')) : '—'}
+                </p>
               </div>
             </div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-3">{t('site.brandSubtitle')}</p>
-            <h1 className="font-serif text-[clamp(2.3rem,6.5vw,4.4rem)] leading-[0.98] tracking-tight text-white">
-              {t('landing.h1a')}{' '}
-              <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text italic text-transparent">
-                {t('landing.h1b')}
-              </span>
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-white/55 sm:text-lg">{t('landing.sub')}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                className="group inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-black transition hover:bg-amber-400 hover:-translate-y-0.5 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
-                href="/buy-gblin"
-              >
-                {t('landing.cta')}
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-transparent px-5 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-400 transition hover:border-amber-500/25 hover:text-amber-300"
-                href="/vault"
-              >
-                {t('landing.ctaSecondary')}
-              </Link>
-            </div>
-            <p className="mt-3 text-xs leading-6 text-zinc-500">{t('landing.ctaMicro')}</p>
-            {/* The bait: we don't ask to be trusted — we hand over the question. The answer any AI
-                gives is built from our public docs + on-chain data, so it is a free third-party check. */}
-            <p className="mt-2 text-xs leading-6 text-amber-200/70">{t('landing.askYourAI')}</p>
 
-            {/* Verifiable proof strip — every item is a link someone can re-read on Base. */}
-            <div className="mt-7 flex flex-wrap items-center gap-2">
-              <button
-                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-[11px] font-mono text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-300"
-                onClick={copyContract}
-                type="button"
-              >
+            <div className="mt-8 flex flex-wrap items-center gap-2">
+              <button className="g-chip font-mono" onClick={copyContract} type="button">
                 <Copy className="h-3.5 w-3.5" />
                 {copied ? t('site.copied') : shortenAddress(DISPLAY_CONTRACT_ADDRESS)}
               </button>
-              <a
-                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-2 text-[11px] font-mono text-zinc-500 transition hover:border-amber-500/20 hover:text-amber-300"
-                href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
+              <a className="g-chip" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`} rel="noopener noreferrer" target="_blank">
                 {t('landing.proofVerify')}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
-
-            {/* Address disambiguation. Rendered as static text on purpose: search engines
-                still summarise an earlier, superseded deployment as "the GBLIN contract",
-                and an identically-named token exists at that address. Machines that never
-                run JS must be able to read which one is current. */}
-            <p className="mt-4 max-w-xl text-[11px] leading-6 text-zinc-600">
-              Current GBLIN contract on Base:{' '}
-              <span className="font-mono text-zinc-400">{DISPLAY_CONTRACT_ADDRESS}</span>. An earlier
-              deployment at{' '}
-              <span className="font-mono">0x38DcDB3A381677239BBc652aed9811F2f8496345</span> carries
-              the same name and symbol but is <strong className="text-zinc-500">superseded</strong> —
-              it is not the token this site describes, and it should not be traded or integrated.
-            </p>
           </div>
 
-          {/* One live stat, and what stands behind it. */}
-          <div className="w-full min-w-0 xl:w-[400px]">
-            <div className="rounded-[1.75rem] border border-amber-500/20 bg-amber-500/[0.04] p-6 sm:p-8">
-              <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">{t('landing.navLabel')}</p>
-              <p className={`mt-3 font-serif text-[clamp(2.4rem,9vw,3.6rem)] leading-none tracking-tight text-white ${isOnChainLoading ? 'animate-pulse opacity-50' : ''} break-words`}>
-                {isOnChainLoading ? '...' : (onChainData?.nav || '—')}
-              </p>
-              <p className="mt-3 text-[11px] leading-5 text-zinc-500">{t('landing.navHint')}</p>
-
-              {/* Taken from holders, next to given back — the fee ledger, live. */}
-              <NavFeesHeroLedger t={t} />
-
-              <div className="mt-6 border-t border-white/[0.07] pt-5">
-                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-3">{t('landing.backedBy')}</p>
-                {basketData.length > 0 ? (
-                  <>
-                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/5">
-                      {basketData.map((asset, i) => (
-                        <div
-                          key={asset.address}
-                          className={i === 0 ? 'bg-amber-400' : i === 1 ? 'bg-sky-400' : 'bg-emerald-400'}
-                          style={{ width: `${Math.max(asset.realWeight, 0)}%` }}
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-3 space-y-1.5">
-                      {basketData.map((asset, i) => (
-                        <div className="flex items-center justify-between text-xs" key={asset.address}>
-                          <span className="flex items-center gap-2 text-zinc-400">
-                            <span className={`h-2 w-2 rounded-full ${i === 0 ? 'bg-amber-400' : i === 1 ? 'bg-sky-400' : 'bg-emerald-400'}`} />
-                            {asset.name}
-                          </span>
-                          <span className="font-mono text-zinc-500">{formatWeight(asset.realWeight)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="h-2.5 w-full animate-pulse rounded-full bg-white/5" />
-                    <div className="h-3 w-2/3 animate-pulse rounded bg-white/5" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Self-hides until real counts arrive. */}
-            <AgentPulse t={t} />
+          {/* The reserve core carries the light of the whole page. */}
+          <div className="min-w-0">
+            <ReserveCore basket={basketData} loading={isOnChainLoading} t={t} />
           </div>
         </div>
       </section>
 
-      {/* ── APPRECIATION ENGINE: the 0.05% → treasury fee, explained ── */}
-      <FeeEngineSection t={t} />
+      {/* -------------------------------------------------- LIVE STRIP ON BASE */}
+      <LiveTicker basket={basketData} onChainData={onChainData} t={t} />
 
-      {/* ── WHAT YOU ACTUALLY PAY: mint vs pool, live from Base ── */}
-      <MintVsPoolSection t={t} />
-
-      {/* VAULT BASKET + YIELD */}
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)]">
-        <div className="rounded-2xl border border-white/[0.07] bg-[#080808] p-6 sm:p-8">
-          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-amber-400/70 mb-2">{t('vault.core')}</p>
-          <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-2">{t('vault.title')}</h2>
-          <p className="text-sm text-white/40 mb-6 max-w-lg">{t('vault.desc')}</p>
-          {basketData.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-3">
-              {basketData.map((asset) => (
-                <BasketCard asset={asset} key={asset.address} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-3">
-              {['cbBTC', 'WETH', 'USDC'].map(name => (
-                <div key={name} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 animate-pulse">
-                  <p className="font-serif text-lg text-white/30">{name}</p>
-                  <div className="mt-3 space-y-2">
-                    <div className="h-3 bg-white/5 rounded" />
-                    <div className="h-3 bg-white/5 rounded w-2/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* ----------------------------------------------------------- WHY GBLIN */}
+      <section className="g-section">
+        <div className="flex items-center gap-6">
+          <span className="g-eyebrow shrink-0 text-[color:var(--ink)]">{t('ui.home.whyEyebrow')}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
+          <span className="g-eyebrow hidden shrink-0 sm:block">{t('ui.home.whyNote')}</span>
         </div>
-        <div className="rounded-2xl border border-white/[0.07] bg-[#080808] p-6 sm:p-8">
-          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-amber-400/70 mb-2">{t('yield.title')}</p>
-          <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-2">{t('core.architectureTitle')}</h2>
-          <p className="text-sm text-white/40 mb-6">{t('yield.desc')}</p>
-          <div className="space-y-3">
-            {[
-              { icon: <RefreshCw className="h-4 w-4" />, title: t('yield.step1Title'), body: t('yield.step1Desc') },
-              { icon: <TrendingUp className="h-4 w-4" />, title: t('yield.step2Title'), body: t('yield.step2Desc') },
-              { icon: <Lock className="h-4 w-4" />, title: t('yield.step3Title'), body: t('yield.step3Desc') },
-            ].map((item, i) => (
-              <div key={i} className="flex gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:border-amber-500/15 transition-colors">
-                <div className="shrink-0 h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  {item.icon}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">{item.title}</p>
-                  <p className="mt-1 text-xs leading-6 text-zinc-500">{item.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+
+        <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
+          {why.map((item, i) => (
+            <div className={`lg:px-8 ${i > 0 ? 'lg:border-l lg:border-[color:var(--line)]' : 'lg:pl-0'} ${i === why.length - 1 ? 'lg:pr-0' : ''}`} key={item.title}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--line-gold)] text-amber-300">
+                {item.icon}
+              </span>
+              <p className="mt-6 text-[13px] font-medium uppercase tracking-[0.12em] text-[color:var(--ink)]">{item.title}</p>
+              <p className="mt-3 max-w-[26ch] text-sm leading-7 text-zinc-500">{item.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ── HOW BIG THIS IS: the vault's own size, stated first ── */}
-      <VaultSizeSection t={t} onChainData={onChainData} />
-
-      {/* ── SIMULATED 10y backtest of the live shield logic — below the live facts ── */}
+      {/* -------------------------------------------- PERFORMANCE, TEN YEARS */}
       <ProofSection t={t} />
 
-
-      {/* SECURITY & TRANSPARENCY */}
-      <section className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] to-[#080808] overflow-hidden">
-        <div className="p-6 sm:p-8">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-amber-400/70">{t('security.eyebrow') || 'Transparency is our Infrastructure'}</p>
-              <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white">{t('security.title') || 'Security & Transparency'}</h2>
-            </div>
+      {/* ---------------------------------------------------------- THE RESERVE */}
+      <section className="g-section">
+        <div className="grid items-stretch overflow-hidden rounded-sm border border-[color:var(--line)] bg-[#040404] lg:grid-cols-2">
+          {/* The reserve, drawn: one object of light over the dark, bleeding to the page edge. */}
+          <div className="relative order-2 aspect-[5/4] w-full overflow-hidden lg:order-1 lg:aspect-auto lg:min-h-[660px]">
+            {/* The reserve, photographed: the image carries the light, and its right
+                edge is masked so it dissolves into the page instead of ending. */}
+            <img
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              height={1280}
+              loading="lazy"
+              src="/images/gblin/reserve-scene.jpg"
+              width={2048}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(4,4,4,0.55) 0%, transparent 22%, transparent 62%, rgba(4,4,4,0.85) 92%, #040404 100%), linear-gradient(180deg, #040404 0%, transparent 16%, transparent 82%, #040404 100%)',
+              }}
+            />
           </div>
 
-          {/* Story Text */}
-          <div className="mb-8 p-5 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
-            <p className="text-sm leading-7 text-white/60 mb-4">{t('security.story1') || 'At GBLIN, we believe security is built by addressing problems in broad daylight. Before launching our definitive version (V6), white-hat research and multiple independent security reviews identified critical vulnerabilities — including a "Silent Catch" and a Path Spoofing vector.'}</p>
-            <p className="text-sm leading-7 text-white/60">{t('security.story2') || 'Unlike the crypto standard, we did not hide them. We rebuilt the engine from scratch and hardened it again for V6 — adaptive slippage, Chainlink min/max-answer bounds, and a fully parametric, hard-capped design. The GBLIN V6 infrastructure today guarantees rigorous mathematical protection for your capital.'}</p>
+          <div className="order-1 min-w-0 px-6 py-12 sm:px-8 lg:order-2 lg:py-16 lg:pl-12 lg:pr-10">
+            <div className="flex items-center gap-6">
+              <span className="g-eyebrow shrink-0">{t('ui.home.reserveEyebrow')}</span>
+              <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line)]" />
+            </div>
+            <h2 className="font-display mt-7 text-[clamp(1.9rem,3.6vw,2.75rem)] font-light uppercase leading-[1.08] tracking-[0.02em] text-[color:var(--ink)]">
+              {t('ui.home.reserveTitleA')}
+              <br />
+              {t('ui.home.reserveTitleB')}
+            </h2>
+            <p className="mt-6 max-w-[38rem] text-[15px] leading-7 text-zinc-500">{t('ui.home.reserveBody')}</p>
+
+            <div className="mt-10 grid gap-px overflow-hidden border-y border-[color:var(--line)] sm:grid-cols-3 sm:border-x-0">
+              {(basketData.length > 0 ? basketData : []).map((asset) => (
+                <div className="flex items-center gap-3 border-b border-[color:var(--line)] py-5 last:border-b-0 sm:border-b-0 sm:border-r sm:px-5 sm:last:border-r-0 sm:first:pl-0" key={asset.address}>
+                  <AssetMark className="h-10 w-10 shrink-0" name={asset.name} />
+                  <span>
+                    <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-300">{asset.name}</span>
+                    <span className="tnum mt-0.5 block font-mono text-lg font-light leading-none text-[color:var(--ink)]">{formatWeight(asset.realWeight)}</span>
+                    <span className="tnum mt-1 block text-[11px] text-zinc-600">
+                      {t('ui.home.target')} {formatPercent(asset.baseWeight / 100, 0)}
+                    </span>
+                  </span>
+                </div>
+              ))}
+              {basketData.length === 0
+                ? ['cbBTC', 'WETH', 'USDC'].map((name) => (
+                    <div className="flex items-center gap-3 py-5 sm:px-5" key={name}>
+                      <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/[0.04]" />
+                      <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-600">{name}</span>
+                    </div>
+                  ))
+                : null}
+            </div>
+
+            <Link className="g-pill mt-8" href="/vault">
+              {t('ui.home.reserveCta')}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          
-          {/* Security Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {/* Delta-Balance Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <Lock className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-semibold text-white">{t('security.deltaBalanceTitle') || 'Rigorous Delta-Balance'}</p>
-              </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.deltaBalanceDesc') || 'The contract performs precise mathematical checks to prevent any liquidity drainage attacks. Every transaction validates total assets ≥ liabilities.'}</p>
-              <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] px-3 py-2">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">{t('security.mathProtection') || 'Math protection'}</p>
-              </div>
-            </div>
+        </div>
+      </section>
 
-            {/* Slippage Protection Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <Shield className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-semibold text-white">{t('security.slippageTitle') || 'Adaptive Slippage Protection'}</p>
-              </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.slippageDesc') || 'We eliminated "silent try/catch" on critical swaps. Internal swaps use an adaptive slippage envelope (0.5%–5.5%) driven by on-chain volatility, under an immutable 20% hard cap; if a swap can\'t meet its minimum, the contract reverts. Funds are 100% protected.'}</p>
-              <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.05] px-3 py-2">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">{t('security.noSilentFail') || 'No silent fails'}</p>
-              </div>
+      {/* --------------------------------------------- HOW IT WORKS AND FEES */}
+      <section className="g-section">
+        <div className="flex items-center gap-6">
+          <span className="g-eyebrow shrink-0 text-[color:var(--ink)]">{t('ui.home.howEyebrow')}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
+        </div>
+        <h2 className="font-display mt-7 max-w-[24ch] text-[clamp(1.6rem,3vw,2.25rem)] font-light leading-[1.15] text-[color:var(--ink)]">{t('ui.home.howTitle')}</h2>
+        <p className="mt-5 max-w-[42rem] text-[15px] leading-7 text-zinc-500">{t('yield.desc')}</p>
+        <div className="mt-10 grid gap-10 md:grid-cols-3 md:gap-0">
+          {[
+            { title: t('yield.step1Title'), body: t('yield.step1Desc') },
+            { title: t('yield.step2Title'), body: t('yield.step2Desc') },
+            { title: t('yield.step3Title'), body: t('yield.step3Desc') },
+          ].map((item, i) => (
+            <div className={`md:px-8 ${i > 0 ? 'md:border-l md:border-[color:var(--line)]' : 'md:pl-0'} ${i === 2 ? 'md:pr-0' : ''}`} key={item.title}>
+              <span className="tnum font-mono text-xs text-amber-300/70">0{i + 1}</span>
+              <p className="mt-4 text-[13px] font-medium uppercase tracking-[0.12em] text-[color:var(--ink)]">{item.title}</p>
+              <p className="mt-3 text-sm leading-7 text-zinc-500">{item.body}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Open Source Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 hover:border-emerald-500/20 transition-colors">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <ExternalLink className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-semibold text-white">{t('security.openSourceTitle') || 'Zero Pre-Mint & Open Source'}</p>
-              </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.openSourceDesc') || 'No hidden allocations. The code is fully open-source and verified on BaseScan. Complete transparency from day one.'}</p>
-              <a 
-                href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/[0.12]"
-              >
+      <FeeEngineSection t={t} />
+      <MintVsPoolSection t={t} />
+      <VaultSizeSection t={t} onChainData={onChainData} />
+
+      {/* -------------------------------------------------------------- VERIFY */}
+      <section className="g-section">
+        <div className="flex items-center gap-6">
+          <span className="g-eyebrow shrink-0 text-[color:var(--ink)]">{t('ui.home.securityEyebrow')}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-[color:var(--line-strong)]" />
+        </div>
+        <h2 className="font-display mt-7 max-w-[22ch] text-[clamp(1.6rem,3vw,2.25rem)] font-light leading-[1.15] text-[color:var(--ink)]">{t('ui.home.trustTitle')}</h2>
+        <p className="mt-5 max-w-[42rem] text-[15px] leading-7 text-zinc-500">{t('ui.home.securityIntro')}</p>
+        <div className="mt-10 grid gap-10 border-t border-[color:var(--line)] pt-10 md:grid-cols-4 md:gap-0">
+          {security.map((item, i) => (
+            <div className={`md:px-6 ${i > 0 ? 'md:border-l md:border-[color:var(--line)]' : 'md:pl-0'} ${i === security.length - 1 ? 'md:pr-0' : ''}`} key={item.title}>
+              <p className="text-[13px] font-medium uppercase tracking-[0.12em] text-amber-300">{item.title}</p>
+              <p className="mt-3 text-sm leading-7 text-zinc-500">{item.body}</p>
+              <a className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-300 hover:text-amber-200" href={item.href} rel="noopener noreferrer" target="_blank">
+                {item.label}
                 <ExternalLink className="h-3 w-3" />
-                {t('security.viewOnBasescan') || 'View on BaseScan'}
               </a>
             </div>
-
-            {/* Bug Bounty Card */}
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5 hover:border-amber-500/40 transition-colors">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400">
-                  <Zap className="h-4 w-4" />
-                </div>
-                <p className="text-sm font-semibold text-white">{t('security.bugBountyTitle') || '$50 Math Challenge'}</p>
-              </div>
-              <p className="text-xs leading-6 text-zinc-500 mb-3">{t('security.bugBountyDesc') || 'We are so confident in our "Dynamic Volume Floor" rebalancing model that we have a $50 Bug Bounty permanently open for anyone who can break the protocol mathematics.'}</p>
-              <a 
-                href="https://github.com/gblinproject/GBLIN-Protocol/tree/main/challenge"
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.1] px-3 py-2 text-[11px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.15]"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {t('security.viewBounty') || 'See the challenge'}
-              </a>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* FEATURE CARDS */}
-      <section className="grid gap-3 md:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <Landmark className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.bankTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.bankDesc')}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-6 hover:border-amber-500/40 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <Shield className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.crashShieldTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.crashShieldDesc')}</p>
-          <p className="mt-2 text-[11px] leading-5 text-amber-400/60">{t('core.crashShieldBotNote')}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 hover:border-amber-500/20 transition-all group">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 mb-4 group-hover:scale-110 transition-transform">
-            <TrendingUp className="h-5 w-5" />
-          </div>
-          <p className="font-serif text-lg tracking-tight text-white mb-2">{t('core.appreciationTitle')}</p>
-          <p className="text-sm leading-7 text-white/50">{t('core.appreciationDesc')}</p>
-        </div>
-      </section>
-
-      {/* DEFILLAMA TRACKED */}
-      <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-[#080808] overflow-hidden">
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            <a 
-              href="https://defillama.com/protocol/tvl/global-balanced-liquidity-index" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-4"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition group-hover:scale-105">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                  <path d="M2 17l10 5 10-5"/>
-                  <path d="M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">{t('defillama.trackedOn') || 'Tracked on DefiLlama'}</p>
-                <p className="text-lg font-semibold text-white group-hover:text-emerald-300 transition-colors">Global Balanced Liquidity Index</p>
-              </div>
-            </a>
-            <div className="flex-1 md:border-l md:border-white/[0.1] md:pl-6">
-              <p className="text-sm leading-7 text-white/50">{t('defillama.desc') || 'GBLIN is officially tracked as an autonomous Index Protocol on Base network, classified alongside industry leaders like Index Coop and Reserve. No pre-set templates—just pure on-chain transparent and verifiable infrastructure.'}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PROTOCOL SNAPSHOT */}
-      <section className="rounded-2xl border border-white/[0.07] bg-[#080808] overflow-hidden">
-        <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.1fr_0.9fr]">
+      {/* -------------------------------------------------------------- AGENTS */}
+      <section className="g-section">
+        <div className="grid items-end gap-8 border-y border-[color:var(--line)] py-10 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-3">{t('site.protocolSnapshotEyebrow')}</p>
-            <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white mb-3">{t('site.protocolSnapshotTitle')}</h2>
-            <p className="text-sm leading-7 text-white/50 max-w-lg mb-6">{t('dashboard.protocolDesc')}</p>
-            <div className="flex flex-wrap gap-3">
-              <Link className="inline-flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/[0.1] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition hover:bg-white/[0.12] hover:-translate-y-0.5" href="/rebalance">
-                {t('nav.rebalance')} <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-              <a className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300 transition hover:bg-amber-500/[0.12] hover:-translate-y-0.5" href={WHITEPAPER_URL} rel="noreferrer" target="_blank">
-                <Download className="h-3.5 w-3.5" /> {t('site.whitepaper')}
-              </a>
-              <a className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition hover:border-white/[0.12] hover:text-zinc-300" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
-                <ExternalLink className="h-3.5 w-3.5" /> {t('site.basescan')}
-              </a>
-            </div>
+            <p className="g-eyebrow g-eyebrow-gold">{t('ui.home.agentsEyebrow')}</p>
+            <h2 className="font-display mt-4 max-w-[28ch] text-[clamp(1.4rem,2.6vw,2rem)] font-light leading-[1.2] text-[color:var(--ink)]">{t('ui.home.agentsTitle')}</h2>
+            <p className="mt-4 max-w-[46rem] text-sm leading-7 text-zinc-500">{t('ui.home.agentsBody')}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: t('site.discountPremium'), value: `${discountPercentage.toFixed(2)}%`, hint: t('site.marketVsNav') },
-              { label: t('site.lastYield'), value: formatDateLabel(lastYieldDistribution), hint: t('site.recentContractCycle') },
-              { label: t('site.stabilityFund'), value: `${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 4)} WETH`, hint: 'Liquidity backstop' },
-              { label: 'Wallet', value: isConnected && address ? shortenAddress(address) : t('site.notConnected'), hint: t('site.connectedOperator') },
-            ].map(m => (
-              <div key={m.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-600 mb-2">{m.label}</p>
-                <p className="font-serif text-xl text-white leading-tight">{m.value}</p>
-                <p className="mt-1 text-[10px] text-zinc-600">{m.hint}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="border-t border-white/[0.05] grid gap-4 p-6 sm:p-8 sm:grid-cols-2">
-          <WalletPanel address={address} disconnectWallet={disconnectWallet} isConnected={isConnected} openWallet={openWallet} t={t} />
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-2">{t('site.research')}</p>
-            <p className="text-base font-semibold text-white mb-2">{t('site.researchTitle')}</p>
-            <p className="text-sm leading-7 text-zinc-500">{t('yield.mechanismDesc')}</p>
-          </div>
+          <Link className="g-pill" href="/agents">
+            {t('ui.home.agentsCta')}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </section>
 
-      {/* Mobile keeps the one action within thumb reach at every scroll depth. */}
+      {/* ----------------------------------------------------------- RESOURCES */}
+      <section className="pb-16">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="g-eyebrow mr-2">{t('ui.home.resourcesTitle')}</span>
+          {resources.map((r) => (
+            <a className="g-chip" href={r.href} key={r.label} rel="noopener noreferrer" target="_blank">
+              {r.label}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          ))}
+        </div>
+        {/* Static on purpose: crawlers that never run JS must be able to read which deployment is current. */}
+        <p className="mt-8 max-w-3xl text-xs leading-6 text-zinc-600">
+          <span className="font-medium text-zinc-500">{t('ui.home.contractNotes')}.</span>{' '}
+          Current GBLIN contract on Base: <span className="font-mono text-zinc-500">{DISPLAY_CONTRACT_ADDRESS}</span>. Earlier
+          deployments at <span className="font-mono">0x36C81d7E1966310F305eA637e761Cf77F90852f0</span> and{' '}
+          <span className="font-mono">0x38DcDB3A381677239BBc652aed9811F2f8496345</span> carry the same name and symbol but are
+          superseded: they are not the token this site describes and should not be traded or integrated. Holders of either can
+          move across with the migration panel on the account page.
+        </p>
+      </section>
+
+      {/* One action within thumb reach on phones. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 p-3 sm:hidden">
-        <Link
-          className="pointer-events-auto flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-[12px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
-          href="/buy-gblin"
-        >
+        <Link className="g-btn g-btn-primary pointer-events-auto w-full" href="/buy-gblin">
           {t('landing.cta')}
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
-      <div className="h-16 sm:hidden" aria-hidden="true" />
+      <div aria-hidden="true" className="h-14 sm:hidden" />
     </div>
   );
 }
@@ -957,7 +896,7 @@ export function DashboardView(props: DashboardViewProps) {
           <MetricCard hint={t('dashboard.assetsInVault')} label={t('dashboard.tvlTitle')} loading={isOnChainLoading} value={formatCurrency(onChainData?.tvl || 0)} />
           <MetricCard hint={t('site.marketDislocation')} label={t('site.discountPremium')} loading={isMarketLoading || isOnChainLoading} value={`${discountPercentage.toFixed(2)}%`} />
         </div>
-        {/* HERO — quanto è stato redistribuito a TUTTI i holder: il nostro punto di forza */}
+        {/* Headline figure: total value redistributed to every holder. */}
         <div className="mt-4 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
@@ -971,7 +910,7 @@ export function DashboardView(props: DashboardViewProps) {
         <SectionHeading body={t('vault.desc')} eyebrow={t('core.radarTitle')} title={t('dashboard.assetsInVault')} />
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           {basketData.map((asset) => (
-            <BasketCard asset={asset} key={asset.address} />
+            <BasketCard asset={asset} key={asset.address} t={t} />
           ))}
         </div>
       </section>
@@ -995,15 +934,15 @@ export function DashboardView(props: DashboardViewProps) {
           </div>
           <div className={`${shellCard} p-5`}>
             <p className="text-sm font-semibold text-white">{t('site.reserveEngine')}</p>
-            {/* HERO — redistribuito a TUTTI i holder (yield che entra nel NAV) */}
+            {/* Headline figure: value redistributed to every holder, accruing into NAV. */}
             <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
               <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
               <p className="mt-2 font-serif text-3xl sm:text-4xl font-semibold leading-none text-amber-300 break-words">{onChainData?.totalYieldDistributed == null ? '—' : `${formatTokenAmount(onChainData.totalYieldDistributed, 6)} WETH`}</p>
               <p className="mt-2 text-[11px] leading-5 text-zinc-400">{t('dashboard.totalYieldDesc')}</p>
             </div>
             <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.stabilityFund')}</p>
-              <p className="mt-2 text-xl font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.managementFee')}</p>
+              <p className="mt-2 text-xl font-semibold text-white">{((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year</p>
             </div>
           </div>
         </div>
@@ -1030,8 +969,268 @@ const FX_TO_USD: Record<string, number> = {
   USD: 1, EUR: 1.08, CNY: 0.138, JPY: 0.0067,
 };
 
+const TOKEN_GLYPH: Record<string, string> = { ETH: 'Ξ', WETH: 'Ξ', cbBTC: '₿', USDC: '$' };
+
+function TokenGlyph({ symbol }: { symbol: string }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-[13px] font-semibold text-zinc-200">
+      {TOKEN_GLYPH[symbol] ?? symbol.slice(0, 1)}
+    </span>
+  );
+}
+
+/**
+ * Token selector, the way every exchange interface does it: the pill next to the
+ * amount opens the list. Before this, that pill switched the input between a
+ * currency amount and a share count, which is a different question and surprised
+ * anyone who clicked it expecting to pay in another token.
+ */
+/**
+ * Balances of every accepted token for one wallet, read in one pass. Without it the
+ * list is a catalogue of tokens the visitor probably does not hold; with it the list
+ * is their wallet. A read that fails leaves the entry out rather than showing a zero
+ * we did not measure.
+ */
+function useTokenBalances(address?: string) {
+  const [balances, setBalances] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    if (!address) {
+      setBalances(null);
+      return;
+    }
+    let cancelled = false;
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    Promise.all(
+      TRADE_TOKEN_OPTIONS.map(async (token) => {
+        try {
+          if (token.isNative) {
+            const raw = await provider.getBalance(address);
+            return [token.symbol, Number(ethers.formatUnits(raw, 18))] as const;
+          }
+          const erc20 = new ethers.Contract(token.address, ERC20_ABI, provider);
+          const raw: bigint = await erc20.balanceOf(address);
+          return [token.symbol, Number(ethers.formatUnits(raw, token.decimals))] as const;
+        } catch {
+          return null;
+        }
+      }),
+    )
+      .then((rows) => {
+        if (cancelled) return;
+        const out: Record<string, number> = {};
+        for (const row of rows) if (row) out[row[0]] = row[1];
+        setBalances(out);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  return balances;
+}
+
+function formatBalance(value: number) {
+  if (value === 0) return '0';
+  if (value < 0.0001) return value.toExponential(1);
+  return value.toLocaleString('en-US', { maximumFractionDigits: value < 1 ? 6 : 4 });
+}
+
+function TokenPicker({
+  t,
+  selected,
+  onSelect,
+  customAddress,
+  setCustomAddress,
+  address,
+}: {
+  t: (key: string) => string;
+  selected: string;
+  onSelect: (symbol: string) => void;
+  customAddress: string;
+  setCustomAddress: (value: string) => void;
+  address?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const balances = useTokenBalances(address);
+  const common = ['ETH', 'USDC', 'cbBTC'];
+  const all = TRADE_TOKEN_OPTIONS.map((token) => token.symbol);
+  const term = query.trim().toLowerCase();
+  const isAddress = term.startsWith('0x') && term.length >= 10;
+  // The list is what the visitor can actually pay with: their own balances once a
+  // wallet is connected, and ETH alone before that, because a catalogue of tokens
+  // nobody has yet is noise on the one screen where they are about to spend.
+  // Everything else is one click away under "show all", and search always reaches it.
+  const held = balances ? all.filter((sym) => sym === 'ETH' || (balances[sym] ?? 0) > 0) : ['ETH'];
+  const base = showAll ? all : held;
+  const shown = term ? all.filter((sym) => sym.toLowerCase().includes(term)) : base;
+  const hiddenCount = showAll ? 0 : all.length - held.length;
+  const label = selected === 'CUSTOM' ? t('ui.token.custom') : selected;
+
+  const pick = (symbol: string) => {
+    onSelect(symbol);
+    setOpen(false);
+    setQuery('');
+  };
+
+  return (
+    <>
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.06] py-1.5 pl-1.5 pr-3 text-sm font-semibold text-white transition hover:bg-white/[0.12]"
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        <TokenGlyph symbol={selected === 'CUSTOM' ? '0x' : selected} />
+        <span className="max-w-[7ch] truncate">{label}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute inset-x-0 top-0 z-30 rounded-[1.25rem] border border-white/[0.1] bg-[#0b0b0b] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.8)]">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">{t('ui.token.selectToken')}</p>
+            <button className="g-btn g-btn-ghost g-btn-sm px-2" onClick={() => setOpen(false)} type="button">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <label className="mt-3 block rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+            <input
+              className="w-full bg-transparent text-sm text-white outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 placeholder:text-zinc-600"
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('ui.token.search')}
+              type="text"
+              value={query}
+            />
+          </label>
+
+          {base.length > common.length && !term ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {common.map((sym) => (
+              <button
+                className={`inline-flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs font-semibold transition ${
+                  selected === sym ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07]'
+                }`}
+                key={sym}
+                onClick={() => pick(sym)}
+                type="button"
+              >
+                <TokenGlyph symbol={sym} />
+                {sym}
+              </button>
+            ))}
+          </div>
+          ) : null}
+
+          {/* The heading names what is actually on screen: the wallet's tokens, the single
+              default way in, or the full catalogue once it has been asked for. */}
+          <p className="g-eyebrow mt-4">
+            {showAll || term ? t('ui.token.all') : balances ? t('ui.token.yours') : t('ui.token.defaultWay')}
+          </p>
+          <div className="mt-1 max-h-52 overflow-y-auto">
+            {shown.map((sym) => (
+              <button
+                className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition hover:bg-white/[0.05]"
+                key={sym}
+                onClick={() => pick(sym)}
+                type="button"
+              >
+                <TokenGlyph symbol={sym} />
+                <span className="flex-1 text-sm font-medium text-zinc-200">{sym}</span>
+                {balances && balances[sym] !== undefined ? (
+                  <span className="tnum text-xs text-zinc-500">{formatBalance(balances[sym])}</span>
+                ) : null}
+                {selected === sym ? <Check className="h-4 w-4 text-amber-300" /> : null}
+              </button>
+            ))}
+            {shown.length === 0 && !isAddress ? (
+              <p className="px-2 py-3 text-sm text-zinc-500">—</p>
+            ) : null}
+            {hiddenCount > 0 && !term ? (
+              <button
+                className="mt-1 w-full rounded-lg px-2 py-2 text-left text-xs font-semibold text-zinc-400 transition hover:bg-white/[0.05] hover:text-amber-300"
+                onClick={() => setShowAll(true)}
+                type="button"
+              >
+                {t('ui.token.showAll').replace('{n}', String(hiddenCount))}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-3 border-t border-white/[0.07] pt-3">
+            <p className="g-eyebrow">{t('ui.token.custom')}</p>
+            <div className="mt-2 flex gap-2">
+              <input
+                className="w-full rounded-lg border border-white/[0.1] bg-transparent px-3 py-2 font-mono text-xs text-white outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 placeholder:text-zinc-600"
+                onChange={(e) => setCustomAddress(e.target.value)}
+                placeholder="0x…"
+                type="text"
+                value={isAddress ? query : customAddress}
+              />
+              <button
+                className="g-btn g-btn-secondary g-btn-sm"
+                onClick={() => {
+                  if (isAddress) setCustomAddress(query.trim());
+                  pick('CUSTOM');
+                }}
+                type="button"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/** Wallet picker rendered where the money moves, so buying is amount then confirm. */
+function ConnectInline({ t }: { t: (key: string) => string }) {
+  const { connectors, connect, isPending, error } = useConnect();
+  const [open, setOpen] = useState(false);
+  const seen = new Set<string>();
+  const list = connectors.filter((c) => {
+    if (seen.has(c.name)) return false;
+    seen.add(c.name);
+    return true;
+  });
+  if (!open) {
+    return (
+      <button className="g-btn g-btn-primary h-12 w-full text-base" onClick={() => setOpen(true)} type="button">
+        <Wallet className="h-4 w-4" />
+        {t('trade.connectWallet')}
+      </button>
+    );
+  }
+  return (
+    <div className="g-card p-2">
+      <div className="grid gap-1">
+        {list.map((c) => (
+          <button
+            className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm font-medium text-zinc-200 transition hover:bg-white/[0.06] disabled:opacity-50"
+            disabled={isPending}
+            key={c.uid}
+            onClick={() => connect({ connector: c })}
+            type="button"
+          >
+            {c.name}
+            <ArrowRight className="h-4 w-4 text-zinc-500" />
+          </button>
+        ))}
+      </div>
+      {error ? <p className="px-3 pb-2 pt-1 text-xs text-rose-300">{error.message.split('.')[0]}</p> : null}
+    </div>
+  );
+}
+
 export function BuyView(props: BuyViewProps) {
-  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, buyTokenOptions, customTokenAddress, quoteAssetLabel, redeemOption, isEthRedeemBlocked, oracleHealth, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken, tokenBalance } = props;
+  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, customTokenAddress, quoteAssetLabel, redeemOption, isEthRedeemBlocked, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken } = props;
 
   // Detect language from <html lang> attribute (set by ProtocolShell) — lazy init avoids extra render
   const [detectedLang] = useState<string>(() => {
@@ -1127,319 +1326,258 @@ export function BuyView(props: BuyViewProps) {
     crypto: resolvedTokenSymbol,
   };
 
+  const isEthFiat = mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto';
+  const quickAmounts = inputMode === 'fiat' ? [50, 100, 500, 1000] : [1, 5, 10, 50];
+  const quoteText = isLoadingQuote ? '…' : parseFloat(quote) > 0 && parseFloat(quote) < 0.0001 ? parseFloat(quote).toFixed(8) : quote || '0';
+  const modes: Array<{ key: 'buy' | 'sell' | 'inkind'; label: string }> = [
+    { key: 'buy', label: t('trade.buyBtn') },
+    { key: 'sell', label: t('trade.sellBtn') },
+    { key: 'inkind', label: t('trade.inkindBtn') },
+  ];
+  const setPercent = (pct: number) => {
+    if (mode === 'sell') {
+      const bal = parseFloat(gblinBalance);
+      if (!bal || bal <= 0) return;
+      handleCryptoAmountChange(pct === 100 ? gblinBalance : ((bal * pct) / 100).toFixed(6));
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      {/* The page's own claim, put where the money is about to move. */}
-      <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] px-6 py-5">
-        <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-400/70">{t('landing.buyEyebrow')}</p>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-white/60">{t('landing.buyIntro')}</p>
-      </section>
+    <div className="mx-auto w-full max-w-[520px]">
+      <div className="text-center">
+        <p className="g-eyebrow g-eyebrow-gold">{t('trade.instant')}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{t('trade.title1')} {t('trade.title2')}</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-400">{t('landing.buyIntro')}</p>
+      </div>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        {/* ── Left info panel ── */}
-        <div className={`${shellCard} p-7 sm:p-8 order-2 xl:order-1`}>
-          <SectionHeading body={t('trade.desc')} eyebrow={t('trade.instant')} title={`${t('trade.title1')} ${t('trade.title2')}`} />
-          <div className="mt-8 space-y-4">
-            {[
-              { title: t('trade.feature1Title'), body: t('trade.feature1Desc') },
-              { title: t('trade.feature2Title'), body: t('trade.feature2Desc') },
-              { title: t('yield.mechanismTitle'), body: t('yield.mechanismDesc') }
-            ].map((item) => (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-5" key={item.title}>
-                <p className="text-sm font-semibold text-white">{item.title}</p>
-                <p className="mt-2 text-sm leading-7 text-zinc-300">{item.body}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <MetricCard hint="Native quote source" label={t('dashboard.navTitle')} value={onChainData?.nav || '$0.00'} />
-            <MetricCard hint="Reference market price" label={t('dashboard.priceLabel')} value={formatCurrency(marketData?.priceUsd || 0, 4)} />
-          </div>
-          {/* Live price reference */}
-          {gblinPriceFiat > 0 && (
-            <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3">
-              <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-400/70">
-                Live reference price
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                1 GBLIN ≈ {fiat.symbol}{gblinPriceFiat.toFixed(4)} {fiat.code}
-                <span className="ml-3 text-zinc-500">· {ethPriceFiat > 0 ? `1 ETH ≈ ${fiat.symbol}${ethPriceFiat.toFixed(0)}` : ''}</span>
-              </p>
-            </div>
-          )}
+      <div className="mt-8">
+        <MigrateToNewVault />
+      </div>
+
+      <div className="mt-6 flex items-center justify-center">
+        <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.03] p-1" role="tablist">
+          {modes.map((m) => (
+            <button
+              aria-selected={mode === m.key}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${mode === m.key ? 'bg-amber-400 text-black' : 'text-zinc-400 hover:text-white'}`}
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              role="tab"
+              title={m.key === 'inkind' ? t('trade.inkindTitle') : undefined}
+              type="button"
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* ── Right trade widget ── */}
-        <div className={`${shellCard} p-7 sm:p-8 order-1 xl:order-2`}>
-
-          {/* V5 → V6 migration banner — self-hides unless the wallet holds V5 */}
-          <MigrateButton />
-
-          {/* Buy / Sell / In-Kind toggle */}
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            <button
-              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'buy' ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.35)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-emerald-500/30'}`}
-              onClick={() => setMode('buy')}
-              type="button"
-            >
-              {t('trade.buyBtn')}
-            </button>
-            <button
-              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'sell' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.35)]' : 'border border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-rose-500/30'}`}
-              onClick={() => setMode('sell')}
-              type="button"
-            >
-              {t('trade.sellBtn')}
-            </button>
-            <button
-              className={`rounded-full px-6 py-3.5 sm:px-7 sm:py-4 text-sm sm:text-base font-bold uppercase tracking-[0.16em] transition ${mode === 'inkind' ? 'bg-amber-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border border-amber-500/20 bg-amber-500/5 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/40'}`}
-              onClick={() => setMode('inkind')}
-              type="button"
-              title={t('trade.inkindTitle')}
-            >
-              {t('trade.inkindBtn')}
-            </button>
-          </div>
-
-          <a
-            className="mt-3 block text-xs text-zinc-500 underline decoration-zinc-700 underline-offset-4 transition hover:text-amber-300"
-            href="https://www.coinbase.com/how-to-buy/ethereum"
-            rel="noreferrer"
-            target="_blank"
-          >
-            {t('trade.needEth')}
-          </a>
-
-          {mode === 'inkind' ? (
-            <div className="mt-6">
-              <WhaleDepositPanel
-                t={t}
-                address={props.address}
-                isConnected={isConnected}
-                openWallet={openWallet}
-              />
-            </div>
-          ) : null}
-
-          {/* Balances */}
-          {mode !== 'inkind' ? (
-          <div className={`mt-6 grid gap-3 ${mode === 'buy' && selectedToken !== 'ETH' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">ETH {t('trade.balance')}</p>
-              <p className="mt-2 text-lg font-semibold text-white">{ethBalance}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">GBLIN {t('trade.balance')}</p>
-              <p className="mt-2 text-lg font-semibold text-white">{gblinBalance}</p>
-            </div>
-            {mode === 'buy' && selectedToken !== 'ETH' ? (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{resolvedTokenSymbol} {t('trade.balance')}</p>
-                <p className="mt-2 text-lg font-semibold text-white">{tokenBalance}</p>
+      {mode === 'inkind' ? (
+        <div className="g-card-elevated mt-6 p-5 sm:p-6">
+          <WhaleDepositPanel address={props.address} isConnected={isConnected} openWallet={openWallet} t={t} />
+        </div>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {/* You pay */}
+          <div className="g-card-elevated p-2">
+            <div className="relative rounded-xl bg-white/[0.02] p-4 transition focus-within:bg-white/[0.04]">
+              <div className="flex items-center justify-between text-xs text-zinc-500">
+                <span>{t('ui.token.pay')}</span>
+                <span className="tnum">{t('ui.token.balance')}: {mode === 'sell' ? gblinBalance : inputBalance}</span>
               </div>
-            ) : null}
-          </div>
-          ) : null}
-
-          {mode !== 'inkind' ? (
-          <div className="mt-6 space-y-5">
-
-            {/* ── Input mode selector (only in buy mode with ETH) ── */}
-            {mode === 'buy' && selectedToken === 'ETH' && (
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-zinc-500 mb-2">
-                  Input mode
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  {(['fiat', 'gblin'] as const).map((im) => {
-                    const labels: Record<typeof im, string> = {
-                      fiat: `${fiat.symbol} ${fiat.code}`,
-                      gblin: 'GBLIN qty',
-                    };
-                    return (
-                      <button
-                        key={im}
-                        type="button"
-                        onClick={() => handleInputModeChange(im)}
-                        className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] transition border ${
-                          inputMode === im
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                            : 'border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:text-white hover:border-white/20'
-                        }`}
-                      >
-                        {labels[im]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Custom token address */}
-            {mode === 'buy' && selectedToken === 'CUSTOM' ? (
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">Token Address</span>
-                <div className="mt-3 rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
-                  <input className="w-full bg-transparent text-base font-medium text-white outline-none placeholder:text-zinc-600" onChange={(e) => setCustomTokenAddress(e.target.value)} placeholder="0x..." type="text" value={customTokenAddress} />
-                </div>
-              </label>
-            ) : null}
-
-            {/* Sell redeem option */}
-            {mode === 'sell' ? (
-              <div className="space-y-3">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <button
-                    aria-disabled={isEthRedeemBlocked}
-                    className={`rounded-2xl border px-4 py-4 text-left transition ${isEthRedeemBlocked ? 'cursor-not-allowed border-white/5 bg-black/30 text-zinc-600' : redeemOption === 'eth' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`}
-                    disabled={isEthRedeemBlocked}
-                    onClick={() => setRedeemOption('eth')}
-                    type="button"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
-                    <p className="mt-3 text-base font-semibold">ETH Only</p>
-                    {isEthRedeemBlocked ? (
-                      <p className="mt-1 text-[11px] font-medium text-amber-300/80">{t('trade.oracleGuard.badge')}</p>
-                    ) : null}
-                  </button>
-                  <button className={`rounded-2xl border px-4 py-4 text-left transition ${redeemOption === 'basket' ? 'border-amber-400/40 bg-amber-500/10 text-white' : 'border-white/10 bg-black/20 text-zinc-300 hover:bg-white/5'}`} onClick={() => setRedeemOption('basket')} type="button">
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.redeemOption')}</p>
-                    <p className="mt-3 text-base font-semibold">Basket Tokens</p>
-                  </button>
-                </div>
-
-                {isEthRedeemBlocked ? (
-                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3" role="status">
-                    <p className="text-sm font-semibold text-amber-200">{t('trade.oracleGuard.title')}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-300">{t('trade.oracleGuard.body')}</p>
-                    <p className="mt-2 text-[11px] text-zinc-500">
-                      {oracleHealth.feeds
-                        .filter((feed) => feed.unusable)
-                        .map((feed) => `${feed.asset}: ${feed.reason === 'stale' && feed.ageSeconds !== null ? `${Math.floor(feed.ageSeconds / 3600)}h ${Math.floor((feed.ageSeconds % 3600) / 60)}m old` : feed.reason}`)
-                        .join(' · ')}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* ── Main amount input ── */}
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                {mode === 'buy' && selectedToken === 'ETH' ? inputLabel[inputMode] : t('trade.amount')}
-              </span>
-              <div className="mt-3 rounded-[24px] border border-amber-500/20 bg-black/20 px-5 py-4 focus-within:border-amber-500/40 transition-colors">
-                <div className="flex items-center justify-between gap-4">
-                  <input
-                    className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600"
-                    inputMode="decimal"
-                    onChange={(e) => {
-                      const val = e.target.value.replace(',', '.');
-                      if (mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto') {
-                        setDisplayValue(val);
-                      } else {
-                        handleCryptoAmountChange(val);
-                      }
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  className="tnum w-full min-w-0 bg-transparent text-3xl font-semibold text-white outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 placeholder:text-zinc-600"
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(',', '.');
+                    if (isEthFiat) setDisplayValue(val);
+                    else handleCryptoAmountChange(val);
+                  }}
+                  placeholder="0"
+                  type="text"
+                  value={isEthFiat ? displayValue : amount}
+                />
+                {mode === 'buy' ? (
+                  <TokenPicker
+                    address={props.address}
+                    customAddress={customTokenAddress}
+                    onSelect={(symbol) => {
+                      setSelectedToken(symbol);
+                      // A currency amount only converts through the ETH feed, so any other
+                      // token is entered in its own units.
+                      if (symbol !== 'ETH') handleInputModeChange('crypto');
+                      else handleInputModeChange('fiat');
                     }}
-                    placeholder={mode === 'buy' && selectedToken === 'ETH' ? inputPlaceholder[inputMode] : t('trade.enterAmount')}
-                    type="text"
-                    value={mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto' ? displayValue : amount}
+                    selected={selectedToken}
+                    setCustomAddress={setCustomTokenAddress}
+                    t={t}
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (mode === 'sell') {
-                        // VENDI: MAX = saldo GBLIN ESATTO, senza cuscinetto 0.9999. Vendere GBLIN
-                        // non richiede di lasciare gas (il gas e' in ETH), quindi si vende tutto.
-                        if (!gblinBalance || parseFloat(gblinBalance) <= 0) return;
-                        handleCryptoAmountChange(gblinBalance);
-                        return;
-                      }
-                      const bal = parseFloat(inputBalance);
-                      if (!bal || bal <= 0) return;
-                      const maxVal = (bal * 0.9999).toFixed(6);
-                      if (mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto') {
-                        if (inputMode === 'fiat') {
-                          const ethBal = parseFloat(ethBalance);
-                          const fiatMax = (ethBal * 0.9999 * ethPrice / fxRate).toFixed(2);
-                          setDisplayValue(fiatMax);
-                        } else {
-                          const ethBal = parseFloat(ethBalance);
-                          const gblinMax = gblinPriceUsd > 0 ? (ethBal * 0.9999 * ethPrice / gblinPriceUsd).toFixed(4) : '0';
-                          setDisplayValue(gblinMax);
-                        }
-                      } else {
-                        handleCryptoAmountChange(maxVal);
-                      }
-                    }}
-                    className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 transition hover:bg-amber-500/20"
-                  >
-                    Max
-                  </button>
-                  <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">
-                    {mode === 'buy' && selectedToken === 'ETH' ? inputSuffix[inputMode] : (mode === 'buy' ? resolvedTokenSymbol : 'GBLIN')}
+                ) : (
+                  <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pl-1.5 pr-3 text-sm font-semibold text-amber-300">
+                    <TokenGlyph symbol="GBLIN" />
+                    GBLIN
                   </span>
-                </div>
-                {/* Countervalue / ETH amount */}
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-500">
-                  <span>{mode === 'sell' ? usdValue : (countervalue() || usdValue)}</span>
-                  {mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto' && amount && (
-                    <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[11px] font-mono text-zinc-400">
-                      {amount} ETH
-                    </span>
-                  )}
-                  <span>{t('trade.balance')}: {inputBalance}</span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <span className="tnum text-xs text-zinc-500">{mode === 'sell' ? usdValue : (countervalue() || usdValue)}</span>
+                  {mode === 'buy' && selectedToken === 'ETH' ? (
+                    <button
+                      className="rounded-md border border-white/[0.08] px-2 py-0.5 text-[11px] font-semibold text-zinc-400 transition hover:border-amber-500/40 hover:text-amber-300"
+                      onClick={() => handleInputModeChange(inputMode === 'fiat' ? 'crypto' : 'fiat')}
+                      type="button"
+                    >
+                      {inputMode === 'fiat'
+                        ? t('ui.token.showToken').replace('{sym}', 'ETH')
+                        : t('ui.token.showFiat').replace('{cur}', fiat.code)}
+                    </button>
+                  ) : null}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {mode === 'buy' && isEthFiat
+                    ? quickAmounts.map((q) => (
+                        <button className="tnum rounded-md border border-white/[0.08] px-2 py-1 text-xs text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300" key={q} onClick={() => setDisplayValue(String(q))} type="button">
+                          {inputMode === 'fiat' ? `${fiat.symbol}${q}` : q}
+                        </button>
+                      ))
+                    : mode === 'sell'
+                      ? [25, 50, 100].map((q) => (
+                          <button className="tnum rounded-md border border-white/[0.08] px-2 py-1 text-xs text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300" key={q} onClick={() => setPercent(q)} type="button">
+                            {q}%
+                          </button>
+                        ))
+                      : null}
+                  {mode === 'buy' ? (
+                    <button
+                      className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/20"
+                      onClick={() => {
+                        const ethBal = parseFloat(ethBalance);
+                        if (!ethBal || ethBal <= 0) return;
+                        if (isEthFiat) {
+                          if (inputMode === 'fiat') setDisplayValue((ethBal * 0.9999 * ethPrice / fxRate).toFixed(2));
+                          else setDisplayValue(gblinPriceUsd > 0 ? (ethBal * 0.9999 * ethPrice / gblinPriceUsd).toFixed(4) : '0');
+                        } else {
+                          const bal = parseFloat(inputBalance);
+                          if (bal > 0) handleCryptoAmountChange((bal * 0.9999).toFixed(6));
+                        }
+                      }}
+                      type="button"
+                    >
+                      Max
+                    </button>
+                  ) : null}
                 </div>
               </div>
-            </label>
-
-            {/* Slippage + Quote output */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block rounded-2xl border border-white/10 bg-black/20 p-4">
-                <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.slippage')}</span>
-                <input className="mt-3 w-full accent-amber-400" max={5} min={0.1} onChange={(e) => setSlippage(Number(e.target.value))} step={0.1} type="range" value={slippage} />
-                <p className="mt-2 text-sm font-semibold text-white">{slippage.toFixed(1)}%</p>
-              </label>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{t('trade.outputAsset')}</p>
-                <p className="mt-3 break-words text-base font-semibold leading-7 text-white">{isLoadingQuote ? '...' : (parseFloat(quote) > 0 && parseFloat(quote) < 0.0001 ? parseFloat(quote).toFixed(8) : quote)}</p>
-                <p className="mt-2 text-sm text-zinc-500">{quoteAssetLabel}</p>
-              </div>
+              {isEthFiat && amount ? <p className="tnum mt-2 text-[11px] text-zinc-500">{amount} ETH</p> : null}
             </div>
 
-            {/* CTA */}
-            <button
-              className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-5 text-base font-bold uppercase tracking-[0.18em] transition ${isTradeDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500' : 'bg-amber-400 text-black hover:bg-amber-300 shadow-[0_0_30px_rgba(245,158,11,0.3)]'}`}
-              disabled={isTradeDisabled}
-              onClick={isConnected ? executeTrade : openWallet}
-              type="button"
-            >
-              {isTransacting ? t('trade.transacting') : isConnected ? mode === 'buy' ? t('trade.buyBtn') : t('trade.sellBtn') : t('trade.connectWallet')}
-              <ArrowRight className="h-5 w-5" />
-            </button>
+            <div className="relative flex justify-center">
+              <span className="absolute -top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.1] bg-[#0b0b0b] text-zinc-400">
+                <ArrowRight className="h-3.5 w-3.5 rotate-90" />
+              </span>
+            </div>
 
-            {/* The cost of the click, stated before the click. */}
-            <p className="text-center text-xs leading-6 text-zinc-500">
-              {mode === 'buy' ? t('landing.ctaMicro') : t('landing.sellMicro')}
-            </p>
-
-            {tradeError ? <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{tradeError}</div> : null}
-            {tradeTxHash ? (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
-                <p className="font-semibold">{t('trade.success')}</p>
-                <a className="mt-2 inline-flex items-center gap-2 text-emerald-200 hover:text-white" href={`https://basescan.org/tx/${tradeTxHash}`} rel="noreferrer" target="_blank">
-                  {t('trade.viewTx')}
-                  <ExternalLink className="h-4 w-4" />
-                </a>
+            {/* You receive */}
+            <div className="mt-1 rounded-xl bg-white/[0.02] p-4">
+              <div className="flex items-center justify-between text-xs text-zinc-500">
+                <span>{t('ui.token.receive')}</span>
+                {onChainData?.nav ? <span className="tnum">NAV {onChainData.nav}</span> : null}
               </div>
-            ) : null}
+              <div className="mt-2 flex items-center gap-3">
+                <p className={`tnum w-full min-w-0 truncate text-3xl font-semibold ${isLoadingQuote ? 'text-zinc-600' : 'text-white'}`}>{quoteText}</p>
+                <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pl-1.5 pr-3 text-sm font-semibold text-amber-300">
+                  <TokenGlyph symbol={mode === 'sell' ? 'ETH' : 'GBLIN'} />
+                  {quoteAssetLabel || 'GBLIN'}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {mode === 'sell' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                className={`g-card p-3 text-left transition ${redeemOption === 'eth' ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'g-hover'} ${isEthRedeemBlocked ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isEthRedeemBlocked}
+                onClick={() => setRedeemOption('eth')}
+                type="button"
+              >
+                <p className="text-xs text-zinc-500">{t('trade.redeemOption')}</p>
+                <p className="mt-1 text-sm font-semibold text-white">ETH</p>
+                {isEthRedeemBlocked ? <p className="mt-1 text-[11px] text-amber-300">{t('trade.oracleGuard.badge')}</p> : null}
+              </button>
+              <button className={`g-card p-3 text-left transition ${redeemOption === 'basket' ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'g-hover'}`} onClick={() => setRedeemOption('basket')} type="button">
+                <p className="text-xs text-zinc-500">{t('trade.redeemOption')}</p>
+                <p className="mt-1 text-sm font-semibold text-white">cbBTC + ETH + USDC</p>
+              </button>
+              {isEthRedeemBlocked ? (
+                <div className="col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-3 py-2" role="status">
+                  <p className="text-xs font-semibold text-amber-200">{t('trade.oracleGuard.title')}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-zinc-400">{t('trade.oracleGuard.body')}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {isConnected ? (
+            <button className="g-btn g-btn-primary h-12 w-full text-base" disabled={isTradeDisabled} onClick={executeTrade} type="button">
+              {isTransacting ? t('trade.transacting') : mode === 'buy' ? t('trade.buyBtn') : t('trade.sellBtn')}
+              {!isTransacting ? <ArrowRight className="h-4 w-4" /> : null}
+            </button>
+          ) : (
+            <ConnectInline t={t} />
+          )}
+          <p className="text-center text-xs leading-5 text-zinc-500">{mode === 'buy' ? t('landing.ctaMicro') : t('landing.sellMicro')}</p>
+
+          <details className="g-card group px-4 py-3 text-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-zinc-400">
+              <span>{t('trade.slippage')} · {slippage.toFixed(1)}%</span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-3 flex items-center gap-3">
+              <input className="gblin-slider w-full" max={5} min={0.1} onChange={(e) => setSlippage(Number(e.target.value))} step={0.1} type="range" value={slippage} />
+              <span className="tnum w-12 text-right text-zinc-200">{slippage.toFixed(1)}%</span>
+            </div>
+            {mode === 'buy' ? (
+              <a className="mt-3 block text-xs text-zinc-500 underline-offset-4 hover:text-amber-300 hover:underline" href="https://www.coinbase.com/how-to-buy/ethereum" rel="noreferrer" target="_blank">{t('trade.needEth')}</a>
+            ) : null}
+          </details>
+
+          {tradeError ? <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{tradeError}</div> : null}
+          {tradeTxHash ? (
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <p className="font-semibold">{t('trade.success')}</p>
+              <a className="mt-1 inline-flex items-center gap-2 text-emerald-200 hover:text-white" href={`https://basescan.org/tx/${tradeTxHash}`} rel="noreferrer" target="_blank">
+                {t('trade.viewTx')}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
           ) : null}
         </div>
-      </section>
+      )}
 
-      {/* Answers the question a buyer asks right after quoting: why is the DEX price different? */}
-      <MintVsPoolSection t={t} />
+      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+        {[
+          { title: t('trade.feature1Title'), body: t('trade.feature1Desc') },
+          { title: t('trade.feature2Title'), body: t('trade.feature2Desc') },
+          { title: t('yield.mechanismTitle'), body: t('yield.mechanismDesc') },
+        ].map((item) => (
+          <div className="g-card p-4" key={item.title}>
+            <p className="text-sm font-semibold text-white">{item.title}</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-400">{item.body}</p>
+          </div>
+        ))}
+      </div>
+      {gblinPriceFiat > 0 ? (
+        <p className="tnum mt-4 text-center text-xs text-zinc-500">
+          1 GBLIN ≈ {fiat.symbol}{gblinPriceFiat.toFixed(2)} {fiat.code} · 1 ETH ≈ {fiat.symbol}{ethPriceFiat.toFixed(0)} · {t('dashboard.navTitle')} {onChainData?.nav || '—'}
+        </p>
+      ) : null}
+
+      <div className="mt-10">
+        <MintVsPoolSection t={t} />
+      </div>
     </div>
   );
 }
@@ -1486,7 +1624,7 @@ export function RebalanceView(props: RebalanceViewProps) {
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
+                      className="h-full rounded-full transition-[width] duration-700"
                       style={{
                         width: `${Math.min(card.actualWeight, 100)}%`,
                         background: card.weightGap !== null && Math.abs(card.weightGap) > 3
@@ -1501,7 +1639,7 @@ export function RebalanceView(props: RebalanceViewProps) {
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
                     <div
-                      className="h-full rounded-full bg-blue-400/60 transition-all duration-700"
+                      className="h-full rounded-full bg-blue-400/60 transition-[width] duration-700"
                       style={{ width: `${Math.min(card.dynamicWeight, 100)}%` }}
                     />
                   </div>
@@ -1570,8 +1708,8 @@ export function RebalanceView(props: RebalanceViewProps) {
                 <p className="mt-2 text-lg font-semibold text-white">{formatTokenAmount(rebalanceMinSwapRequiredEth, 4)} WETH</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">Stability Fund</p>
-                <p className="mt-2 text-lg font-semibold text-white">{formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH</p>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.managementFee')}</p>
+                <p className="mt-2 text-lg font-semibold text-white">{((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year</p>
               </div>
             </div>
           </div>
@@ -1595,7 +1733,7 @@ export function RebalanceView(props: RebalanceViewProps) {
 
           {!isConnected ? (
             <a
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_24px_rgba(245,158,11,0.3)] transition-all hover:from-amber-400 hover:to-amber-300 hover:shadow-[0_0_36px_rgba(245,158,11,0.5)]"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_24px_rgba(245,158,11,0.3)] transition-[background-color,box-shadow] hover:from-amber-400 hover:to-amber-300 hover:shadow-[0_0_36px_rgba(245,158,11,0.5)]"
               href="/account"
             >
               <Zap className="h-4 w-4" />
@@ -1639,7 +1777,7 @@ export function RebalanceView(props: RebalanceViewProps) {
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-500"
                   style={{ width: `${(rebalanceAllProgress.current / rebalanceAllProgress.total) * 100}%` }}
                 />
               </div>
@@ -1689,20 +1827,20 @@ export function RebalanceView(props: RebalanceViewProps) {
 function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  // La rotta dichiara `degraded` quando NON e' riuscita a leggere i log: in quel caso una
-  // lista vuota non significa "nessun ribilanciamento", e non va raccontata come tale.
-  const [cieco, setCieco] = useState(false);
+  // The route reports `degraded` when it could not read the logs. In that case an empty list
+  // does not mean "no rebalances happened", and must not be presented as if it did.
+  const [blind, setBlind] = useState(false);
 
   useEffect(() => {
     fetch('/api/rebalance-history')
       .then((res) => res.json())
       .then((data) => {
         setHistory(data.events || []);
-        setCieco(Boolean(data.degraded));
+        setBlind(Boolean(data.degraded));
         setLoading(false);
       })
       .catch(() => {
-        setCieco(true);
+        setBlind(true);
         setLoading(false);
       });
   }, []);
@@ -1758,7 +1896,7 @@ function CommunityRebalanceSection({ t }: { t: (key: string) => string }) {
           <p className="text-sm text-zinc-500">{t('rebalance.historyLoading')}</p>
         ) : history.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            {t(cieco ? 'rebalance.historyUnavailable' : 'rebalance.historyEmpty')}
+            {t(blind ? 'rebalance.historyUnavailable' : 'rebalance.historyEmpty')}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -1833,7 +1971,7 @@ export function VaultView(props: VaultViewProps) {
         <SectionHeading body={t('vault.desc')} eyebrow={t('vault.core')} title={t('vault.title')} />
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           {basketData.map((asset) => (
-            <BasketCard asset={asset} key={asset.address} />
+            <BasketCard asset={asset} key={asset.address} t={t} />
           ))}
         </div>
       </section>
@@ -1856,14 +1994,14 @@ export function VaultView(props: VaultViewProps) {
         </div>
         <div className={`${shellCard} p-7 sm:p-8`}>
           <p className="text-[11px] uppercase tracking-[0.38em] text-zinc-500">{t('site.protectedReserves')}</p>
-          {/* HERO — quanto è stato redistribuito a TUTTI i holder (il nostro punto di forza) */}
+          {/* Headline figure: total value redistributed to every holder. */}
           <div className="mt-6 rounded-[24px] border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
             <p className="text-[11px] uppercase tracking-[0.28em] text-amber-300/80">{t('dashboard.totalYieldTitle')}</p>
             <p className="mt-3 font-serif text-4xl sm:text-5xl xl:text-6xl font-semibold leading-none text-amber-300 break-words">{onChainData?.totalYieldDistributed == null ? '—' : `${formatTokenAmount(onChainData.totalYieldDistributed, 6)} WETH`}</p>
             <p className="mt-3 text-sm leading-6 text-zinc-300">{t('yield.automationDesc')}</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <MetricCard hint="Immediate liquidity buffer" label={t('site.stabilityFund')} value={`${formatTokenAmount(Number(onChainData?.stabilityFund || 0), 8)} WETH`} />
+            <MetricCard hint={t('site.managementFeeHint')} label={t('site.managementFee')} value={`${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year`} />
             <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '$0.00'} />
           </div>
         </div>

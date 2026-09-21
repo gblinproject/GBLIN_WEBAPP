@@ -209,8 +209,8 @@ export default function AureusPage() {
 function AureusContent() {
   const { t } = useT();
   const [s, setStats] = useState<Stats | null>(null);
-  // default '7d': con 'today' la sezione appariva vuota nei momenti senza chiusure
-  // giornaliere e veniva letta come "pagina rotta" (segnalazione founder 20/08)
+  // Default '7d': with 'today' the section renders empty whenever no position has been
+  // closed during the current day, which reads as a broken page rather than as no data.
   const [filter, setFilter] = useState<'today' | '7d' | '30d' | 'all'>('7d');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
@@ -294,12 +294,10 @@ function AureusContent() {
             <Stat label={t('aureus.capital')} value={`$${s.capital_usd.toFixed(2)}`} />
             <Stat label={t('aureus.allocated')} value={`$${allocated.toFixed(2)} / $${s.capital_usd.toFixed(2)}`}
               tone={allocated >= s.capital_usd ? 'neg' : undefined} />
-            {/* This is LIFETIME P&L net of creator fees — not the daily
-                `realized_pnl_usd` counter, which resets every day and is used
-                only for the daily loss limit. Labelling it "realized" made the
-                card contradict the underlying data. The daily counter is
-                deliberately NOT part of the fallback chain: showing it here
-                would be a different metric entirely. */}
+            {/* LIFETIME P&L net of creator fees, not the daily `realized_pnl_usd`
+                counter, which resets every day and feeds only the daily loss limit.
+                The daily counter is deliberately NOT part of the fallback chain:
+                it is a different metric and would contradict this label. */}
             <Stat label={t('aureus.netPnl')}
               value={fmtUsd(s.net_pnl_usd ?? s.lifetime_pnl_usd)}
               tone={(s.net_pnl_usd ?? s.lifetime_pnl_usd) >= 0 ? 'pos' : 'neg'}
@@ -648,7 +646,7 @@ function AureusContent() {
               <div>
                 <h3 className="text-2xl font-bold">{selectedTrade.asset}</h3>
                 <p className="text-sm text-gray-400">
-                  {selectedTrade.direction?.toUpperCase()} · {selectedTrade.verified ? '✓ Verificato' : 'Non verificato'}
+                  {selectedTrade.direction?.toUpperCase()} · {selectedTrade.verified ? '✓ Verified' : 'Not verified'}
                 </p>
               </div>
               <button

@@ -1,11 +1,11 @@
 /**
  * GET /api/chain/address-activity?address=0x…&limit=25
  *
- * Storico GBLIN di un indirizzo, per la tabella transazioni di /account.
- * 01/09/2026: prende il posto delle due chiamate Moralis fatte dal browser.
+ * GBLIN history of a single address, used by the transaction table on the account page. The read
+ * happens on the server so that the RPC key is never exposed to the browser.
  *
- * L'indirizzo arriva dal client, quindi è il solo parametro validato a mano: senza il
- * controllo di forma finirebbe dentro una chiamata RPC così com'è.
+ * The address is supplied by the client, so it is the one parameter validated by hand: without a
+ * shape check it would reach the RPC call as received.
  */
 
 import { addressActivity, ChainActivityError, GBLIN_CONTRACT } from '@/lib/chain-activity';
@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!ADDRESS_RE.test(address)) {
     return Response.json(
-      { error: 'parametro `address` mancante o non è un indirizzo EVM' },
+      { error: 'the `address` parameter is missing or is not an EVM address' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
   }
@@ -34,12 +34,12 @@ export async function GET(request: Request): Promise<Response> {
     const data = await addressActivity(address, GBLIN_CONTRACT, limit);
     return Response.json(
       { ...data, address, token: GBLIN_CONTRACT, source: 'alchemy' },
-      // Cache corta: dopo un acquisto la pagina ricarica questa lista e l'utente deve
-      // vederci dentro la propria transazione, non una copia di trenta secondi prima.
+      // Short cache window: after a purchase the page reloads this list, and the caller must see
+      // their own transaction in it rather than a copy taken half a minute earlier.
       { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } },
     );
   } catch (err) {
-    const message = err instanceof ChainActivityError ? err.message : 'errore imprevisto';
+    const message = err instanceof ChainActivityError ? err.message : 'unexpected error';
     return Response.json(
       { transactions: [], erc20Transfers: [], degraded: true, error: message },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },

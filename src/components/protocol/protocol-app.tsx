@@ -15,6 +15,7 @@ import {
   LANGUAGES,
   REBALANCE_ASSET_OPTIONS,
   RPC_URL,
+  setNumberLocale,
   TOKENS,
   TRADE_TOKEN_OPTIONS,
   WETH_ADDRESS,
@@ -27,6 +28,8 @@ import {
   formatCurrency,
   formatTokenAmount,
   parseUsdText,
+  quoteBuyShares,
+  quoteSellShares,
   quoteTokenToWeth,
   resolveTradeToken,
   type TradeTokenOption,
@@ -95,6 +98,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
 
   const [copied, setCopied] = useState(false);
   const [language, setLanguageState] = useState<Language>('en');
+
+  // Numbers follow the language. Set in an effect so the server render and the first
+  // client render match, and only the render after the switch is localised.
+  useEffect(() => {
+    setNumberLocale(language);
+  }, [language]);
   const [logs, setLogs] = useState<string[]>(protocolViewCache.logs);
 
   const [lastYieldDistribution, setLastYieldDistribution] = useState(protocolViewCache.lastYieldDistribution);
@@ -364,24 +373,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [view, refreshMarketData, refreshOnChainData, refreshTransactions]);
 
   const quoteMintFromWeth = useCallback(async (wethAmount: bigint) => {
-    const provider = getProvider();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
-    const [result, totalSupplyRaw, contractBalanceRaw] = await Promise.all([
-      contract.quoteBuyGBLIN(wethAmount),
-      contract.totalSupply(),
-      contract.balanceOf(CONTRACT_ADDRESS)
-    ]);
-
-    const quotedGblinOut: bigint = result[0];
-    const totalSupply = BigInt(totalSupplyRaw.toString());
-    const contractBalance = BigInt(contractBalanceRaw.toString());
-    const activeSupply = totalSupply - contractBalance;
-
-    if (activeSupply === 0n) {
-      return quotedGblinOut > 1000n ? quotedGblinOut - 1000n : 0n;
-    }
-
-    return quotedGblinOut;
+    // The Lens prices the mint exactly as the vault does, management fee and stray ETH included, and
+    // reverts while the vault cannot price itself — which is the answer we want to show, not hide.
+    const { out } = await quoteBuyShares(getProvider(), wethAmount);
+    return out;
   }, [getProvider]);
 
   const formatBasketRedeemQuote = useCallback((gblinAmount: number) => {
@@ -394,10 +389,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const cbBtcAsset = basketData.find((asset: any) => asset.name === 'cbBTC') ?? null;
     const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const usdcAsset = basketData.find((asset: any) => asset.name === 'USDC') ?? null;
-    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
-
+    // Every unit in the vault belongs to the holders: the redemption is a plain pro-rata slice of each
+    // row, with nothing held back.
     const cbBtcOut = (cbBtcAsset ? Number(cbBtcAsset.balance) : 0) * shareRatio;
-    const wethOut = Math.max((wethAsset ? Number(wethAsset.balance) : 0) - stabilityFundValue, 0) * shareRatio;
+    const wethOut = (wethAsset ? Number(wethAsset.balance) : 0) * shareRatio;
     const usdcOut = (usdcAsset ? Number(usdcAsset.balance) : 0) * shareRatio;
 
     return {
@@ -461,7 +456,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           }
         } else {
           const gblinAmount = ethers.parseEther(amount);
-          const ethOut: bigint = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+          const ethOut: bigint = await quoteSellShares(provider, gblinAmount).catch(() => 0n);
 
           if (redeemOption === 'basket') {
             const basketQuote = formatBasketRedeemQuote(Number.parseFloat(amount));
@@ -498,15 +493,16 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const wethAsset = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const wethBalance = wethAsset ? Number(wethAsset.balance) : 0;
     const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
-    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
-    const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
-    const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+    // No buffer is withheld: every unit of WETH in the vault is the holders'.
+    const availableWeth = wethBalance;
     const effectiveTotalTvlUsd = basketData.reduce((sum: number, asset: any) => {
       if (asset.name === 'WETH') {
         return sum + availableWeth * wethPrice;
       }
       return sum + (Number(asset.tvl) || 0);
     }, 0);
+
+    const auctionOpen = Boolean(onChainData?.auctionOpen);
 
     return REBALANCE_ASSET_OPTIONS.map((option) => {
       const metrics = basketData.find((asset: any) => asset.name === option.name) ?? null;
@@ -515,48 +511,42 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       const dynamicWeight = metrics ? Number(metrics.dynamicWeight) / 100 : null;
       const baseWeight = metrics ? Number(metrics.baseWeight) / 100 : null;
       const assetPrice = metrics ? Number(metrics.price) : 0;
-      const assetBalance = metrics ? Number(metrics.balance) : 0;
-      const targetUsdValue = metrics ? (effectiveTotalTvlUsd * Number(metrics.dynamicWeight)) / 10000 : 0;
-      const deltaUsd = metrics ? targetUsdValue - currentUsdValue : 0;
-      const weightGap = actualWeight !== null && dynamicWeight !== null ? dynamicWeight - actualWeight : null;
+      const tokenAddress: string = metrics ? String(metrics.address) : '';
+
+      // The auction, not a weight heuristic, says what each row needs. The Lens reports the side the
+      // vault takes and the gap in ETH of value; a row within its band has no gap and no auction.
+      const gapEth = metrics ? Number(metrics.gapEth) || 0 : 0;
+      const vaultBuysAsset = metrics ? Boolean(metrics.vaultBuysAsset) : false;
 
       let recommendation: RebalanceOpportunity['recommendation'] | 'balanced' | 'unknown' = 'unknown';
-      if (weightGap !== null && weightGap > 0.01) recommendation = 'weth-to-asset';
-      else if (weightGap !== null && weightGap < -0.01) recommendation = 'asset-to-weth';
-      else if (weightGap !== null) recommendation = 'balanced';
+      if (!metrics) recommendation = 'unknown';
+      else if (gapEth > 0 && vaultBuysAsset) recommendation = 'weth-to-asset';
+      else if (gapEth > 0) recommendation = 'asset-to-weth';
+      else recommendation = 'balanced';
 
-      const desiredWethInput = recommendation === 'weth-to-asset' && wethPrice > 0 ? Math.max(deltaUsd, 0) / wethPrice : 0;
-      const desiredAssetInput = recommendation === 'asset-to-weth' && assetPrice > 0 ? Math.abs(Math.min(deltaUsd, 0)) / assetPrice : 0;
-
-      const executableInputAmount = recommendation === 'weth-to-asset'
-        ? Math.min(desiredWethInput, availableWeth)
-        : recommendation === 'asset-to-weth'
-          ? Math.min(desiredAssetInput, assetBalance)
-          : 0;
-
-      const ethEquivalentInput = recommendation === 'weth-to-asset'
-        ? executableInputAmount
-        : recommendation === 'asset-to-weth' && assetPrice > 0 && wethPrice > 0
-          ? (executableInputAmount * assetPrice) / wethPrice
-          : 0;
-
-      const inputSymbol = recommendation === 'weth-to-asset' ? 'WETH' : option.name;
+      // The bidder is the counterparty. When the vault buys the asset, the bidder hands over the asset
+      // and receives WETH; when the vault sells it, the bidder hands over WETH and receives the asset.
+      // The vault reduces any excess to what closes the gap, so sizing at the gap is enough.
+      const inputIsAsset = recommendation === 'weth-to-asset';
+      const inputToken = inputIsAsset ? tokenAddress : WETH_ADDRESS;
+      const inputDecimals = inputIsAsset ? option.decimals : 18;
+      const inputSymbol = inputIsAsset ? option.name : 'WETH';
+      const executableInputAmount = recommendation === 'balanced' || recommendation === 'unknown'
+        ? 0
+        : inputIsAsset
+          ? (assetPrice > 0 && wethPrice > 0 ? (gapEth * wethPrice) / assetPrice : 0)
+          : gapEth;
 
       let amountToSwap = 0n;
       try {
-        if (recommendation === 'weth-to-asset' && executableInputAmount > 0) {
-          const effectiveAmount = Math.max(executableInputAmount, minSwapRequiredEth);
-          amountToSwap = ethers.parseUnits(effectiveAmount.toFixed(8), 18);
-        } else if (recommendation === 'asset-to-weth' && executableInputAmount > 0) {
-          const minFloorInAsset = assetPrice > 0 && wethPrice > 0 ? (minSwapRequiredEth * wethPrice) / assetPrice : 0;
-          const effectiveAmount = Math.max(executableInputAmount, minFloorInAsset);
-          amountToSwap = ethers.parseUnits(effectiveAmount.toFixed(option.decimals), option.decimals);
+        if (executableInputAmount > 0) {
+          amountToSwap = ethers.parseUnits(executableInputAmount.toFixed(inputDecimals), inputDecimals);
         }
       } catch {
         amountToSwap = 0n;
       }
 
-      const eligible = executableInputAmount > 0 && amountToSwap > 0n;
+      const eligible = auctionOpen && gapEth > 0 && amountToSwap > 0n && tokenAddress !== '';
 
       return {
         name: option.name,
@@ -566,12 +556,15 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         baseWeight,
         recommendation,
         inputSymbol,
-        inputAmountText: formatTokenAmount(executableInputAmount, recommendation === 'weth-to-asset' ? 6 : option.decimals),
+        inputAmountText: formatTokenAmount(executableInputAmount, inputIsAsset ? option.decimals : 6),
         amountToSwap,
-        targetEthAmount: ethEquivalentInput,
+        targetEthAmount: gapEth,
         executableInputAmount,
         eligible,
-        minSwapRequiredEth
+        minSwapRequiredEth: gapEth,
+        inputToken,
+        inputDecimals,
+        vaultBuysAsset,
       } satisfies RebalanceOpportunity;
     });
   }, [basketData, onChainData]);
@@ -584,16 +577,18 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [rebalanceAssetStats]);
 
   const eligibleRebalanceAssets = useMemo(() => {
-    // "Ribilancia Tutti" tenta ogni asset che ha una DIREZIONE di rebalance (anche sotto-floor),
-    // non solo quelli "eligible". L'utente può sempre provare: il contratto reverta in modo pulito
-    // (SwapVolumeTooLow / RebalanceNotNeeded) i singoli asset che non riesce a eseguire.
+    // "Bid on every open row" tries every row that has a side at the auction, not only the rows
+    // marked eligible. Attempting is always allowed: the contract reverts cleanly
+    // (SwapVolumeTooLow / RebalanceNotNeeded) on the individual assets it cannot execute.
     return rebalanceAssetStats.filter(
       (asset) => asset.recommendation === 'weth-to-asset' || asset.recommendation === 'asset-to-weth'
     );
   }, [rebalanceAssetStats]);
 
-  const rebalanceBountyActive = (onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0) >= 0.0001;
-  const rebalanceMinSwapRequiredEth = autoRebalanceOpportunity?.minSwapRequiredEth ?? 0.01;
+  // Rebalancing is a Dutch auction now: whoever trades toward the target weights is paid by the premium
+  // on the oracle price, so there is no bounty fund to be empty or full — the auction is simply open or not.
+  const rebalanceBountyActive = Boolean(onChainData?.auctionOpen);
+  const rebalanceMinSwapRequiredEth = autoRebalanceOpportunity?.minSwapRequiredEth ?? 0;
 
   useEffect(() => {
     setArbError(null);
@@ -643,7 +638,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         amountLabel: t('rebalance.amount'),
         amountValue: `${asset.inputAmountText} ${asset.inputSymbol}`,
         minFloorLabel: t('rebalance.minFloor'),
-        minFloorValue: `${formatTokenAmount(asset.minSwapRequiredEth, 4)} WETH`,
+        minFloorValue: `${formatTokenAmount(asset.minSwapRequiredEth, 6)} WETH`,
         recommendationText,
         recommendationTone,
         recommendationDot,
@@ -654,9 +649,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     const wethMetrics = basketData.find((asset: any) => asset.name === 'WETH') ?? null;
     const wethBalance = wethMetrics ? Number(wethMetrics.balance) : 0;
     const wethPrice = wethMetrics ? Number(wethMetrics.price) : 0;
-    const stabilityFundValue = onChainData?.stabilityFund ? Number.parseFloat(onChainData.stabilityFund) : 0;
-    const availableWeth = Math.max(wethBalance - stabilityFundValue, 0);
-    const minSwapRequiredEth = Math.max(wethBalance / 100, 0.01);
+    // No buffer is withheld: every unit of WETH in the vault is the holders'.
+    const availableWeth = wethBalance;
     const effectiveTotalTvlUsd = basketData.reduce((sum: number, asset: any) => {
       if (asset.name === 'WETH') {
         return sum + availableWeth * wethPrice;
@@ -678,7 +672,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       amountLabel: t('rebalance.amountAvailable'),
       amountValue: `${formatTokenAmount(availableWeth, 6)} WETH`,
       minFloorLabel: t('rebalance.minFloor'),
-      minFloorValue: `${formatTokenAmount(minSwapRequiredEth, 4)} WETH`,
+      minFloorValue: `${formatTokenAmount(Math.max(0, ...basketData.map((asset: any) => Number(asset.gapEth) || 0)), 6)} WETH`,
       recommendationText: t('rebalance.recommendationCounterparty'),
       recommendationTone: 'text-sky-400',
       recommendationDot: 'bg-sky-500',
@@ -768,10 +762,9 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             });
           });
         } else {
-          // WORKAROUND: buyGBLINWithToken uses ISwapRouter (v1) interface with `deadline` field
-          // but the deployed router (SwapRouter02) uses IV3SwapRouter without `deadline`.
-          // This ABI mismatch causes exactInput to revert for non-WETH tokens.
-          // Fix: swap token→WETH externally via SwapRouter02, then call buyGBLINWithToken with WETH directly.
+          // The vault never swaps, so an arbitrary token is converted here first: token → WETH on the
+          // router, then a plain WETH mint at NAV. The price risk of the swap stays with the caller's
+          // own minimum, and the vault's side is priced by the oracle alone.
           const SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
           const amountIn = ethers.parseUnits(amount, activeTradeToken.decimals);
           const routeQuote = await quoteTokenToWeth(provider, activeTradeToken.address, amountIn);
@@ -884,20 +877,15 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             addLog(`WETH approval confirmed: ${shortenAddress(approveWethHash)}`);
           }
 
-          // Step 4: Buy GBLIN with WETH using dummy path (contract skips internal swap when tokenIn==WETH)
-          const wethDummyPath = ethers.hexlify(ethers.concat([
-            ethers.getBytes(WETH_ADDRESS),
-            ethers.getBytes(ethers.toBeHex(0, 3)),
-            ethers.getBytes(WETH_ADDRESS),
-          ])) as `0x${string}`;
-
+          // Step 4: mint with the WETH itself. The vault takes WETH directly, so there is no route to
+          // encode and no swap inside the vault: the deposit is priced at NAV like any other mint.
           addLog(`Buying GBLIN with WETH...`);
           const buyTokenTx = prepareContractCall({
             contract: {
               address: CONTRACT_ADDRESS as `0x${string}`,
             },
-            method: "function buyGBLINWithToken(bytes path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut)",
-            params: [wethDummyPath, wethToUse, 0n, minGblinOut],
+            method: "function buyGBLINWithWeth(uint256 amount, uint256 minOut, address receiver)",
+            params: [wethToUse, minGblinOut, address as `0x${string}`],
           });
 
           await new Promise<void>((resolve, reject) => {
@@ -911,7 +899,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         const gblinAmount = ethers.parseEther(amount);
 
         if (redeemOption === 'basket') {
-          // V6: redeem in-kind = sellGBLIN (era redeemInKind in V5)
+          // The in-kind redemption reads no price feed and is never paused: it is the guaranteed exit.
           const redeemTx = prepareContractCall({
             contract: {
               address: CONTRACT_ADDRESS as `0x${string}`,
@@ -931,7 +919,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           });
         } else {
           // Re-read rather than trust the render-time flag: the state can turn between paint and click.
-          // quoteSellGBLIN routes through the same conversion, so a floor derived from it would already
+          // The Lens quote routes through the same conversion, so a floor derived from it would already
           // carry the loss — the quote cannot be used to detect this.
           const health = await fetchOracleHealth();
           if (health.checked && !health.ethRedeemSafe) {
@@ -940,7 +928,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
             throw new Error(`ORACLE_UNUSABLE:${names}`);
           }
 
-          const ethOut = await contract.quoteSellGBLIN(gblinAmount).catch(() => 0n);
+          const ethOut = await quoteSellShares(getProvider(), gblinAmount).catch(() => 0n);
           const minAmountOut = (ethOut * (10000n - slippageBps)) / 10000n;
 
           // Thirdweb: Sell GBLIN for ETH
@@ -1008,6 +996,30 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     }
   }, [activeTradeToken, address, addLog, amount, getProvider, isConnected, mode, quoteMintFromWeth, rawQuote, redeemOption, refreshOnChainData, refreshTransactions, slippage, syncWalletBalances, sendTx]);
 
+  // The vault pulls the bidder's input, so it needs an allowance for exactly that token: the asset when
+  // the vault buys it, WETH when it sells it. Approved once per amount, before the bid.
+  const ensureBidAllowance = useCallback(async (opportunity: RebalanceOpportunity) => {
+    if (!address) return;
+    const provider = getProvider();
+    const erc = new ethers.Contract(opportunity.inputToken, ERC20_ABI, provider);
+    const allowance: bigint = await erc.allowance(address, CONTRACT_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
+    if (allowance >= opportunity.amountToSwap) return;
+    const approveTx = prepareContractCall({
+      contract: { address: opportunity.inputToken as `0x${string}` },
+      method: "function approve(address spender, uint256 amount) returns (bool)",
+      params: [CONTRACT_ADDRESS as `0x${string}`, opportunity.amountToSwap],
+    });
+    let approveHash = '';
+    await new Promise<void>((resolve, reject) => {
+      sendTx(approveTx, {
+        onSuccess: (data) => { approveHash = data.transactionHash; resolve(); },
+        onError: (err: Error) => reject(err),
+      });
+    });
+    addLog(`${opportunity.inputSymbol} approval sent: ${shortenAddress(approveHash)}`);
+    await provider.waitForTransaction(approveHash, 1, 120000);
+  }, [address, addLog, getProvider, sendTx]);
+
   const executeArbitrage = useCallback(async () => {
     if (!isConnected || !address) {
       // Redirect to account hub for connection
@@ -1015,9 +1027,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       return;
     }
 
-    // UX: non pre-blocchiamo i rebalance sotto-floor / "non necessari". L'utente può sempre
-    // tentare l'operazione migliore disponibile; il contratto è l'arbitro finale e va in revert
-    // pulito (SwapVolumeTooLow / RebalanceNotNeeded) con messaggio tradotto se non può eseguire.
+    // The vault is the final arbiter: a bid on a row with no auction, or one that would change
+    // nothing, reverts cleanly (NoAuction / ZeroOutput) and is shown with a translated message.
     if (!autoRebalanceOpportunity) {
       setArbError(t('rebalance.errorNoOpportunity'));
       return;
@@ -1028,15 +1039,17 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     setArbTxHash(null);
 
     try {
-      const isWethToAsset = autoRebalanceOpportunity.recommendation === 'weth-to-asset';
-      
-      // Thirdweb: Incentivized Rebalance
+      await ensureBidAllowance(autoRebalanceOpportunity);
+
+      // The vault holds a Dutch auction and the bidder is the counterparty. The price is the oracle's,
+      // adjusted by the current premium, fixed for the block: there is no pool to be sandwiched on, so
+      // a zero `minOut` accepts the auction's own price. An empty `data` means no callback.
       const rebalanceTx = prepareContractCall({
         contract: {
           address: CONTRACT_ADDRESS as `0x${string}`,
         },
-        method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",
-        params: [BigInt(autoRebalanceOpportunity.basketIndex), isWethToAsset, autoRebalanceOpportunity.amountToSwap],
+        method: "function bid(uint256 index, bool vaultBuysAsset, uint256 amountIn, uint256 minOut, bytes data) returns (uint256 amountInUsed, uint256 amountOut)",
+        params: [BigInt(autoRebalanceOpportunity.basketIndex), autoRebalanceOpportunity.vaultBuysAsset, autoRebalanceOpportunity.amountToSwap, 0n, '0x' as `0x${string}`],
       });
       
       let hash: `0x${string}` | '' = '';
@@ -1065,11 +1078,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         setArbError(t('rebalance.errorRejected'));
       } else if (normalizedMessage.includes('insufficient funds')) {
         setArbError(t('rebalance.errorGas'));
-      } else if (normalizedMessage.includes('rebalancenotneeded')) {
+      } else if ((normalizedMessage.includes('noauction') || normalizedMessage.includes('rebalancenotneeded'))) {
         setArbError(t('rebalance.errorNoRebalance'));
-      } else if (normalizedMessage.includes('swapvolumetoolow')) {
+      } else if ((normalizedMessage.includes('zerooutput') || normalizedMessage.includes('swapvolumetoolow'))) {
         setArbError(t('rebalance.errorTooLow'));
-      } else if (normalizedMessage.includes('oracledead') || normalizedMessage.includes('oracle dead') || normalizedMessage.includes('sequencerdown')) {
+      } else if ((normalizedMessage.includes('priceunavailable') || normalizedMessage.includes('oracledead')) || normalizedMessage.includes('oracle dead') || normalizedMessage.includes('sequencerdown')) {
         setArbError(t('rebalance.errorOracle'));
       } else if (normalizedMessage.includes('invalidindex') || normalizedMessage.includes('cannotswapsametoken') || normalizedMessage.includes('invalid asset') || normalizedMessage.includes('cannot swap weth for weth')) {
         setArbError(t('rebalance.errorInvalidAsset'));
@@ -1107,15 +1120,15 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setRebalanceAllProgress({ current: i + 1, total: eligibleRebalanceAssets.length, currentAsset: asset.name });
 
       try {
-        const isWethToAsset = asset.recommendation === 'weth-to-asset';
-        
-        // Thirdweb: Incentivized Rebalance
+        await ensureBidAllowance(asset);
+
+        // Same auction bid as above, one row at a time.
         const rebalanceTx = prepareContractCall({
           contract: {
             address: CONTRACT_ADDRESS as `0x${string}`,
           },
-          method: "function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap)",
-          params: [BigInt(asset.basketIndex), isWethToAsset, asset.amountToSwap],
+          method: "function bid(uint256 index, bool vaultBuysAsset, uint256 amountIn, uint256 minOut, bytes data) returns (uint256 amountInUsed, uint256 amountOut)",
+          params: [BigInt(asset.basketIndex), asset.vaultBuysAsset, asset.amountToSwap, 0n, '0x' as `0x${string}`],
         });
         
         let hash: `0x${string}` | '' = '';
@@ -1143,11 +1156,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           userMessage = t('rebalance.errorRejected');
           results.push({ name: asset.name, hash: '', success: false, error: userMessage });
           break;
-        } else if (normalizedMessage.includes('rebalancenotneeded')) {
+        } else if ((normalizedMessage.includes('noauction') || normalizedMessage.includes('rebalancenotneeded'))) {
           userMessage = t('rebalance.errorNoRebalance');
-        } else if (normalizedMessage.includes('swapvolumetoolow')) {
+        } else if ((normalizedMessage.includes('zerooutput') || normalizedMessage.includes('swapvolumetoolow'))) {
           userMessage = t('rebalance.errorTooLow');
-        } else if (normalizedMessage.includes('oracledead') || normalizedMessage.includes('sequencerdown')) {
+        } else if ((normalizedMessage.includes('priceunavailable') || normalizedMessage.includes('oracledead')) || normalizedMessage.includes('sequencerdown')) {
           userMessage = t('rebalance.errorOracle');
         } else if (normalizedMessage.includes('slippageexceeded')) {
           userMessage = t('rebalance.errorSlippage');
@@ -1165,8 +1178,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     await Promise.all([refreshOnChainData(), refreshTransactions()]);
   }, [address, addLog, eligibleRebalanceAssets, getProvider, isConnected, refreshOnChainData, refreshTransactions, t, sendTx]);
 
-  // A feed the contract cannot price makes the ETH exit swap out with no floor (KNOWN_ISSUES #5).
-  // The in-kind exit reads no oracle, so we move people onto it instead of leaving the choice open.
+  // A feed the contract cannot price makes the ETH exit swap out with no floor. The in-kind exit
+  // reads no oracle, so the UI steers to that path instead of leaving the choice open.
   const isEthRedeemBlocked = oracleHealth.checked && !oracleHealth.ethRedeemSafe;
 
   // Deliberately not folded into refreshOnChainData: that path returns early on a cache hit, which
@@ -1195,12 +1208,13 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     : rawQuote > 0n;
   const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote
     || (mode === 'sell' && redeemOption === 'eth' && isEthRedeemBlocked);
-  // Bottone abilitato finché c'è un'opportunità su cui puntare (anche sotto-floor):
-  // l'utente può tentare, il contratto decide. Disabilitato solo durante una tx in corso.
+  // Enabled as long as there is an opportunity to bid on, including below the minimum swap size:
+  // the attempt is allowed and the contract decides. Disabled only while a transaction is pending.
   const isArbDisabled = isArbitraging || !autoRebalanceOpportunity;
 
   const sharedProps = {
     t,
+    language,
     marketData,
     onChainData,
     basketData,

@@ -26,7 +26,7 @@ export default function AureusLogin() {
         setError('Password errata.');
       }
     } catch {
-      setError('Errore di rete.');
+      setError('Network error.');
     } finally {
       setLoading(false);
     }

@@ -40,7 +40,6 @@ export async function GET() {
         base_weight_pct: e.baseWeightBps / 100,
         dynamic_weight_pct: e.dynamicWeightBps / 100,
         slashed: e.isSlashed,
-        pool_fee_bps: e.poolFee,
       })),
       meta: {
         contract: GBLIN,

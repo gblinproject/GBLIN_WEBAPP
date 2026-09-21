@@ -26,10 +26,15 @@ export interface BasketItem {
   price: number;
   balance: number;
   tvl: number;
-  peakPrice: number;
   baseWeight: number;
   dynamicWeight: number;
   realWeight: number;
+  /** True while the crash shield is cutting this row's weight. */
+  shielded: boolean;
+  /** Which side the vault needs at the auction: true means it buys this asset and pays WETH. */
+  vaultBuysAsset: boolean;
+  /** Gap between this row and its target, in ETH of value; 0 when the row is within its band. */
+  gapEth: number;
 }
 
 export interface OnChainData {
@@ -37,9 +42,16 @@ export interface OnChainData {
   nav: string;
   tvl: number;
   supplyNum: number;
+  /** Unix time of the last management-fee accrual; 0 when it has never accrued. */
   lastYield: number;
-  stabilityFund: string;
-  dynamicReserve: string;
+  /** Annual management fee in bps, the only recurring fee the vault charges. */
+  managementFeeBps: number;
+  /** False while a feed the NAV depends on is stale or a basket token does not answer. */
+  navReliable: boolean;
+  /** Auction premium in bps of the oracle value; negative is a discount the bidder gives the vault. */
+  auctionPremiumBps: number;
+  /** True while the largest deviation from the target weights keeps an auction open. */
+  auctionOpen: boolean;
   basketData: BasketItem[];
   totalYieldDistributed: number | null;
   apyData?: {
@@ -56,16 +68,16 @@ export interface OnChainData {
  * This mirrors `_getOraclePrice`, which returns 0 — rather than reverting — when a feed is stale,
  * answers non-positively, or is unreachable. On the ETH exit path that zero propagates into the
  * per-leg `amountOutMinimum`, so the internal swap goes out with no floor. The in-kind exit
- * `sellGBLIN` reads no oracle and is unaffected, which is where we send people instead.
+ * `sellGBLIN` reads no oracle and is unaffected, so it is offered instead.
  *
- * `checked: false` means we could not read the chain. In that case nothing is blocked: refusing a
- * redemption because our own RPC call failed would be worse than the state we are guarding against.
+ * `checked: false` means the chain could not be read. In that case nothing is blocked: refusing a
+ * redemption because an RPC call failed would be worse than the state being guarded against.
  *
- * Only a state we positively observed blocks the ETH exit — stale, or a non-positive answer. A read
- * that fails tells us nothing about the feed (a rate-limited RPC looks identical to a dead aggregator
- * from out here), so it downgrades the whole result to unchecked instead of counting as a fault.
- * We therefore under-block rather than over-block: the guard is a convenience for people using our
- * front end, not a safety property of the protocol.
+ * Only a positively observed state blocks the ETH exit — stale, or a non-positive answer. A failed
+ * read says nothing about the feed itself, since a rate-limited RPC endpoint is indistinguishable
+ * from a dead aggregator seen from off chain, so it downgrades the whole result to unchecked
+ * instead of counting as a fault. The guard therefore under-blocks rather than over-blocks: it is a
+ * convenience for users of this interface, not a safety property of the protocol.
  */
 export type OracleFeedStatus = {
   asset: string;
@@ -91,33 +103,40 @@ export const UNCHECKED_ORACLE_HEALTH: OracleHealth = {
 export const fetchOracleHealth = async (): Promise<OracleHealth> => {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const vault = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
 
-    const [timeoutRaw, block] = await Promise.all([
-      contract.oracleTimeout(),
+    const [config, rowCountRaw, block, navReliable] = await Promise.all([
+      lens.configFees(CONTRACT_ADDRESS),
+      lens.basketLength(CONTRACT_ADDRESS),
       provider.getBlock('latest'),
+      vault.isNavReliable().catch(() => null),
     ]);
 
-    const timeoutSeconds = Number(timeoutRaw);
+    // The pricing window, not the stricter trading one: this is the age past which the vault stops
+    // pricing a row at all.
+    const timeoutSeconds = Number(config[3]);
     // Price against block time, not the browser clock: a skewed local clock must not decide this.
     const now = block ? Number(block.timestamp) : Math.floor(Date.now() / 1000);
     if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) return UNCHECKED_ORACLE_HEALTH;
 
-    const ASSET_NAMES = ['cbBTC', 'WETH', 'USDC'] as const;
-    const rawBasket = await Promise.all([0, 1, 2].map((i) => contract.basket(i).catch(() => null)));
-
+    const indices = Array.from({ length: Number(rowCountRaw) }, (_, i) => i);
     const feeds = await Promise.all(
-      rawBasket.map(async (basketItem, i): Promise<OracleFeedStatus> => {
-        const asset = ASSET_NAMES[i];
-        if (!basketItem) return { asset, ageSeconds: null, unusable: false, reason: 'unreadable' };
+      indices.map(async (i): Promise<OracleFeedStatus> => {
+        let asset = `row ${i}`;
         try {
-          const oracle = new ethers.Contract(basketItem[1], ORACLE_ABI, provider);
+          const row = await lens.asset(CONTRACT_ADDRESS, i);
+          const token = new ethers.Contract(row[0], ERC20_ABI, provider);
+          asset = (await token.symbol().catch(() => asset)) || asset;
+          const oracle = new ethers.Contract(row[1], ORACLE_ABI, provider);
           const round = await oracle.latestRoundData();
           const answer = BigInt(round[1]);
           const ageSeconds = now - Number(round[3]);
+          // A stable row's feed updates daily and has a window of its own, so it is not stale at the
+          // same age as the others; the vault's own verdict below is what actually gates anything.
+          const limit = row[2] ? 26 * 60 * 60 : timeoutSeconds;
 
-          // Same order of checks as _getOraclePrice, and the same strict `>` on the timeout.
-          if (ageSeconds > timeoutSeconds) return { asset, ageSeconds, unusable: true, reason: 'stale' };
+          if (ageSeconds > limit) return { asset, ageSeconds, unusable: true, reason: 'stale' };
           if (answer <= 0n) return { asset, ageSeconds, unusable: true, reason: 'non-positive' };
           return { asset, ageSeconds, unusable: false, reason: null };
         } catch {
@@ -126,14 +145,16 @@ export const fetchOracleHealth = async (): Promise<OracleHealth> => {
       })
     );
 
-    // A feed we could not read leaves us unable to make the claim at all, so we make none.
+    // A feed that cannot be read makes the whole claim unsupportable, so no claim is made.
     if (feeds.some((feed) => feed.reason === 'unreadable')) return UNCHECKED_ORACLE_HEALTH;
 
     return {
       checked: true,
       timeoutSeconds,
       feeds,
-      ethRedeemSafe: feeds.every((feed) => !feed.unusable),
+      // The vault answers this question itself, and its answer is the one that decides whether a mint
+      // or a quote goes through. The per-feed view is shown beside it, never instead of it.
+      ethRedeemSafe: navReliable === null ? feeds.every((feed) => !feed.unusable) : Boolean(navReliable),
     };
   } catch {
     return UNCHECKED_ORACLE_HEALTH;
@@ -162,18 +183,29 @@ const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
 export const RPC_URL = ALCHEMY_KEY
   ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://mainnet.base.org'; // public RPC fallback (rate-limited)
-// V6 = contratto di produzione (trading + letture on-chain). V5 era 0x38DcDB3A381677239BBc652aed9811F2f8496345.
-export const CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
-// Stesso indirizzo: tenuto come alias per i punti di "display pubblico" (home + View on BaseScan).
-export const DISPLAY_CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
-// Pool V6 GBLIN/WETH (per categorizzare le tx come "infra protocollo").
-export const AERODROME_POOL = '0x6Ac18D5e90278D2477027B5769EFb2fF0711FFbB'; // Aerodrome V6
-export const UNISWAP_POOL = '0xAb305c45F4E42A73909a49a6775e3f7782239dAE';   // Uniswap V3 V6
+// The vault in service: shares are minted at NAV and redeemed pro rata in kind. Reads that the vault
+// does not expose directly go through the Lens; the vault never swaps, so buying with an arbitrary
+// token and exiting to ETH go through the Zap. Previous contracts are listed in PREVIOUS_CONTRACTS
+// and are only read by the migration panel.
+export const CONTRACT_ADDRESS = '0xc2181d975c05c8c724b334bcED0764c0b86B1D53';
+export const LENS_ADDRESS = '0xfCFea8027019E8551A1f09AD91532471F5D26f61';
+export const ZAP_ADDRESS = '0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200';
+export const SENTINEL_ADDRESS = '0x9F13C5c46a864183e1c57Ec02837fe5B980D3F67';
+export const PREVIOUS_CONTRACTS = [
+  '0x36C81d7E1966310F305eA637e761Cf77F90852f0',
+  '0x38DcDB3A381677239BBc652aed9811F2f8496345',
+] as const;
+// Same address, kept as a named alias for the places that display the contract publicly.
+export const DISPLAY_CONTRACT_ADDRESS = CONTRACT_ADDRESS;
+// Secondary-market pools, used to classify a transaction as protocol infrastructure.
+// The vault in service has no secondary market: the price is the NAV, and minting and redeeming are
+// the way in and out. Anything that reads a pool must handle `null` and say so rather than guess.
+export const AERODROME_POOL: string | null = null;
+export const UNISWAP_POOL: string | null = null;
 export const AERODROME_ROUTER = '0x2626664c2603336E57B271c5C0b26F421741e481';
 export const FOUNDER_WALLET = '0x17a4564dc380d4435a26648fe00da673645b60ce';
-// Moralis: RIMOSSA il 01/09/2026. Il loro piano gratuito e' stato spento e ogni chiamata
-// rispondeva 401. Le letture on-chain passano ora dalle rotte /api/chain/* (Alchemy lato
-// server), il che chiude anche il vecchio TODO: nessuna chiave di dati sta piu' nel browser.
+// On-chain history is read through the server routes under `/api/chain`, so that no data-provider
+// key is shipped to the browser.
 export const BASE_CHAIN_ID = 8453;
 export const WHITEPAPER_URL = 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/README.md';
 export const LOGO_URL = '/LOGO_GBLIN.png';
@@ -206,45 +238,62 @@ export const TOKENS = [...TRADE_TOKEN_OPTIONS.map((token) => token.symbol), 'CUS
 export const GBLIN_ABI = [
   'function totalSupply() view returns (uint256)',
   'function balanceOf(address) view returns (uint256)',
-  'function stabilityFund() view returns (uint256)',
-  'function basket(uint256) view returns (address token, address oracle, uint24 poolFee, bool isStable, uint256 baseWeight, uint256 dynamicWeight, uint256 peakPrice, uint256 lastPeakUpdate)',
-  'function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap) external',
-  'function buyGBLIN(uint256 minGblinOut) external payable',
-  'function buyGBLINWithToken(bytes calldata path, uint256 amountIn, uint256 minWethOut, uint256 minGblinOut) external',
+  'function totalEthValue(uint256 excludeWeth) view returns (uint256)',
+  'function navPerShare(uint256 excludeWeth) view returns (uint256)',
+  'function isNavReliable() view returns (bool)',
+  'function auctionPremiumBps() view returns (int256)',
+  'function currentDriftEth() view returns (uint256)',
+  'function buyGBLIN(uint256 minOut) external payable',
+  'function buyGBLINWithWeth(uint256 amount, uint256 minOut, address receiver) external',
+  'function buyGBLINInKind(address token, uint256 amountIn, uint256 minOut) external',
   'function sellGBLIN(uint256 gblinAmount) external',
-  'function sellGBLINForEth(uint256 gblinAmount, uint256 minEthOut) external',
-  'function sellGBLINForToken(uint256 gblinAmount, address targetToken, uint24 wethToTargetFee, uint256 minTokenOut) external',
-  'function quoteBuyGBLIN(uint256 ethAmount) view returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)',
-  'function quoteSellGBLIN(uint256 gblinAmount) view returns (uint256 ethOut)',
-  'function quoteMintInKind(uint256 gblinTarget) view returns (uint256[] memory requiredAssets)',
-  'function mintInKind(uint256 gblinTarget) external',
-  'function redeemInKind(uint256 gblinAmount) external',
-  'function refreshWeights() public',
-  'function lastYieldDistribution() view returns (uint256)',
-  'function getDynamicReserve() view returns (uint256)',
-  'function oracleTimeout() view returns (uint256)',
-  'function updateMaxSlippage(uint256 newMaxSlippage) external',
+  'function claimPending(address token) external',
+  'function bid(uint256 index, bool vaultBuysAsset, uint256 amountIn, uint256 minOut, bytes data) external returns (uint256 amountInUsed, uint256 amountOut)',
+  'function refreshWeights() external',
+  'function owner() view returns (address)',
   'error SequencerDown()',
-  'error DepositTooSmall()',
   'error SlippageExceeded()',
   'error Unauthorized()',
   'error CooldownActive()',
-  'error RebalanceNotNeeded()',
-  'error OracleDead()',
-  'error SwapVolumeTooLow()',
+  'error NoAuction()',
+  'error PriceUnavailable()',
   'error InvalidAddress()',
-  'error NoAssetProposed()',
-  'error TimelockActive()',
   'error InvalidIndex()',
   'error InvalidAmount()',
-  'error TransferFailed()',
-  'error NoWethObtained()',
-  'error InvalidPath()',
-  'error TimeNotPassed()',
-  'error NoExcessYield()',
-  'error MaxSlippageExceeded()',
-  'error InvalidBounds()',
-  'error CannotSwapSameToken()'
+  'error DepositTooSmall()',
+  'error NothingToClaim()',
+  'error TokenNotConformant()',
+  'error ZeroOutput()',
+  'error ParamOutOfBounds()',
+  'error InsufficientGas()'
+];
+
+// Read-only helper alongside the vault: quotes, configuration, basket rows and auction state.
+export const LENS_ABI = [
+  'function basketLength(address vault) view returns (uint256)',
+  'function quoteBuy(address vault, uint256 ethValue) view returns (uint256 out, uint256 protocolFee, uint256 stabilityFee)',
+  'function quoteSell(address vault, uint256 gblinAmount) view returns (uint256)',
+  'function asset(address vault, uint256 i) view returns (address token, address oracle, bool isStable, bool delisted, uint256 baseWeight, uint256 dynamicWeight, bool shielded, bool abandoned)',
+  'function auction(address vault, uint256 i) view returns (bool open, int256 premiumBps, bool vaultBuysAsset, uint256 gapEth)',
+  'function auctionOpenedAt(address vault) view returns (uint256)',
+  'function configFees(address vault) view returns (uint256 protocolFee, uint256 stabilityFee, uint256 minDeposit, uint256 oracleAge, uint256 oracleAgeTrade, uint256 sellCooldown, uint256 basketCap)',
+  'function configAuction(address vault) view returns (uint256 driftBand, uint256 driftClose, uint256 auctionStart, uint256 auctionCap, uint256 auctionRamp, uint256 volUpdateInterval, uint256 listingDelay, uint256 inKindFee, uint256 inKindTax)',
+  'function managementFeeBps(address vault) view returns (uint256)',
+  'function lastManagementFeeAccrual(address vault) view returns (uint256)',
+  'function pendingWithdrawal(address vault, address holder, address token) view returns (uint256)',
+  'function lastDepositTime(address vault, address holder) view returns (uint256)',
+  'function feeRecipient(address vault) view returns (address)'
+];
+
+// The Zap is the only contract that swaps: it mints with any token and exits to ETH by redeeming in
+// kind and selling the legs. The vault itself never touches a pool.
+export const ZAP_ABI = [
+  'function buyGBLINWithToken(address tokenIn, uint256 amountIn, uint256 minWethOut, uint256 minOut, bytes venueData, address receiver) external returns (uint256 out)',
+  'function sellGBLINForEth(uint256 shares, uint256 minEthOut, bytes[] venueData, address receiver) external returns (uint256 ethOut)'
+];
+
+export const SENTINEL_ABI = [
+  'function isPaused() view returns (bool)'
 ];
 
 export const ERC20_ABI = [
@@ -276,12 +325,11 @@ const PROTOCOL_CORE_ADDRESSES = new Set([
   CONTRACT_ADDRESS.toLowerCase(),
   FOUNDER_WALLET.toLowerCase()
 ]);
-const PROTOCOL_INFRA_ADDRESSES = new Set([
-  AERODROME_POOL.toLowerCase(),
-  UNISWAP_POOL.toLowerCase(),
-  AERODROME_ROUTER.toLowerCase(),
-  ZERO_ADDRESS
-]);
+const PROTOCOL_INFRA_ADDRESSES = new Set(
+  [AERODROME_POOL, UNISWAP_POOL, AERODROME_ROUTER, ZAP_ADDRESS, ZERO_ADDRESS]
+    .filter((a): a is string => a !== null)
+    .map((a) => a.toLowerCase())
+);
 const KNOWN_PROTOCOL_ADDRESSES = new Set([...PROTOCOL_CORE_ADDRESSES, ...PROTOCOL_INFRA_ADDRESSES]);
 const tokenMetadataCache = new Map<string, TradeTokenOption | null>();
 const tokenRouteCache = new Map<string, { tokens: string[]; fees: number[] } | null>();
@@ -299,15 +347,32 @@ const GBLIN_TRANSACTION_SIGNATURES: Array<{ signature: string; type: Transaction
   { signature: 'proposeAsset(address,address,uint24,bool,uint256)', type: 'ADMIN', valueSource: 'none' },
   { signature: 'executeAssetAddition()', type: 'ADMIN', valueSource: 'none' },
   { signature: 'emergencyDelist(uint256)', type: 'ADMIN', valueSource: 'none' },
-  { signature: 'buyGBLINInKind(address,uint256,uint256)', type: 'BUY', valueSource: 'gblin-transfer' }, // V6 in-kind mint
-  { signature: 'mintInKind(uint256)', type: 'BUY', valueSource: 'gblin-amount' },     // V5 legacy
-  { signature: 'redeemInKind(uint256)', type: 'SELL', valueSource: 'gblin-amount' },  // V5 legacy
+  // The vault in service and its Zap. Signatures of the previous contracts follow, so a wallet's older
+  // history keeps its labels instead of falling back to "transfer".
   { signature: 'buyGBLIN(uint256)', type: 'BUY', valueSource: 'native-eth' },
-  { signature: 'buyGBLINWithToken(bytes,uint256,uint256,uint256)', type: 'BUY', valueSource: 'gblin-transfer' },
+  { signature: 'buyGBLINWithWeth(uint256,uint256,address)', type: 'BUY', valueSource: 'gblin-transfer' },
+  { signature: 'buyGBLINInKind(address,uint256,uint256)', type: 'BUY', valueSource: 'gblin-transfer' },
+  { signature: 'buyGBLINWithToken(address,uint256,uint256,uint256,bytes,address)', type: 'BUY', valueSource: 'gblin-transfer' },
   { signature: 'sellGBLIN(uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'sellGBLINForEth(uint256,uint256,bytes[],address)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'claimPending(address)', type: 'SELL', valueSource: 'none' },
+  { signature: 'bid(uint256,bool,uint256,uint256,bytes)', type: 'REBALANCE', valueSource: 'rebalance-amount' },
+  { signature: 'refreshWeights()', type: 'MAINT', valueSource: 'none' },
+  { signature: 'transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)', type: 'MAINT', valueSource: 'none' },
+  { signature: 'receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)', type: 'MAINT', valueSource: 'none' },
+  { signature: 'setParam(uint256,uint256[7])', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'setAddress(uint256,address)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'proposeAsset(address,address,bool,uint256)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'executeAssetAddition(uint256)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'assetAction(uint256,uint256)', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'setBaseWeights(uint256[])', type: 'ADMIN', valueSource: 'none' },
+  { signature: 'acceptOwnership()', type: 'ADMIN', valueSource: 'none' },
+  // Previous contracts.
+  { signature: 'mintInKind(uint256)', type: 'BUY', valueSource: 'gblin-amount' },
+  { signature: 'redeemInKind(uint256)', type: 'SELL', valueSource: 'gblin-amount' },
+  { signature: 'buyGBLINWithToken(bytes,uint256,uint256,uint256)', type: 'BUY', valueSource: 'gblin-transfer' },
   { signature: 'sellGBLINForEth(uint256,uint256)', type: 'SELL', valueSource: 'gblin-amount' },
   { signature: 'sellGBLINForToken(uint256,address,uint24,uint256)', type: 'SELL', valueSource: 'gblin-amount' },
-  { signature: 'refreshWeights()', type: 'MAINT', valueSource: 'none' },
   { signature: 'incentivizedRebalance(uint256,bool,uint256)', type: 'REBALANCE', valueSource: 'rebalance-amount' },
   { signature: 'updateMaxSlippage(uint256)', type: 'ADMIN', valueSource: 'slippage-bps' },
   { signature: 'distributeYield()', type: 'YIELD', valueSource: 'none' },
@@ -477,17 +542,61 @@ const formatTransactionValue = (
 
 export const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
+/**
+ * Number formatting follows the interface language.
+ *
+ * Group and decimal separators are swapped between locales, so a figure printed
+ * with one convention and read with another is a different figure: "1,546,640"
+ * reads as one thousand five hundred forty-six point sixty-four wherever the
+ * comma is the decimal separator. A figure that can be read as another figure is
+ * worse than no figure at all.
+ *
+ * The locale is module state rather than a prop because these helpers are called
+ * from many call sites, including the chain reader. The shells set it inside an
+ * effect, so the server render and the first client render agree and only the
+ * render that follows a language switch is localised.
+ */
+const NUMBER_LOCALES: Record<string, string> = {
+  en: 'en-US',
+  it: 'it-IT',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  zh: 'zh-CN',
+  ja: 'ja-JP'
+};
+
+let activeLocale = 'en-US';
+
+export function setNumberLocale(language: string) {
+  activeLocale = NUMBER_LOCALES[language] ?? 'en-US';
+}
+
+export function getNumberLocale() {
+  return activeLocale;
+}
+
 export const formatCurrency = (value: number, decimals = 2) =>
-  new Intl.NumberFormat('en-US', {
+  new Intl.NumberFormat(activeLocale, {
     style: 'currency',
     currency: 'USD',
+    // narrowSymbol keeps the dollar sign in every language instead of falling back
+    // to the "USD" code, which several locales use by default.
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
   }).format(value);
 
+/** Percentage in the interface language: 45,00% in Italian, 45.00% in English. */
+export const formatPercent = (value: number, decimals = 2) =>
+  `${new Intl.NumberFormat(activeLocale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value)}%`;
+
 export const formatTokenAmount = (value: number, maxFractionDigits: number) => {
   if (!Number.isFinite(value) || value <= 0) return '0';
-  const formatted = value.toLocaleString('en-US', {
+  const formatted = value.toLocaleString(activeLocale, {
     useGrouping: false,
     maximumFractionDigits: maxFractionDigits
   });
@@ -644,7 +753,6 @@ export async function quoteTokenToWeth(provider: ethers.JsonRpcProvider, tokenAd
 export const fetchMarketData = async (): Promise<DashboardData> => {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
 
     let priceUsd = 0;
     let ethPriceUsd = 3500;
@@ -657,13 +765,14 @@ export const fetchMarketData = async (): Promise<DashboardData> => {
         if (price) ethPriceUsd = price;
       }
 
-      const quoteSell = await contract.quoteSellGBLIN(ethers.parseEther('1'));
+      // The price of a share is what the vault would pay for it now, read through the Lens.
+      const quoteSell = await quoteSellShares(provider, ethers.parseEther('1'));
       const ethOut = parseFloat(ethers.formatEther(quoteSell));
       priceUsd = ethOut * ethPriceUsd;
     } catch {}
 
-    // Il volume 24h veniva da Moralis con DexScreener come ripiego. Dal 01/09/2026 Moralis
-    // e' spento (401/404) e resta il solo DexScreener, che quel numero lo dava comunque.
+    // 24h volume comes from the public market aggregator queried below; it stays at zero when the
+    // aggregator has nothing for this token.
     let volume24h = 0;
 
     if (priceUsd === 0 || volume24h === 0) {
@@ -692,8 +801,8 @@ export const fetchMarketData = async (): Promise<DashboardData> => {
 
 export const fetchTransactions = async (): Promise<TransactionItem[]> => {
   try {
-    // Dal 01/09/2026 la fonte e' la nostra rotta server (Alchemy): Moralis ha spento il
-    // piano gratuito e la chiave stava comunque nel browser. Una sola richiesta, cache CDN.
+    // Single request to the server route, which keeps the RPC key server-side and lets the CDN
+    // cache the result.
     const activityRes = await fetch('/api/chain/contract-activity?limit=10');
     const activity = activityRes.ok
       ? await activityRes.json()
@@ -787,86 +896,87 @@ export const fetchTransactions = async (): Promise<TransactionItem[]> => {
 export const fetchOnChainData = async (): Promise<OnChainData> => {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const vault = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
+    const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
 
-    const [totalSupply, contractBalance, lastYield, stabilityFundRaw, dynamicReserve] = await Promise.all([
-      contract.totalSupply().catch(() => 0n),
-      contract.balanceOf(CONTRACT_ADDRESS).catch(() => 0n),
-      contract.lastYieldDistribution().catch(() => 0n),
-      contract.stabilityFund().catch(() => 0n),
-      contract.getDynamicReserve().catch(() => 0n),
+    const [totalSupply, navReliable, premiumRaw, mgmtFeeRaw, lastAccrualRaw, rowCountRaw] = await Promise.all([
+      vault.totalSupply().catch(() => 0n),
+      vault.isNavReliable().catch(() => false),
+      vault.auctionPremiumBps().catch(() => 0n),
+      lens.managementFeeBps(CONTRACT_ADDRESS).catch(() => 0n),
+      lens.lastManagementFeeAccrual(CONTRACT_ADDRESS).catch(() => 0n),
+      lens.basketLength(CONTRACT_ADDRESS).catch(() => 0n),
     ]);
 
     const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
-    const contractBalanceFormatted = parseFloat(ethers.formatEther(contractBalance));
-    const stabilityFund = Number.parseFloat(ethers.formatEther(stabilityFundRaw));
-    const activeSupply = supplyFormatted - contractBalanceFormatted;
+    const rowCount = Number(rowCountRaw);
+    const indices = Array.from({ length: rowCount }, (_, i) => i);
 
-    const ASSET_NAMES = ['cbBTC', 'WETH', 'USDC'] as const;
-
-    const rawBasket = await Promise.all([0, 1, 2].map(i => contract.basket(i).catch(() => null)));
-
-    const basketResults = await Promise.all(
-      rawBasket.map(async (basketItem, i) => {
-        if (!basketItem) return null;
+    const rows = await Promise.all(
+      indices.map(async (i) => {
         try {
-          const tokenAddress = basketItem[0];
-          const oracleAddress = basketItem[1];
-          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-          const oracleContract = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
-          const [balance, decimals, latestRound] = await Promise.all([
-            tokenContract.balanceOf(CONTRACT_ADDRESS),
-            tokenContract.decimals(),
-            oracleContract.latestRoundData()
+          const [row, auction] = await Promise.all([
+            lens.asset(CONTRACT_ADDRESS, i),
+            lens.auction(CONTRACT_ADDRESS, i).catch(() => null),
+          ]);
+          const tokenAddress: string = row[0];
+          const oracleAddress: string = row[1];
+          const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+          const oracle = new ethers.Contract(oracleAddress, ORACLE_ABI, provider);
+          const [balance, decimals, symbol, latestRound] = await Promise.all([
+            token.balanceOf(CONTRACT_ADDRESS),
+            token.decimals(),
+            token.symbol().catch(() => ''),
+            oracle.latestRoundData(),
           ]);
           const price = Number(latestRound[1]) / 1e8;
           const balanceFormatted = Number(balance) / Math.pow(10, Number(decimals));
           return {
-            name: ASSET_NAMES[i],
+            name: (symbol || 'ASSET') as BasketItem['name'],
             address: tokenAddress,
             price,
             balance: balanceFormatted,
             tvl: balanceFormatted * price,
-            peakPrice: Number(basketItem[6]) / 1e8,
-            baseWeight: Number(basketItem[4]),
-            dynamicWeight: Number(basketItem[5]),
-            realWeight: 0
-          } satisfies BasketItem;
-        } catch { return null; }
+            baseWeight: Number(row[4]),
+            dynamicWeight: Number(row[5]),
+            realWeight: 0,
+            shielded: Boolean(row[6]),
+            vaultBuysAsset: auction ? Boolean(auction[2]) : false,
+            gapEth: auction ? Number(ethers.formatEther(auction[3])) : 0,
+            auctionOpen: auction ? Boolean(auction[0]) : false,
+          };
+        } catch {
+          return null;
+        }
       })
     );
 
-    const basketItems: BasketItem[] = basketResults.filter((x): x is BasketItem => x !== null);
-    let tvl = basketItems.reduce((s, item) => s + item.tvl, 0);
+    const basketItems: BasketItem[] = rows.filter((x): x is BasketItem & { auctionOpen: boolean } => x !== null);
+    const auctionOpen = rows.some((r) => r !== null && r.auctionOpen);
+    const tvl = basketItems.reduce((sum, item) => sum + item.tvl, 0);
 
-    const wethAsset = basketItems.find((item) => item.name === 'WETH') ?? null;
-    const wethPrice = wethAsset ? Number(wethAsset.price) : 0;
-    const effectiveTvl = basketItems.reduce((sum, item) => {
-      if (item.name === 'WETH') {
-        return sum + Math.max(item.balance - stabilityFund, 0) * item.price;
-      }
-      return sum + item.tvl;
-    }, 0);
+    // Every share is backed by the basket: no buffer is held back, so the weights are the plain shares
+    // of the total. The NAV comes from the vault itself, priced in ETH, and is converted with the WETH
+    // row's own feed so that the figure on screen and the figure the contract uses cannot drift apart.
+    if (tvl > 0) basketItems.forEach((item) => { item.realWeight = (item.tvl / tvl) * 100; });
 
-    if (effectiveTvl > 0) {
-      basketItems.forEach((item) => {
-        const effectiveItemTvl = item.name === 'WETH' ? Math.max(item.balance - stabilityFund, 0) * item.price : item.tvl;
-        item.realWeight = (effectiveItemTvl / effectiveTvl) * 100;
-      });
-    }
+    const navPerShareWei: bigint = await vault.navPerShare(0).catch(() => 0n);
+    const wethRow = basketItems.find((item) => item.name === 'WETH') ?? null;
+    const ethPrice = wethRow ? wethRow.price : 0;
+    const nav = Number(ethers.formatEther(navPerShareWei)) * ethPrice;
 
-    const nav = activeSupply > 0 ? effectiveTvl / activeSupply : 1;
-    // Fetch total yield distributed from events
     const totalYieldDistributed = await fetchTotalYieldDistributed();
 
     return {
       totalSupply: supplyFormatted.toLocaleString(undefined, { maximumFractionDigits: 6 }),
       nav: formatCurrency(nav),
       tvl,
-      supplyNum: activeSupply,
-      lastYield: Number(lastYield),
-      stabilityFund: ethers.formatEther(stabilityFundRaw),
-      dynamicReserve: ethers.formatEther(dynamicReserve),
+      supplyNum: supplyFormatted,
+      lastYield: Number(lastAccrualRaw),
+      managementFeeBps: Number(mgmtFeeRaw),
+      navReliable: Boolean(navReliable),
+      auctionPremiumBps: Number(premiumRaw),
+      auctionOpen,
       basketData: basketItems,
       totalYieldDistributed,
       apyData: null
@@ -878,8 +988,10 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       tvl: 0,
       supplyNum: 0,
       lastYield: 0,
-      stabilityFund: '0',
-      dynamicReserve: '0',
+      managementFeeBps: 0,
+      navReliable: false,
+      auctionPremiumBps: 0,
+      auctionOpen: false,
       basketData: [],
       totalYieldDistributed: null,
       apyData: null
@@ -887,16 +999,35 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
   }
 };
 
-// Totale ridistribuito a TUTTI i holder (somma degli eventi YieldDistributed = lo yield che
-// entra nel NAV ad ogni acquisto dal contratto). V6 emette YieldDistributed(uint256) su ogni buy.
-// Usiamo l'indicizzatore Blockscout (una sola chiamata, nessun limite di range come getLogs sull'RPC).
+/** Shares for `ethValue` wei of ETH, and the two mint fees, as the vault would price them now. */
+export const quoteBuyShares = async (
+  provider: ethers.Provider,
+  ethValue: bigint
+): Promise<{ out: bigint; protocolFee: bigint; stabilityFee: bigint }> => {
+  const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
+  const [out, protocolFee, stabilityFee] = await lens.quoteBuy(CONTRACT_ADDRESS, ethValue);
+  return { out, protocolFee, stabilityFee };
+};
+
+/** Value in wei of ETH of `shares`, as the vault would pay it now. Reverts while the NAV is unreliable. */
+export const quoteSellShares = async (provider: ethers.Provider, shares: bigint): Promise<bigint> => {
+  const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
+  return (await lens.quoteSell(CONTRACT_ADDRESS, shares)) as bigint;
+};
+
+/**
+ * Total amount that has accrued to holders through the NAV, summed from the fee events the vault
+ * emits on chain.
+ *
+ * The sum is computed by the `/api/nav-fees` route rather than here: an indexer answers it in a
+ * single call and the result is cached, whereas reading the logs from the browser is not viable —
+ * public RPC endpoints cap `eth_getLogs` to a narrow block range, so the scan silently returns
+ * nothing.
+ *
+ * `null` means the figure could not be read right now, which is a different statement from "nothing
+ * has ever accrued". Callers must render the two cases differently.
+ */
 export const fetchTotalYieldDistributed = async (): Promise<number | null> => {
-  // La fonte e' /api/nav-fees, che questo identico numero (somma degli eventi YieldDistributed)
-  // lo calcola da prima e meglio: Blockscout in una chiamata, cache 15 minuti, e come ultimo
-  // ripiego una baseline verificata a mano. Prima la lettura la faceva il browser con un
-  // ripiego getLogs che dal 2026 non ripiega piu' (Alchemy free limita eth_getLogs a 10
-  // blocchi): un errore di rete diventava uno ZERO pubblicato.
-  // `null` = non lo sappiamo adesso, che e' diverso da "non abbiamo mai distribuito nulla".
   try {
     const res = await fetch('/api/nav-fees');
     if (!res.ok) return null;

@@ -1,235 +1,125 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
+/**
+ * Auction watch.
+ *
+ * The vault does not rebalance itself and pays nobody to do it: when a row drifts past the opening
+ * band it opens a Dutch auction, and whoever trades toward the target weights is the counterparty.
+ * Bidding means bringing the input tokens, so this endpoint reports the state and signs nothing —
+ * anyone reading it can decide whether the premium covers their own cost.
+ */
+
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY ?? process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
 const RPC_URL = ALCHEMY_KEY
   ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://mainnet.base.org';
-const CONTRACT_ADDRESS = '0x36C81d7E1966310F305eA637e761Cf77F90852f0'; // V6
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+const VAULT_ADDRESS = '0xc2181d975c05c8c724b334bcED0764c0b86B1D53';
+const LENS_ADDRESS = '0xfCFea8027019E8551A1f09AD91532471F5D26f61';
 
-const ABI = [
-  'function basket(uint256) view returns (address token, address oracle, uint24 poolFee, bool isStable, uint256 baseWeight, uint256 dynamicWeight, uint256 peakPrice, uint256 lastPeakUpdate)',
-  'function stabilityFund() view returns (uint256)',
-  'function incentivizedRebalance(uint256 assetIndex, bool isWethToAsset, uint256 amountToSwap) external',
-  'function refreshWeights() public',
+const VAULT_ABI = [
+  'function auctionPremiumBps() view returns (int256)',
+  'function currentDriftEth() view returns (uint256)',
+  'function isNavReliable() view returns (bool)',
+  'function totalEthValue(uint256 excludeWeth) view returns (uint256)',
 ];
-
-const ERC20_ABI = ['function balanceOf(address) view returns (uint256)'];
-const ORACLE_ABI = [
-  'function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)',
+const LENS_ABI = [
+  'function basketLength(address vault) view returns (uint256)',
+  'function asset(address vault, uint256 i) view returns (address token, address oracle, bool isStable, bool delisted, uint256 baseWeight, uint256 dynamicWeight, bool shielded, bool abandoned)',
+  'function auction(address vault, uint256 i) view returns (bool open, int256 premiumBps, bool vaultBuysAsset, uint256 gapEth)',
+  'function auctionOpenedAt(address vault) view returns (uint256)',
+  'function configAuction(address vault) view returns (uint256 driftBand, uint256 driftClose, uint256 auctionStart, uint256 auctionCap, uint256 auctionRamp, uint256 volUpdateInterval, uint256 listingDelay, uint256 inKindFee, uint256 inKindTax)',
 ];
+const ERC20_ABI = ['function symbol() view returns (string)'];
 
-// Assets that can be rebalanced (not WETH itself)
-const REBALANCE_TARGETS = [
-  { name: 'cbBTC', index: 0, decimals: 8 },
-  { name: 'USDC', index: 2, decimals: 6 },
-];
-
-interface RebalanceResult {
-  asset: string;
-  direction: string;
-  amount: string;
-  txHash?: string;
-  error?: string;
-  skipped?: boolean;
-}
-
-function convertToEth(
-  amount: bigint,
-  assetPrice: bigint,
-  ethPrice: bigint,
-  assetDecimals: number
-): bigint {
-  const val = (amount * assetPrice) / ethPrice;
-  if (assetDecimals < 18) return val * 10n ** BigInt(18 - assetDecimals);
-  if (assetDecimals > 18) return val / 10n ** BigInt(assetDecimals - 18);
-  return val;
-}
-
-function convertEthToAsset(
-  ethAmount: bigint,
-  assetPrice: bigint,
-  ethPrice: bigint,
-  assetDecimals: number
-): bigint {
-  const val = (ethAmount * ethPrice) / assetPrice;
-  if (assetDecimals < 18) return val / 10n ** BigInt(18 - assetDecimals);
-  if (assetDecimals > 18) return val * 10n ** BigInt(assetDecimals - 18);
-  return val;
-}
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Verify cron secret to prevent unauthorized calls
+  // Same guard as before: the endpoint is cheap but it is ours, not a public firehose.
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Kill switch
-  if (process.env.REBALANCE_BOT_ENABLED === 'false') {
-    return NextResponse.json({ status: 'disabled', message: 'Bot is disabled via env' });
-  }
-
-  const botKey = process.env.REBALANCE_BOT_KEY;
-  if (!botKey) {
-    return NextResponse.json({ error: 'REBALANCE_BOT_KEY not configured' }, { status: 500 });
-  }
-
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const wallet = new ethers.Wallet(botKey, provider);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, wallet);
-  const wethContract = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
-
-  const results: RebalanceResult[] = [];
-
   try {
-    // Read contract state
-    const [wethBalance, stabilityFund] = await Promise.all([
-      wethContract.balanceOf(CONTRACT_ADDRESS) as Promise<bigint>,
-      contract.stabilityFund() as Promise<bigint>,
-    ]);
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const vault = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, provider);
+    const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
 
-    const availableWeth = wethBalance > stabilityFund ? wethBalance - stabilityFund : 0n;
-    const hasReward = stabilityFund >= ethers.parseEther('0.0001');
+    const [premiumRaw, driftRaw, navReliable, totalValue, rowCountRaw, openedAtRaw, config] =
+      await Promise.all([
+        vault.auctionPremiumBps(),
+        vault.currentDriftEth(),
+        vault.isNavReliable(),
+        vault.totalEthValue(0),
+        lens.basketLength(VAULT_ADDRESS),
+        lens.auctionOpenedAt(VAULT_ADDRESS),
+        lens.configAuction(VAULT_ADDRESS),
+      ]);
 
-    // Minimum swap: max(WETH_balance / 100, 0.01 ETH)
-    let minSwapRequired = wethBalance / 100n;
-    const MIN_SWAP_FLOOR = ethers.parseEther('0.01');
-    if (minSwapRequired < MIN_SWAP_FLOOR) minSwapRequired = MIN_SWAP_FLOOR;
-
-    // Read WETH oracle price
-    const basket1 = await contract.basket(1); // WETH basket entry
-    const wethOracle = new ethers.Contract(basket1.oracle, ORACLE_ABI, provider);
-    const wethRound = await wethOracle.latestRoundData();
-    const ethPrice = wethRound[1] as bigint;
-    if (ethPrice <= 0n) {
-      return NextResponse.json({ status: 'skipped', reason: 'WETH oracle dead' });
-    }
-
-    // Calculate total ETH value of the vault
-    let totalEthValue = availableWeth;
-
-    // Pre-fetch all basket data
-    const basketData = await Promise.all(
-      REBALANCE_TARGETS.map(async (target) => {
-        const basket = await contract.basket(target.index);
-        const tokenContract = new ethers.Contract(basket.token, ERC20_ABI, provider);
-        const tokenBalance = (await tokenContract.balanceOf(CONTRACT_ADDRESS)) as bigint;
-        const assetOracle = new ethers.Contract(basket.oracle, ORACLE_ABI, provider);
-        const assetRound = await assetOracle.latestRoundData();
-        const assetPrice = assetRound[1] as bigint;
-
-        const currentEthValue =
-          assetPrice > 0n
-            ? convertToEth(tokenBalance, assetPrice, ethPrice, target.decimals)
-            : 0n;
-
-        totalEthValue += currentEthValue;
-
+    const rowCount = Number(rowCountRaw);
+    const rows = await Promise.all(
+      Array.from({ length: rowCount }, async (_, i) => {
+        const [row, state] = await Promise.all([
+          lens.asset(VAULT_ADDRESS, i),
+          lens.auction(VAULT_ADDRESS, i),
+        ]);
+        const token = new ethers.Contract(row[0], ERC20_ABI, provider);
+        const symbol: string = await token.symbol().catch(() => `row ${i}`);
         return {
-          ...target,
-          basket,
-          tokenBalance,
-          assetPrice,
-          currentEthValue,
+          index: i,
+          asset: symbol,
+          token: row[0],
+          base_weight_bps: Number(row[4]),
+          dynamic_weight_bps: Number(row[5]),
+          shielded: Boolean(row[6]),
+          // Which side the vault needs: true means it is buying the asset and paying WETH.
+          vault_buys_asset: Boolean(state[2]),
+          gap_eth: ethers.formatEther(state[3]),
         };
       })
     );
 
-    // Process each asset
-    for (const asset of basketData) {
-      if (asset.assetPrice <= 0n) {
-        results.push({ asset: asset.name, direction: '-', amount: '0', skipped: true, error: 'Oracle dead' });
-        continue;
-      }
-
-      const targetEthValue = (totalEthValue * asset.basket.dynamicWeight) / 10000n;
-      const isUnderweight = asset.currentEthValue < targetEthValue;
-      const isOverweight = asset.currentEthValue > targetEthValue;
-
-      if (!isUnderweight && !isOverweight) {
-        results.push({ asset: asset.name, direction: '-', amount: '0', skipped: true, error: 'Already balanced' });
-        continue;
-      }
-
-      let amountToSwap: bigint;
-      let isWethToAsset: boolean;
-
-      if (isUnderweight) {
-        // Buy asset with WETH
-        isWethToAsset = true;
-        const gap = targetEthValue - asset.currentEthValue;
-        amountToSwap = gap > availableWeth ? availableWeth : gap;
-
-        if (amountToSwap < minSwapRequired) {
-          results.push({ asset: asset.name, direction: 'WETH->Asset', amount: ethers.formatEther(amountToSwap), skipped: true, error: `Below min swap (${ethers.formatEther(minSwapRequired)} ETH)` });
-          continue;
-        }
-      } else {
-        // Sell asset for WETH
-        isWethToAsset = false;
-        const gap = asset.currentEthValue - targetEthValue;
-        const maxAssetToSwap = convertEthToAsset(gap, asset.assetPrice, ethPrice, asset.decimals);
-        amountToSwap = maxAssetToSwap > asset.tokenBalance ? asset.tokenBalance : maxAssetToSwap;
-
-        const ethEquivalent = convertToEth(amountToSwap, asset.assetPrice, ethPrice, asset.decimals);
-        if (ethEquivalent < minSwapRequired) {
-          results.push({ asset: asset.name, direction: 'Asset->WETH', amount: amountToSwap.toString(), skipped: true, error: `Below min swap (${ethers.formatEther(minSwapRequired)} ETH)` });
-          continue;
-        }
-      }
-
-      if (amountToSwap === 0n) {
-        results.push({ asset: asset.name, direction: isWethToAsset ? 'WETH->Asset' : 'Asset->WETH', amount: '0', skipped: true, error: 'Zero amount' });
-        continue;
-      }
-
-      // Dry run via staticCall
-      try {
-        await contract.incentivizedRebalance.staticCall(asset.index, isWethToAsset, amountToSwap);
-      } catch (err: any) {
-        const reason = err?.reason || err?.message || 'Unknown revert';
-        results.push({ asset: asset.name, direction: isWethToAsset ? 'WETH->Asset' : 'Asset->WETH', amount: amountToSwap.toString(), skipped: true, error: `Dry run failed: ${reason}` });
-        continue;
-      }
-
-      // Execute real transaction
-      try {
-        const tx = await contract.incentivizedRebalance(asset.index, isWethToAsset, amountToSwap, {
-          gasLimit: 500_000,
-        });
-        const receipt = await tx.wait();
-        results.push({
-          asset: asset.name,
-          direction: isWethToAsset ? 'WETH->Asset' : 'Asset->WETH',
-          amount: isWethToAsset ? ethers.formatEther(amountToSwap) + ' WETH' : amountToSwap.toString(),
-          txHash: receipt.hash,
-        });
-      } catch (err: any) {
-        results.push({
-          asset: asset.name,
-          direction: isWethToAsset ? 'WETH->Asset' : 'Asset->WETH',
-          amount: amountToSwap.toString(),
-          error: err?.reason || err?.message || 'Transaction failed',
-        });
-      }
-    }
+    const open = Number(openedAtRaw) !== 0;
+    const totalEth = Number(ethers.formatEther(totalValue));
+    const driftEth = Number(ethers.formatEther(driftRaw));
 
     return NextResponse.json({
-      status: 'completed',
+      vault: VAULT_ADDRESS,
+      nav_reliable: Boolean(navReliable),
+      auction: {
+        open,
+        opened_at: Number(openedAtRaw),
+        // Negative is a discount the bidder gives the vault; it rises to the cap over the ramp,
+        // holds there for another ramp, and starts again.
+        premium_bps: Number(premiumRaw),
+        cap_bps: Number(config[3]),
+        start_discount_bps: Number(config[2]),
+        ramp_seconds: Number(config[4]),
+        opens_above_bps: Number(config[0]),
+        closes_at_or_below_bps: Number(config[1]),
+      },
+      drift: {
+        worst_gap_eth: driftEth,
+        worst_gap_pct_of_nav: totalEth > 0 ? (driftEth / totalEth) * 100 : 0,
+        total_value_eth: totalEth,
+      },
+      rows,
+      how_to_bid:
+        'bid(index, vaultBuysAsset, amountIn, minOut, data) on the vault, at the oracle price adjusted ' +
+        'by the current premium. The input is reduced to what closes the gap, so a bid never pushes a ' +
+        'row past its target. Nothing is paid out of the vault for calling it: the premium is the reward.',
+      note:
+        'This endpoint only reports. The vault has no rebalance function and no bounty fund: filling ' +
+        'the auction means bringing the tokens and trading with it.',
       timestamp: new Date().toISOString(),
-      botAddress: wallet.address,
-      hasReward,
-      stabilityFund: ethers.formatEther(stabilityFund),
-      results,
     });
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json(
-      { status: 'error', error: err?.message || 'Unknown error' },
-      { status: 500 }
+      { error: `Could not read the auction state: ${(err as Error).message}` },
+      { status: 502 }
     );
   }
 }

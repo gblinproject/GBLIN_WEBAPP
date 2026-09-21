@@ -1,11 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, ExternalLink, Globe, Menu, Zap, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, ExternalLink, Globe, Menu, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
 import { DISPLAY_CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
 import type { ProtocolView } from './protocol-sections';
@@ -22,387 +22,365 @@ interface ProtocolShellProps {
   children: ReactNode;
 }
 
-// Top bar: 5 voices for humans (home, buy, protocol, agents, aureus).
-// Protocol detail views and the agent/data pages live one click deep in
-// dropdowns, so first-time buyers see a simple site and technical visitors
-// still reach everything. `label` bypasses translations (proper nouns).
 interface NavLeaf {
-  key: 'home' | 'buy' | 'dashboard' | 'rebalance' | 'vault' | 'aureus' | 'agents' | 'observatory';
+  key: string;
   href: string;
-  label?: string;
 }
-type NavEntry = NavLeaf & { children?: NavLeaf[] };
 
-const navItems: NavEntry[] = [
-  { key: 'home', href: '/' },
+// Five destinations in the bar; everything else one click deep under "More".
+const PRIMARY_NAV: NavLeaf[] = [
+  { key: 'overview', href: '/' },
+  { key: 'vault', href: '/vault' },
+  { key: 'auction', href: '/rebalance' },
+  { key: 'agents', href: '/agents' },
+];
+const MORE_NAV: NavLeaf[] = [
   { key: 'buy', href: '/buy-gblin' },
-  {
-    key: 'dashboard', href: '/dashboard', label: 'Protocol',
-    children: [
-      { key: 'dashboard', href: '/dashboard' },
-      { key: 'rebalance', href: '/rebalance' },
-      { key: 'vault', href: '/vault' }
-    ]
-  },
-  {
-    key: 'agents', href: '/agents',
-    children: [
-      { key: 'agents', href: '/agents' },
-      { key: 'observatory', href: '/observatory', label: 'Observatory' }
-    ]
-  },
-  { key: 'aureus', href: '/aureus' }
+  { key: 'dashboard', href: '/dashboard' },
+  { key: 'observatory', href: '/observatory' },
+  { key: 'coherence', href: '/coherence' },
+  { key: 'receipts', href: '/receipts' },
+  { key: 'aureus', href: '/aureus' },
+  { key: 'faq', href: '/faq' },
+  { key: 'operatedByAi', href: '/operated-by-ai' },
 ];
 
-// Mobile hamburger keeps the flat list: vertical menus read fine ungrouped.
-const flatNavItems: NavLeaf[] = navItems.flatMap((item) => (item.children ? item.children : [item]));
-
-const shellCard = 'rounded-[2rem] border border-white/10 bg-[#0A0A0A]/90 shadow-[0_30px_90px_rgba(0,0,0,0.4)] backdrop-blur-xl';
-const shellContainer = 'mx-auto w-full max-w-[1720px]';
+const CONTAINER = 'mx-auto w-full max-w-[1200px] px-5 sm:px-6 lg:px-8';
 const CONTACT_EMAIL = 'info@gblin.digital';
+const GITHUB_URL = 'https://github.com/gblinproject';
+const REVIEWS_URL = 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/audits/README.md';
+
 const CONTACT_LINKS = [
-  { key: 'email', platform: 'Email', label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}`, external: false },
-  { key: 'farcaster', platform: 'Farcaster', label: '@gblin', href: 'https://warpcast.com/gblin', external: true },
-  { key: 'x', platform: 'X', label: '@GBLIN_Protocol', href: 'https://x.com/GBLIN_Protocol', external: true }
+  { key: 'email', label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}`, external: false },
+  { key: 'farcaster', label: 'Farcaster', href: 'https://warpcast.com/gblin', external: true },
+  { key: 'x', label: 'X', href: 'https://x.com/GBLIN_Protocol', external: true },
 ] as const;
 
-function LiveClock() {
-  const [currentTime, setCurrentTime] = useState('');
-
+function useClickOutside<T extends HTMLElement>(open: boolean, onClose: () => void) {
+  const ref = useRef<T>(null);
   useEffect(() => {
-    const updateTime = () => setCurrentTime(new Date().toLocaleTimeString());
-    updateTime();
-    const timer = window.setInterval(updateTime, 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return <span>{currentTime}</span>;
+    if (!open) return;
+    const handler = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open, onClose]);
+  return ref;
 }
 
-function ContactMenuPanel({ className = '' }: { className?: string }) {
+function Dropdown({ open, children, className = '' }: { open: boolean; children: ReactNode; className?: string }) {
+  if (!open) return null;
   return (
-    <div className={`overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0A0A0A]/95 shadow-2xl backdrop-blur-2xl ${className}`}>
-      {CONTACT_LINKS.map((item, index) => (
-        <a
-          className={`flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-white/5 ${index > 0 ? 'border-t border-white/5' : ''}`}
-          href={item.href}
-          key={item.key}
-          rel={item.external ? 'noreferrer' : undefined}
-          target={item.external ? '_blank' : undefined}
-        >
-          <div className="min-w-0">
-            <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">{item.platform}</p>
-            <p className="truncate text-sm font-semibold text-white">{item.label}</p>
-          </div>
-          {item.external ? <ExternalLink className="h-4 w-4 shrink-0 text-zinc-500" /> : null}
-        </a>
-      ))}
+    <div className={`absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-white/10 bg-[#0b0b0b] p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.6)] ${className}`}>
+      {children}
     </div>
   );
 }
 
+const menuItem = 'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white';
+
 export function ProtocolShell(props: ProtocolShellProps) {
   const { language, setLanguage, t, isConnected, address, openWallet, disconnectWallet, children } = props;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showLangSelector, setShowLangSelector] = useState(false);
-  const [showContactMenu, setShowContactMenu] = useState(false);
-  const [openNavGroup, setOpenNavGroup] = useState<string | null>(null);
+  const [langOpen, setLangOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  // The bar starts invisible and only separates itself from the page once the
+  // reader has left the hero.
+  const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
 
   const activeLanguage = useMemo(() => LANGUAGES.find((item) => item.code === language) ?? LANGUAGES[0], [language]);
-  const contactLabel = language === 'it' ? 'CONTATTI' : 'CONTACTS';
-  const isActiveNavItem = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+  const moreActive = MORE_NAV.some((item) => isActive(item.href));
+
+  const langRef = useClickOutside<HTMLDivElement>(langOpen, () => setLangOpen(false));
+  const moreRef = useClickOutside<HTMLDivElement>(moreOpen, () => setMoreOpen(false));
+  const accountRef = useClickOutside<HTMLDivElement>(accountOpen, () => setAccountOpen(false));
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
-    setShowLangSelector(false);
-    setShowContactMenu(false);
-    setOpenNavGroup(null);
+    setLangOpen(false);
+    setMoreOpen(false);
+    setAccountOpen(false);
   }, [pathname]);
 
-  return (
-    <div className="min-h-screen bg-[#040404] text-white selection:bg-amber-500/30 selection:text-amber-100">
-      <div className="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,#050505_0%,#050505_100%)]" />
-      <div className="fixed inset-x-0 top-0 -z-10 h-40 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm" />
+  // Lock the page behind the mobile sheet.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#020202]/80 shadow-lg backdrop-blur-xl pt-[env(safe-area-inset-top)]">
-        <div className={`${shellContainer} px-4 py-4 sm:px-6 lg:px-8 2xl:px-10`}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link className="flex min-w-0 items-center gap-3 overflow-hidden sm:gap-4" href="/">
-                <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/20 bg-black/40 transition-transform duration-500 hover:scale-105">
-                  <img alt="GBLIN" className="h-full w-full object-cover" src={LOGO_URL} />
-                </span>
-                <div className="min-w-0">
-                  <p className="bg-gradient-to-r from-amber-200 via-amber-500 to-amber-200 bg-clip-text font-serif text-xl font-bold tracking-tight text-transparent">GBLIN</p>
-                  <div className="hidden items-center gap-2 sm:flex">
-                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="truncate text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-500">{t('site.brandSubtitle')}</p>
-                  </div>
-                </div>
-              </Link>
+  const nav = (key: string) => t(`ui.nav.${key}`);
+
+  const LanguageList = ({ onPick }: { onPick: () => void }) => (
+    <>
+      {LANGUAGES.map((item) => (
+        <button
+          className={`${menuItem} ${item.code === language ? 'text-amber-300' : ''}`}
+          key={item.code}
+          onClick={() => {
+            setLanguage(item.code);
+            onPick();
+          }}
+          type="button"
+        >
+          <span className="flex items-center gap-2">
+            <span aria-hidden="true">{item.flag}</span>
+            <span>{item.name}</span>
+          </span>
+          {item.code === language ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> : null}
+        </button>
+      ))}
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-zinc-100">
+      <header
+        className={`sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-500 ${
+          scrolled ? 'border-b border-[color:var(--line)] bg-[#050505]/90 backdrop-blur-md' : 'border-b border-transparent bg-transparent'
+        }`}
+      >
+        <div className={`${CONTAINER} grid h-16 grid-cols-[auto_1fr_auto] items-center gap-4`}>
+          <Link className="flex shrink-0 items-center gap-3" href="/">
+            <img alt="" className="h-7 w-7" height={28} src={LOGO_URL} width={28} />
+            <span className="text-[15px] font-medium tracking-[0.2em] text-amber-200">GBLIN</span>
+          </Link>
+
+          <nav aria-label="Primary" className="hidden items-center justify-center gap-8 lg:flex">
+            {PRIMARY_NAV.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative py-2 text-[11px] font-medium uppercase tracking-[0.16em] transition-colors ${active ? 'text-[color:var(--ink)]' : 'text-zinc-500 hover:text-[color:var(--ink)]'} after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:bg-amber-300 after:transition-opacity ${active ? 'after:opacity-100' : 'after:opacity-0'}`}
+                  href={item.href}
+                  key={item.key}
+                >
+                  {nav(item.key)}
+                </Link>
+              );
+            })}
+            <div className="relative" ref={moreRef}>
+              <button
+                aria-expanded={moreOpen}
+                aria-haspopup="true"
+                className={`inline-flex items-center gap-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.16em] transition-colors ${moreActive ? 'text-[color:var(--ink)]' : 'text-zinc-500 hover:text-[color:var(--ink)]'}`}
+                onClick={() => setMoreOpen((v) => !v)}
+                type="button"
+              >
+                {nav('more')}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <Dropdown open={moreOpen} className="left-0 right-auto">
+                {MORE_NAV.map((item) => (
+                  <Link className={`${menuItem} ${isActive(item.href) ? 'text-white' : ''}`} href={item.href} key={item.key}>
+                    {nav(item.key)}
+                  </Link>
+                ))}
+              </Dropdown>
+            </div>
+          </nav>
+
+          <div className="col-start-3 flex items-center justify-end gap-2">
+            <div className="relative" ref={langRef}>
+              <button
+                aria-label={nav('language')}
+                className="g-btn g-btn-ghost g-btn-sm gap-1.5 px-2.5"
+                onClick={() => setLangOpen((v) => !v)}
+                type="button"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase">{activeLanguage.code}</span>
+              </button>
+              <Dropdown open={langOpen}>
+                <LanguageList onPick={() => setLangOpen(false)} />
+              </Dropdown>
             </div>
 
-            <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-2 shadow-inner lg:flex">
-              {navItems.map((item) => {
-                if (!item.children) {
-                  const isActive = isActiveNavItem(item.href);
+            <span className="hidden lg:block">
+              <Link className="g-btn g-btn-secondary g-btn-sm" href="/buy-gblin">
+                {t('landing.cta')}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </span>
 
-                  return (
-                    <Link
-                      aria-current={isActive ? 'page' : undefined}
-                      className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
-                      href={item.href}
-                      key={item.key}
-                    >
-                      {item.label ?? t(`nav.${item.key}`)}
-                    </Link>
-                  );
-                }
-
-                const groupActive = item.children.some((child) => isActiveNavItem(child.href));
-                const isOpen = openNavGroup === item.key;
-
-                return (
-                  <div className="relative" key={item.key}>
-                    <button
-                      aria-expanded={isOpen}
-                      aria-haspopup="true"
-                      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] transition ${groupActive ? 'bg-white text-black shadow-sm' : 'text-zinc-400 hover:text-amber-300'}`}
-                      onClick={() => {
-                        setOpenNavGroup((value) => (value === item.key ? null : item.key));
-                        setShowLangSelector(false);
-                        setShowContactMenu(false);
-                      }}
-                      type="button"
-                    >
-                      {item.label ?? t(`nav.${item.key}`)}
-                      <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {isOpen ? (
-                      <div className="absolute left-0 top-full z-50 mt-3 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
-                        {item.children.map((child) => {
-                          const childActive = isActiveNavItem(child.href);
-
-                          return (
-                            <Link
-                              aria-current={childActive ? 'page' : undefined}
-                              className={`block rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] transition ${childActive ? 'bg-white text-black' : 'text-zinc-400 hover:bg-white/5 hover:text-amber-300'}`}
-                              href={child.href}
-                              key={child.key}
-                            >
-                              {child.label ?? t(`nav.${child.key}`)}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </nav>
-
-            <div className="hidden items-center gap-3 lg:flex">
-              <div className="relative">
-                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition-all hover:bg-white/10 hover:text-amber-400" onClick={() => {
-                  setShowLangSelector((value) => !value);
-                  setMenuOpen(false);
-                  setShowContactMenu(false);
-                }} type="button">
-                  <Globe className="h-4 w-4" />
-                </button>
-                {showLangSelector ? (
-                  <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
-                    {LANGUAGES.map((item) => (
-                      <button
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${item.code === language ? 'text-amber-400' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
-                        key={item.code}
-                        onClick={() => {
-                          setLanguage(item.code);
-                          setShowLangSelector(false);
-                        }}
-                        type="button"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>{item.flag}</span>
-                          <span>{item.name}</span>
-                        </span>
-                        {item.code === activeLanguage.code ? <span className="text-[10px] font-mono uppercase tracking-[0.22em]">live</span> : null}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="relative">
-                <button aria-expanded={showContactMenu} aria-haspopup="true" className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" onClick={() => {
-                  setShowContactMenu((value) => !value);
-                  setShowLangSelector(false);
-                  setMenuOpen(false);
-                }} type="button">
-                  {contactLabel}
-                </button>
-                {showContactMenu ? <ContactMenuPanel className="absolute right-0 top-full mt-2 w-[320px]" /> : null}
-              </div>
-              {isConnected && address ? (
+            {isConnected && address ? (
+              <div className="relative hidden lg:block" ref={accountRef}>
                 <button
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-[11px] font-mono text-zinc-300 transition-all hover:bg-white/10"
-                  onClick={disconnectWallet}
-                  title="Click to disconnect"
+                  aria-expanded={accountOpen}
+                  className="g-btn g-btn-secondary g-btn-sm gap-2 font-mono text-xs"
+                  onClick={() => setAccountOpen((v) => !v)}
                   type="button"
                 >
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   {shortenAddress(address)}
                 </button>
-              ) : null}
-              <Link
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-black shadow-[0_0_24px_rgba(245,158,11,0.35)] transition-all hover:from-amber-400 hover:to-amber-300 hover:shadow-[0_0_32px_rgba(245,158,11,0.5)]"
-                href="/account"
-                prefetch={true}
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {t('nav.hubCta')}
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-2 lg:hidden">
-              <div className="relative">
-                <button className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-200 transition hover:bg-white/10 hover:text-amber-300" onClick={() => {
-                  setShowLangSelector((value) => !value);
-                  setMenuOpen(false);
-                  setShowContactMenu(false);
-                }} type="button">
-                  <Globe className="h-4 w-4" />
-                  <span>{activeLanguage.code.toUpperCase()}</span>
-                </button>
-                {showLangSelector ? (
-                  <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-2 shadow-2xl backdrop-blur-2xl">
-                    {LANGUAGES.map((item) => (
-                      <button
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${item.code === language ? 'text-amber-400' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
-                        key={item.code}
-                        onClick={() => {
-                          setLanguage(item.code);
-                          setShowLangSelector(false);
-                        }}
-                        type="button"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>{item.flag}</span>
-                          <span>{item.name}</span>
-                        </span>
-                        {item.code === activeLanguage.code ? <span className="text-[10px] font-mono uppercase tracking-[0.22em]">live</span> : null}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+                <Dropdown open={accountOpen}>
+                  <Link className={menuItem} href="/account">{nav('account')}</Link>
+                  <button className={menuItem} onClick={disconnectWallet} type="button">{nav('disconnect')}</button>
+                </Dropdown>
               </div>
-              <button className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10" onClick={() => {
-                setMenuOpen((value) => !value);
-                setShowLangSelector(false);
-                setShowContactMenu(false);
-              }} type="button">
-                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
+            ) : (
+              <span className="hidden lg:block">
+                <button className="g-btn g-btn-ghost g-btn-sm" onClick={openWallet} type="button">
+                  {nav('connect')}
+                </button>
+              </span>
+            )}
 
-          <div className="mt-3 lg:hidden">
-            <div className="grid gap-2">
-              <Link
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-black shadow-[0_0_24px_rgba(245,158,11,0.35)] transition-all hover:from-amber-400 hover:to-amber-300"
-                href="/account"
-                prefetch={true}
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {t('nav.hubCta')}
-              </Link>
-              <div className="relative">
-                <button aria-expanded={showContactMenu} aria-haspopup="true" className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200 transition-all hover:bg-amber-500/25 hover:text-white shadow-[0_0_24px_rgba(245,158,11,0.16)]" onClick={() => {
-                  setShowContactMenu((value) => !value);
-                  setShowLangSelector(false);
-                  setMenuOpen(false);
-                }} type="button">
-                  {contactLabel}
-                </button>
-                {showContactMenu ? <ContactMenuPanel className="mt-2 w-full" /> : null}
-              </div>
-              {isConnected && address ? (
-                <button
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
-                  onClick={disconnectWallet}
-                  type="button"
-                >
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  {shortenAddress(address)} · Disconnect
-                </button>
-              ) : null}
-            </div>
+            <button
+              aria-expanded={menuOpen}
+              aria-label={nav('menu')}
+              className="g-btn g-btn-ghost g-btn-sm px-2.5 lg:hidden"
+              onClick={() => setMenuOpen((v) => !v)}
+              type="button"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-white/5 px-4 py-4 lg:hidden sm:px-6">
-            <div className={`${shellContainer} space-y-3`}>
-              {flatNavItems.map((item) => (
-                <Link
-                  className={`block rounded-2xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActiveNavItem(item.href) ? 'bg-white text-black' : 'border border-white/10 bg-white/5 text-zinc-200'}`}
-                  href={item.href}
-                  key={item.key}
-                >
-                  {item.label ?? t(`nav.${item.key}`)}
-                </Link>
-              ))}
-              <Link
-                className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.22em] transition ${isActiveNavItem('/account') ? 'bg-amber-500 text-black' : 'bg-gradient-to-r from-amber-500/20 to-amber-400/10 border border-amber-500/30 text-amber-300'}`}
-                href="/account"
-                prefetch={true}
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {t('nav.hubCta')}
-              </Link>
-              <div className="space-y-2">
-                <p className="px-1 text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500">{contactLabel}</p>
-                <ContactMenuPanel className="w-full" />
+          <div className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto border-t border-white/[0.07] bg-[#050505] lg:hidden">
+            <div className={`${CONTAINER} py-4`}>
+              <nav aria-label="Mobile" className="grid gap-1">
+                {[...PRIMARY_NAV, ...MORE_NAV].map((item) => (
+                  <Link
+                    className={`rounded-lg px-3 py-3 text-base font-medium ${isActive(item.href) ? 'bg-white/[0.07] text-white' : 'text-zinc-300'}`}
+                    href={item.href}
+                    key={item.key}
+                  >
+                    {nav(item.key)}
+                  </Link>
+                ))}
+              </nav>
+              <div className="mt-4 grid gap-2">
+                {isConnected && address ? (
+                  <>
+                    <Link className="g-btn g-btn-secondary w-full font-mono text-xs" href="/account">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      {shortenAddress(address)}
+                    </Link>
+                    <button className="g-btn g-btn-ghost w-full" onClick={disconnectWallet} type="button">{nav('disconnect')}</button>
+                  </>
+                ) : (
+                  <button className="g-btn g-btn-primary w-full" onClick={openWallet} type="button">{nav('connect')}</button>
+                )}
+              </div>
+              <div className="mt-6">
+                <p className="g-eyebrow px-3">{nav('contacts')}</p>
+                <div className="mt-2 grid gap-1">
+                  {CONTACT_LINKS.map((item) => (
+                    <a className={menuItem} href={item.href} key={item.key} rel={item.external ? 'noreferrer' : undefined} target={item.external ? '_blank' : undefined}>
+                      {item.label}
+                      {item.external ? <ExternalLink className="h-3.5 w-3.5 text-zinc-500" /> : null}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         ) : null}
       </header>
 
-      <main className={`${shellContainer} px-4 py-8 sm:px-6 sm:py-10 lg:px-8 2xl:px-10`}>
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-400">
-            <span>{t('site.network')}</span>
-            <span className="h-1 w-1 rounded-full bg-zinc-600" />
-            <span>{t('site.live')}</span>
-            <span className="h-1 w-1 rounded-full bg-zinc-600" />
-            <LiveClock />
+      <main className={`${CONTAINER} py-8 sm:py-10`}>{children}</main>
+
+      <footer className="mt-16 border-t border-[color:var(--line)]">
+        <div className={`${CONTAINER} py-12`}>
+          <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <img alt="" className="h-7 w-7 rounded-full" height={28} src={LOGO_URL} width={28} />
+                <span className="text-[15px] font-semibold tracking-tight text-amber-300">GBLIN</span>
+              </div>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-zinc-400">{t('site.footerDesc')}</p>
+              <p className="mt-5 g-eyebrow">{t('ui.footer.vaultInService')}</p>
+              <a
+                className="mt-2 inline-flex items-center gap-2 font-mono text-xs text-zinc-300 hover:text-amber-300"
+                href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <span className="break-all">{DISPLAY_CONTRACT_ADDRESS}</span>
+                <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            </div>
+
+            <div>
+              <p className="g-eyebrow">{t('ui.footer.protocol')}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {PRIMARY_NAV.filter((i) => i.key !== 'agents').map((item) => (
+                  <li key={item.key}><Link className="text-zinc-400 hover:text-white" href={item.href}>{nav(item.key)}</Link></li>
+                ))}
+                <li><Link className="text-zinc-400 hover:text-white" href="/dashboard">{nav('dashboard')}</Link></li>
+                <li><Link className="text-zinc-400 hover:text-white" href="/faq">{nav('faq')}</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="g-eyebrow">{t('ui.footer.forAgents')}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li><Link className="text-zinc-400 hover:text-white" href="/agents">{nav('agents')}</Link></li>
+                <li><Link className="text-zinc-400 hover:text-white" href="/observatory">{nav('observatory')}</Link></li>
+                <li><Link className="text-zinc-400 hover:text-white" href="/coherence">{nav('coherence')}</Link></li>
+                <li><Link className="text-zinc-400 hover:text-white" href="/receipts">{nav('receipts')}</Link></li>
+                <li><Link className="text-zinc-400 hover:text-white" href="/operated-by-ai">{nav('operatedByAi')}</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="g-eyebrow">{t('ui.footer.resources')}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li><a className="text-zinc-400 hover:text-white" href={WHITEPAPER_URL} rel="noreferrer" target="_blank">{t('site.whitepaper')}</a></li>
+                <li><a className="text-zinc-400 hover:text-white" href={GITHUB_URL} rel="noreferrer" target="_blank">{t('ui.footer.source')}</a></li>
+                <li><a className="text-zinc-400 hover:text-white" href={REVIEWS_URL} rel="noreferrer" target="_blank">{t('ui.footer.reviews')}</a></li>
+                <li><a className="text-zinc-400 hover:text-white" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">{t('site.basescan')}</a></li>
+              </ul>
+              <p className="g-eyebrow mt-6">{t('ui.footer.contact')}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {CONTACT_LINKS.map((item) => (
+                  <li key={item.key}>
+                    <a className="text-zinc-400 hover:text-white" href={item.href} rel={item.external ? 'noreferrer' : undefined} target={item.external ? '_blank' : undefined}>{item.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zinc-400">
-            <span>{shortenAddress(DISPLAY_CONTRACT_ADDRESS)}</span>
+
+          <div className="mt-10 flex flex-col gap-3 border-t border-white/[0.07] pt-6 text-xs text-zinc-500 md:flex-row md:items-center md:justify-between">
+            <p className="max-w-2xl leading-5">{t('ui.footer.disclaimer')} {t('ui.footer.previousDeployments')}</p>
+            <div className="flex items-center gap-4">
+              <Link className="hover:text-zinc-300" href="/terms">{t('ui.footer.terms')}</Link>
+              <Link className="hover:text-zinc-300" href="/privacy">{t('ui.footer.privacy')}</Link>
+              <span>Base · {new Date().getFullYear()}</span>
+            </div>
           </div>
         </div>
-        {children}
-      </main>
-
-      <footer className="border-t border-white/10 pb-10 pt-8">
-        <div className={`${shellContainer} grid gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-end lg:px-8 2xl:px-10`}>
-          <div className={`${shellCard} p-5`}>
-            <p className="font-serif text-xl tracking-tight text-white">GBLIN</p>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-              {t('site.footerDesc')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 lg:justify-end">
-            <a className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10" href={WHITEPAPER_URL} rel="noreferrer" target="_blank">
-              {t('site.whitepaper')}
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            <a className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}`} rel="noreferrer" target="_blank">
-              {t('site.basescan')}
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
+        {/* The closing line of the reference: the name, what it is for, and the
+            invitation to check it. */}
+        <div className={`${CONTAINER} flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--line)] py-6`}>
+          <span className="flex items-baseline gap-4">
+            <span className="text-[15px] font-medium tracking-[0.2em] text-amber-200">GBLIN</span>
+            <span className="text-xs text-zinc-600">{t('site.footerTagline')}</span>
+          </span>
+          <span className="flex items-center gap-4">
+            <span aria-hidden="true" className="hidden h-px w-24 bg-[color:var(--line-strong)] sm:block" />
+            <Link className="g-eyebrow hover:text-[color:var(--ink)]" href="/vault">{t('ui.home.trustTitle')}</Link>
+          </span>
         </div>
       </footer>
     </div>

@@ -16,34 +16,34 @@
  * This route only forwards the validated JSON to the Worker, which owns the
  * log and the signing key (RLOG_KEY). Shared secret: CATALOG_TOKEN.
  *
- * It also forwards WHAT THIS SERVER SAW of the payment. Why: on 22 Aug 2026 a
- * third party reading our log pointed out that we had asserted a real payment
- * for a receipt whose bytes carried no amount, no chain and no transaction —
- * and our own /v1/verify said provenance_level: self-reported. He was right.
- * A receipt for a paid seal must carry the payment or say nothing about it.
+ * It also forwards WHAT THIS SERVER SAW of the payment. A receipt for a paid
+ * seal either carries the payment or says nothing about it: a receipt whose
+ * bytes hold no amount, no chain and no transaction cannot back a claim that a
+ * real payment took place, and /v1/verify reports it as provenance_level:
+ * self-reported.
  *
  * What is recorded comes from the x402 payment header the middleware has just
  * verified, never from the request body: the caller cannot write itself a
  * payment it did not make. There is no settlement transaction hash because the
- * server does not know it at seal time — instead we record the EIP-3009
- * authorization nonce, which is better than our word: USDC on Base emits
+ * server does not know it at seal time — the EIP-3009 authorization nonce is
+ * recorded instead, and it is stronger than an assertion: USDC on Base emits
  * AuthorizationUsed(authorizer, nonce) in the settlement, so any reader can
- * find that transaction from payer + nonce on their own.
+ * find that transaction from payer + nonce independently.
  */
 export const runtime = "nodejs";
 
 const WORKER = "https://gblin-mcp.gblin-mcp-worker.workers.dev";
-// Devono combaciare con src/middleware.ts: sono i termini che il paywall applica qui.
+// These must match src/middleware.ts: they are the terms the paywall enforces on this route.
 const NETWORK = "eip155:8453";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-/** Il minimo che serve per rimborsare e per farsi credere: chi ha pagato e con che nonce. */
-type Prova = { payer: string; nonce: string; amount?: string; asset?: string; network?: string };
+/** The minimum needed to refund and to be checkable: who paid, and with which nonce. */
+type Evidence = { payer: string; nonce: string; amount?: string; asset?: string; network?: string };
 
-function provaDa(osservato: string | null): Prova | null {
-  if (!osservato) return null;
+function evidenceFrom(observedHeader: string | null): Evidence | null {
+  if (!observedHeader) return null;
   try {
-    const o = JSON.parse(Buffer.from(osservato, "base64").toString("utf-8")) as Record<string, string>;
+    const o = JSON.parse(Buffer.from(observedHeader, "base64").toString("utf-8")) as Record<string, string>;
     if (!o.payer || !o.authorization_nonce) return null;
     return { payer: o.payer, nonce: o.authorization_nonce, amount: o.amount, asset: o.asset, network: o.network };
   } catch {
@@ -52,15 +52,14 @@ function provaDa(osservato: string | null): Prova | null {
 }
 
 /**
- * Cosa si aggiunge a un errore quando chi lo riceve HA GIA' PAGATO.
+ * What is added to an error when the caller HAS ALREADY PAID.
  *
- * Il 05/09/2026 qualcuno ha pagato 0,01 USDC per un sigillo e non ha ricevuto niente. Non
- * sapevamo nemmeno come fosse fallito, perche' questo percorso non registrava nulla e non
- * diceva nulla. Da qui in poi ogni fallimento su una chiamata pagata porta con se' il nonce,
- * che e' verificabile on-chain (USDC su Base emette AuthorizationUsed(authorizer, nonce)) e
- * quindi vale piu' della nostra parola.
+ * A failure on a paid call carries the authorization nonce, which is verifiable
+ * on-chain (USDC on Base emits AuthorizationUsed(authorizer, nonce)) and is
+ * therefore stronger than an assertion by this server: it lets the caller claim
+ * the refund and lets anyone confirm the charge independently.
  */
-function pagato(p: Prova | null) {
+function paid(p: Evidence | null) {
   if (!p) return {};
   return {
     paid: true,
@@ -73,27 +72,37 @@ function pagato(p: Prova | null) {
 }
 
 /**
- * Riporta l'esito al Worker, che tiene i contatori e il registro dei rimborsi.
- * Fallisce in silenzio e con un tetto di tempo stretto: la contabilita' non deve mai
- * aggiungere ritardo o un secondo errore a chi ne ha gia' preso uno.
+ * Reports the outcome upstream, where the counters and the refund ledger live.
+ * Fails silently and under a tight timeout: bookkeeping must never add latency,
+ * nor a second error, for a caller that has already hit one.
  */
-async function segnala(motivo: string, p: Prova | null): Promise<void> {
+async function report(reason: string, p: Evidence | null): Promise<void> {
   const token = process.env.CATALOG_TOKEN ?? "";
   if (!token) return;
   try {
-    await fetch(`${WORKER}/internal/esito?token=${token}`, {
+    // The two services deploy separately, so the reader accepts both the current and the
+    // previous spelling of these fields. Sending both keeps the outcome of a paid failure
+    // from being dropped while one side is still the older build.
+    const payment = p
+      ? { payer: p.payer, nonce: p.nonce, amount: p.amount, asset: p.asset, network: p.network }
+      : undefined;
+    await fetch(`${WORKER}/internal/outcome?token=${token}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
+        key: "seal-paid",
+        reason,
+        path: "/api/x402/seal",
+        payment,
         chiave: "seal-paid",
-        motivo,
+        motivo: reason,
         percorso: "/api/x402/seal",
-        pagamento: p ? { payer: p.payer, nonce: p.nonce, amount: p.amount, asset: p.asset, network: p.network } : undefined,
+        pagamento: payment,
       }),
       signal: AbortSignal.timeout(1500),
     });
   } catch {
-    /* la contabilita' non e' un motivo per peggiorare la giornata di chi ha pagato */
+    /* bookkeeping is never a reason to degrade the response of a paying caller */
   }
 }
 
@@ -101,25 +110,26 @@ export async function POST(req: Request) {
   const token = process.env.CATALOG_TOKEN ?? "";
   if (!token) {
     return Response.json(
-      { error: "seal service not configured (CATALOG_TOKEN missing)", ...pagato(provaDa(await observePayment(req))) },
+      { error: "seal service not configured (CATALOG_TOKEN missing)", ...paid(evidenceFrom(await observePayment(req))) },
       { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
   const observed = await observePayment(req);
-  const prova = provaDa(observed);
+  const evidence = evidenceFrom(observed);
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    await segnala("json", prova);
+    await report("json", evidence);
     return Response.json(
-      { error: "invalid JSON body", ...pagato(prova) },
+      { error: "invalid JSON body", ...paid(evidence) },
       { status: 400, headers: { "cache-control": "no-store" } },
     );
   }
-  // Il chiamante ha GIA' pagato quando arriviamo qui: qualsiasi inciampo a valle deve tornargli
-  // come errore leggibile, mai come 500 generico della piattaforma. Prima ne' il fetch (timeout
-  // 20s incluso) ne' r.json() erano protetti.
+  // The caller has ALREADY paid by this point: any downstream failure has to
+  // come back as a readable error, never as a generic platform 500. Both the
+  // fetch (timeout included) and the JSON parse below are guarded for that
+  // reason.
   let r: Response;
   try {
     r = await fetch(`${WORKER}/internal/seal?token=${token}`, {
@@ -133,12 +143,12 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     const timeout = e instanceof Error && /timeout|abort/i.test(e.name + e.message);
-    await segnala("upstream", prova);
+    await report("upstream", evidence);
     return Response.json(
       {
         error: timeout ? "seal service did not answer in 20s" : "seal service unreachable",
         retry: "Retry the same body. If it fails again, quote your nonce and we refund.",
-        ...pagato(prova),
+        ...paid(evidence),
       },
       { status: 504, headers: { "cache-control": "no-store" } },
     );
@@ -148,38 +158,40 @@ export async function POST(req: Request) {
   try {
     out = JSON.parse(raw);
   } catch {
-    await segnala("upstream", prova);
+    await report("upstream", evidence);
     return Response.json(
       {
         error: "seal service returned a non-JSON response",
         upstream_status: r.status,
         upstream_body: raw.slice(0, 300),
-        ...pagato(prova),
+        ...paid(evidence),
       },
       { status: 502, headers: { "cache-control": "no-store" } },
     );
   }
-  // Il Worker conta gia' l'esito e registra il rimborso: qui aggiungiamo solo il nonce se lui
-  // non l'ha visto (percorso in cui l'osservazione del pagamento non era leggibile).
-  const corpo =
+  // The upstream already counts the outcome and records the refund: the nonce
+  // is added here only when the upstream did not see it (the path where the
+  // payment observation was not readable).
+  const responseBody =
     r.status === 200 || (out && typeof out === "object" && "paid" in (out as object))
       ? out
-      : { ...(out as object), ...pagato(prova) };
-  return Response.json(corpo, {
+      : { ...(out as object), ...paid(evidence) };
+  return Response.json(responseBody, {
     status: r.status,
     headers: { "cache-control": "no-store" },
   });
 }
 
 /**
- * Ogni metodo che non sia POST riceve lo STESSO 405.
+ * Every method other than POST receives the SAME 405.
  *
- * Prima solo GET aveva un handler e gli altri cadevano nel 405 predefinito di Next, con un
- * corpo diverso: due risposte diverse per lo stesso errore, e il bordo non poteva rispecchiarle
- * entrambe. Il corpo qui sotto e' replicato in worker/src/x402-challenge.mjs (SOLO_POST_BODY):
- * se cambia uno, va cambiato l'altro, o origin e bordo divergono.
+ * Letting some methods fall through to the framework default produces a
+ * different body for the same error, which cannot be mirrored consistently by
+ * anything serving this challenge in front of the origin. The body below is
+ * part of the public contract: whoever mirrors it has to change with it, or the
+ * two responses diverge.
  */
-function soloPost() {
+function postOnly() {
   return Response.json(
     {
       error: "POST only",
@@ -189,11 +201,11 @@ function soloPost() {
   );
 }
 
-export const GET = soloPost;
-export const HEAD = soloPost;
-export const PUT = soloPost;
-export const PATCH = soloPost;
-export const DELETE = soloPost;
+export const GET = postOnly;
+export const HEAD = postOnly;
+export const PUT = postOnly;
+export const PATCH = postOnly;
+export const DELETE = postOnly;
 
 /**
  * Extract the payment facts from the already-verified x402 header.
@@ -224,11 +236,12 @@ async function observePayment(req: Request): Promise<string | null> {
     const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
     const observation = {
-      // Schema, rete e asset NON stanno nel payload di pagamento (misurato sul primo
-      // sigillo con prova, il 22/08: l'autorizzazione porta from/to/value/nonce e basta,
-      // "10000 unita'" senza dire di cosa). Non li inventiamo dal chiamante: sono i
-      // TERMINI CHE QUESTO SERVER HA IMPOSTO su questo percorso, e devono restare
-      // allineati a NETWORK e all'asset del middleware x402.
+      // Scheme, network and asset are NOT part of the payment payload: the
+      // authorization only carries from/to/value/nonce, so an amount alone
+      // says "10000 units" without saying of what. They are not inferred from
+      // the caller either: they are the TERMS THIS SERVER IMPOSES on this
+      // route, and must stay aligned with NETWORK and with the asset declared
+      // by the x402 middleware.
       scheme: str(decoded.scheme) ?? "exact",
       network: str(decoded.network) ?? NETWORK,
       asset: str(decoded.asset) ?? USDC_BASE,

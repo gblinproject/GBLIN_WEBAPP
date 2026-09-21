@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 1800; // 30 min — adequate for CoinGecko polling
 
-const CONTRACT_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6
+const CONTRACT_ADDRESS = "0xc2181d975c05c8c724b334bcED0764c0b86B1D53"; 
 
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";

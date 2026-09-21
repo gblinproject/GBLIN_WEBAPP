@@ -5,26 +5,29 @@
  * what does one GBLIN cost if you mint it from the contract, versus what it
  * costs if you swap for it in the deepest DEX pool?
  *
- * Minting quotes come straight from `quoteBuyGBLIN(uint256)` on the token
- * contract — the contract issues new supply against the deposit, so the price
- * per token is the same at any size.
+ * Minting quotes come from the Lens, which prices a mint exactly as the vault
+ * does — the vault issues new supply against the deposit, so the price per
+ * share is the same at any size.
  *
- * The pool leg uses the Aerodrome vAMM pool, which is the deeper of the two
- * (Uniswap V3 holds roughly a third of the same reserves), so the comparison
- * is against the friendlier of the two swap routes, not the worse one. The
- * constant-product math with the 0.30% vAMM fee is reproduced here rather than
- * routed through the router, so the numbers stay verifiable from reserves.
+ * The pool leg needs a pool. The vault in service has no secondary market: the
+ * way in and out is minting and redeeming at NAV. Until a pool exists, this
+ * endpoint says so and returns no rows, and the comparison on the page hides
+ * itself rather than invent a second price. Point `COMPARISON_POOL` at a pool
+ * to turn it back on; the constant-product math with the 0.30% vAMM fee is
+ * reproduced here rather than routed through a router, so the numbers stay
+ * verifiable from the reserves.
  *
  * Cache: 5 minutes in-memory. Everything here is a read; no keys required.
  */
 
 import { formatEther, parseEther } from "viem";
 import type { Address } from "viem";
-import { client, ETH_USD_FEED, GBLIN } from "@/lib/x402-helpers";
+import { client, ETH_USD_FEED, GBLIN, GBLIN_LENS } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
 
-const AERODROME_POOL: Address = "0x6Ac18D5e90278D2477027B5769EFb2fF0711FFbB";
+/** The pool to compare against, or null while the vault has no secondary market. */
+const COMPARISON_POOL: Address | null = null;
 
 /** Purchase sizes shown in the table, in US dollars. */
 const SIZES_USD = [25, 100, 500, 2_000];
@@ -34,13 +37,16 @@ const AERO_FEE_BPS = 30n;
 
 const QUOTE_ABI = [
   {
-    name: "quoteBuyGBLIN",
+    name: "quoteBuy",
     type: "function",
     stateMutability: "view",
-    inputs: [{ name: "ethAmount", type: "uint256" }],
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "ethValue", type: "uint256" },
+    ],
     outputs: [
-      { name: "gblinOut", type: "uint256" },
-      { name: "founderFee", type: "uint256" },
+      { name: "out", type: "uint256" },
+      { name: "protocolFee", type: "uint256" },
       { name: "stabilityFee", type: "uint256" },
     ],
   },
@@ -112,6 +118,32 @@ function ammOut(amountIn: bigint, reserveIn: bigint, reserveOut: bigint): bigint
 }
 
 async function build(): Promise<MintVsPoolPayload> {
+  // No pool, no comparison. An empty `rows` is what the page checks before it renders anything, so it
+  // simply does not draw a table rather than show one side of a two-sided claim.
+  if (COMPARISON_POOL === null) {
+    const feedOnly = await client.readContract({
+      address: ETH_USD_FEED,
+      abi: FEED_ABI,
+      functionName: "latestRoundData",
+    });
+    const ethUsdNow = Number(feedOnly[1]) / 1e8;
+    const [sharesPerEth] = await client.readContract({
+      address: GBLIN_LENS,
+      abi: QUOTE_ABI,
+      functionName: "quoteBuy",
+      args: [GBLIN, parseEther("1")],
+    });
+    const mintUsdNow =
+      sharesPerEth > 0n ? ethUsdNow / Number(formatEther(sharesPerEth)) : 0;
+    return {
+      ethUsd: ethUsdNow,
+      mintUsd: mintUsdNow,
+      poolLiquidityUsd: 0,
+      rows: [],
+      updatedAt: Date.now(),
+    };
+  }
+
   const [feed, reserves, token0] = await Promise.all([
     client.readContract({
       address: ETH_USD_FEED,
@@ -119,12 +151,12 @@ async function build(): Promise<MintVsPoolPayload> {
       functionName: "latestRoundData",
     }),
     client.readContract({
-      address: AERODROME_POOL,
+      address: COMPARISON_POOL,
       abi: POOL_ABI,
       functionName: "getReserves",
     }),
     client.readContract({
-      address: AERODROME_POOL,
+      address: COMPARISON_POOL,
       abi: POOL_ABI,
       functionName: "token0",
     }),
@@ -151,10 +183,10 @@ async function build(): Promise<MintVsPoolPayload> {
     const ethIn = parseEther((usd / ethUsd).toFixed(18));
 
     const [gblinOut] = await client.readContract({
-      address: GBLIN,
+      address: GBLIN_LENS,
       abi: QUOTE_ABI,
-      functionName: "quoteBuyGBLIN",
-      args: [ethIn],
+      functionName: "quoteBuy",
+      args: [GBLIN, ethIn],
     });
 
     const mintedTokens = Number(formatEther(gblinOut));

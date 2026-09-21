@@ -12,7 +12,9 @@
   },
   "chain": "eip155:8453",
   "contracts": {
-    "token": "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+    "token": "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
+    "lens": "0xfCFea8027019E8551A1f09AD91532471F5D26f61",
+    "zap": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
     "timelock": "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd"
   },
   "endpoints": {
@@ -83,7 +85,7 @@
   },
   "proof": {
     "crashShieldActivation": "https://basescan.org/tx/0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca",
-    "sourceVerified": "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#code"
+    "sourceVerified": "https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53#code"
   },
   "attestation": {
     "attestorAddress": "0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4",

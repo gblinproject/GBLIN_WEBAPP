@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAccount, useDisconnect } from 'wagmi';
 import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
-import { LANGUAGES } from './protocol-data';
+import { LANGUAGES, setNumberLocale } from './protocol-data';
 import { ProtocolShell } from './protocol-shell';
 import { I18nContext } from './i18n-context';
 
@@ -23,6 +23,10 @@ export function PublicShell({ children }: PublicShellProps) {
   const router = useRouter();
 
   const [language, setLanguageState] = useState<Language>('en');
+
+  useEffect(() => {
+    setNumberLocale(language);
+  }, [language]);
 
   const setLanguage = useCallback((next: Language) => {
     setLanguageState(next);

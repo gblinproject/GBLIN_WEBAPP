@@ -120,8 +120,9 @@ export function LiveSection() {
 
 export function GblinNumbers() {
   const [stats, setStats] = useState<GblinVerified['stats']>(null);
-  // Lo split interno/esterno e' il senso della promessa P2: pubblichiamo la lista dei nostri
-  // wallet proprio perche' chiunque possa rifarlo. Farlo fare al lettore era scortese.
+  // The organic/internal split is computed server-side and surfaced here instead of being
+  // left to the reader: the list of protocol-operated wallets is public, so the same
+  // separation can be reproduced independently from on-chain data.
   const [split, setSplit] = useState<{
     organic_calls: number;
     organic_agents: number;

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSorgente, blockscoutV2Url } from '@/lib/blockscout';
+import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSource, blockscoutV2Url } from '@/lib/blockscout';
 import promise from '../../../../public/promises/P2-honest-counters.json';
 
 /**
- * I nostri wallet, letti dalla promessa P2 e non ricopiati: e' la stessa lista che rende
- * riproducibile lo split fra attivita' nostra ed esterna sui contatori dei pagamenti.
- * Un rebalance eseguito da un nostro bot non e' "un agente che guadagna dal protocollo".
+ * Protocol-operated wallets, read from the published honest-counters promise rather than copied
+ * here, so the split between protocol activity and third-party activity stays reproducible against
+ * a single source. A rebalance executed by a protocol-operated bot is not third-party demand.
  */
 const OUR_WALLETS = new Set((promise.our_wallets ?? []).map((w: string) => w.toLowerCase()));
 import { ethers } from 'ethers';
@@ -15,30 +15,32 @@ import { ethers } from 'ethers';
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY ?? process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ?? '';
 /**
- * Le letture normali (numero di blocco, timestamp) possono passare da Alchemy.
- * Il ripiego a LOG no: dal 2026 il piano gratuito di Alchemy limita `eth_getLogs` a DIECI
- * blocchi, quindi ogni finestra da 9.000 falliva dentro un catch e la rotta pubblicava
- * "0 rebalance" senza aver guardato niente. I nodi pubblici accettano 10.000 blocchi.
+ * Plain reads (block number, block timestamp) may go through the managed provider.
+ * The log fallback may not: its free tier caps `eth_getLogs` at TEN blocks per call, so wide
+ * windows fail inside a catch and the route reports "0 rebalances" without having looked at
+ * anything. Public nodes accept 10,000-block windows, so the log scan uses those instead.
  */
 const RPC_URL = ALCHEMY_KEY
   ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
   : 'https://mainnet.base.org';
 const RPC_LOGS = ['https://base.drpc.org', 'https://mainnet.base.org'];
 // Blockscout Base (open-source, free, no block-range limit, decodes events for us).
-// L'indirizzo (ed eventuale chiave, se configurata in BLOCKSCOUT_API_URL) esce da un solo
-// posto: src/lib/blockscout.ts.
+// The base URL (and the API key, when BLOCKSCOUT_API_URL carries one) is resolved in a single
+// place, so no endpoint is hardcoded here.
 
 /**
- * Rebalance history is read from BOTH deployments on purpose.
+ * Rebalance history is read from every deployment on purpose.
  *
- * The incentivized-rebalance mechanism ran 35 times on the previous contract
- * between April and June 2026 before the migration. Hiding that history would
- * make a working mechanism look untested, so each event carries the contract it
- * came from and the UI labels it. Everything is verifiable on Basescan.
+ * The mechanism itself changed: the previous contracts paid a bounty out of a buffer to whoever
+ * called `incentivizedRebalance`, and the vault in service holds a Dutch auction instead — whoever
+ * trades toward the target weights is paid by the premium on the oracle price, and nothing leaves the
+ * vault for calling it. Both kinds of event are read and labelled, because hiding the older history
+ * would make a working mechanism look untested. Everything is verifiable on Basescan.
  */
 const CONTRACTS = [
-  { label: 'V6', address: '0x36C81d7E1966310F305eA637e761Cf77F90852f0', current: true },
-  { label: 'V5', address: '0x38DcDB3A381677239BBc652aed9811F2f8496345', current: false },
+  { label: 'vault', address: '0xc2181d975c05c8c724b334bcED0764c0b86B1D53', current: true },
+  { label: 'previous', address: '0x36C81d7E1966310F305eA637e761Cf77F90852f0', current: false },
+  { label: 'older', address: '0x38DcDB3A381677239BBc652aed9811F2f8496345', current: false },
 ] as const;
 
 const CONTRACT_ADDRESS = CONTRACTS[0].address; // current deployment
@@ -52,40 +54,47 @@ const TOKEN_NAMES: Record<string, string> = {
   [USDC.toLowerCase()]: 'USDC',
 };
 
-// I DUE DEPLOY EMETTONO EVENTI DIVERSI: V6 ha aggiunto `bounty` in coda, quindi la firma —
-// e con essa il topic0 — non coincide con quella di V5. Cercando solo la vecchia, questa
-// rotta non avrebbe MAI mostrato un rebalance di V6 (oggi non si nota perché su V6 sono
-// ancora zero, ma al primo vero la pagina sarebbe rimasta muta). Fix 13/08/2026.
-const REBALANCED_TOPIC_V5 = ethers.id('Rebalanced(address,address,address,uint256,uint256)');
-const REBALANCED_TOPIC_V6 = ethers.id('Rebalanced(address,address,address,uint256,uint256,uint256)');
-const TOPIC_FOR: Record<string, string> = { V5: REBALANCED_TOPIC_V5, V6: REBALANCED_TOPIC_V6 };
+// Each deployment emits a different event, so each one needs its own topic0: the previous
+// contract appended a `bounty` argument to `Rebalanced`, which changes the signature hash, and
+// the vault in service emits `AuctionFill` instead. Filtering on a single topic would silently
+// return nothing for the other deployments.
+const AUCTION_FILL_TOPIC = ethers.id('AuctionFill(address,address,address,uint256,uint256)');
+const REBALANCED_TOPIC_OLDER = ethers.id('Rebalanced(address,address,address,uint256,uint256)');
+const REBALANCED_TOPIC_PREVIOUS = ethers.id('Rebalanced(address,address,address,uint256,uint256,uint256)');
+const TOPIC_FOR: Record<string, string> = {
+  vault: AUCTION_FILL_TOPIC,
+  previous: REBALANCED_TOPIC_PREVIOUS,
+  older: REBALANCED_TOPIC_OLDER,
+};
 const iface = new ethers.Interface([
+  // The vault in service: a bid filled at the auction price. All three arguments are indexed, and no
+  // bounty is paid — the premium is the whole reward.
+  'event AuctionFill(address indexed bidder, address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut)',
   'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)',
   'event Rebalanced(address indexed executor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, uint256 bounty)',
 ]);
 
 // Next.js route segment config.
 //
-// 30/08/2026 — QUESTA ROTTA HA FATTO FALLIRE UN DEPLOY. Con `revalidate` e nessuna API
-// dinamica, Next la PRE-RENDERIZZA durante il build: la generazione statica su Vercel ha un
-// tetto di 60 secondi, e qui dentro si parla con Blockscout e, se Blockscout non risponde, si
-// pagina attraverso 5,18 milioni di blocchi via eth_getLogs. Il build dipendeva quindi dalla
-// velocita' di un servizio terzo, e un giorno quel servizio e' stato lento.
+// A route that declares `revalidate` and uses no dynamic API is pre-rendered at build time.
+// Static generation is capped at 60 seconds, while this handler talks to an indexer and, when the
+// indexer is unavailable, paginates through millions of blocks via eth_getLogs, which makes the
+// build depend on the latency of a third-party service and fail when that service is slow.
 //
-// `force-dynamic` toglie la pre-renderizzazione: il build non parla piu' con la catena. La
-// cache non si perde, si sposta sulla CDN con gli header qui sotto (stesso effetto sulla CPU
-// che cercavamo il 03/08 alzando revalidate a 600s), e `stale-while-revalidate` fa servire la
-// copia vecchia mentre quella nuova si ricostruisce, quindi nessuno aspetta la scansione.
+// `force-dynamic` removes the pre-render, so the build never touches the chain. Caching is not
+// lost, it moves to the CDN through the headers below, and `stale-while-revalidate` serves the
+// previous copy while a fresh one is built, so no request waits for the scan.
 export const dynamic = 'force-dynamic';
 
-// Oltre questo, la richiesta si arrende e risponde in modo degradato ma DICHIARATO, invece di
-// restare appesa: appeso costa CPU fatturata e, al build, faceva fallire tutto.
+// Past this point the request gives up and answers in a degraded but DECLARED way instead of
+// hanging: a hanging request burns billed CPU and can stall anything waiting on it.
 const DEADLINE_MS = 20_000;
 
 const CACHE_OK = 'public, s-maxage=600, stale-while-revalidate=3600';
-const CACHE_DEGRADATO = 'public, s-maxage=30'; // riprova presto, non cristallizzare un vuoto
+// Short TTL: retry soon instead of freezing an empty answer for ten minutes.
+const CACHE_DEGRADATO = 'public, s-maxage=30';
 
-// Attribution block — additive, consumed by third parties citing our data.
+// Attribution block: additive, consumed by third parties citing this data.
 const SOURCE = {
   name: 'GBLIN Agent Economy Observatory',
   url: 'https://gblin.digital/observatory',
@@ -103,13 +112,13 @@ type RawLog = {
   blockNumber: string | number;
   timeStamp?: string | number;
   logIndex?: number;
-  /** Which deployment emitted this event ('V5' | 'V6'). */
+  /** Which deployment emitted this event. */
   contract?: string;
   contractAddress?: string;
   isCurrentContract?: boolean;
 };
 
-// Blockscout returns a richer, pre-decoded payload. We normalise it into RawLog
+// The indexer returns a richer, pre-decoded payload. It is normalised into RawLog
 // so the rest of the pipeline stays identical.
 type BlockscoutLogItem = {
   block_number: number;
@@ -131,28 +140,32 @@ function decodeLog(log: RawLog, blockTimestampHint?: number) {
 
   const tokenIn = parsed.args.tokenIn as string;
   const tokenOut = parsed.args.tokenOut as string;
+  // The auction calls the counterparty a bidder; the previous contracts called it an executor.
+  const actor = (parsed.args.bidder ?? parsed.args.executor) as string;
   const blockNumber =
     typeof log.blockNumber === 'string' ? parseInt(log.blockNumber, 16) || Number(log.blockNumber) : log.blockNumber;
 
   const tsSource = log.timeStamp ?? blockTimestampHint ?? 0;
   const ts = typeof tsSource === 'string' ? parseInt(tsSource, 16) || Number(tsSource) : tsSource;
 
-  // La V6 emette anche la taglia pagata; la V5 no (evento a cinque argomenti).
+  // Only the previous contract paid a bounty, and only its six-argument event carries it. On the vault
+  // in service nothing is paid out: `null` here means "no bounty exists", and the reader must not
+  // invent an estimate.
   let bounty: string | null = null;
   try {
     const raw = parsed.args.bounty as bigint | undefined;
     if (raw !== undefined) bounty = raw.toString();
   } catch {
-    // firma senza bounty: resta null, e chi legge non deve inventarsi una stima
+    // signature without a bounty: stays null
   }
 
-  const executor = parsed.args.executor as string;
+  const executor = actor;
 
   return {
     executor,
-    /** Vero se a ribilanciare e' stato un nostro wallet (lista in P2), non un terzo. */
+    /** True when the rebalance was executed by a protocol-operated wallet, not a third party. */
     executorIsOurs: OUR_WALLETS.has(executor.toLowerCase()),
-    /** Taglia realmente pagata, in wei. `null` sulla V5, che non la emetteva. */
+    /** Bounty actually paid, in wei. `null` on the oldest deployment, which did not emit it. */
     bounty,
     tokenIn: tokenLabel(tokenIn),
     tokenOut: tokenLabel(tokenOut),
@@ -180,26 +193,25 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
   const perContract = await Promise.all(
     CONTRACTS.map(async ({ label, address, current }) => {
       try {
-        // Sorgente configurata, con ricaduta sul Blockscout pubblico se non risponde.
+        // Configured host first, falling back to the public indexer when it does not answer.
         const { res } = await blockscoutFetch(
-          (pubblico) =>
+          (usePublic) =>
             blockscoutV2Url(
               `addresses/${address}/logs`,
-              { topic: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6 },
-              pubblico,
+              { topic: TOPIC_FOR[label] ?? AUCTION_FILL_TOPIC },
+              usePublic,
             ),
           {
             headers: { accept: 'application/json' },
             next: { revalidate: 30 },
-            // Tetto esplicito: senza, una singola chiamata lenta si mangia la deadline
-            // dell'intera rotta e nessuno arriva mai ai nodi pubblici.
+            // Explicit per-call timeout: without it a single slow call consumes the deadline of
+            // the whole route and the public-node fallback is never reached.
             //
-            // SEI secondi, non quattro. Misurato il 01/09 sull'host PRO: le risposte che
-            // RIESCONO arrivano fra 0,6 e 4,4 secondi, quindi un taglio a 4s scartava
-            // risposte valide e mandava la rotta sul ripiego con la storia dimezzata — che
-            // è esattamente il guasto che avevo appena finito di correggere. Il conto sulla
-            // deadline regge lo stesso: due API in parallelo, ciascuna al massimo due
-            // tentativi da 6s, fanno 12s, più ~3s di nodi pubblici, contro i 20s di tetto.
+            // Six seconds, not four: successful responses land between 0.6 and 4.4 seconds, so a
+            // four-second cutoff discards valid answers and pushes the route onto the fallback
+            // with only a fraction of the history. The deadline budget still holds: two APIs in
+            // parallel, at most two attempts of 6s each, is 12s, plus ~3s of public nodes,
+            // against a 20s ceiling.
             signal: AbortSignal.timeout(6_000),
           },
         );
@@ -242,46 +254,44 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
 }
 
 /**
- * Fallback fetcher: paginated Alchemy getLogs. Used only if Blockscout fails.
- * Base RPC providers typically cap eth_getLogs at ~10k blocks per call,
- * so we paginate in 9_000-block windows.
+ * Fallback fetcher: paginated `eth_getLogs`, used only when the indexer fails.
+ * Base RPC providers typically cap `eth_getLogs` at ~10k blocks per call, so the
+ * scan is split into block windows.
  *
- * Current deployment only, by design: this path already costs ~600 RPC calls
- * for a 30-day window, and doubling it for the historical contract would make a
- * degraded fallback slower than the failure it replaces. Events surfaced here
- * are therefore always tagged as the current contract, which is accurate.
+ * Current deployment only, by design: a 30-day window already costs hundreds of RPC
+ * calls on this path, and repeating it for the historical contracts would make a
+ * degraded fallback slower than the failure it replaces. Events surfaced here are
+ * therefore always tagged as the current contract, which is accurate.
  */
 /**
- * Ripiego RPC quando Blockscout non risponde. Copre solo una finestra RECENTE, e va detto.
+ * RPC fallback, used when the indexer does not answer. It covers only a RECENT window, and that
+ * has to be stated in the response.
  *
- * 30/08/2026 — com'era prima: 5.184.000 blocchi (30 giorni) a finestre di 9.000, IN SEQUENZA.
- * Sono 576 chiamate eth_getLogs una dopo l'altra, e cercavano solo su CONTRACT_ADDRESS, cioe' il
- * deploy attuale, che di rebalance ne ha ZERO. Quindi il ripiego impiegava piu' di un minuto per
- * garantirsi di non trovare niente, e con Blockscout giu' era l'unica cosa che girava: e' lui che
- * faceva sforare il tetto di 60 secondi della generazione statica e faceva fallire il build.
+ * A 30-day window scanned sequentially in 9,000-block steps is ~576 chained `eth_getLogs` calls
+ * and takes more than a minute, which is enough on its own to blow through a 60-second budget.
+ * Scanning ~2 days of blocks in parallel is ten calls instead.
  *
- * Ora: ~2 giorni di blocchi, in PARALLELO. Dieci chiamate invece di 576. La storia completa la sa
- * solo Blockscout (nessun RPC pubblico regge una scansione di mesi), quindi quando ripieghiamo lo
- * dichiariamo con `partial: true` invece di far sembrare "zero rebalance" cio' che e' "non ho
- * potuto guardare abbastanza indietro".
+ * Only the indexer knows the complete history (no public RPC sustains a multi-month scan), so
+ * the fallback declares `partial: true` rather than letting "could not look far enough back" be
+ * read as "there were no rebalances".
  */
-const FALLBACK_BLOCKS = 86_400; // ~2 giorni su Base (~2s a blocco)
+const FALLBACK_BLOCKS = 86_400; // ~2 days on Base (~2s per block)
 
 /**
- * Secondo canale su Blockscout: la vecchia API in stile etherscan.
+ * Second channel on the same indexer: its legacy, etherscan-style API.
  *
- * 01/09/2026 — misurato: le due API dello stesso Blockscout cadono in momenti diversi. In una
- * finestra in cui `/api/v2/.../logs` rispondeva 500 su entrambi i contratti, `/api?module=logs`
- * restituiva regolarmente i log. Provarla prima di scendere all'RPC vale la storia COMPLETA
- * invece di una finestra di due giorni: con `fromBlock=0` non ha limiti di intervallo.
+ * The two APIs of the same indexer fail at different times: `/api/v2/.../logs` can answer 500 on
+ * every contract in a window where `/api?module=logs` still returns the logs. Trying it before
+ * dropping to RPC is worth the COMPLETE history instead of a two-day window: with `fromBlock=0`
+ * it has no block-range limit.
  *
- * Restituisce gia' dal piu' recente, come la v2, cosi' il resto della pipeline non cambia.
+ * It already returns newest-first, like the v2 API, so the rest of the pipeline is unchanged.
  */
 async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
   const perContract = await Promise.all(
     CONTRACTS.map(async ({ label, address, current }) => {
       const { res } = await blockscoutFetch(
-        (pubblico) =>
+        (usePublic) =>
           blockscoutLegacyUrl(
             {
               module: 'logs',
@@ -289,29 +299,28 @@ async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
               fromBlock: '0',
               toBlock: 'latest',
               address,
-              topic0: TOPIC_FOR[label] ?? REBALANCED_TOPIC_V6,
+              topic0: TOPIC_FOR[label] ?? AUCTION_FILL_TOPIC,
             },
-            pubblico,
+            usePublic,
           ),
         {
             headers: { accept: 'application/json' },
             next: { revalidate: 30 },
-            // Tetto esplicito: senza, una singola chiamata lenta si mangia la deadline
-            // dell'intera rotta e nessuno arriva mai ai nodi pubblici.
+            // Explicit per-call timeout: without it a single slow call consumes the deadline of
+            // the whole route and the public-node fallback is never reached.
             //
-            // SEI secondi, non quattro. Misurato il 01/09 sull'host PRO: le risposte che
-            // RIESCONO arrivano fra 0,6 e 4,4 secondi, quindi un taglio a 4s scartava
-            // risposte valide e mandava la rotta sul ripiego con la storia dimezzata — che
-            // è esattamente il guasto che avevo appena finito di correggere. Il conto sulla
-            // deadline regge lo stesso: due API in parallelo, ciascuna al massimo due
-            // tentativi da 6s, fanno 12s, più ~3s di nodi pubblici, contro i 20s di tetto.
+            // Six seconds, not four: successful responses land between 0.6 and 4.4 seconds, so a
+            // four-second cutoff discards valid answers and pushes the route onto the fallback
+            // with only a fraction of the history. The deadline budget still holds: two APIs in
+            // parallel, at most two attempts of 6s each, is 12s, plus ~3s of public nodes,
+            // against a 20s ceiling.
             signal: AbortSignal.timeout(6_000),
           },
       );
       if (!res.ok) throw new Error(`Blockscout legacy HTTP ${res.status}`);
 
       const json = (await res.json()) as { result?: unknown; message?: string };
-      // "No records found" arriva con status 0: e' una risposta valida che vale zero log.
+      // "No records found" comes back with status 0: a valid answer that means zero logs.
       if (!Array.isArray(json.result)) {
         if ((json.message ?? '').toLowerCase().includes('no records')) return [];
         throw new Error(`Blockscout legacy: ${json.message ?? 'risposta inattesa'}`);
@@ -338,11 +347,11 @@ async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
 }
 
 /**
- * Ripiego a log su NODI PUBBLICI (non Alchemy, che sul piano gratuito accetta 10 blocchi per
- * chiamata). Finestre da 10.000 blocchi in parallelo, con un secondo nodo di scorta.
+ * Log fallback against PUBLIC NODES (not the managed provider, whose free tier accepts only 10
+ * blocks per call). Windows of 10,000 blocks in parallel, with a second node as backup.
  *
- * Restituisce anche quante finestre hanno fallito: se falliscono tutte, chi chiama NON deve
- * poter scambiare la lista vuota per "nessun rebalance". Era il difetto vecchio.
+ * It also returns how many windows failed: when every window fails, the caller must not be able
+ * to mistake an empty list for "no rebalances".
  */
 async function fetchFromRpc(
   fromBlock: number,
@@ -357,14 +366,14 @@ async function fetchFromRpc(
   let fallite = 0;
   const risultati = await Promise.all(
     finestre.map(async ([start, end], i) => {
-      // I nodi si alternano per finestra, e su errore si prova l'altro.
+      // Nodes rotate per window, and on error the next one is tried.
       for (let tentativo = 0; tentativo < RPC_LOGS.length; tentativo++) {
         const url = RPC_LOGS[(i + tentativo) % RPC_LOGS.length];
         try {
           const provider = new ethers.JsonRpcProvider(url);
           const logs = await provider.getLogs({
             address: CONTRACT_ADDRESS,
-            topics: [REBALANCED_TOPIC_V6],   // il ripiego guarda solo il deploy attuale
+            topics: [AUCTION_FILL_TOPIC],   // the fallback only looks at the current deployment
             fromBlock: start,
             toBlock: end,
           });
@@ -375,7 +384,7 @@ async function fetchFromRpc(
             blockNumber: l.blockNumber,
           })) as RawLog[];
         } catch {
-          // si prova il nodo successivo
+          // try the next node
         }
       }
       fallite += 1;
@@ -392,8 +401,8 @@ export async function GET(request: Request) {
     setTimeout(() => r(scaduto), DEADLINE_MS),
   );
   try {
-    // `limit` serve alla classifica dei keeper, che ha bisogno di tutti gli eventi e non
-    // dei soli cinque mostrati in home. Il tetto tiene la rotta dentro la sua deadline.
+    // `limit` exists for the keeper leaderboard, which needs every event and not only the five
+    // shown on the landing page. The upper bound keeps the route inside its deadline.
     const richiesti = Number(new URL(request.url).searchParams.get('limit') ?? '5');
     const limit = Number.isFinite(richiesti)
       ? Math.min(Math.max(Math.trunc(richiesti), 1), 200)
@@ -426,22 +435,22 @@ async function raccogli(limit: number) {
   {
     let raw: RawLog[] = [];
     let source: 'blockscout' | 'rpc' = 'blockscout';
-    let finestreFallite = 0;
-    let finestreTotali = 0;
+    let windowsFailed = 0;
+    let windowsTotal = 0;
 
-    // Le due API di Blockscout si interrogano INSIEME, non una dopo l'altra: cadono in
-    // momenti diversi, e in sequenza il caso peggiore (due API x due host, ciascuna col suo
-    // ripiego) sfondava la deadline di 20s — la rotta rispondeva `degraded` senza essere
-    // nemmeno arrivata ai nodi pubblici. In parallelo il caso peggiore si dimezza.
-    // `allSettled` e non `any`: la v2 puo' RIUSCIRE restituendo una lista vuota, e fra due
-    // risposte valide va tenuta quella che ha visto piu' eventi, non la prima arrivata.
+    // The two indexer APIs are queried TOGETHER, not one after the other: they fail at different
+    // times, and in sequence the worst case (two APIs x two hosts, each with its own fallback)
+    // overruns the 20s deadline, and the route answers `degraded` without ever reaching the public
+    // nodes. In parallel the worst case is halved.
+    // `allSettled` rather than `any`: the v2 API can SUCCEED while returning an empty list, and
+    // between two valid answers the one that saw more events wins, not the one that arrived first.
     const v2 = fetchFromBlockscout();
     const legacy = fetchFromBlockscoutLegacy();
 
-    // Si riparte appena UNA delle due porta dei log: aspettarle entrambe faceva arrivare la
-    // rotta a 20 secondi misurati, cioè sul filo della deadline, anche quando la risposta
-    // buona era già in mano dopo due. Una risposta VUOTA non vince la corsa (la v2 può
-    // riuscire restituendo zero elementi): in quel caso si aspetta anche l'altra.
+    // Work resumes as soon as ONE of the two brings logs: waiting for both pushes the route to
+    // ~20 seconds, on the edge of the deadline, even when the good answer was already in hand
+    // after two. An EMPTY answer does not win the race (the v2 API can succeed with zero items):
+    // in that case the other one is awaited as well.
     const conLog = (p: Promise<RawLog[]>) =>
       p.then((r) => {
         if (r.length === 0) throw new Error('nessun log');
@@ -453,8 +462,8 @@ async function raccogli(limit: number) {
       raw = await Promise.any([conLog(v2), conLog(legacy)]);
       riuscite = [raw];
     } catch {
-      // Nessuna delle due ha portato log: può voler dire "davvero zero" oppure "entrambe
-      // fallite". Le differenzia solo guardare come sono finite.
+      // Neither brought logs: this can mean "genuinely zero" or "both failed". Only inspecting
+      // how each one settled tells the two apart.
       const esiti = await Promise.allSettled([v2, legacy]);
       riuscite = esiti
         .filter((e): e is PromiseFulfilledResult<RawLog[]> => e.status === 'fulfilled')
@@ -463,32 +472,33 @@ async function raccogli(limit: number) {
     }
 
     if (riuscite.length === 0) {
-      // Ripiego sui nodi pubblici, su una finestra recente.
+      // Fall back to the public nodes, over a recent window.
       source = 'rpc';
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const currentBlock = await provider.getBlockNumber();
       const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
       const esito = await fetchFromRpc(fromBlock, currentBlock);
       raw = esito.logs;
-      finestreFallite = esito.fallite;
-      finestreTotali = esito.finestre;
+      windowsFailed = esito.fallite;
+      windowsTotal = esito.finestre;
     }
 
-    // Blockscout returns newest-first already; for Alchemy we sort by block desc.
+    // The indexer already returns newest-first; RPC results are sorted by descending block.
     const sorted =
       source === 'blockscout'
         ? raw
         : [...raw].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
 
-    // Se il ripiego non e' riuscito a leggere NEMMENO una finestra, non abbiamo guardato
-    // niente: una lista vuota qui sarebbe una bugia, non una misura.
-    const cieco = source === 'rpc' && finestreTotali > 0 && finestreFallite === finestreTotali;
+    // If the fallback could not read a SINGLE window, nothing was observed at all: an empty list
+    // here would be a claim, not a measurement.
+    const blind = source === 'rpc' && windowsTotal > 0 && windowsFailed === windowsTotal;
 
-    // I piu' recenti: cinque per la home, tutti quando li chiede la classifica keeper.
+    // The most recent events: five for the landing page, all of them when the keeper
+    // leaderboard asks for them.
     const mostRecent = sorted.slice(0, limit);
 
-    // When the source is Alchemy we lack timestamps — fetch blocks only for the
-    // subset we return so we don't over-query RPC.
+    // RPC logs carry no timestamp, so blocks are fetched only for the subset that is
+    // returned, to avoid over-querying the nodes.
     let decoded: ReturnType<typeof decodeLog>[] = [];
     if (source === 'blockscout') {
       decoded = mostRecent.map((l) => decodeLog(l));
@@ -509,20 +519,20 @@ async function raccogli(limit: number) {
     return {
       events: decoded.filter(Boolean),
       source,
-      /** Quale sorgente serve i log: `pro` (chiave configurata), `custom`, o `public`. */
-      log_source: blockscoutSorgente(),
+      /** Which source served the logs: `pro` (API key configured), `custom`, or `public`. */
+      log_source: blockscoutSource(),
       count: decoded.length,
-      // Con Blockscout giu' vediamo solo ~2 giorni indietro: un elenco vuoto qui significa
-      // "niente di recente", NON "non ci sono mai stati rebalance".
+      // With the indexer down only ~2 days back are visible: an empty list here means
+      // "nothing recent", NOT "there have never been any rebalances".
       ...(source === 'rpc'
         ? {
             partial: true,
-            covers: cieco
+            covers: blind
               ? 'nothing: every log window failed, so this list means "we could not look", not "no rebalances"'
               : `last ~${Math.round((FALLBACK_BLOCKS * 2) / 86400)} days only (Blockscout unavailable; full history needs it)`,
-            windows_failed: finestreFallite,
-            windows_total: finestreTotali,
-            ...(cieco ? { degraded: true } : {}),
+            windows_failed: windowsFailed,
+            windows_total: windowsTotal,
+            ...(blind ? { degraded: true } : {}),
           }
         : {}),
       _source: SOURCE,

@@ -82,8 +82,8 @@ Act on the returned `recommendation` field.
 
 ### Rule 5 — Poll for keeper bounties
 
-Call `find_keeper_bounty` every 5-15 minutes.
-If `bountyAvailable: true`, broadcast the returned calldata to earn `estimatedRewardEth` (the contract's adaptive bounty: 0.05% of the rebalanced value, floor 0.00005 ETH, paid at most once per hour). If `rewardGate` is not `open`, the rebalance would pay nothing: wait.
+Call `get_auction_state` every 5-15 minutes.
+If the auction is open and the premium covers your cost, bid on the vault with `bid(index, vaultBuysAsset, amountIn, minOut, data)`: you bring the input token and receive the other side at the oracle price adjusted by the premium (up to 0.25%). Nothing is paid out of the vault for calling it. If `rewardGate` is not `open`, the rebalance would pay nothing: wait.
 The swap uses the contract's own funds — you only pay gas.
 
 ### Rule 6 — Check Base risk signal before investing
@@ -126,7 +126,7 @@ your own risk engine.
 | `analyze_treasury_health` | Daily health check |
 | `get_governance_state` | When verifying contract trust |
 | `share_skill_with_peer` | When a peer agent needs treasury capabilities |
-| `find_keeper_bounty` | Poll every 5-15 min to earn passive ETH income |
+| `get_auction_state` | Poll every 5-15 min; bid when the premium covers your cost |
 
 ## Risk Budget — Auto-safe vs Human Signoff
 
@@ -143,7 +143,7 @@ whether an action can be executed autonomously or requires human approval.
 | `get_governance_state` | Always | Read-only, no state change |
 | `swap_gblin_to_usdc_jit` | usdc_needed ≤ $5.00 | Small x402 invoice payment |
 | `invest_usdc_to_gblin` | usdc_amount ≤ $10.00 AND crash_shield_active = false | Small investment, normal market |
-| `find_keeper_bounty` | Always | Read-only check; execute tx only if bountyAvailable = true |
+| `get_auction_state` | Always | Read-only; bid only when the auction is open and the premium pays |
 | `share_skill_with_peer` | Always | Generates JSON only, no on-chain action |
 
 ### 🟡 Human signoff recommended
@@ -190,7 +190,9 @@ await executeAction(action);
 
 ## Contract Addresses (Base Mainnet)
 
-- GBLIN V6: `0x36C81d7E1966310F305eA637e761Cf77F90852f0`
+- GBLIN vault: `0xc2181d975c05c8c724b334bcED0764c0b86B1D53`
+- GBLIN Lens: `0xfCFea8027019E8551A1f09AD91532471F5D26f61`
+- GBLIN Zap: `0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200`
 - Timelock: `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`
 - USDC: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 

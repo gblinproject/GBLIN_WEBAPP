@@ -17,21 +17,23 @@ import { createDefaultWagmiConfig } from "@lifi/widget-provider-ethereum";
 // https://cloud.reown.com). Installed browser extensions (Rabby, Brave, OKX,
 // ...) are ADDED automatically via EIP-6963 discovery — the LI.FI menu lists
 // connectors + discovered wallets, deduped by name.
-// GBLIN's existing Reown/WalletConnect project — recovered from the original
-// pre-thirdweb AppKit setup (git f30019a, src/context/index.tsx). The env var
-// overrides it if ever rotated. projectId is public by design (client-side).
+//
+// The fallback WalletConnect projectId below is public by design (it ships to
+// the client); the environment variable overrides it if it is ever rotated.
 const wcProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
   "9629f33d439505415769d9d29d7b788e";
 const { connectors: lifiConnectors } = createDefaultWagmiConfig({
-  // `dapp` NON e' decorativo: senza, il build stampa a ogni pagina
+  // `dapp` is NOT decorative: without it the build logs, on every page,
   // "Error initializing MetaMaskConnectMultichain: You must provide dapp url".
-  // Il motivo sta nel connettore di wagmi 3.7.3 (@wagmi/connectors/metaMask.js ~244):
+  // The cause is in the wagmi MetaMask connector (@wagmi/connectors/metaMask.js):
   //   typeof window === 'undefined' ? { name: 'wagmi' } : { name: hostname, url: href }
-  // cioe' sul SERVER passa il nome ma NON l'url, e @metamask/connect-multichain lo pretende
-  // ("if (!options.dapp?.url) throw"). In pre-renderizzazione window non esiste, quindi lancia.
-  // Dichiarandolo qui l'errore sparisce E la finestra di conferma di MetaMask mostra il nostro
-  // nome invece di "wagmi" o dell'hostname di turno — come gia' fa WalletConnect qui sotto.
+  // i.e. on the SERVER it passes the name but NOT the url, while
+  // @metamask/connect-multichain requires it ("if (!options.dapp?.url) throw").
+  // During prerendering `window` does not exist, so it throws. Declaring the metadata
+  // here removes the error AND makes the MetaMask confirmation dialog show the
+  // application name instead of "wagmi" or the current hostname — the same metadata
+  // WalletConnect is given below.
   metaMask: {
     dapp: {
       name: "GBLIN Protocol",

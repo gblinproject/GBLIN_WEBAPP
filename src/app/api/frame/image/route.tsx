@@ -4,7 +4,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 30;
 
-const CONTRACT_ADDRESS = "0x36C81d7E1966310F305eA637e761Cf77F90852f0"; // V6
+const CONTRACT_ADDRESS = "0xc2181d975c05c8c724b334bcED0764c0b86B1D53";
+// The Lens answers the quote: the vault does not expose one directly.
+const LENS_ADDRESS = "0xfCFea8027019E8551A1f09AD91532471F5D26f61";
 const ALCHEMY_KEY =
   process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
 // Free public RPCs first; Alchemy only as a last-resort backstop so frame
@@ -18,14 +20,19 @@ const RPC_URLS = [
 
 // Precomputed 4-byte function selectors (keccak256 first 4 bytes)
 const SELECTORS = {
-  totalSupply: "0x18160ddd",
-  stabilityFund: "0xa60265fe",
-  quoteBuyGBLIN: "0x38ae0605",
+  totalSupply: "0x18160ddd",                                    // totalSupply()
+  navPerShare: "0x89e8bea1",                                    // navPerShare(uint256)
+  quoteBuy: "0x0d7a94f6",                                       // quoteBuy(address,uint256), on the Lens
 } as const;
 
 // Strip "0x" prefix from selector when concatenating with params
 function buildCallData(selector: string, paddedParams = ""): string {
   return selector + paddedParams;
+}
+
+/** An address as a 32-byte ABI word, without the leading "0x". */
+function addressWord(addr: string): string {
+  return addr.toLowerCase().replace(/^0x/, "").padStart(64, "0");
 }
 
 const fmt = (n: number, digits = 2) =>
@@ -47,7 +54,7 @@ function formatEther(wei: bigint): number {
   return Number(intPart) + Number(fracPart) / 1e18;
 }
 
-async function ethCallOne(url: string, data: string, timeoutMs = 3500): Promise<string> {
+async function ethCallOne(url: string, data: string, to: string = CONTRACT_ADDRESS, timeoutMs = 3500): Promise<string> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -58,7 +65,7 @@ async function ethCallOne(url: string, data: string, timeoutMs = 3500): Promise<
         jsonrpc: "2.0",
         id: 1,
         method: "eth_call",
-        params: [{ to: CONTRACT_ADDRESS, data }, "latest"],
+        params: [{ to, data }, "latest"],
       }),
       cache: "no-store",
       signal: controller.signal,
@@ -75,10 +82,10 @@ async function ethCallOne(url: string, data: string, timeoutMs = 3500): Promise<
   }
 }
 
-async function safeCall(data: string): Promise<string> {
+async function safeCall(data: string, to: string = CONTRACT_ADDRESS): Promise<string> {
   for (const url of RPC_URLS) {
     try {
-      const r = await ethCallOne(url, data);
+      const r = await ethCallOne(url, data, to);
       if (r && r !== "0x") return r;
     } catch (e) {
       console.warn(`[frame/image] RPC fail ${url}:`, (e as Error).message);
@@ -90,32 +97,31 @@ async function safeCall(data: string): Promise<string> {
 // In-memory TTL cache: the frame shows slow-moving on-chain values, so a burst
 // of renders shares one set of reads instead of each firing 3 eth_calls. This
 // is what caps the per-second RPC rate during traffic spikes.
-type FrameStats = { gblinPerEth: number; supply: number; stability: number; keeperPayouts: number };
+type FrameStats = { gblinPerEth: number; supply: number; navPerShareEth: number };
 let _statsCache: { at: number; data: FrameStats } | null = null;
 const STATS_TTL_MS = 60_000;
 
 async function fetchFrameStats(): Promise<FrameStats> {
   if (_statsCache && Date.now() - _statsCache.at < STATS_TTL_MS) return _statsCache.data;
   const oneEthHex = toUint256Hex(10n ** 18n);
-  const [supplyHex, stabilityHex, quoteHex] = await Promise.all([
+  const [supplyHex, navHex, quoteHex] = await Promise.all([
     safeCall(SELECTORS.totalSupply),
-    safeCall(SELECTORS.stabilityFund),
-    safeCall(buildCallData(SELECTORS.quoteBuyGBLIN, oneEthHex)),
+    safeCall(buildCallData(SELECTORS.navPerShare, toUint256Hex(0n))),
+    // quoteBuy takes the vault first, then the amount.
+    safeCall(buildCallData(SELECTORS.quoteBuy, addressWord(CONTRACT_ADDRESS) + oneEthHex), LENS_ADDRESS),
   ]);
 
   const supply = formatEther(hexToBigInt(supplyHex));
-  const stability = formatEther(hexToBigInt(stabilityHex));
+  const navPerShareEth = formatEther(hexToBigInt(navHex));
 
-  // quoteBuyGBLIN returns (uint256 gblinOut, uint256 founderFee, uint256 stabFee)
-  // First 32-byte word is gblinOut
+  // quoteBuy returns (out, protocolFee, stabilityFee); the first word is the shares out.
   let gblinPerEth = 0;
   if (quoteHex && quoteHex.length >= 66) {
     const firstWord = "0x" + quoteHex.slice(2, 66);
     gblinPerEth = formatEther(hexToBigInt(firstWord));
   }
 
-  const keeperPayouts = stability > 0 ? Math.floor(stability / 0.0001) : 0;
-  const data: FrameStats = { gblinPerEth, supply, stability, keeperPayouts };
+  const data: FrameStats = { gblinPerEth, supply, navPerShareEth };
   _statsCache = { at: Date.now(), data };
   return data;
 }
@@ -126,19 +132,20 @@ export async function GET(req: Request) {
   const savedOverride = searchParams.get("saved");
   const crashOverride = searchParams.get("crash");
 
-  let stats = { gblinPerEth: 0, supply: 0, stability: 0, keeperPayouts: 0 };
+  let stats = { gblinPerEth: 0, supply: 0, navPerShareEth: 0 };
   try {
     stats = await fetchFrameStats();
   } catch (e) {
     console.error("[frame/image] failed to fetch stats", e);
   }
 
-  const bountyDisplay =
-    stats.stability > 0 ? `${fmt(stats.stability, stats.stability < 0.01 ? 6 : 4)} ETH` : "0 ETH";
+  // Value of one share, in ETH: the number the vault mints and redeems at.
+  const navDisplay =
+    stats.navPerShareEth > 0 ? `${fmt(stats.navPerShareEth, stats.navPerShareEth < 0.01 ? 6 : 4)}` : "0";
 
   // Optional personalisation: when reshared with ?saved=...&crash=... query params,
   // the image gets a green "saved $X during {crash}" callout instead of the
-  // KEEPER BOUNTY card. This lets share casts deep-link to a personalised image.
+  // NAV PER SHARE card. This lets share casts deep-link to a personalised image.
   const showSaved =
     savedOverride !== null && savedOverride !== "" && !Number.isNaN(parseFloat(savedOverride));
   const savedNumber = showSaved ? parseFloat(savedOverride!) : 0;
@@ -263,10 +270,10 @@ export async function GET(req: Request) {
             <SavedCard saved={savedNumber} crashLabel={crashLabel} />
           ) : (
             <StatCard
-              label="KEEPER BOUNTY"
-              value={bountyDisplay.replace(" ETH", "")}
+              label="NAV PER SHARE"
+              value={navDisplay}
               unit="ETH"
-              hint={`${stats.keeperPayouts} payouts ready`}
+              hint="mint and redeem price"
             />
           )}
         </div>

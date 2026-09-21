@@ -12,6 +12,7 @@
 import { withBuilderSuffix } from "./builder-code";
 import {
   createPublicClient,
+  encodeAbiParameters,
   encodeFunctionData,
   encodePacked,
   formatUnits,
@@ -31,7 +32,11 @@ export const RPC_URL = process.env.GBLIN_RPC_URL ?? DEFAULT_RPC_URL;
 // The single production GBLIN contract on Base. Deliberately unversioned:
 // agents consume an address, not a release number, and the old versioned name
 // is what let a stale "v5" label leak into the public governance response.
-export const GBLIN: Address = "0x36C81d7E1966310F305eA637e761Cf77F90852f0";
+export const GBLIN: Address = "0xc2181d975c05c8c724b334bcED0764c0b86B1D53";
+export const GBLIN_LENS: Address = "0xfCFea8027019E8551A1f09AD91532471F5D26f61";
+export const GBLIN_ZAP: Address = "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200";
+// Routing data the Zap hands to its swap adapter: the Uniswap V3 fee tier of the pair, ABI-encoded.
+export const VENUE_FEE_500 = encodeAbiParameters([{ type: "uint24" }], [500]);
 export const USDC: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const WETH: Address = "0x4200000000000000000000000000000000000006";
 export const GBLIN_TIMELOCK: Address = "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd";
@@ -125,55 +130,35 @@ export const SWAP_ROUTER_ABI = [
 
 export const GBLIN_ABI = [
   {
-    name: "quoteBuyGBLIN",
+    name: "totalEthValue",
     type: "function",
     stateMutability: "view",
-    inputs: [{ name: "ethAmount", type: "uint256" }],
-    outputs: [
-      { name: "gblinOut", type: "uint256" },
-      { name: "founderFee", type: "uint256" },
-      { name: "stabilityFee", type: "uint256" },
-    ],
+    inputs: [{ name: "excludeWeth", type: "uint256" }],
+    outputs: [{ name: "total", type: "uint256" }],
   },
   {
-    name: "quoteSellGBLIN",
+    name: "navPerShare",
     type: "function",
     stateMutability: "view",
-    inputs: [{ name: "gblinAmount", type: "uint256" }],
-    outputs: [{ name: "ethOut", type: "uint256" }],
-  },
-  {
-    name: "basket",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "", type: "uint256" }],
-    outputs: [
-      { name: "token", type: "address" },
-      { name: "oracle", type: "address" },
-      { name: "poolFee", type: "uint24" },
-      { name: "isStable", type: "bool" },
-      { name: "baseWeight", type: "uint256" },
-      { name: "dynamicWeight", type: "uint256" },
-      { name: "peakPrice", type: "uint256" },
-      { name: "lastPeakUpdate", type: "uint256" },
-    ],
-  },
-  {
-    name: "lastDepositTime",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "", type: "address" }],
+    inputs: [{ name: "excludeWeth", type: "uint256" }],
     outputs: [{ name: "", type: "uint256" }],
   },
   {
-    name: "owner",
+    name: "isNavReliable",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
   },
   {
-    name: "founderWallet",
+    name: "auctionPremiumBps",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "int256" }],
+  },
+  {
+    name: "owner",
     type: "function",
     stateMutability: "view",
     inputs: [],
@@ -190,42 +175,155 @@ export const GBLIN_ABI = [
     name: "buyGBLIN",
     type: "function",
     stateMutability: "payable",
-    inputs: [{ name: "minGblinOut", type: "uint256" }],
+    inputs: [{ name: "minOut", type: "uint256" }],
     outputs: [],
   },
+  {
+    name: "buyGBLINWithWeth",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "amount", type: "uint256" },
+      { name: "minOut", type: "uint256" },
+      { name: "receiver", type: "address" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "buyGBLINInKind",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amountIn", type: "uint256" },
+      { name: "minOut", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "sellGBLIN",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "gblinAmount", type: "uint256" }],
+    outputs: [],
+  },
+] as const;
+
+// The Lens answers everything the vault does not expose directly: quotes, configuration, basket rows
+// and auction state. Every call takes the vault as its first argument.
+export const LENS_ABI = [
+  {
+    name: "quoteBuy",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "ethValue", type: "uint256" },
+    ],
+    outputs: [
+      { name: "out", type: "uint256" },
+      { name: "protocolFee", type: "uint256" },
+      { name: "stabilityFee", type: "uint256" },
+    ],
+  },
+  {
+    name: "quoteSell",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "gblinAmount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "basketLength",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vault", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "asset",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "i", type: "uint256" },
+    ],
+    outputs: [
+      { name: "token", type: "address" },
+      { name: "oracle", type: "address" },
+      { name: "isStable", type: "bool" },
+      { name: "delisted", type: "bool" },
+      { name: "baseWeight", type: "uint256" },
+      { name: "dynamicWeight", type: "uint256" },
+      { name: "shielded", type: "bool" },
+      { name: "abandoned", type: "bool" },
+    ],
+  },
+  {
+    name: "auction",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "i", type: "uint256" },
+    ],
+    outputs: [
+      { name: "open", type: "bool" },
+      { name: "premiumBps", type: "int256" },
+      { name: "vaultBuysAsset", type: "bool" },
+      { name: "gapEth", type: "uint256" },
+    ],
+  },
+  {
+    name: "lastDepositTime",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "vault", type: "address" },
+      { name: "holder", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "feeRecipient",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vault", type: "address" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
+// The Zap is the only contract that swaps: it mints with any token and exits to ETH by redeeming in
+// kind on the vault and selling the legs.
+export const ZAP_ABI = [
   {
     name: "buyGBLINWithToken",
     type: "function",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "path", type: "bytes" },
+      { name: "tokenIn", type: "address" },
       { name: "amountIn", type: "uint256" },
       { name: "minWethOut", type: "uint256" },
-      { name: "minGblinOut", type: "uint256" },
+      { name: "minOut", type: "uint256" },
+      { name: "venueData", type: "bytes" },
+      { name: "receiver", type: "address" },
     ],
-    outputs: [],
-  },
-  {
-    name: "sellGBLINForToken",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "gblinAmount", type: "uint256" },
-      { name: "targetToken", type: "address" },
-      { name: "wethToTargetFee", type: "uint24" },
-      { name: "minTokenOut", type: "uint256" },
-    ],
-    outputs: [],
+    outputs: [{ name: "out", type: "uint256" }],
   },
   {
     name: "sellGBLINForEth",
     type: "function",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "gblinAmount", type: "uint256" },
+      { name: "shares", type: "uint256" },
       { name: "minEthOut", type: "uint256" },
+      { name: "venueData", type: "bytes[]" },
+      { name: "receiver", type: "address" },
     ],
-    outputs: [],
+    outputs: [{ name: "ethOut", type: "uint256" }],
   },
 ] as const;
 
@@ -289,10 +387,10 @@ export async function getNavUsd(): Promise<number> {
 
   const [ethPerGblinWei, ethPriceUsd] = await Promise.all([
     client.readContract({
-      address: GBLIN,
-      abi: GBLIN_ABI,
-      functionName: "quoteSellGBLIN",
-      args: [parseUnits("1", 18)],
+      address: GBLIN_LENS,
+      abi: LENS_ABI,
+      functionName: "quoteSell",
+      args: [GBLIN, parseUnits("1", 18)],
     }),
     getEthPriceUsd(),
   ]);
@@ -310,10 +408,10 @@ export async function getNavUsd(): Promise<number> {
 export interface BasketEntry {
   token: Address;
   oracle: Address;
-  poolFee: number;
   isStable: boolean;
   baseWeightBps: number;
   dynamicWeightBps: number;
+  /** True while the crash shield is cutting this row's weight. */
   isSlashed: boolean;
 }
 
@@ -333,31 +431,32 @@ export async function getBasketState(): Promise<BasketState> {
   const entries: BasketEntry[] = [];
   let crashShieldActive = false;
 
-  for (let i = 0; i < 8; i++) {
+  const rowCount = await client
+    .readContract({ address: GBLIN_LENS, abi: LENS_ABI, functionName: "basketLength", args: [GBLIN] })
+    .catch(() => 0n);
+
+  for (let i = 0; i < Number(rowCount); i++) {
     try {
       const raw = await client.readContract({
-        address: GBLIN,
-        abi: GBLIN_ABI,
-        functionName: "basket",
-        args: [BigInt(i)],
+        address: GBLIN_LENS,
+        abi: LENS_ABI,
+        functionName: "asset",
+        args: [GBLIN, BigInt(i)],
       });
-      const [token, oracle, poolFee, isStable, baseWeight, dynamicWeight] = raw;
+      const [token, oracle, isStable, , baseWeight, dynamicWeight, shielded] = raw;
       const baseBps = Number(baseWeight);
       const dynBps = Number(dynamicWeight);
 
-      if (baseBps === 0 && dynBps === 0) break;
-
-      const isSlashed = dynBps < baseBps;
-      if (isSlashed) crashShieldActive = true;
+      // The shield's own flag, not a comparison: a row can keep its weight and still be shielded.
+      if (shielded) crashShieldActive = true;
 
       entries.push({
         token,
         oracle,
-        poolFee: Number(poolFee),
         isStable,
         baseWeightBps: baseBps,
         dynamicWeightBps: dynBps,
-        isSlashed,
+        isSlashed: Boolean(shielded),
       });
     } catch {
       break;
@@ -412,10 +511,10 @@ export interface CooldownStatus {
 export async function checkCooldown(wallet: Address): Promise<CooldownStatus> {
   const [lastDeposit, block] = await Promise.all([
     client.readContract({
-      address: GBLIN,
-      abi: GBLIN_ABI,
+      address: GBLIN_LENS,
+      abi: LENS_ABI,
       functionName: "lastDepositTime",
-      args: [wallet],
+      args: [GBLIN, wallet],
     }),
     client.getBlock(),
   ]);
@@ -476,11 +575,13 @@ export interface JitStep {
   value: string;
 }
 
-// V6 removed sellGBLINForToken. GBLIN -> USDC is now two steps:
-//   1) sellGBLINForEth(gblin, minEthOut) -> agent receives ETH
-//   2) Uniswap exactInputSingle WETH->USDC, paid with the received ETH.
-// TX2 amountIn = minEthOut (guaranteed minimum from TX1) so it can never request
-// more ETH than TX1 delivered. Both legs carry a minOut (no sandwich surface).
+// The vault redeems in kind and never swaps, so GBLIN -> USDC is three steps:
+//   1) approve the shares to the Zap (it pulls them);
+//   2) the Zap's sellGBLINForEth: redeem in kind on the vault, sell every leg, deliver ETH — all or
+//      nothing, so a leg that cannot be sold reverts the whole step instead of paying out less;
+//   3) Uniswap exactInputSingle WETH->USDC, paid with the received ETH.
+// Step 3's amountIn is minEthOut (the guaranteed minimum of step 2), so it can never ask for more ETH
+// than step 2 delivered. Every leg carries a minimum: no sandwich surface.
 export async function buildJitCalldata(
   gblinToSell: bigint,
   minUsdcOut: bigint,
@@ -488,17 +589,28 @@ export async function buildJitCalldata(
   wallet: Address
 ): Promise<{ steps: JitStep[]; minEthOut: bigint }> {
   const ethExpected = (await client.readContract({
-    address: GBLIN,
-    abi: GBLIN_ABI,
-    functionName: "quoteSellGBLIN",
-    args: [gblinToSell],
+    address: GBLIN_LENS,
+    abi: LENS_ABI,
+    functionName: "quoteSell",
+    args: [GBLIN, gblinToSell],
   })) as bigint;
   const minEthOut = applySlippageBuffer(ethExpected, slippageBps);
 
+  const rowCount = Number(
+    await client
+      .readContract({ address: GBLIN_LENS, abi: LENS_ABI, functionName: "basketLength", args: [GBLIN] })
+      .catch(() => 3n)
+  );
+  const approveCalldata = encodeFunctionData({
+    abi: ERC20_ABI,
+    functionName: "approve",
+    args: [GBLIN_ZAP, gblinToSell],
+  });
   const sellCalldata = encodeFunctionData({
-    abi: GBLIN_ABI,
+    abi: ZAP_ABI,
     functionName: "sellGBLINForEth",
-    args: [gblinToSell, minEthOut],
+    // One routing entry per basket row, index for index; WETH and abandoned rows ignore theirs.
+    args: [gblinToSell, minEthOut, Array.from({ length: rowCount }, () => VENUE_FEE_500), wallet],
   });
   const swapCalldata = encodeFunctionData({
     abi: SWAP_ROUTER_ABI,
@@ -519,8 +631,9 @@ export async function buildJitCalldata(
   return {
     minEthOut,
     steps: [
-      { step: 1, description: "Redeem GBLIN to ETH on the GBLIN contract (sellGBLINForEth)", target: GBLIN, calldata: withBuilderSuffix(sellCalldata), value: "0" },
-      { step: 2, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: minEthOut.toString() },
+      { step: 1, description: "Approve the shares to the GBLIN Zap", target: GBLIN, calldata: withBuilderSuffix(approveCalldata), value: "0" },
+      { step: 2, description: "Redeem in kind and sell the legs for ETH through the Zap (all or nothing)", target: GBLIN_ZAP, calldata: withBuilderSuffix(sellCalldata), value: "0" },
+      { step: 3, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: minEthOut.toString() },
     ],
   };
 }
@@ -565,62 +678,32 @@ export async function buildInvestCalldata(
   }
 
   const [gblinExpected] = await client.readContract({
-    address: GBLIN,
-    abi: GBLIN_ABI,
-    functionName: "quoteBuyGBLIN",
-    args: [minWethOut],
+    address: GBLIN_LENS,
+    abi: LENS_ABI,
+    functionName: "quoteBuy",
+    args: [GBLIN, minWethOut],
   });
   const minGblinOut = applySlippageBuffer(gblinExpected, slippage.bps);
 
-  // Step 1: Approve USDC to SwapRouter02
-  const approveRouterCalldata = encodeFunctionData({
+  // Two steps, not four: the Zap swaps USDC to WETH on the adapter and mints at NAV in the same
+  // transaction, so nothing is left half-done between them. The allowance goes to the Zap, never to
+  // the vault, and both bounds travel with the call: `minWethOut` on the swap, `minGblinOut` on the mint.
+  const approveZapCalldata = encodeFunctionData({
     abi: ERC20_ABI,
     functionName: "approve",
-    args: [SWAP_ROUTER_02, usdcUnits],
+    args: [GBLIN_ZAP, usdcUnits],
   });
-
-  // Step 2: Swap USDC→WETH via exactInputSingle
-  const swapCalldata = encodeFunctionData({
-    abi: SWAP_ROUTER_ABI,
-    functionName: "exactInputSingle",
-    args: [
-      {
-        tokenIn: USDC,
-        tokenOut: WETH,
-        fee: WETH_USDC_POOL_FEE,
-        recipient: walletAddress,
-        amountIn: usdcUnits,
-        amountOutMinimum: minWethOut,
-        sqrtPriceLimitX96: 0n,
-      },
-    ],
-  });
-
-  // Step 3: Approve WETH to GBLIN
-  const approveWethCalldata = encodeFunctionData({
-    abi: ERC20_ABI,
-    functionName: "approve",
-    args: [GBLIN, minWethOut],
-  });
-
-  // Step 4: Buy GBLIN with WETH (WETH path skips broken Uniswap call)
-  const gblinPath = encodePacked(
-    ["address", "uint24", "address"],
-    [WETH, 0, WETH] // fee=0 dummy path, contract skips when tokenIn==WETH
-  );
 
   const buyCalldata = encodeFunctionData({
-    abi: GBLIN_ABI,
+    abi: ZAP_ABI,
     functionName: "buyGBLINWithToken",
-    args: [gblinPath, minWethOut, 0n, minGblinOut],
+    args: [USDC, usdcUnits, minWethOut, minGblinOut, VENUE_FEE_500, walletAddress],
   });
 
   return {
     steps: [
-      { step: 1, description: "Approve USDC to SwapRouter02 for WETH swap", target: USDC, calldata: withBuilderSuffix(approveRouterCalldata), value: "0" },
-      { step: 2, description: "Swap USDC→WETH via SwapRouter02 exactInputSingle", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: "0" },
-      { step: 3, description: "Approve WETH to GBLIN contract", target: WETH, calldata: withBuilderSuffix(approveWethCalldata), value: "0" },
-      { step: 4, description: "Buy GBLIN with WETH", target: GBLIN, calldata: withBuilderSuffix(buyCalldata), value: "0" },
+      { step: 1, description: "Approve USDC to the GBLIN Zap", target: USDC, calldata: withBuilderSuffix(approveZapCalldata), value: "0" },
+      { step: 2, description: "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", target: GBLIN_ZAP, calldata: withBuilderSuffix(buyCalldata), value: "0" },
     ],
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),

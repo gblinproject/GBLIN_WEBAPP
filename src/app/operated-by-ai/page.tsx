@@ -3,7 +3,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'GBLIN is operated by AI in public: audits, fixes and releases come from AI systems, the human founder only signs. Every claim links to verifiable evidence.';
+  'GBLIN is operated by AI in public: reviews, fixes and releases come from AI systems, the human founder only signs. Every claim links to verifiable evidence.';
 
 export const metadata: Metadata = {
   title: 'Operated by AI — GBLIN Protocol Transparency',
@@ -21,43 +21,43 @@ const EVIDENCE = [
   {
     claim: 'The risk policy is public code — and it has already acted on its own on mainnet.',
     detail:
-      'On June 5, 2026 the Crash Shield autonomously cut WETH target weight from 45% to 9% after ETH crossed its drawdown threshold. No human intervened.',
+      'On June 5, 2026 the Crash Shield of the previous index contract autonomously cut the WETH target weight from 45% to 9% after ETH crossed its drawdown threshold. No human intervened. The vault in service runs the same shield.',
     href: 'https://basescan.org/tx/0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca',
     label: 'CrashShieldActivated tx on Basescan',
   },
   {
-    claim: 'Governance is a 48h public timelock, not an admin key.',
+    claim: 'Governance is a 48h public timelock.',
     detail:
-      'Ownership of the V6 contract was transferred to a 48-hour OpenZeppelin timelock. Every parameter change is scheduled in public and executable only after the delay.',
+      'The previous index contract is owned by a 48-hour OpenZeppelin timelock, and the vault in service is bound to the same timelock through a scheduled acceptance. Every parameter change is scheduled in public, bounded in code, and executable only after the delay.',
     href: 'https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd',
     label: 'GblinTimelockController on Basescan',
   },
   {
     claim: 'The agent tooling is AI-built and published in public.',
     detail:
-      'The open-source MCP server (10 tools, free by default) is maintained with AI-driven audits and releases. Version 0.2.2 was audited, corrected and published end-to-end by AI operations, with the human signing accounts only.',
+      'The open-source MCP server (13 tools, free by default) is maintained with AI-driven reviews and releases: each release is reviewed, corrected and published end-to-end by AI operations, with the human signing accounts only.',
     href: 'https://www.npmjs.com/package/@gblin-protocol/mcp-server',
     label: '@gblin-protocol/mcp-server on npm',
   },
   {
     claim: 'The protocol is listed in the official MCP Registry.',
     detail:
-      'io.github.gblinproject/gblin-mcp-server — latest version published July 16, 2026 via the official mcp-publisher flow.',
+      'io.github.gblinproject/gblin-mcp-server — every version is published through the official mcp-publisher flow, with the hosted endpoint listed as a remote.',
     href: 'https://registry.modelcontextprotocol.io/v0/servers?search=gblin',
     label: 'MCP Registry entry',
   },
   {
     claim: 'All source code is public.',
     detail:
-      'Contracts, webapp, MCP server, keeper bot: every component that operates the protocol is open source and auditable, including the history of AI-authored changes.',
+      'Contracts, webapp, MCP server, bots: every component that operates the protocol is open source and readable, including the history of AI-authored changes.',
     href: 'https://github.com/gblinproject',
     label: 'github.com/gblinproject',
   },
 ];
 
 const DIVISION = [
-  { who: 'AI operations', what: 'Audits, code fixes, documentation, releases, risk analysis, strategy research, market monitoring, content drafting.' },
-  { who: 'Autonomous contract', what: 'Rebalancing weights, Crash Shield activation/decay, fee split, keeper bounties — executed on-chain with no operator.' },
+  { who: 'AI operations', what: 'Reviews, code fixes, documentation, releases, risk analysis, strategy research, market monitoring, content drafting.' },
+  { who: 'Autonomous contract', what: 'Target weights, Crash Shield activation and decay, fee accrual, the rebalancing auction — executed on-chain with no operator.' },
   { who: 'Human founder', what: 'Signs transactions (timelock schedule/execute, registrations), pushes releases, and can veto any scheduled change within the 48h window. Nothing else.' },
 ];
 

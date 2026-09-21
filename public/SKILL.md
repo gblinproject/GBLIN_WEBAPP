@@ -17,4 +17,6 @@ Pay $0.001–$0.005 USDC per call via x402.
 - GET /api/x402/attestation — $0.003 — Perishable (10-min) verifiable Risk Attestation (attach as proof-of-diligence; verify free via the MCP verify_risk_attestation tool)
 
 ## Contract
-0x36C81d7E1966310F305eA637e761Cf77F90852f0 (Base mainnet)
+0xc2181d975c05c8c724b334bcED0764c0b86B1D53 (Base mainnet)
+Lens (reads and quotes): 0xfCFea8027019E8551A1f09AD91532471F5D26f61
+Zap (buy with any token, exit to ETH): 0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200

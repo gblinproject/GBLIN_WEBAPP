@@ -3,17 +3,17 @@
 [![Base MCP Plugin](https://img.shields.io/badge/Base%20MCP-PR%20%2356-blue)](https://github.com/base/skills/pull/56)
 [![x402 Manifest](https://img.shields.io/badge/x402-manifest-green)](https://gblin.digital/.well-known/x402)
 [![x402 conformance](https://api.stelardigital.com/badge/conformance.svg?url=https%3A%2F%2Fgblin.digital%2Fapi%2Fx402%2Fattestation)](https://stelardigital.com/x402-doctor?url=https%3A%2F%2Fgblin.digital%2Fapi%2Fx402%2Fattestation)
-[![Base Mainnet](https://img.shields.io/badge/Base-Mainnet%20Live-0052FF)](https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0)
+[![Base Mainnet](https://img.shields.io/badge/Base-Mainnet%20Live-0052FF)](https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53)
 
 Front-end and dApp for **GBLIN**, an on-chain index on Base mainnet (45% cbBTC + 45% WETH + 10% USDC) with an algorithmic Crash Shield and AI-agent-native treasury tooling.
 
 ## Trust & Governance
 
-**GBLIN_V6 is now owned by a 48-hour Timelock Controller** — every admin action (parameter change, oracle update, ownership transfer) is enforced on-chain to wait `172,800 seconds` before it can be executed. Verifiable end-to-end on BaseScan.
+**The GBLIN vault is governed by a 48-hour Timelock Controller** — every admin action (parameter change, oracle update, ownership transfer) is enforced on-chain to wait `172,800 seconds` before it can be executed. The handover of the vault in service is scheduled on the timelock and executable from 22 September 2026; until then the deployer holds ownership with the timelock as pending owner. Verifiable end-to-end on BaseScan.
 
 | Component | Address |
 |---|---|
-| **GBLIN_V6 token** | [`0x36C81d7E1966310F305eA637e761Cf77F90852f0`](https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0) |
+| **GBLIN vault** | [`0xc2181d975c05c8c724b334bcED0764c0b86B1D53`](https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53) |
 | **Timelock Controller** | [`0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`](https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd) |
 | **Ownership transfer tx** | [`0xb653f54ffa9b1764b41932e6a411077e7e34550605303f15d90900de682edaaf`](https://basescan.org/tx/0xb653f54ffa9b1764b41932e6a411077e7e34550605303f15d90900de682edaaf) |
 

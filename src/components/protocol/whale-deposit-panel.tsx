@@ -9,13 +9,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { parseAbi } from 'viem';
 import { wagmiConfig } from '@/lib/wagmi';
-import { CONTRACT_ADDRESS, RPC_URL, WETH_ADDRESS, USDC_ADDRESS, formatTokenAmount, shortenAddress } from './protocol-data';
+import { CONTRACT_ADDRESS, LENS_ADDRESS, RPC_URL, WETH_ADDRESS, USDC_ADDRESS, formatTokenAmount, shortenAddress } from './protocol-data';
 
-// GBLIN V6 in-kind = deposit a SINGLE basket asset and mint GBLIN at NAV (no swap, no slippage on the basket).
+// In-kind deposit: supply a SINGLE basket asset and mint GBLIN at NAV (no swap, no slippage on the basket).
 // Function: buyGBLINInKind(address token, uint256 amountIn, uint256 minGblinOut)
 const CBBTC_ADDRESS = '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf';
 
-// Chainlink feeds used by the V6 contract (asset/USD + ETH/USD), to estimate the GBLIN out exactly like the contract.
+// Chainlink feeds used by the vault (asset/USD + ETH/USD), to estimate the GBLIN out exactly like the contract.
 const ORACLES = {
   cbBTC: '0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D',
   WETH: '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70',
@@ -40,9 +40,10 @@ const ERC20_ABI_MIN = [
   'function allowance(address owner, address spender) view returns (uint256)',
 ];
 const ORACLE_ABI = ['function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)'];
-const QUOTE_ABI = ['function quoteBuyGBLIN(uint256 ethAmount) view returns (uint256 gblinOut, uint256 fFee, uint256 sFee)'];
+// Quotes come from the Lens, which prices a mint exactly as the vault does.
+const QUOTE_ABI = ['function quoteBuy(address vault, uint256 ethValue) view returns (uint256 out, uint256 protocolFee, uint256 stabilityFee)'];
 
-const SLIPPAGE_BPS = 300n; // 3% buffer su minGblinOut (la NAV può muoversi tra quote e tx)
+const SLIPPAGE_BPS = 300n; // 3% buffer on minGblinOut: NAV can move between the quote and the transaction
 
 const WRITE_ABI = parseAbi([
   'function approve(address spender, uint256 amount) returns (bool)',
@@ -70,7 +71,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
-  // Single wallet stack: wagmi (stessa sessione della pagina e del widget LI.FI)
+  // Single wallet stack: wagmi, so this shares the wallet session with the rest of the page
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
 
@@ -104,7 +105,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
         }
         if (amountIn === 0n) { if (!cancelled) setGblinOut(0n); return; }
         setIsQuoting(true);
-        // ethValue = _convertToEth(amountIn) usando gli stessi oracoli del contratto
+        // ethValue = _convertToEth(amountIn), using the same oracles as the contract
         const aOracle = new ethers.Contract(asset.oracle, ORACLE_ABI, provider);
         const eOracle = new ethers.Contract(ORACLES.WETH, ORACLE_ABI, provider);
         const [aRound, eRound] = await Promise.all([aOracle.latestRoundData(), eOracle.latestRoundData()]);
@@ -114,8 +115,8 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
         const val = (amountIn * pA) / pE;
         const d = asset.decimals;
         const ethValue = d < 18 ? val * (10n ** BigInt(18 - d)) : val / (10n ** BigInt(d - 18));
-        const gblin = new ethers.Contract(CONTRACT_ADDRESS, QUOTE_ABI, provider);
-        const q = await gblin.quoteBuyGBLIN(ethValue);
+        const lens = new ethers.Contract(LENS_ADDRESS, QUOTE_ABI, provider);
+        const q = await lens.quoteBuy(CONTRACT_ADDRESS, ethValue);
         if (!cancelled) setGblinOut(BigInt(q[0].toString()));
       } catch {
         if (!cancelled) setGblinOut(0n);
@@ -149,9 +150,9 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
     setTxHash(null);
     try {
       const provider = getProvider();
-      // Assicura Base prima di firmare (MetaMask può essere su un'altra chain)
-      try { await switchChainAsync({ chainId: base.id }); } catch { /* già su Base */ }
-      // 1. approve (se serve)
+      // Ensure Base before signing: the wallet may be connected to another chain
+      try { await switchChainAsync({ chainId: base.id }); } catch { /* already on Base */ }
+      // 1. approve (when needed)
       if (needsApproval) {
         setSubmitStep(`Approve ${asset.symbol}`);
         const approvalHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
@@ -230,7 +231,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
         <div className="mt-3 rounded-[24px] border border-amber-500/30 bg-black/30 px-5 py-4 focus-within:border-amber-500/60 transition-colors">
           <div className="flex items-center justify-between gap-3">
             <input
-              className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-zinc-600"
+              className="w-full bg-transparent text-2xl font-semibold text-white outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 placeholder:text-zinc-600"
               inputMode="decimal"
               placeholder={`0.00 ${asset.symbol}`}
               type="text"
@@ -292,9 +293,9 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
 
 const queryClient = new QueryClient();
 
-// Autosufficiente: si porta il suo WagmiProvider (stesso singleton condiviso ->
-// stessa sessione wallet) così funziona anche dove la pagina non è wrappata
-// (es. /buy-gblin via ProtocolApp, ancora thirdweb).
+// Self-contained: it brings its own WagmiProvider, built from the shared config
+// singleton, so the wallet session stays the same. This lets the panel render on
+// pages that are not already wrapped in a provider.
 export function WhaleDepositPanel(props: WhaleDepositPanelProps) {
   return (
     <WagmiProvider config={wagmiConfig}>

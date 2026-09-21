@@ -19,6 +19,8 @@ import {
   client,
   getDynamicSlippage,
   jsonResponse,
+  GBLIN_LENS,
+  LENS_ABI,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -56,11 +58,11 @@ export async function GET(req: Request) {
         );
       }
 
-      const [gblinOut, founderFee, stabFee] = await client.readContract({
-        address: GBLIN,
-        abi: GBLIN_ABI,
-        functionName: "quoteBuyGBLIN",
-        args: [amountWei],
+      const [gblinOut, protocolFee, stabFee] = await client.readContract({
+        address: GBLIN_LENS,
+        abi: LENS_ABI,
+        functionName: "quoteBuy",
+        args: [GBLIN, amountWei],
       });
 
       const safeMin = applySlippageBuffer(gblinOut, slippage.bps);
@@ -70,7 +72,7 @@ export async function GET(req: Request) {
         expected_gblin_out: formatUnits(gblinOut, 18),
         safe_min_gblin_out: formatUnits(safeMin, 18),
         fees: {
-          founder_eth: formatUnits(founderFee, 18),
+          protocol_eth: formatUnits(protocolFee, 18),
           stability_eth: formatUnits(stabFee, 18),
           total_fee_bps: 10,
         },
@@ -82,10 +84,10 @@ export async function GET(req: Request) {
 
     // sell
     const ethOut = await client.readContract({
-      address: GBLIN,
-      abi: GBLIN_ABI,
-      functionName: "quoteSellGBLIN",
-      args: [amountWei],
+      address: GBLIN_LENS,
+      abi: LENS_ABI,
+      functionName: "quoteSell",
+      args: [GBLIN, amountWei],
     });
     const safeMin = applySlippageBuffer(ethOut, slippage.bps);
 

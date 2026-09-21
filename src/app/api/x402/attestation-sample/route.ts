@@ -24,7 +24,7 @@ export const runtime = "nodejs";
 // verifier). Do not reorder fields.
 const EIP712_DOMAIN = {
   name: "GBLIN Risk Attestation",
-  version: "1",
+  version: "2",
   chainId: 8453,
   verifyingContract: GBLIN,
 } as const;

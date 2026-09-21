@@ -27,7 +27,7 @@
  *   - X402_ENABLE_CDP="false" : opt OUT of CDP (falls back to PayAI/custom).
  *   - X402_FACILITATOR_URL : non-CDP fallback facilitator
  *                            • default: https://facilitator.payai.network
- *                            • note: x402.org è ormai SOLO testnet
+ *                            • note: x402.org is testnet only
  *
  * Pricing: micropayments calibrated for autonomous agent budgets.
  */
@@ -51,9 +51,9 @@ import treasuryStateOutputContract from "@/lib/treasury-state-output-contract.js
 
 const PAY_TO = (process.env.X402_PAY_TO_WALLET ?? "") as Address;
 
-// Soft-warn at build time if the recipient wallet is missing. We do not throw
-// because Next.js evaluates middleware during `next build` and we want builds
-// to succeed without secrets (Vercel preview deployments).
+// Soft-warn at build time if the recipient wallet is missing. Throwing is
+// avoided on purpose: Next.js evaluates middleware during `next build`, and a
+// build has to succeed without secrets (preview deployments).
 if (
   typeof PAY_TO !== "string" ||
   !PAY_TO.startsWith("0x") ||
@@ -74,24 +74,24 @@ const NETWORK = "eip155:8453" as const;
 //   2. Else if X402_FACILITATOR_URL is set → use that (e.g. PayAI).
 //   3. Else → fall back to the public https://x402.org/facilitator.
 // The `@coinbase/x402` package builds an authenticated FacilitatorConfig that
-// signs every verify/settle call with our CDP key — required by CDP.
+// signs every verify/settle call with the configured CDP key — required by CDP.
 const cdpKeyId = process.env.CDP_API_KEY_ID;
 const cdpKeySecret = process.env.CDP_API_KEY_SECRET;
 // CDP is the DEFAULT when keys are present: only CDP-settled payments are
-// indexed by the x402 Bazaar (discovery + ranking). The old 401 problem was
-// on getSupported() only — handled by ResilientFacilitatorClient below,
-// so verify/settle can run against CDP.
-// Rollback senza toccare il codice: X402_ENABLE_CDP="false" → PayAI.
+// indexed by the x402 Bazaar (discovery + ranking). The 401 affects
+// getSupported() only and is contained by ResilientFacilitatorClient below, so
+// verify/settle can run against CDP.
+// Rollback without a code change: X402_ENABLE_CDP="false" selects the fallback.
 const useCdp =
   !!cdpKeyId && !!cdpKeySecret && process.env.X402_ENABLE_CDP !== "false";
 /**
  * Facilitator client with a resilient getSupported().
- * The CDP /supported route 401s with @coinbase/x402@2.1.0 auth headers
- * (known upstream bug); verify/settle use per-request signed headers and
- * are unaffected. Without supported kinds, buildPaymentRequirements()
- * throws "Facilitator does not support exact on eip155:8453" on every
- * request. So: try the real call first, and on failure fall back to the
- * statically known CDP capabilities so initialize() always succeeds.
+ * The CDP /supported route can answer 401 to the SDK auth headers, while
+ * verify/settle use per-request signed headers and are unaffected. Without
+ * supported kinds, buildPaymentRequirements() throws "Facilitator does not
+ * support exact on eip155:8453" on every request. The real call is therefore
+ * attempted first and, on failure, the statically known CDP capabilities are
+ * returned so initialize() always succeeds.
  */
 class ResilientFacilitatorClient extends HTTPFacilitatorClient {
   async getSupported() {
@@ -120,8 +120,8 @@ const facilitatorClient = new ResilientFacilitatorClient(
 );
 // bazaarResourceServerExtension enriches each route's declared discovery
 // metadata (adds HTTP method, validates schemas) and attaches it to the
-// payment payload — REQUIRED for the CDP facilitator to catalog us in the
-// Bazaar after the first successful settlement.
+// payment payload — required for the CDP facilitator to catalog the route in
+// the Bazaar after the first successful settlement.
 const server = new x402ResourceServer(facilitatorClient)
   .register(NETWORK, new ExactEvmScheme())
   .registerExtension(bazaarResourceServerExtension);
@@ -153,10 +153,9 @@ const paywall = new PaywallBuilder()
 
 const x402Middleware = paymentProxy(
   {
-    // Queste due rotte non dichiaravano l'estensione Bazaar e per questo NON comparivano nel
-    // catalogo Coinbase: verificato il 30/08/2026 scandendo tutte le 3000 risorse. Un endpoint
-    // senza `extensions.bazaar` non e' nemmeno candidato all'indicizzazione (doc CDP,
-    // buildBazaarDeclaration: "carries enough information for Bazaar to index the route").
+    // A route that does not declare `extensions.bazaar` is not a candidate for
+    // indexing at all: that declaration is what carries enough information for
+    // the Bazaar to index the route.
     "/api/x402/catalog": {
       accepts: accepts("$0.005"),
       description:
@@ -185,12 +184,12 @@ const x402Middleware = paymentProxy(
         }),
       },
     },
-    // CHIAVE COL VERBO, dal 06/09/2026. In @x402/core (parseRoutePattern, riga 611) una chiave
-    // senza spazio diventa verbo "*": il pagamento veniva richiesto e REGOLATO su qualunque
-    // metodo. La rotta serve solo POST, quindi una GET pagata finiva su un 405: pagato, e in
-    // mano niente. E' successo il 05/09 (0,01 USDC, nessuna foglia scritta).
-    // NB: il bordo (worker/src/x402-challenge.mjs) deve dire la stessa cosa fuori dal POST,
-    // altrimenti origin e bordo divergono e saltano le fixture golden.
+    // The route key MUST carry the HTTP verb. A key without one is parsed as
+    // method "*", so payment is required and settled on every method: this
+    // route serves POST only, and a paid GET would end on a 405 — charged, with
+    // nothing in return. Any component that mirrors this challenge for the
+    // other methods has to declare the same thing, or the two diverge and the
+    // golden fixtures fail.
     "POST /api/x402/seal": {
       accepts: accepts("$0.01"),
       description:
@@ -198,7 +197,7 @@ const x402Middleware = paymentProxy(
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
-          bodyType: "json", // il metodo (POST) lo compila bazaarResourceServerExtension
+          bodyType: "json", // the HTTP method is filled in by bazaarResourceServerExtension
           input: {
             action: "summarise-contract",
             input_hash:
@@ -292,11 +291,10 @@ const x402Middleware = paymentProxy(
                   base_weight_pct: 50,
                   dynamic_weight_pct: 50,
                   slashed: false,
-                  pool_fee_bps: 500,
                 },
               ],
               meta: {
-                contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+                contract: "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
                 chain: "base",
                 chain_id: 8453,
                 as_of_unix: 1747600000,
@@ -339,7 +337,7 @@ const x402Middleware = paymentProxy(
               expected_gblin_out: "27.853214",
               safe_min_gblin_out: "27.156885",
               fees: {
-                founder_eth: "0.000005",
+                protocol_eth: "0.000005",
                 stability_eth: "0.000005",
                 total_fee_bps: 10,
               },
@@ -380,10 +378,11 @@ const x402Middleware = paymentProxy(
               steps: [
                 {
                   step: 1,
-                  target: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+                  target: "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
                   calldata: "0x5d2e1ca7…",
                   value: "0",
-                  description: "sellGBLINForEth(gblin_amount, min_eth_out)",
+                  description:
+                    "GBLINZap.sellGBLINForEth(shares, min_eth_out, venue_data, receiver) — redeems in kind on the vault and sells every leg, all or nothing",
                 },
                 {
                   step: 2,
@@ -452,8 +451,8 @@ const x402Middleware = paymentProxy(
                 {
                   step: 2,
                   description:
-                    "Buy GBLIN with USDC via native contract function",
-                  target: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+                    "GBLINZap.buyGBLINWithToken(token_in, amount_in, min_weth_out, min_out, venue_data, receiver) — swaps to WETH and mints at NAV in one transaction",
+                  target: "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
                   calldata: "0x4f5d3a7b…",
                   value: "0",
                 },
@@ -543,11 +542,11 @@ const x402Middleware = paymentProxy(
           inputSchema: { type: "object", properties: {}, required: [] },
           output: {
             example: {
-              contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+              contract: "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
               owner: "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
               owner_is_timelock: true,
               owner_is_renounced: false,
-              founder_wallet: "0x0000000000000000000000000000000000000002",
+              fee_recipient: "0x0000000000000000000000000000000000000002",
               trust_summary:
                 "Ownership held by the 48h Timelock. All admin actions are delay-enforced on-chain.",
               timelock: {
@@ -559,7 +558,7 @@ const x402Middleware = paymentProxy(
               },
               verification: {
                 contract_basescan:
-                  "https://basescan.org/address/0x36C81d7E1966310F305eA637e761Cf77F90852f0#readContract",
+                  "https://basescan.org/address/0xc2181d975c05c8c724b334bcED0764c0b86B1D53#readContract",
                 timelock_basescan:
                   "https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd#readContract",
               },
@@ -570,8 +569,8 @@ const x402Middleware = paymentProxy(
     },
     "/api/x402/attestation": {
       accepts: accepts("$0.003"),
-      // NB: tenere la descrizione SOTTO i 512 caratteri — a 540 il facilitator
-      // CDP rifiutava la verifica del pagamento con un 400 (03/08/2026).
+      // Keep this description under 512 characters: above that limit the CDP
+      // facilitator rejects payment verification with HTTP 400.
       description:
         "EIP-712-signed risk attestation, verifiable OFFLINE in one step — no trust in this server required. Perishable (10-min) proof of the BTC/ETH risk regime (calm | elevated | crash) from GBLIN's on-chain Crash Shield on Base. Bought daily by a third-party ERC-8004 agent as a pinned input of its decision rule until 16 Aug 2026 (see /receipts). FREE sample: GET /api/x402/attestation-sample. Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
       mimeType: "application/json",
@@ -595,7 +594,7 @@ const x402Middleware = paymentProxy(
                 ttl_seconds: 600,
                 basket_hash: "0xabcd…",
                 chain_id: 8453,
-                contract: "0x36C81d7E1966310F305eA637e761Cf77F90852f0",
+                contract: "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
               },
               attestation_id: "0x9f1c…",
               signature: "0x… (present when attestor key configured, else null)",
@@ -619,24 +618,21 @@ const x402Middleware = paymentProxy(
 /**
  * Query params required by each paid route, validated BEFORE the payment flow.
  *
- * Why this exists: the x402 resource server settles the payment around the
- * handler, so a malformed request used to be charged in full and then answered
- * with a 400. An agent that discovered us on the Bazaar and called an endpoint
- * with a missing param would pay and receive nothing — the worst possible first
- * contact, and the fastest way to be marked untrustworthy.
+ * The x402 resource server settles the payment around the handler, so without
+ * this guard a malformed request is charged in full and then answered with a
+ * 400: an agent that calls an endpoint with a missing parameter pays and
+ * receives nothing.
  *
- * The patterns below are copied verbatim from each route handler, so this guard
- * can only reject requests the handler would have rejected anyway. It never
- * narrows what is accepted.
+ * The patterns below mirror each route handler, so this guard can only reject
+ * requests the handler would have rejected anyway. It never narrows what is
+ * accepted.
  */
 const DECIMAL = /^\d+(\.\d+)?$/;
 const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 
-// Discovery terms for the guarded paths. A crawler that probes the bare path
-// gets a 400 (no charge) and, until now, no idea what the resource costs — which
-// is why these four endpoints were never indexed by catalogs while the
-// parameter-free ones were. The 400 now carries the payment terms and a working
-// example URL, so a probe can learn the price without paying for a bad request.
+// Discovery terms for the guarded paths. Reaching this 400 costs nothing, so
+// the response carries the payment terms and a working example URL: a probe can
+// learn what the resource costs without paying for a bad request.
 const GUARD_TERMS: Record<string, { price: string; example: string }> = {
   "/api/x402/invest": { price: "$0.002", example: "/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001" },
   "/api/x402/jit": { price: "$0.005", example: "/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001" },
@@ -654,20 +650,19 @@ const REQUIRED_QUERY: Record<string, Record<string, RegExp>> = {
 /**
  * In-memory cache of unpaid 402 responses (per path, per Accept flavor).
  *
- * Why: this middleware is ~74% of the project's Fluid CPU. Nearly all of that
- * is crawlers/agents (Bazaar indexers, x402scan, discovery probes) GETting the
- * paid endpoints WITHOUT a payment — and the 402 they receive is deterministic
- * per path: the exact-scheme `accepts[]` requirements contain no nonce or
- * timestamp (the EIP-3009 nonce/validity is generated client-side when the
- * agent signs). So we build each 402 once per warm instance and replay it,
- * instead of re-running the full paywall pipeline on every probe. Requests
- * that DO carry a payment header always go through the real pipeline.
+ * Most of the compute spent by this middleware comes from crawlers and agents
+ * (catalog indexers, discovery probes) GETting the paid endpoints WITHOUT a
+ * payment, and the 402 they receive is deterministic per path: the exact-scheme
+ * `accepts[]` requirements contain no nonce and no timestamp (the EIP-3009
+ * nonce and validity window are generated client-side when the agent signs).
+ * Each 402 is therefore built once per warm instance and replayed, instead of
+ * re-running the full paywall pipeline on every probe. Requests that DO carry a
+ * payment header always go through the real pipeline.
  */
 const PAYMENT_HEADERS = ["payment-signature", "x-payment"] as const;
-// 60 min: the 402 is deterministic per path and requirements only change on
-// deploy — and a deploy recycles the instances (and their in-memory cache).
-// Was 5 min, which still re-ran the full paywall pipeline ~12x/hour per
-// instance under constant crawler probing.
+// 60 min: the 402 is deterministic per path and the requirements only change on
+// deploy — and a deploy recycles the instances together with their in-memory
+// cache.
 const CACHE_402_TTL_MS = 60 * 60 * 1000;
 const cache402 = new Map<string, { expires: number; status: number; headers: [string, string][]; body: ArrayBuffer }>();
 
@@ -675,21 +670,20 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const rules = REQUIRED_QUERY[url.pathname];
 
-  // La guardia sui parametri vale SOLO per chi sta pagando (30/08/2026).
+  // The parameter guard applies ONLY to callers that are paying.
   //
-  // Prima girava per tutti, e teneva questi quattro percorsi FUORI dal catalogo Bazaar per
-  // costruzione: il validatore ufficiale di Coinbase li rifiuta con "Endpoint returned HTTP 400
-  // instead of 402", e un crawler non vedeva nemmeno il prezzo. Sembrava un compromesso —
-  // o la guardia o la visibilita' — e invece non lo e': legandola alla presenza di un header
-  // di pagamento si ottengono entrambe le cose.
-  //   anonimo (crawler, validatore, curioso)  -> cade nella pipeline x402 -> 402 con la sfida
-  //   pagante con parametri sbagliati         -> 400 QUI, prima di verify/settle
-  // Nel secondo caso il cliente ha firmato un'autorizzazione EIP-3009 che non viene mai
-  // sottoposta al facilitator: nessun addebito, esattamente come prima. La promessa scritta
-  // dentro il 400 ("No payment was taken") resta vera.
-  const staPagando = PAYMENT_HEADERS.some((h) => req.headers.get(h));
+  // Running it for every caller keeps these four paths out of the Bazaar by
+  // construction: the official validator rejects them with "Endpoint returned
+  // HTTP 400 instead of 402", and a crawler never even sees the price. Binding
+  // the guard to the presence of a payment header keeps both properties:
+  //   anonymous (crawler, validator, reader) -> x402 pipeline -> 402 challenge
+  //   paying with bad parameters             -> 400 HERE, before verify/settle
+  // In the second case the client has signed an EIP-3009 authorization that is
+  // never submitted to the facilitator: nothing is charged, so the promise made
+  // in the 400 body ("No payment was taken") stays true.
+  const isPaying = PAYMENT_HEADERS.some((h) => req.headers.get(h));
 
-  if (rules && staPagando) {
+  if (rules && isPaying) {
     const invalid = Object.entries(rules)
       .filter(([param, pattern]) => !pattern.test(url.searchParams.get(param) ?? ""))
       .map(([param]) => param);
@@ -722,22 +716,22 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const hasPayment = staPagando;
+  const hasPayment = isPaying;
   const wantsHtml = (req.headers.get("accept") ?? "").includes("text/html");
   const cacheKey = `${url.pathname}:${wantsHtml ? "html" : "json"}`;
 
-  // La sfida ECHEGGIA l'URL completo in `resource.url`, query string inclusa, ma la chiave qui
-  // sopra guarda solo il percorso. Finche' i quattro percorsi guardati rispondevano 400 agli
-  // anonimi la cosa non si vedeva; da quando rispondono la sfida (30/08/2026) si vede eccome:
-  // la prima richiesta con `?direction=buy&amount=100` riempiva lo slot, e ogni richiesta
-  // SENZA parametri riceveva per un'ora una sfida che dichiarava un `resource` diverso da
-  // quello chiesto. Byte non deterministici, proprio quelli che il Bazaar indicizza.
-  // Si cachea SOLO la forma canonica senza query — che e' quella che vedono crawler,
-  // validatore e fixture golden. Con una query si calcola ogni volta: sono poche richieste,
-  // e cachearle per chiave completa aprirebbe la porta a chiavi infinite.
-  const cacheabile = url.search === "";
+  // The challenge ECHOES the full URL in `resource.url`, query string included,
+  // while the cache key above only looks at the path. Caching a response built
+  // for `?direction=buy&amount=100` would answer every parameter-free request
+  // for an hour with a challenge declaring a `resource` other than the one
+  // requested: non-deterministic bytes, and those are exactly the bytes the
+  // Bazaar indexes. Only the canonical form without a query is cached, which is
+  // the form crawlers, the validator and the golden fixtures see. A request
+  // carrying a query is computed every time: there are few of them, and keying
+  // the cache on the full URL would allow unbounded keys.
+  const cacheable = url.search === "";
 
-  if (!hasPayment && req.method === "GET" && cacheabile) {
+  if (!hasPayment && req.method === "GET" && cacheable) {
     const hit = cache402.get(cacheKey);
     if (hit && hit.expires > Date.now()) {
       return new Response(hit.body.slice(0), { status: hit.status, headers: hit.headers });
@@ -748,11 +742,10 @@ export async function middleware(req: NextRequest) {
 
   // The x402 spec expects the payment challenge in BOTH the PAYMENT-REQUIRED
   // header and the response body; @x402/next emits it header-only, so
-  // body-reading clients fail closed (flagged by X402 Doctor as
-  // CHALLENGE_IN_BODY). Mirror the decoded header into the body — only when
-  // the body is empty, so a rendered HTML paywall (if any) is never replaced.
-  // Verified in production: the HTML flavor also ships an empty `{}` body, so
-  // the mirror applies to both flavors.
+  // body-reading clients fail closed. Mirror the decoded header into the body —
+  // only when the body is empty, so a rendered HTML paywall (if any) is never
+  // replaced. The HTML flavor also returns an empty `{}` body, so the mirror
+  // applies to both flavors.
   if (res.status === 402) {
     const header = res.headers.get("payment-required");
     if (header) {
@@ -783,7 +776,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (!hasPayment && req.method === "GET" && res.status === 402 && cacheabile) {
+  if (!hasPayment && req.method === "GET" && res.status === 402 && cacheable) {
     try {
       const clone = res.clone();
       const body = await clone.arrayBuffer();
