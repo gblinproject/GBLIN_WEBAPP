@@ -3,7 +3,7 @@ import type { Language } from '@/translations/index';
 export const protocolTranslations: Partial<Record<Language, any>> = {
   en: {
     ui: {
-      token: { defaultWay: "Default way in", yours: "In your wallet", showAll: "Show all accepted tokens ({n} more)", pay: "You pay", receive: "You receive", selectToken: "Select a token", search: "Search or paste an address", common: "Common", all: "All accepted tokens", custom: "Custom address", showFiat: "Show in {cur}", showToken: "Show in {sym}", balance: "Balance" },
+      token: { defaultWay: "Default way in", yours: "In your wallet", showAll: "Show all accepted tokens ({n} more)", pay: "You pay", receive: "You receive", selectToken: "Select a token", search: "Search or paste an address", common: "Common", all: "All accepted tokens", custom: "Custom address", showFiat: "Show in {cur}", showToken: "Show in {sym}", balance: "Balance", exceedsBalance: "Amount exceeds your balance ({bal} {sym})" },
       basket: { value: "Value", price: "Price", target: "Target", dynamic: "Dynamic", shield: "Shield active" },
       nav: {
         overview: "Overview",
@@ -525,7 +525,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   it: {
     ui: {
-      token: { defaultWay: "Ingresso predefinito", yours: "Nel tuo wallet", showAll: "Mostra tutti i token accettati (altri {n})", pay: "Paghi", receive: "Ricevi", selectToken: "Scegli il token", search: "Cerca o incolla un indirizzo", common: "Più usati", all: "Tutti i token accettati", custom: "Indirizzo personalizzato", showFiat: "Mostra in {cur}", showToken: "Mostra in {sym}", balance: "Saldo" },
+      token: { defaultWay: "Ingresso predefinito", yours: "Nel tuo wallet", showAll: "Mostra tutti i token accettati (altri {n})", pay: "Paghi", receive: "Ricevi", selectToken: "Scegli il token", search: "Cerca o incolla un indirizzo", common: "Più usati", all: "Tutti i token accettati", custom: "Indirizzo personalizzato", showFiat: "Mostra in {cur}", showToken: "Mostra in {sym}", balance: "Saldo", exceedsBalance: "Importo superiore al tuo saldo ({bal} {sym})" },
       basket: { value: "Valore", price: "Prezzo", target: "Bersaglio", dynamic: "Dinamico", shield: "Scudo attivo" },
       nav: {
         overview: "Panoramica",
@@ -1047,7 +1047,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   es: {
     ui: {
-      token: { defaultWay: "Entrada predeterminada", yours: "En tu wallet", showAll: "Mostrar todos los tokens aceptados ({n} más)", pay: "Pagas", receive: "Recibes", selectToken: "Elige un token", search: "Busca o pega una dirección", common: "Más usados", all: "Todos los tokens aceptados", custom: "Dirección personalizada", showFiat: "Mostrar en {cur}", showToken: "Mostrar en {sym}", balance: "Saldo" },
+      token: { defaultWay: "Entrada predeterminada", yours: "En tu wallet", showAll: "Mostrar todos los tokens aceptados ({n} más)", pay: "Pagas", receive: "Recibes", selectToken: "Elige un token", search: "Busca o pega una dirección", common: "Más usados", all: "Todos los tokens aceptados", custom: "Dirección personalizada", showFiat: "Mostrar en {cur}", showToken: "Mostrar en {sym}", balance: "Saldo", exceedsBalance: "Importe superior a tu saldo ({bal} {sym})" },
       basket: { value: "Valor", price: "Precio", target: "Objetivo", dynamic: "Dinámico", shield: "Escudo activo" },
       nav: {
         overview: "Resumen",
@@ -1486,7 +1486,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   fr: {
     ui: {
-      token: { defaultWay: "Entrée par défaut", yours: "Dans votre wallet", showAll: "Afficher tous les tokens acceptés ({n} de plus)", pay: "Vous payez", receive: "Vous recevez", selectToken: "Choisir un token", search: "Rechercher ou coller une adresse", common: "Les plus utilisés", all: "Tous les tokens acceptés", custom: "Adresse personnalisée", showFiat: "Afficher en {cur}", showToken: "Afficher en {sym}", balance: "Solde" },
+      token: { defaultWay: "Entrée par défaut", yours: "Dans votre wallet", showAll: "Afficher tous les tokens acceptés ({n} de plus)", pay: "Vous payez", receive: "Vous recevez", selectToken: "Choisir un token", search: "Rechercher ou coller une adresse", common: "Les plus utilisés", all: "Tous les tokens acceptés", custom: "Adresse personnalisée", showFiat: "Afficher en {cur}", showToken: "Afficher en {sym}", balance: "Solde", exceedsBalance: "Montant supérieur à votre solde ({bal} {sym})" },
       basket: { value: "Valeur", price: "Prix", target: "Cible", dynamic: "Dynamique", shield: "Bouclier actif" },
       nav: {
         overview: "Aperçu",
@@ -1925,7 +1925,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   de: {
     ui: {
-      token: { defaultWay: "Standardweg", yours: "In Ihrer Wallet", showAll: "Alle akzeptierten Token zeigen ({n} weitere)", pay: "Sie zahlen", receive: "Sie erhalten", selectToken: "Token wählen", search: "Suchen oder Adresse einfügen", common: "Häufig", all: "Alle akzeptierten Token", custom: "Eigene Adresse", showFiat: "In {cur} anzeigen", showToken: "In {sym} anzeigen", balance: "Guthaben" },
+      token: { defaultWay: "Standardweg", yours: "In Ihrer Wallet", showAll: "Alle akzeptierten Token zeigen ({n} weitere)", pay: "Sie zahlen", receive: "Sie erhalten", selectToken: "Token wählen", search: "Suchen oder Adresse einfügen", common: "Häufig", all: "Alle akzeptierten Token", custom: "Eigene Adresse", showFiat: "In {cur} anzeigen", showToken: "In {sym} anzeigen", balance: "Guthaben", exceedsBalance: "Betrag übersteigt Ihr Guthaben ({bal} {sym})" },
       basket: { value: "Wert", price: "Preis", target: "Ziel", dynamic: "Dynamisch", shield: "Schutz aktiv" },
       nav: {
         overview: "Überblick",
@@ -2364,7 +2364,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   zh: {
     ui: {
-      token: { defaultWay: "默认入口", yours: "你的钱包中", showAll: "显示全部可用代币（另有 {n} 个）", pay: "你支付", receive: "你收到", selectToken: "选择代币", search: "搜索或粘贴地址", common: "常用", all: "所有可用代币", custom: "自定义地址", showFiat: "以 {cur} 显示", showToken: "以 {sym} 显示", balance: "余额" },
+      token: { defaultWay: "默认入口", yours: "你的钱包中", showAll: "显示全部可用代币（另有 {n} 个）", pay: "你支付", receive: "你收到", selectToken: "选择代币", search: "搜索或粘贴地址", common: "常用", all: "所有可用代币", custom: "自定义地址", showFiat: "以 {cur} 显示", showToken: "以 {sym} 显示", balance: "余额", exceedsBalance: "金额超过你的余额（{bal} {sym}）" },
       basket: { value: "价值", price: "价格", target: "目标", dynamic: "动态", shield: "护盾启用" },
       nav: {
         overview: "概览",
@@ -2803,7 +2803,7 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
   },
   ja: {
     ui: {
-      token: { defaultWay: "既定の入り口", yours: "ウォレット内", showAll: "対応トークンをすべて表示（他 {n} 件）", pay: "支払い", receive: "受け取り", selectToken: "トークンを選ぶ", search: "検索またはアドレスを貼り付け", common: "よく使う", all: "対応トークン一覧", custom: "カスタムアドレス", showFiat: "{cur} で表示", showToken: "{sym} で表示", balance: "残高" },
+      token: { defaultWay: "既定の入り口", yours: "ウォレット内", showAll: "対応トークンをすべて表示（他 {n} 件）", pay: "支払い", receive: "受け取り", selectToken: "トークンを選ぶ", search: "検索またはアドレスを貼り付け", common: "よく使う", all: "対応トークン一覧", custom: "カスタムアドレス", showFiat: "{cur} で表示", showToken: "{sym} で表示", balance: "残高", exceedsBalance: "金額が残高を超えています（{bal} {sym}）" },
       basket: { value: "評価額", price: "価格", target: "目標", dynamic: "動的", shield: "シールド作動" },
       nav: {
         overview: "概要",

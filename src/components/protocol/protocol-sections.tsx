@@ -6,7 +6,8 @@ import { useConnect } from 'wagmi';
 import type { ReactNode } from 'react';
 import { Activity, ArrowRight, Check, TrendingUp, ChevronDown, Copy, ExternalLink, Landmark, RefreshCw, Shield, Wallet, X, Zap, Lock } from 'lucide-react';
 import type { BasketItem, DashboardData, OnChainData, OracleHealth, TransactionItem } from './protocol-data';
-import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, ERC20_ABI, formatCurrency, formatPercent, formatTokenAmount, RPC_URL, shortenAddress, TRADE_TOKEN_OPTIONS, WHITEPAPER_URL } from './protocol-data';
+import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, ERC20_ABI, formatCurrency, formatPercent, formatTokenAmount, quoteTokenToWeth, RPC_URL, shortenAddress, TRADE_TOKEN_OPTIONS, WHITEPAPER_URL } from './protocol-data';
+import type { TradeTokenOption } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
 import MigrateToNewVault from "@/components/MigrateToNewVault";
 import { ProofSection, FeeEngineSection } from './proof-section';
@@ -979,6 +980,22 @@ function TokenGlyph({ symbol }: { symbol: string }) {
   );
 }
 
+/** USD price of one unit of an ERC-20 accepted at the buy step, read from its route to WETH and the ETH feed. */
+function useTokenUsdPrice(token: TradeTokenOption | null, ethPriceUsd: number): number {
+  const [price, setPrice] = useState(0);
+  useEffect(() => {
+    let live = true;
+    setPrice(0);
+    if (!token) return;
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    quoteTokenToWeth(provider, token.address, 10n ** BigInt(token.decimals))
+      .then((q) => { if (live && q && q.amountOut > 0n) setPrice(Number(ethers.formatEther(q.amountOut)) * ethPriceUsd); })
+      .catch(() => { /* no route: the field falls back to quantities */ });
+    return () => { live = false; };
+  }, [token, ethPriceUsd]);
+  return price;
+}
+
 /**
  * Token selector, the way every exchange interface does it: the pill next to the
  * amount opens the list. Before this, that pill switched the input between a
@@ -1241,6 +1258,8 @@ export function BuyView(props: BuyViewProps) {
 
   const fiat = FIAT_CONFIG[detectedLang] ?? FIAT_CONFIG.en;
 
+  // The amount is entered in the visitor's currency in every mode; the token or share quantity is derived
+  // from a unit price and shown underneath. "crypto" lets the visitor type the quantity directly.
   const [inputMode, setInputMode] = useState<InputMode>('fiat');
   const [displayValue, setDisplayValue] = useState('');
 
@@ -1249,53 +1268,50 @@ export function BuyView(props: BuyViewProps) {
   const fxRate = FX_TO_USD[fiat.code] ?? 1;                // fiat → USD
   const gblinPriceFiat = gblinPriceUsd / fxRate;            // GBLIN in fiat
   const ethPriceFiat = ethPrice / fxRate;                   // ETH in fiat
+  const activeToken = mode === 'buy' ? TRADE_TOKEN_OPTIONS.find((o) => o.symbol === selectedToken) ?? null : null;
+  const isCustomToken = mode === 'buy' && !activeToken;
+  const tokenPriceUsd = useTokenUsdPrice(activeToken && !activeToken.isNative ? activeToken : null, ethPrice);
+  // USD price of one unit of what the visitor pays: ETH from the feed, GBLIN from the NAV, other tokens from their route.
+  const unitPriceUsd = mode === 'sell' ? gblinPriceUsd : activeToken?.isNative ? ethPrice : tokenPriceUsd;
+  const unitSymbol = mode === 'sell' ? 'GBLIN' : resolvedTokenSymbol || selectedToken;
+  const unitDecimals = mode === 'sell' ? 6 : Math.min(activeToken?.decimals ?? 18, 6);
+  const payBalance = mode === 'sell' ? gblinBalance : inputBalance;
+  // A custom token has no known price: quantities only.
+  const fiatEntry = inputMode === 'fiat' && !isCustomToken && unitPriceUsd > 0;
 
-  // When inputMode or displayValue changes, convert to ETH and push into amount
-  const convertToEth = useCallback((raw: string, im: InputMode): string => {
+  // Quantity of the paid unit for a currency amount, clamped to the balance when rounding lands just above it.
+  const quantityFor = useCallback((raw: string): string => {
     const n = parseFloat(raw.replace(',', '.'));
-    if (!raw || isNaN(n) || n <= 0) return '';
-    if (im === 'crypto') return raw.replace(',', '.');
-    if (im === 'fiat') {
-      // fiat → USD → ETH
-      const usd = n * fxRate;
-      return (usd / ethPrice).toFixed(6);
-    }
-    // gblin → USD → ETH
-    if (gblinPriceUsd <= 0) return '';
-    const usd = n * gblinPriceUsd;
-    return (usd / ethPrice).toFixed(6);
-  }, [ethPrice, fxRate, gblinPriceUsd]);
+    if (!raw || isNaN(n) || n <= 0 || unitPriceUsd <= 0) return '';
+    const qty = (n * fxRate) / unitPriceUsd;
+    const bal = parseFloat(payBalance);
+    if (bal > 0 && qty > bal && qty <= bal * 1.01) return payBalance;
+    return qty.toFixed(unitDecimals);
+  }, [fxRate, payBalance, unitDecimals, unitPriceUsd]);
 
   useEffect(() => {
-    if (mode !== 'buy' || inputMode === 'crypto') return;
-    const ethVal = convertToEth(displayValue, inputMode);
-    setAmount(ethVal);
-  }, [displayValue, inputMode, mode, convertToEth, setAmount]);
+    if (mode === 'inkind' || !fiatEntry) return;
+    setAmount(quantityFor(displayValue));
+  }, [displayValue, fiatEntry, mode, quantityFor, setAmount]);
 
-  // Countervalue line shown under the input
+  // Switching mode or token starts from an empty field in the currency (quantities for a custom token).
+  useEffect(() => {
+    setInputMode(isCustomToken ? 'crypto' : 'fiat');
+    setDisplayValue('');
+    setAmount('');
+  }, [mode, selectedToken, isCustomToken, setAmount]);
+
   const countervalue = useCallback((): string => {
+    if (fiatEntry) {
+      const qty = parseFloat(amount);
+      if (!amount || isNaN(qty) || qty <= 0) return '';
+      return `≈ ${qty.toFixed(unitDecimals)} ${unitSymbol}`;
+    }
     const n = parseFloat(displayValue.replace(',', '.'));
-    if (!displayValue || isNaN(n) || n <= 0) return '';
-    if (inputMode === 'fiat') {
-      const usd = n * fxRate;
-      const ethVal = usd / ethPrice;
-      const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(6) : '—';
-      return `≈ ${ethVal.toFixed(5)} ETH · ≈ ${gblinEst} GBLIN`;
-    }
-    if (inputMode === 'gblin') {
-      const usd = n * gblinPriceUsd;
-      const fiatVal = (usd / fxRate).toFixed(2);
-      const ethVal = (usd / ethPrice).toFixed(5);
-      return `≈ ${fiat.symbol}${fiatVal} · ≈ ${ethVal} ETH`;
-    }
-    // crypto mode — show fiat equivalent
-    const usd = n * ethPrice;
-    const fiatVal = (usd / fxRate).toFixed(2);
-    const gblinEst = gblinPriceUsd > 0 ? (usd / gblinPriceUsd).toFixed(6) : '—';
-    return `≈ ${fiat.symbol}${fiatVal} · ≈ ${gblinEst} GBLIN`;
-  }, [displayValue, inputMode, ethPrice, fxRate, gblinPriceUsd, fiat]);
+    if (!displayValue || isNaN(n) || n <= 0 || unitPriceUsd <= 0) return '';
+    return `≈ ${fiat.symbol}${((n * unitPriceUsd) / fxRate).toFixed(2)}`;
+  }, [amount, displayValue, fiat.symbol, fiatEntry, fxRate, unitDecimals, unitPriceUsd, unitSymbol]);
 
-  // When switching to crypto mode sync displayValue ↔ amount
   const handleInputModeChange = (next: InputMode) => {
     setInputMode(next);
     setDisplayValue('');
@@ -1308,26 +1324,8 @@ export function BuyView(props: BuyViewProps) {
     setAmount(clean);
   };
 
-  const inputLabel: Record<InputMode, string> = {
-    fiat: `${t('trade.amount')} (${fiat.code})`,
-    gblin: `${t('trade.amount')} (GBLIN)`,
-    crypto: `${t('trade.amount')} (ETH)`,
-  };
-
-  const inputPlaceholder: Record<InputMode, string> = {
-    fiat: `0.00 ${fiat.symbol}`,
-    gblin: '0.0000 GBLIN',
-    crypto: '0.000000 ETH',
-  };
-
-  const inputSuffix: Record<InputMode, string> = {
-    fiat: fiat.code,
-    gblin: 'GBLIN',
-    crypto: resolvedTokenSymbol,
-  };
-
-  const isEthFiat = mode === 'buy' && selectedToken === 'ETH' && inputMode !== 'crypto';
-  const quickAmounts = inputMode === 'fiat' ? [50, 100, 500, 1000] : [1, 5, 10, 50];
+  const quickAmounts = [50, 100, 500, 1000];
+  const exceedsBalance = isConnected && mode !== 'inkind' && parseFloat(amount) > 0 && parseFloat(payBalance) >= 0 && parseFloat(amount) > parseFloat(payBalance);
   const quoteText = isLoadingQuote ? '…' : parseFloat(quote) > 0 && parseFloat(quote) < 0.0001 ? parseFloat(quote).toFixed(8) : quote || '0';
   const modes: Array<{ key: 'buy' | 'sell' | 'inkind'; label: string }> = [
     { key: 'buy', label: t('trade.buyBtn') },
@@ -1335,11 +1333,11 @@ export function BuyView(props: BuyViewProps) {
     { key: 'inkind', label: t('trade.inkindBtn') },
   ];
   const setPercent = (pct: number) => {
-    if (mode === 'sell') {
-      const bal = parseFloat(gblinBalance);
-      if (!bal || bal <= 0) return;
-      handleCryptoAmountChange(pct === 100 ? gblinBalance : ((bal * pct) / 100).toFixed(6));
-    }
+    const bal = parseFloat(payBalance);
+    if (!bal || bal <= 0) return;
+    const qty = pct === 100 ? payBalance : ((bal * pct) / 100).toFixed(unitDecimals);
+    if (fiatEntry) setDisplayValue(((parseFloat(qty) * unitPriceUsd) / fxRate).toFixed(2));
+    else handleCryptoAmountChange(qty);
   };
 
   return (
@@ -1391,24 +1389,19 @@ export function BuyView(props: BuyViewProps) {
                   inputMode="decimal"
                   onChange={(e) => {
                     const val = e.target.value.replace(',', '.');
-                    if (isEthFiat) setDisplayValue(val);
+                    if (fiatEntry) setDisplayValue(val);
                     else handleCryptoAmountChange(val);
                   }}
                   placeholder="0"
                   type="text"
-                  value={isEthFiat ? displayValue : amount}
+                  value={fiatEntry ? displayValue : amount}
                 />
+                {fiatEntry ? <span className="shrink-0 text-lg font-semibold text-zinc-500">{fiat.code}</span> : null}
                 {mode === 'buy' ? (
                   <TokenPicker
                     address={props.address}
                     customAddress={customTokenAddress}
-                    onSelect={(symbol) => {
-                      setSelectedToken(symbol);
-                      // A currency amount only converts through the ETH feed, so any other
-                      // token is entered in its own units.
-                      if (symbol !== 'ETH') handleInputModeChange('crypto');
-                      else handleInputModeChange('fiat');
-                    }}
+                    onSelect={(symbol) => setSelectedToken(symbol)}
                     selected={selectedToken}
                     setCustomAddress={setCustomTokenAddress}
                     t={t}
@@ -1422,46 +1415,43 @@ export function BuyView(props: BuyViewProps) {
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="flex items-center gap-2">
-                  <span className="tnum text-xs text-zinc-500">{mode === 'sell' ? usdValue : (countervalue() || usdValue)}</span>
-                  {mode === 'buy' && selectedToken === 'ETH' ? (
+                  <span className="tnum text-xs text-zinc-500">{countervalue()}</span>
+                  {!isCustomToken && unitPriceUsd > 0 ? (
                     <button
                       className="rounded-md border border-white/[0.08] px-2 py-0.5 text-[11px] font-semibold text-zinc-400 transition hover:border-amber-500/40 hover:text-amber-300"
                       onClick={() => handleInputModeChange(inputMode === 'fiat' ? 'crypto' : 'fiat')}
                       type="button"
                     >
                       {inputMode === 'fiat'
-                        ? t('ui.token.showToken').replace('{sym}', 'ETH')
+                        ? t('ui.token.showToken').replace('{sym}', unitSymbol)
                         : t('ui.token.showFiat').replace('{cur}', fiat.code)}
                     </button>
                   ) : null}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {mode === 'buy' && isEthFiat
+                  {mode === 'buy' && fiatEntry
                     ? quickAmounts.map((q) => (
                         <button className="tnum rounded-md border border-white/[0.08] px-2 py-1 text-xs text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300" key={q} onClick={() => setDisplayValue(String(q))} type="button">
-                          {inputMode === 'fiat' ? `${fiat.symbol}${q}` : q}
+                          {fiat.symbol}{q}
                         </button>
                       ))
-                    : mode === 'sell'
-                      ? [25, 50, 100].map((q) => (
-                          <button className="tnum rounded-md border border-white/[0.08] px-2 py-1 text-xs text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300" key={q} onClick={() => setPercent(q)} type="button">
-                            {q}%
-                          </button>
-                        ))
-                      : null}
+                    : null}
+                  {mode === 'sell'
+                    ? [25, 50, 100].map((q) => (
+                        <button className="tnum rounded-md border border-white/[0.08] px-2 py-1 text-xs text-zinc-300 transition hover:border-amber-500/40 hover:text-amber-300" key={q} onClick={() => setPercent(q)} type="button">
+                          {q}%
+                        </button>
+                      ))
+                    : null}
                   {mode === 'buy' ? (
                     <button
                       className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/20"
                       onClick={() => {
-                        const ethBal = parseFloat(ethBalance);
-                        if (!ethBal || ethBal <= 0) return;
-                        if (isEthFiat) {
-                          if (inputMode === 'fiat') setDisplayValue((ethBal * 0.9999 * ethPrice / fxRate).toFixed(2));
-                          else setDisplayValue(gblinPriceUsd > 0 ? (ethBal * 0.9999 * ethPrice / gblinPriceUsd).toFixed(4) : '0');
-                        } else {
-                          const bal = parseFloat(inputBalance);
-                          if (bal > 0) handleCryptoAmountChange((bal * 0.9999).toFixed(6));
-                        }
+                        // ETH keeps a sliver for gas; any other token can be spent whole.
+                        const bal = parseFloat(payBalance) * (activeToken?.isNative ? 0.9999 : 1);
+                        if (!bal || bal <= 0) return;
+                        if (fiatEntry) setDisplayValue(((bal * unitPriceUsd) / fxRate).toFixed(2));
+                        else handleCryptoAmountChange(bal.toFixed(unitDecimals));
                       }}
                       type="button"
                     >
@@ -1470,7 +1460,11 @@ export function BuyView(props: BuyViewProps) {
                   ) : null}
                 </div>
               </div>
-              {isEthFiat && amount ? <p className="tnum mt-2 text-[11px] text-zinc-500">{amount} ETH</p> : null}
+              {exceedsBalance ? (
+                <p className="mt-2 text-[11px] font-semibold text-rose-300" role="alert">
+                  {t('ui.token.exceedsBalance').replace('{bal}', payBalance).replace('{sym}', unitSymbol)}
+                </p>
+              ) : null}
             </div>
 
             <div className="relative flex justify-center">
@@ -1521,7 +1515,7 @@ export function BuyView(props: BuyViewProps) {
           ) : null}
 
           {isConnected ? (
-            <button className="g-btn g-btn-primary h-12 w-full text-base" disabled={isTradeDisabled} onClick={executeTrade} type="button">
+            <button className="g-btn g-btn-primary h-12 w-full text-base" disabled={isTradeDisabled || exceedsBalance} onClick={executeTrade} type="button">
               {isTransacting ? t('trade.transacting') : mode === 'buy' ? t('trade.buyBtn') : t('trade.sellBtn')}
               {!isTransacting ? <ArrowRight className="h-4 w-4" /> : null}
             </button>
