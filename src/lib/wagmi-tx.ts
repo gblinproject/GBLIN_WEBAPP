@@ -22,6 +22,8 @@ export interface PreparedCall {
   functionName: string;
   args?: readonly unknown[];
   value?: bigint;
+  /** Explicit gas limit, for calls whose estimate sits on a gas-reserve edge. */
+  gas?: bigint;
 }
 
 export function prepareContractCall(options: {
@@ -29,6 +31,7 @@ export function prepareContractCall(options: {
   method: string;
   params?: readonly unknown[];
   value?: bigint;
+  gas?: bigint;
 }): PreparedCall {
   const item = parseAbiItem(options.method) as AbiFunction;
   return {
@@ -37,6 +40,7 @@ export function prepareContractCall(options: {
     functionName: item.name,
     args: options.params,
     value: options.value,
+    gas: options.gas,
   };
 }
 
@@ -65,6 +69,7 @@ export function useSendTransaction() {
           functionName: tx.functionName,
           args: tx.args as never,
           value: tx.value,
+          ...(tx.gas ? { gas: tx.gas } : {}),
           chainId: base.id,
           // ERC-8021: attribute this transaction to the GBLIN app on Base.
           dataSuffix: BUILDER_CODE_SUFFIX,

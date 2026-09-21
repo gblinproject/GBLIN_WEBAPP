@@ -958,10 +958,27 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           }
 
           // One routing entry per basket row, index for index; WETH and abandoned rows ignore it.
+          const sellMethod = "function sellGBLINForEth(uint256 shares, uint256 minEthOut, bytes[] venueData, address receiver) returns (uint256 ethOut)";
+          const sellParams = [gblinAmount, minAmountOut, Array.from({ length: basketData.length || 3 }, () => VENUE_FEE_500), address as `0x${string}`] as const;
+          // The redemption's transfers run under a gas cap and require that reserve up front, so the call needs a
+          // limit about a quarter above what it consumes. Wallets that set the limit at the bare estimate, or a
+          // hair under it, see the call fail; an explicit limit with headroom avoids that. Only gas used is paid.
+          let sellGas: bigint | undefined;
+          try {
+            const est = await provider.estimateGas({
+              from: address,
+              to: ZAP_ADDRESS,
+              data: new ethers.Interface([sellMethod]).encodeFunctionData('sellGBLINForEth', [...sellParams]),
+            });
+            sellGas = (est * 125n) / 100n;
+          } catch {
+            // Leave the estimate to the wallet: it will surface the revert reason.
+          }
           const sellTx = prepareContractCall({
             contract: { address: ZAP_ADDRESS as `0x${string}` },
-            method: "function sellGBLINForEth(uint256 shares, uint256 minEthOut, bytes[] venueData, address receiver) returns (uint256 ethOut)",
-            params: [gblinAmount, minAmountOut, Array.from({ length: basketData.length || 3 }, () => VENUE_FEE_500), address as `0x${string}`],
+            method: sellMethod,
+            params: [...sellParams],
+            gas: sellGas,
           });
 
           await new Promise<void>((resolve, reject) => {

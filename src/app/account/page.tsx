@@ -14,7 +14,7 @@ import {
 } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { base } from "wagmi/chains";
-import { parseAbi } from "viem";
+import { parseAbi, encodeFunctionData } from 'viem';
 import { wagmiConfig } from "@/lib/wagmi";
 import { lifiEvmProvider } from "@/lib/lifi-evm";
 import { ThemeProvider as MuiThemeProvider, createTheme } from "@mui/material/styles";
@@ -774,20 +774,37 @@ function AccountPageInner() {
               args: [gblinAmount],
               chainId: base.id,
             })
-          : await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+          : await (async () => {
               // All or nothing, through the Zap: it redeems in kind on the vault and sells every leg.
               // One routing entry per basket row, index for index; WETH and abandoned rows ignore it.
-              address: ZAP_ADDRESS as `0x${string}`,
-              abi: ZAP_WRITE_ABI,
-              functionName: 'sellGBLINForEth',
-              args: [
+              const zapArgs = [
                 gblinAmount,
                 (rawQuote * (10000n - slippageBps)) / 10000n,
                 Array.from({ length: onChainData?.basketData?.length ?? 3 }, () => VENUE_FEE_500),
                 address as `0x${string}`,
-              ],
-              chainId: base.id,
-            });
+              ] as const;
+              // The redemption's transfers run under a gas cap and need that reserve up front: pass a limit a
+              // quarter above the estimate so a wallet does not set it on the edge. Only gas used is paid.
+              let gas: bigint | undefined;
+              try {
+                const est = await getProvider().estimateGas({
+                  from: address,
+                  to: ZAP_ADDRESS,
+                  data: encodeFunctionData({ abi: ZAP_WRITE_ABI, functionName: 'sellGBLINForEth', args: zapArgs }),
+                });
+                gas = (est * 125n) / 100n;
+              } catch {
+                // Leave the estimate to the wallet: it will surface the revert reason.
+              }
+              return writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+                address: ZAP_ADDRESS as `0x${string}`,
+                abi: ZAP_WRITE_ABI,
+                functionName: 'sellGBLINForEth',
+                args: zapArgs,
+                ...(gas ? { gas } : {}),
+                chainId: base.id,
+              });
+            })();
         setTradeTxHash(hash);
       }
     } catch (err: any) {
