@@ -168,12 +168,35 @@ export function ProtocolShell(props: ProtocolShellProps) {
   }, [pathname]);
 
   // Lock the page behind the mobile sheet.
+  //
+  // NOT with `overflow: hidden` on the body: that turns the body into a scroll container and
+  // kills `position: sticky`, so the bar drops to its place in the document and disappears
+  // from view. The page is pinned by taking the body out of flow at its current offset, and
+  // the header switches to `fixed` for as long as the sheet is open, so it stays where it is.
+  //
+  // The offset is restored on close, but only when the route has not changed: following a
+  // link from inside the sheet must land at the top of the new page, not at the old scroll
+  // position.
+  const lockRef = useRef<{ y: number; path: string } | null>(null);
   useEffect(() => {
     if (!menuOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const y = window.scrollY;
+    lockRef.current = { y, path: window.location.pathname };
+    const body = document.body;
+    const prima = { position: body.style.position, top: body.style.top, width: body.style.width };
+    body.style.position = 'fixed';
+    body.style.top = `-${y}px`;
+    body.style.width = '100%';
     return () => {
-      document.body.style.overflow = previous;
+      body.style.position = prima.position;
+      body.style.top = prima.top;
+      body.style.width = prima.width;
+      const stato = lockRef.current;
+      lockRef.current = null;
+      if (!stato || stato.path !== window.location.pathname) return;
+      // After a frame: the header goes back into flow and the document regains its height,
+      // so restoring before layout settles lands a few dozen pixels short.
+      requestAnimationFrame(() => window.scrollTo(0, stato.y));
     };
   }, [menuOpen]);
 
@@ -204,8 +227,8 @@ export function ProtocolShell(props: ProtocolShellProps) {
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100">
       <header
-        className={`sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-500 ${
-          scrolled ? 'border-b border-[color:var(--line)] bg-[#050505]/90 backdrop-blur-md' : 'border-b border-transparent bg-transparent'
+        className={`${menuOpen ? 'fixed inset-x-0' : 'sticky'} top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-500 ${
+          scrolled || menuOpen ? 'border-b border-[color:var(--line)] bg-[#050505]/90 backdrop-blur-md' : 'border-b border-transparent bg-transparent'
         }`}
       >
         <div className={`${CONTAINER} grid h-16 grid-cols-[auto_1fr_auto] items-center gap-4`}>

@@ -116,20 +116,25 @@ function MigrateBanner() {
   const [pending, setPending] = useState<bigint | null>(null);
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  /** True when every previous contract failed to answer: that is not the same as holding nothing. */
+  const [unreadable, setUnreadable] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!address) { setHoldings([]); setPending(null); return; }
+    if (!address) { setHoldings([]); setPending(null); setUnreadable(false); return; }
     const found: Holding[] = [];
+    let failed = 0;
     for (const s of SOURCES) {
       try {
         const balance = await readContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "balanceOf", args: [address], chainId: base.id });
         if (balance === 0n) continue;
         const quoteEth = await readContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "quoteSellGBLIN", args: [balance], chainId: base.id });
         found.push({ source: s, balance, quoteEth });
-      } catch { /* unreadable source: do not offer it */ }
+      } catch { failed += 1; }
     }
     setHoldings(found);
     setPending(readPending(address));
+    // An empty list because nothing could be read would silently claim "nothing to migrate".
+    setUnreadable(found.length === 0 && failed === SOURCES.length);
   }, [address]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -234,6 +239,7 @@ function MigrateBanner() {
   async function migrateAll() {
     if (!address) return;
     setBusy(true);
+    setStatus("Checking the vault in service…");
     try {
       await ensureBase();
       const closed = await newVaultOpen(address);
@@ -242,8 +248,7 @@ function MigrateBanner() {
       setStatus("✅ Migration complete.");
       await refresh();
     } catch (e) {
-      const text = explain(e);
-      setStatus(text ?? "");
+      setStatus(explain(e) ?? "Cancelled in the wallet. Nothing was sold.");
       await refresh();
     } finally { setBusy(false); }
   }
@@ -267,7 +272,7 @@ function MigrateBanner() {
       }
       setStatus("✅ Dust withdrawn in kind.");
       await refresh();
-    } catch (e) { setStatus(explain(e) ?? ""); } finally { setBusy(false); }
+    } catch (e) { setStatus(explain(e) ?? "Cancelled in the wallet. Nothing was sold."); } finally { setBusy(false); }
   }
 
   async function finishPending() {
@@ -284,10 +289,16 @@ function MigrateBanner() {
       await buyNew(address, ethIn);
       writePending(address, null); setPending(null);
       setStatus("✅ Migration complete.");
-    } catch (e) { setStatus(explain(e) ?? ""); } finally { setBusy(false); }
+    } catch (e) { setStatus(explain(e) ?? "Cancelled in the wallet. Nothing was sold."); } finally { setBusy(false); }
   }
 
-  if (!address || (holdings.length === 0 && pending === null)) return null;
+  // The panel stays mounted while it is working, while it has something to say, and when the
+  // previous contracts could not be read. Unmounting on the click removes the button, the
+  // outcome and the error together, which reads as "it did nothing".
+  const nothingToShow = holdings.length === 0 && pending === null && !status && !unreadable;
+  // `address` goes briefly undefined while the wallet switches chain. Unmounting then would
+  // take the button away mid-click, which reads as "nothing happened".
+  if (!busy && (!address || nothingToShow)) return null;
 
   const migratable = holdings.filter((h) => h.quoteEth >= DUST_WEI);
   const dust = holdings.filter((h) => h.quoteEth < DUST_WEI);
@@ -303,6 +314,12 @@ function MigrateBanner() {
       {pending !== null && (
         <div className="text-sm text-amber-200">
           A migration stopped halfway: {Number(formatEther(pending)).toFixed(5)} ETH is in your wallet, waiting to be deposited.
+        </div>
+      )}
+      {unreadable && (
+        <div className="text-sm text-amber-200">
+          The previous contracts did not answer, so whether anything is left on them is unknown right now.
+          Nothing has been sold. Reload in a few minutes.
         </div>
       )}
       <div className="flex flex-wrap items-center gap-3">
