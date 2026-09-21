@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useConnect } from 'wagmi';
 import { ArrowRight, ChevronDown, ExternalLink, Globe, Menu, X } from 'lucide-react';
 import type { Language } from '@/translations/index';
 import { DISPLAY_CONTRACT_ADDRESS, LANGUAGES, LOGO_URL, WHITEPAPER_URL, shortenAddress } from './protocol-data';
@@ -17,6 +18,8 @@ interface ProtocolShellProps {
   t: (key: string) => string;
   isConnected: boolean;
   address?: string;
+  /** Kept for panels that ask the visitor to connect from inside the page; the header
+   *  connects in place and does not use it. */
   openWallet: () => void;
   disconnectWallet: () => void;
   children: ReactNode;
@@ -80,8 +83,59 @@ function Dropdown({ open, children, className = '' }: { open: boolean; children:
 
 const menuItem = 'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white';
 
+/**
+ * Connect from the header, in place. Sending the visitor to another page to pick a wallet
+ * loses whatever they were reading; the wallet list opens where the button is, and the page
+ * stays put. Duplicate connector names are collapsed: several injected wallets announce
+ * themselves under the same label and would otherwise appear twice.
+ */
+function HeaderConnect({ label, variant }: { label: string; variant: 'bar' | 'sheet' }) {
+  const { connectors, connect, isPending } = useConnect();
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
+  const seen = new Set<string>();
+  const list = connectors.filter((c) => (seen.has(c.name) ? false : (seen.add(c.name), true)));
+
+  const choices = (
+    <div className="grid gap-1">
+      {list.map((c) => (
+        <button
+          className={menuItem}
+          disabled={isPending}
+          key={c.uid}
+          onClick={() => { connect({ connector: c }); setOpen(false); }}
+          type="button"
+        >
+          {c.name}
+          <ArrowRight className="h-3.5 w-3.5 text-zinc-500" />
+        </button>
+      ))}
+    </div>
+  );
+
+  if (variant === 'sheet') {
+    return (
+      <div className="grid gap-2">
+        <button className="g-btn g-btn-primary w-full" onClick={() => setOpen((v) => !v)} type="button">
+          {label}
+        </button>
+        {open ? <div className="rounded-xl border border-white/10 bg-[#0b0b0b] p-1.5">{choices}</div> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button aria-expanded={open} className="g-btn g-btn-ghost g-btn-sm" onClick={() => setOpen((v) => !v)} type="button">
+        {label}
+      </button>
+      <Dropdown open={open}>{choices}</Dropdown>
+    </div>
+  );
+}
+
 export function ProtocolShell(props: ProtocolShellProps) {
-  const { language, setLanguage, t, isConnected, address, openWallet, disconnectWallet, children } = props;
+  const { language, setLanguage, t, isConnected, address, disconnectWallet, children } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -236,9 +290,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
               </div>
             ) : (
               <span className="hidden lg:block">
-                <button className="g-btn g-btn-ghost g-btn-sm" onClick={openWallet} type="button">
-                  {nav('connect')}
-                </button>
+                <HeaderConnect label={nav('connect')} variant="bar" />
               </span>
             )}
 
@@ -278,7 +330,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
                     <button className="g-btn g-btn-ghost w-full" onClick={disconnectWallet} type="button">{nav('disconnect')}</button>
                   </>
                 ) : (
-                  <button className="g-btn g-btn-primary w-full" onClick={openWallet} type="button">{nav('connect')}</button>
+                  <HeaderConnect label={nav('connect')} variant="sheet" />
                 )}
               </div>
               <div className="mt-6">
