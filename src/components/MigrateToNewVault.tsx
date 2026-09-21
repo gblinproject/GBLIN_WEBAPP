@@ -196,12 +196,17 @@ function MigrateBanner() {
     const minEthOut = quote - (quote * SELL_SLIPPAGE_BPS) / 10_000n;
     await simulateContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut], account, chainId: base.id });
 
-    // One confirmation when the wallet supports it. The second call spends more ETH than the
-    // account holds before the batch: the first call is what funds it, and an atomic batch is
-    // all-or-nothing, so this is sound. Some wallets still price and warn on the calls one by
-    // one and refuse, which is why the two-step path below stays as the fallback rather than
-    // the migration stopping there.
-    if (await supportsAtomicBatch(account)) {
+    // One confirmation is only offered when the account can already cover the deposit on its
+    // own. Inside an atomic batch the sale funds the deposit, so on chain the order is sound --
+    // but wallets price each call against the balance held BEFORE the batch, and a deposit
+    // larger than that balance makes the arithmetic go negative: the wallet then reports that
+    // there is not even enough ETH for the network fee and refuses the whole request.
+    //
+    // The two-step path has no such problem: the sale lands first, and the deposit is priced
+    // against a balance that already holds the proceeds.
+    const ethHeld = (await getBalance(wagmiConfig, { address: account, chainId: base.id })).value;
+    const canPrefund = ethHeld >= minEthOut;
+    if (canPrefund && (await supportsAtomicBatch(account))) {
       try {
         setStatus(`Migrating from the ${s.label} in one confirmation…`);
         const minOut = await minSharesFor(minEthOut);
@@ -219,12 +224,12 @@ function MigrateBanner() {
         // A refusal in the wallet is a decision, not a fault: it is not retried another way.
         if (explain(e) === null) throw e;
         // Nothing moved: the batch is atomic, so falling back cannot sell twice.
-        setStatus("The one-confirmation route was refused by the wallet. Falling back to two confirmations…");
+        setStatus("The wallet refused the single confirmation. Falling back to two confirmations…");
       }
     }
 
-    setStatus(`1/2 Selling on the ${s.label}…`);
-    const before = (await getBalance(wagmiConfig, { address: account, chainId: base.id })).value;
+    setStatus(`1/2 Selling on the ${s.label}: confirm in the wallet…`);
+    const before = ethHeld;
     const sellHash = await writeContract(wagmiConfig, {
       address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut],
       chainId: base.id, dataSuffix: BUILDER_CODE_SUFFIX,
