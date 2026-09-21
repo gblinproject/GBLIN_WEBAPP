@@ -1,8 +1,9 @@
 "use client";
 
-import { http, createConfig } from "wagmi";
+import { fallback, http, createConfig } from "wagmi";
 import { arbitrum, base, mainnet, optimism, polygon } from "wagmi/chains";
 import { createDefaultWagmiConfig } from "@lifi/widget-provider-ethereum";
+import { RPC_URL } from "@/components/protocol/protocol-data";
 
 // SINGLE shared wallet stack for the whole account page.
 // The LI.FI widget auto-detects the surrounding WagmiProvider and REUSES this
@@ -54,12 +55,35 @@ const { connectors: lifiConnectors } = createDefaultWagmiConfig({
   },
 });
 
+/**
+ * Reads from the browser go through several endpoints, in order, with retries.
+ *
+ * A single public endpoint refuses roughly one read in twenty-eight, and a refused read is
+ * indistinguishable from "this wallet holds nothing": panels that fall back to an empty list
+ * then state something they never measured. The first entry is the one the rest of the app
+ * already uses; the public endpoints are there for when it cannot be reached.
+ */
+const BASE_ENDPOINTS = [
+  // The same endpoint the rest of the app already reads from, so wallet reads and page reads
+  // cannot disagree about what is on chain.
+  RPC_URL,
+  "https://mainnet.base.org",
+  "https://base-rpc.publicnode.com",
+  "https://base.drpc.org",
+  "https://1rpc.io/base",
+].filter((url, i, all) => all.indexOf(url) === i);
+const baseTransport = fallback(
+  BASE_ENDPOINTS.map((url) => http(url, { retryCount: 2, retryDelay: 400, timeout: 12_000 })),
+  // Keep the declared order: the first endpoint is the one with a key, when there is one.
+  { rank: false },
+);
+
 export const wagmiConfig = createConfig({
   chains: [base, mainnet, arbitrum, optimism, polygon],
   connectors: lifiConnectors,
   // Same reliable endpoints used by the LI.FI widget sdkConfig.rpcUrls.
   transports: {
-    [base.id]: http("https://mainnet.base.org"),
+    [base.id]: baseTransport,
     [mainnet.id]: http("https://cloudflare-eth.com"),
     [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
     [optimism.id]: http("https://mainnet.optimism.io"),
