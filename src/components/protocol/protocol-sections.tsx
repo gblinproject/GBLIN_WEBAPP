@@ -1341,14 +1341,16 @@ export function BuyView(props: BuyViewProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[520px]">
-      <div className="text-center">
+    <div className="w-full">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-x-14">
+      <div className="text-center lg:col-start-1 lg:row-start-1 lg:pt-6 lg:text-left">
         <p className="g-eyebrow g-eyebrow-gold">{t('trade.instant')}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{t('trade.title1')} {t('trade.title2')}</h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-400">{t('landing.buyIntro')}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">{t('trade.title1')} {t('trade.title2')}</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-400 lg:mx-0 lg:text-base lg:leading-7">{t('landing.buyIntro')}</p>
       </div>
 
-      <div className="mt-8">
+      <div className="mx-auto w-full max-w-[520px] lg:col-start-2 lg:row-span-2 lg:row-start-1">
+      <div>
         <MigrateToNewVault />
       </div>
 
@@ -1551,7 +1553,10 @@ export function BuyView(props: BuyViewProps) {
         </div>
       )}
 
-      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+      </div>
+
+      <div className="lg:col-start-1 lg:row-start-2">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
         {[
           { title: t('trade.feature1Title'), body: t('trade.feature1Desc') },
           { title: t('trade.feature2Title'), body: t('trade.feature2Desc') },
@@ -1564,10 +1569,12 @@ export function BuyView(props: BuyViewProps) {
         ))}
       </div>
       {gblinPriceFiat > 0 ? (
-        <p className="tnum mt-4 text-center text-xs text-zinc-500">
+        <p className="tnum mt-4 text-center text-xs text-zinc-500 lg:text-left">
           1 GBLIN ≈ {fiat.symbol}{gblinPriceFiat.toFixed(2)} {fiat.code} · 1 ETH ≈ {fiat.symbol}{ethPriceFiat.toFixed(0)} · {t('dashboard.navTitle')} {onChainData?.nav || '—'}
         </p>
       ) : null}
+      </div>
+      </div>
 
       <div className="mt-10">
         <MintVsPoolSection t={t} />
