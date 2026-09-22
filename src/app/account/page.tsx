@@ -623,7 +623,7 @@ function AccountPageInner() {
         // holds just enough ETH into a bridge for a same-chain purchase.
         if (ethBalance >= parseFloat(amount) + 0.00003) {
           await ensureBase();
-          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+          const hash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: GBLIN_WRITE_ABI,
             functionName: 'buyGBLIN',
@@ -641,7 +641,7 @@ function AccountPageInner() {
           const erc = new ethers.Contract(WETH_ADDRESS, ERC20_ABI, provider);
           const allowance: bigint = await erc.allowance(address, CONTRACT_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
           if (allowance < amountIn) {
-            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+            const approveHash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
               address: WETH_ADDRESS as `0x${string}`,
               abi: ERC20_APPROVE_ABI,
               functionName: 'approve',
@@ -650,7 +650,7 @@ function AccountPageInner() {
             });
             await provider.waitForTransaction(approveHash, 1, 60000);
           }
-          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+          const hash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: GBLIN_WRITE_ABI,
             functionName: 'buyGBLINWithWeth',
@@ -668,7 +668,7 @@ function AccountPageInner() {
           const erc = new ethers.Contract(token, ERC20_ABI, provider);
           const allowance: bigint = await erc.allowance(address, ZAP_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
           if (allowance < amountIn) {
-            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+            const approveHash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
               address: token,
               abi: ERC20_APPROVE_ABI,
               functionName: 'approve',
@@ -677,7 +677,7 @@ function AccountPageInner() {
             });
             await provider.waitForTransaction(approveHash, 1, 60000);
           }
-          const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+          const hash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
             address: ZAP_ADDRESS as `0x${string}`,
             abi: ZAP_WRITE_ABI,
             functionName: 'buyGBLINWithToken',
@@ -756,7 +756,7 @@ function AccountPageInner() {
           const gblinErc = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, sellProvider);
           const shareAllowance: bigint = await gblinErc.allowance(address, ZAP_ADDRESS).then((v: unknown) => BigInt(String(v))).catch(() => 0n);
           if (shareAllowance < gblinAmount) {
-            const approveHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+            const approveHash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
               address: CONTRACT_ADDRESS as `0x${string}`,
               abi: ERC20_APPROVE_ABI,
               functionName: 'approve',
@@ -767,7 +767,7 @@ function AccountPageInner() {
           }
         }
         const hash = redeemOption === 'basket'
-          ? await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+          ? await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
               address: CONTRACT_ADDRESS as `0x${string}`,
               abi: GBLIN_WRITE_ABI,
               functionName: 'sellGBLIN',
@@ -796,7 +796,7 @@ function AccountPageInner() {
               } catch {
                 // Leave the estimate to the wallet: it will surface the revert reason.
               }
-              return writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+              return writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
                 address: ZAP_ADDRESS as `0x${string}`,
                 abi: ZAP_WRITE_ABI,
                 functionName: 'sellGBLINForEth',
@@ -1098,7 +1098,7 @@ function AccountPageInner() {
     (async () => {
       try {
         await ensureBase();
-        const hash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+        const hash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
           address: CONTRACT_ADDRESS as `0x${string}`,
           abi: GBLIN_WRITE_ABI,
           functionName: "transfer",
@@ -1238,6 +1238,7 @@ function AccountPageInner() {
       const amountWei = ethers.parseEther(sendAmount.toFixed(18));
       await ensureBase();
       await sendTransactionAsync({
+        account: address as `0x${string}`,
         to: transakOrder.walletAddress as `0x${string}`,
         value: amountWei,
         chainId: base.id,
@@ -1276,6 +1277,7 @@ function AccountPageInner() {
       const amountWei = ethers.parseEther(amount.toFixed(18));
       await ensureBase();
       await sendTransactionAsync({
+        account: address as `0x${string}`,
         to: coinbaseAddress as `0x${string}`,
         value: amountWei,
         chainId: base.id,

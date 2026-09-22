@@ -175,7 +175,7 @@ function MigrateBanner() {
   async function buyNew(account: Address, ethIn: bigint) {
     const minOut = await minSharesFor(ethIn);
     const hash = await writeContract(wagmiConfig, {
-      address: NEW_VAULT, abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut], value: ethIn,
+      account, address: NEW_VAULT, abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut], value: ethIn,
       chainId: base.id, dataSuffix: BUILDER_CODE_SUFFIX,
     });
     const r = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: base.id });
@@ -236,7 +236,7 @@ function MigrateBanner() {
     setStatus(`1/2 Selling on the ${s.label}: confirm in the wallet…`);
     const before = ethHeld;
     const sellHash = await writeContract(wagmiConfig, {
-      address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut],
+      account, address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut],
       chainId: base.id, dataSuffix: BUILDER_CODE_SUFFIX,
     });
     const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: sellHash, chainId: base.id });
@@ -286,7 +286,7 @@ function MigrateBanner() {
         if (wait > 0n) throw new Error(`Cooldown on the ${h.source.label}: retry in ${wait.toString()} s.`);
         setStatus(`Withdrawing the dust from the ${h.source.label} in kind…`);
         const hash = await writeContract(wagmiConfig, {
-          address: h.source.address, abi: LEGACY_ABI, functionName: "sellGBLIN", args: [h.balance],
+          account: address, address: h.source.address, abi: LEGACY_ABI, functionName: "sellGBLIN", args: [h.balance],
           chainId: base.id, dataSuffix: BUILDER_CODE_SUFFIX,
         });
         const r = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: base.id });

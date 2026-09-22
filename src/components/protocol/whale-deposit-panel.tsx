@@ -155,7 +155,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
       // 1. approve (when needed)
       if (needsApproval) {
         setSubmitStep(`Approve ${asset.symbol}`);
-        const approvalHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+        const approvalHash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
           address: asset.address as `0x${string}`,
           abi: WRITE_ABI,
           functionName: 'approve',
@@ -166,7 +166,7 @@ function WhaleDepositPanelInner({ t, address, isConnected, openWallet, onSuccess
       }
       // 2. buyGBLINInKind(token, amountIn, minGblinOut)
       setSubmitStep('Deposit');
-      const buyHash = await writeContractAsync({ dataSuffix: BUILDER_CODE_SUFFIX,
+      const buyHash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: WRITE_ABI,
         functionName: 'buyGBLINInKind',
