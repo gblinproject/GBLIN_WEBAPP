@@ -69,7 +69,7 @@ function AssetNode({ asset, t }: { asset: BasketItem; t: (key: string) => string
       className="absolute z-20 block"
       style={{ left: x, top: y, transform: 'translate(-50%, -50%)' }}
     >
-      <span className="relative block rounded-full" style={{ boxShadow: '0 0 34px rgba(200,164,93,0.3), 0 8px 24px rgba(0,0,0,0.6)' }}>
+      <span className="relative block rounded-full" style={{ boxShadow: '0 0 34px rgba(255, 199, 46,0.3), 0 8px 24px rgba(0,0,0,0.6)' }}>
         <AssetMark className="block h-[clamp(2.6rem,5.2vw,3.75rem)] w-[clamp(2.6rem,5.2vw,3.75rem)]" name={asset.name} />
         <span className={labelClass}>
           <span className="block text-[13px] font-medium leading-tight tracking-[0.04em] text-[color:var(--ink)]">{asset.name}</span>
@@ -120,7 +120,7 @@ export function ReserveCore({
   const arcR = 258;
   const total = basket.reduce((sum, a) => sum + Math.max(a.realWeight, 0), 0) || 100;
   const circumference = 2 * Math.PI * arcR;
-  const tone: Record<string, string> = { cbBTC: '#f0d898', WETH: '#9a8f78', USDC: '#6f7f8c' };
+  const tone: Record<string, string> = { cbBTC: '#ffe58f', WETH: '#9a8f78', USDC: '#6f7f8c' };
   let offset = 0;
 
   // Rounded to two decimals: the server and the browser disagree on the last
@@ -134,8 +134,8 @@ export function ReserveCore({
         <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 1000 1000">
           <defs>
             <radialGradient id="rc-halo" cx="50%" cy="47%" r="50%">
-              <stop offset="0%" stopColor="#c8a45d" stopOpacity=".2" />
-              <stop offset="42%" stopColor="#c8a45d" stopOpacity=".06" />
+              <stop offset="0%" stopColor="#ffc72e" stopOpacity=".2" />
+              <stop offset="42%" stopColor="#ffc72e" stopOpacity=".06" />
               <stop offset="100%" stopColor="#050505" stopOpacity="0" />
             </radialGradient>
             <filter id="rc-spark" x="-200%" y="-200%" width="500%" height="500%">
@@ -147,20 +147,20 @@ export function ReserveCore({
 
           <g className="g-orbit" style={{ transformOrigin: `${cx}px ${cy}px` }}>
             <g transform={`rotate(-20 ${cx} ${cy})`}>
-              <ellipse cx={cx} cy={cy} rx="478" ry="392" fill="none" stroke="#c8a45d" strokeOpacity=".28" />
+              <ellipse cx={cx} cy={cy} rx="478" ry="392" fill="none" stroke="#ffc72e" strokeOpacity=".28" />
               <circle cx={cx + 478} cy={cy} r="7" fill="#ffeec2" filter="url(#rc-spark)" />
               <circle cx={cx + 478} cy={cy} r="3" fill="#fff6dd" />
             </g>
           </g>
           <g className="g-orbit-slow" style={{ transformOrigin: `${cx}px ${cy}px` }}>
             <g transform={`rotate(24 ${cx} ${cy})`}>
-              <ellipse cx={cx} cy={cy} rx="478" ry="392" fill="none" stroke="#c8a45d" strokeOpacity=".15" />
+              <ellipse cx={cx} cy={cy} rx="478" ry="392" fill="none" stroke="#ffc72e" strokeOpacity=".15" />
               <circle cx={cx - 478} cy={cy} r="5" fill="#ffeec2" filter="url(#rc-spark)" />
             </g>
           </g>
 
-          <circle cx={cx} cy={cy} r="412" fill="none" stroke="#c8a45d" strokeOpacity=".13" />
-          <circle cx={cx} cy={cy} r="438" fill="none" stroke="#c8a45d" strokeOpacity=".08" strokeDasharray="2 14" />
+          <circle cx={cx} cy={cy} r="412" fill="none" stroke="#ffc72e" strokeOpacity=".13" />
+          <circle cx={cx} cy={cy} r="438" fill="none" stroke="#ffc72e" strokeOpacity=".08" strokeDasharray="2 14" />
         </svg>
 
         {/* The lit ring itself, masked so it dissolves instead of ending on a square. */}
