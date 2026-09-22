@@ -589,8 +589,11 @@ export async function quoteGblinForUsdc(usdcTargetStr: string): Promise<{
   const slippage = await getDynamicSlippage();
 
   const usdcTargetUnits = parseUnits(usdcTargetStr, 6);
+  // The buffer is applied twice downstream: once to the Zap exit's minimum ETH, once to the WETH->USDC
+  // swap, which spends only that minimum and must still return the full target. Gross up for both.
+  const keep = BPS_DENOMINATOR - slippage.bps;
   const grossUsdcTarget =
-    (usdcTargetUnits * BPS_DENOMINATOR) / (BPS_DENOMINATOR - slippage.bps);
+    (usdcTargetUnits * BPS_DENOMINATOR * BPS_DENOMINATOR) / (keep * keep);
 
   const navUsdScaled = BigInt(Math.round(navUsd * 1_000_000));
   const gblinToSell = (grossUsdcTarget * parseUnits("1", 18)) / navUsdScaled;
