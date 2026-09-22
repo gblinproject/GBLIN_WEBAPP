@@ -32,25 +32,25 @@
   /* Warm ivory over graphite. 100 to 600 are for text, 700 and darker are for
      borders and disabled states only. */
   --color-zinc-100: #f7f6f3;
-  --color-zinc-200: #e6e0d4;
-  --color-zinc-300: #d8d1c3;
-  --color-zinc-400: #aba393;
-  --color-zinc-500: #918a7d;
-  --color-zinc-600: #8a8376;
+  --color-zinc-200: #ece9e3;
+  --color-zinc-300: #e1ddd5;
+  --color-zinc-400: #d0cbc1;
+  --color-zinc-500: #aca79e;
+  --color-zinc-600: #959088;
   --color-zinc-700: #5e5a52;
   --color-zinc-800: #1c1b18;
   --color-zinc-900: #121210;
-  --color-sky-300: #d8d1c3;
-  --color-sky-400: #aba393;
-  --color-sky-500: #918a7d;
-  --color-blue-300: #d8d1c3;
-  --color-blue-400: #aba393;
-  --color-blue-500: #918a7d;
+  --color-sky-300: #e1ddd5;
+  --color-sky-400: #d0cbc1;
+  --color-sky-500: #aca79e;
+  --color-blue-300: #e1ddd5;
+  --color-blue-400: #d0cbc1;
+  --color-blue-500: #aca79e;
   --color-blue-600: #5e5a52;
-  --color-violet-400: #aba393;
-  --color-violet-500: #918a7d;
-  --color-cyan-400: #aba393;
-  --color-cyan-500: #918a7d;
+  --color-violet-400: #d0cbc1;
+  --color-violet-500: #aca79e;
+  --color-cyan-400: #d0cbc1;
+  --color-cyan-500: #aca79e;
   --color-emerald-300: #a7bda2;
   --color-emerald-400: #91a88c;
   --color-emerald-500: #7c9377;
@@ -69,8 +69,8 @@
   --surface-3: #181714;
 
   --ink: #ffffff;
-  --ink-secondary: #d8d1c3;
-  --ink-muted: #918a7d;
+  --ink-secondary: #e1ddd5;
+  --ink-muted: #aca79e;
   --ink-faint: #5e5a52;
 
   --gold: #ffc72e;
