@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount, useDisconnect } from 'wagmi';
 import { prepareContractCall, useSendTransaction } from '@/lib/wagmi-tx';
+import { exitRevertReason } from '@/lib/exit-revert';
 import { ethers } from 'ethers';
 import { translations, type Language } from '@/translations/index';
 import { protocolTranslations } from './protocol-translations';
@@ -963,16 +964,21 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           // The redemption's transfers run under a gas cap and require that reserve up front, so the call needs a
           // limit about a quarter above what it consumes. Wallets that set the limit at the bare estimate, or a
           // hair under it, see the call fail; an explicit limit with headroom avoids that. Only gas used is paid.
+          const exitData = new ethers.Interface([sellMethod]).encodeFunctionData('sellGBLINForEth', [...sellParams]);
+          // Simulate on the read node first: a revert here becomes a sentence for the visitor, not a wallet warning.
+          try {
+            await provider.call({ from: address, to: ZAP_ADDRESS, data: exitData, gasLimit: 3_000_000n });
+          } catch (simErr) {
+            console.error('[exit] simulation failed', simErr);
+            const reason = exitRevertReason(simErr);
+            throw new Error(`EXIT_REVERT:${reason ?? (simErr instanceof Error ? simErr.message : 'the vault refused the exit')}`);
+          }
           let sellGas: bigint | undefined;
           try {
-            const est = await provider.estimateGas({
-              from: address,
-              to: ZAP_ADDRESS,
-              data: new ethers.Interface([sellMethod]).encodeFunctionData('sellGBLINForEth', [...sellParams]),
-            });
+            const est = await provider.estimateGas({ from: address, to: ZAP_ADDRESS, data: exitData });
             sellGas = (est * 125n) / 100n;
           } catch {
-            // Leave the estimate to the wallet: it will surface the revert reason.
+            // The simulation passed a moment ago: leave the limit to the wallet.
           }
           const sellTx = prepareContractCall({
             contract: { address: ZAP_ADDRESS as `0x${string}` },
@@ -1001,10 +1007,16 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setAmount('');
       addLog(`Transaction confirmed: ${shortenAddress(hash)}`);
     } catch (error) {
+      console.error('[trade] failed', error);
       const message = error instanceof Error ? error.message : 'Transaction failed.';
       const normalizedMessage = message.toLowerCase();
+      const decoded = exitRevertReason(error);
 
-      if (message.startsWith('ORACLE_UNUSABLE:')) {
+      if (message.startsWith('EXIT_REVERT:')) {
+        setTradeError(message.slice('EXIT_REVERT:'.length));
+      } else if (decoded) {
+        setTradeError(decoded);
+      } else if (message.startsWith('ORACLE_UNUSABLE:')) {
         const names = message.slice('ORACLE_UNUSABLE:'.length);
         setTradeError(`Price feed unusable (${names}). ETH redemption is paused because the swap would go out without a floor. Redeem in basket tokens instead — that path uses no price feed.`);
       } else if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
@@ -1022,13 +1034,15 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       } else if (normalizedMessage.includes('invalidpath')) {
         setTradeError('Invalid token route. Choose another token or retry.');
       } else if (normalizedMessage.includes('cooldownactive')) {
-        setTradeError('Cooldown active. Wait 2 minutes after the last deposit.');
+        setTradeError('Cooldown active: wait 20 seconds after your last deposit.');
       } else if (normalizedMessage.includes('slippageexceeded')) {
         setTradeError('Slippage exceeded. Try a higher slippage setting.');
       } else if (normalizedMessage.includes('sequencerdown')) {
         setTradeError('Base sequencer unavailable. Try again later.');
       } else if (normalizedMessage.includes('transferfailed')) {
         setTradeError('Transfer failed during settlement. Retry in a moment.');
+      } else if (normalizedMessage.includes('unknown rpc error') || normalizedMessage.includes('internal json-rpc')) {
+        setTradeError('The wallet could not simulate the transaction on its own node. Reload the page and retry; if it keeps failing, redeem in basket tokens, which needs no swap.');
       } else {
         setTradeError(message.length > 180 ? `${message.slice(0, 177)}...` : message);
       }
