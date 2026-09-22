@@ -25,23 +25,12 @@ const wcProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
   "9629f33d439505415769d9d29d7b788e";
 const { connectors: lifiConnectors } = createDefaultWagmiConfig({
-  // `dapp` is NOT decorative: without it the build logs, on every page,
-  // "Error initializing MetaMaskConnectMultichain: You must provide dapp url".
-  // The cause is in the wagmi MetaMask connector (@wagmi/connectors/metaMask.js):
-  //   typeof window === 'undefined' ? { name: 'wagmi' } : { name: hostname, url: href }
-  // i.e. on the SERVER it passes the name but NOT the url, while
-  // @metamask/connect-multichain requires it ("if (!options.dapp?.url) throw").
-  // During prerendering `window` does not exist, so it throws. Declaring the metadata
-  // here removes the error AND makes the MetaMask confirmation dialog show the
-  // application name instead of "wagmi" or the current hostname — the same metadata
-  // WalletConnect is given below.
-  metaMask: {
-    dapp: {
-      name: "GBLIN Protocol",
-      url: "https://gblin.digital",
-      iconUrl: "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.svg",
-    },
-  },
+  // No MetaMask SDK connector. With the extension installed, the SDK and the extension both appear as
+  // "MetaMask", and the SDK keeps a session of its own: writes then went out for an account other than
+  // the one selected in the extension ("Different account selected", gas estimated on an empty
+  // account). The extension is found through EIP-6963 like every other installed wallet, and MetaMask
+  // Mobile connects through WalletConnect. A session left over from the SDK fails to reconnect and the
+  // visitor connects again, this time through the extension.
   coinbase: { appName: "GBLIN Protocol" },
   baseAccount: { appName: "GBLIN Protocol" },
   walletConnect: {

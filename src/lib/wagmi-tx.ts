@@ -12,7 +12,7 @@
  */
 
 import { parseAbiItem, type Abi, type AbiFunction } from 'viem';
-import { useSwitchChain, useWriteContract } from 'wagmi';
+import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { BUILDER_CODE_SUFFIX } from './builder-code';
 
@@ -47,6 +47,10 @@ export function prepareContractCall(options: {
 export function useSendTransaction() {
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
+  // The sender is named explicitly. Without it the wallet client falls back to whatever account the
+  // connector session holds, and a wallet with more than one session (extension and SDK) can then
+  // estimate gas for an account other than the one shown on the page, and report it has no ETH.
+  const { address, connector } = useAccount();
 
   const mutate = (
     tx: PreparedCall,
@@ -63,7 +67,10 @@ export function useSendTransaction() {
           // already on Base, or the wallet handled/refused the switch — the
           // write below will surface any real chain problem to onError.
         }
+        if (!address) throw new Error('Wallet not connected.');
         const transactionHash = await writeContractAsync({
+          account: address,
+          ...(connector ? { connector } : {}),
           address: tx.address,
           abi: tx.abi,
           functionName: tx.functionName,
