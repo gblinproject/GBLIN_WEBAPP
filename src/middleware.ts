@@ -353,7 +353,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/jit": {
       accepts: accepts("$0.005"),
       description:
-        "Just-In-Time GBLIN→USDC calldata. Returns two ready-to-broadcast steps (sellGBLINForEth + WETH→USDC swap) sized to cover the requested USDC amount; smart accounts can batch them in one UserOp.",
+        "Just-In-Time GBLIN→USDC calldata. Returns three ready-to-broadcast steps (approve the shares to the GBLIN Zap, GBLINZap.sellGBLINForEth, WETH→USDC swap) sized to cover the requested USDC amount; smart accounts can batch them in one operation.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({
@@ -374,38 +374,45 @@ const x402Middleware = paymentProxy(
           },
           output: {
             example: {
-              action: "two_step_redemption",
+              action: "sequential_txs",
               steps: [
                 {
                   step: 1,
+                  target: "0xc2181d975c05c8c724b334bcED0764c0b86B1D53",
+                  calldata: "0x095ea7b3…",
+                  value: "0",
+                  description: "Approve the shares to the GBLIN Zap",
+                },
+                {
+                  step: 2,
                   target: "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
-                  calldata: "0x5d2e1ca7…",
+                  calldata: "0xb2760785…",
                   value: "0",
                   description:
                     "GBLINZap.sellGBLINForEth(shares, min_eth_out, venue_data, receiver) — redeems in kind on the vault and sells every leg, all or nothing",
                 },
                 {
-                  step: 2,
+                  step: 3,
                   target: "0x2626664c2603336E57B271c5C0b26F421741e481",
-                  calldata: "0x414bf389…",
-                  value: "0",
-                  description: "Uniswap V3 WETH→USDC with min_usdc_out",
+                  calldata: "0x04e45aaf…",
+                  value: "196000000000000",
+                  description: "Uniswap V3 WETH→USDC paid with the received ETH, with min_usdc_out",
                 },
               ],
               params: {
-                gblin_amount: "0.412345",
+                gblin_amount: "0.004951",
                 target_token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
                 pool_fee: 500,
                 min_usdc_out: "0.487500",
               },
               expected: {
                 usdc_out: "0.500000",
-                nav_used_usd: 1.234567,
+                nav_used_usd: 102.5,
                 slippage_buffer_pct: 2.5,
                 slippage_reason: "normal",
               },
               compatibility: { eoa: true, erc4337: true, eip7702: true },
-              gas_hint: 600000,
+              gas_hint: 1100000,
             },
           },
         }),
@@ -414,7 +421,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/invest": {
       accepts: accepts("$0.002"),
       description:
-        "USDC→GBLIN treasury-accumulation calldata: two sequential steps (approve USDC, then buyGBLINWithToken) with MEV-safe minOut.",
+        "USDC→GBLIN treasury-accumulation calldata: two sequential steps (approve USDC to the GBLIN Zap, then GBLINZap.buyGBLINWithToken) with MEV-safe minOut.",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({

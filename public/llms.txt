@@ -18,9 +18,9 @@
 - **Zap (buy with any token, exit to ETH):** 0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200
 - **Token decimals:** 18
 - **NAV computation:** `GBLINLens.quoteSell(vault, 1e18) × Chainlink ETH/USD feed`
-- **Fees:** 0.05% founder + 0.05% stability = 10 bps total
-- **Min deposit:** 0.0005 ETH
-- **Sell cooldown after buy:** 120 seconds
+- **Fees:** 10 bps on mint (0.05% protocol fee + 0.05% stability fee, which stays in the NAV); 0.50% a year management fee, accrued as new shares; no fee on redemption
+- **Min deposit:** none (read live: `GBLINLens.configFees(vault).minDeposit`)
+- **Sell cooldown after a mint for oneself:** 20 seconds (read live: `GBLINLens.configFees(vault).sellCooldown`)
 - **License:** MIT (open source, no telemetry)
 
 ## For AI agent developers

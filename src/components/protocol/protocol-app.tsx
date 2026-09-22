@@ -1028,7 +1028,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       } else if (normalizedMessage.includes('token required')) {
         setTradeError('Select a valid input token before minting.');
       } else if (normalizedMessage.includes('deposittoosmall')) {
-        setTradeError('Deposit too small. Minimum is 0.0005 ETH.');
+        setTradeError('Deposit below the vault minimum. Increase the amount and retry.');
       } else if (normalizedMessage.includes('invalidamount')) {
         setTradeError('Invalid amount. Check the entered value and retry.');
       } else if (normalizedMessage.includes('invalidpath')) {

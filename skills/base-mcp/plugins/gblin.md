@@ -70,7 +70,7 @@ Response shape:
 }
 ```
 
-**Use this to:** verify the user has enough USDC before investing, check the 2-minute cooldown after a deposit, confirm current holdings and gas runway.
+**Use this to:** verify the user has enough USDC before investing, check the redemption cooldown after a mint (20 seconds, a vault parameter), confirm current holdings and gas runway.
 
 ### Quote — $0.001 USDC
 
@@ -79,7 +79,7 @@ GET https://gblin.digital/api/x402/quote?direction=buy&amount=<eth_decimal>
 GET https://gblin.digital/api/x402/quote?direction=sell&amount=<gblin_decimal>
 ```
 
-For `direction=buy`, `amount` is in ETH (minimum 0.0005). For `direction=sell`, `amount` is in GBLIN. Returns the expected output, a safe `minOut` including a dynamic slippage buffer, and the fee breakdown (10 bps total, charged on mint only).
+For `direction=buy`, `amount` is in ETH (the vault sets no minimum). For `direction=sell`, `amount` is in GBLIN. Returns the expected output, a safe `minOut` including a dynamic slippage buffer, and the mint fee breakdown (10 bps).
 
 ### Governance check — $0.001 USDC
 
@@ -131,16 +131,16 @@ Response shape:
 GET https://gblin.digital/api/x402/jit?usdc=<decimal>&wallet=<wallet_address>
 ```
 
-Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **three steps** (approve the shares to the Zap, `GBLINZap.sellGBLINForEth` — redeem in kind and sell every leg, all or nothing — then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs twice; an ERC-4337 / EIP-7702 account can batch both into one operation. Requires the 2-minute cooldown since the last deposit to have elapsed.
+Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **three steps** (approve the shares to the Zap, `GBLINZap.sellGBLINForEth` — redeem in kind and sell every leg, all or nothing — then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs three times; an ERC-4337 / EIP-7702 account can batch them into one operation. Requires the redemption cooldown (20 seconds after a mint for oneself) to have elapsed. Give step 2 a gas limit of at least `gas_hint`: the Zap forwards gas-capped transfers, so a tight limit reverts.
 
 ```json
 {
   "action": "sequential_txs",
-  "steps": [ { "step": 1, "target": "0x...", "calldata": "0x...", "value": "0" }, { "step": 2, "…": "…" } ],
+  "steps": [ { "step": 1, "target": "0x...", "calldata": "0x...", "value": "0" }, { "step": 2, "…": "…" }, { "step": 3, "…": "…" } ],
   "params": { "gblin_amount": "…", "eth_min_out": "…", "target_token": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "min_usdc_out": "…" },
   "expected": { "usdc_out": "…", "nav_used_usd": 0, "slippage_buffer_pct": 0 },
   "compatibility": { "eoa": true, "erc4337": true, "eip7702": true },
-  "gas_hint": 600000
+  "gas_hint": 1100000
 }
 ```
 
@@ -154,13 +154,13 @@ Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption 
 {
   "chain": "base",
   "calls": [
-    { "to": "<steps[0].target>", "value": "0x0", "data": "<steps[0].calldata>" },
-    { "to": "<steps[1].target>", "value": "0x0", "data": "<steps[1].calldata>" }
+    { "to": "<steps[0].target>", "value": "<steps[0].value as hex>", "data": "<steps[0].calldata>" },
+    { "to": "<steps[1].target>", "value": "<steps[1].value as hex>", "data": "<steps[1].calldata>" }
   ]
 }
 ```
 
-Include one entry per element of `steps[]`, in the order returned — 4 for invest, 2 for JIT. Never reorder them.
+Include one entry per element of `steps[]`, in the order returned — 2 for invest, 3 for JIT. Never reorder them, and carry each step's `value` over as hex: the JIT swap step sends ETH.
 
 ---
 
@@ -178,17 +178,16 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
    → ask for confirmation before proceeding
 4. GET /api/x402/invest?usdc=<amount>&wallet=<address>  [pay $0.002 x402]
    (if web_request rejects host, fetch directly or ask user to paste JSON)
-5. Map steps[] → calls[] (target→to, calldata→data, value→"0x0")
-6. send_calls(chain="base", calls from steps[0..3])
+5. Map steps[] → calls[] (target→to, calldata→data, value→hex)
+6. send_calls(chain="base", calls from steps[0..1])
 7. User approves once → get_request_status(requestId)
-8. Confirm all 4 steps executed
+8. Confirm both steps executed
 ```
 
 **Preconditions to validate before step 4:**
 - USDC balance ≥ requested amount + gas buffer
 - Crash Shield status known (check treasury-state)
 - Cooldown not active
-- Minimum buy: 0.0005 ETH equivalent
 
 ### Pattern B — JIT redeem for an x402 payment
 
@@ -196,10 +195,10 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 1. get_wallets → address
 2. GET /api/x402/health?wallet=<address>  [pay $0.002 x402]
    → verify gblin balance >= required amount
-   → verify cooldown.active = false (2-min lock after last deposit)
+   → verify cooldown.active = false (20-second lock after a mint for oneself)
 3. GET /api/x402/jit?usdc=<amount>&wallet=<address>  [pay $0.005 x402]
-4. Map steps[] → calls[] (2 calls)
-5. send_calls(chain="base", calls=[step 1, step 2])
+4. Map steps[] → calls[] (3 calls)
+5. send_calls(chain="base", calls=[step 1, step 2, step 3])
 6. User approves → get_request_status(requestId)
 ```
 
@@ -218,7 +217,7 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 
 ```
 1. Read the live risk regime for free from the MCP endpoint
-   (tool: get_market_risk_regime)
+   (tool: risk.regime)
 2. If regime = "crash" → stand down: do not invest, tell the user why
 3. Otherwise continue with Pattern A
 4. If the user needs portable proof of the check, buy /api/x402/attestation
@@ -230,10 +229,10 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 
 - **Never skip the quote step.** Always show NAV, expected output, and fees before executing invest.
 - **Crash Shield:** if the treasury state reports the shield active, warn the user that basket weights have been defensively adjusted after a market drawdown beyond the protocol's crash threshold (15% base, adaptive with volatility). Do not block the transaction — the contract handles it — but explain the situation.
-- **Cooldown:** if `cooldown.active` is true, do not attempt any sell or JIT redeem. Wait until `seconds_remaining` reaches zero (2 minutes after the last deposit).
+- **Cooldown:** if `cooldown.active` is true, do not attempt any sell or JIT redeem. Wait until `seconds_remaining` reaches zero (20 seconds after a mint for oneself).
 - **Governance delay:** any protocol parameter change requires 48 hours via Timelock `0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd`. Do not promise immediate changes, and do not describe the token as immutable.
 - **GBLIN is not a stablecoin.** NAV moves with WETH and cbBTC prices. It is managed exposure for surplus capital, not a USDC substitute. Always present the current NAV before quoting.
-- **Fees:** 10 bps total, charged on mint only — redemption pays no protocol fee.
+- **Fees:** 10 bps on mint (5 protocol + 5 stability, which stays in the NAV) and a 0.50% a year management fee, accrued as new shares. Redemption pays no protocol fee.
 - **x402 costs:** read operations cost $0.001–$0.003 USDC and prepare operations $0.002–$0.005 USDC. These are API charges, not gas.
 
 ---
@@ -247,6 +246,8 @@ Include one entry per element of `steps[]`, in the order returned — 4 for inve
 | WETH | `0x4200000000000000000000000000000000000006` |
 | USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 | cbBTC | `0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf` |
+| GBLIN Lens | `0xfCFea8027019E8551A1f09AD91532471F5D26f61` |
+| GBLIN Zap | `0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200` |
 | SwapRouter02 | `0x2626664c2603336E57B271c5C0b26F421741e481` |
 
 ---

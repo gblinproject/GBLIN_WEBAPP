@@ -12,7 +12,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Logs are stripped in production; errors are kept so a failed transaction can be diagnosed from the console.
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
   },
   images: {
     remotePatterns: [

@@ -46,8 +46,8 @@ export const WETH_USDC_POOL_FEE = 500;
 export const SWAP_ROUTER_02: Address = "0x2626664c2603336E57B271c5C0b26F421741e481";
 
 // ─── Protocol Constants ─────────────────────────────────────────────────────
-export const MIN_DEPOSIT_WEI = 500_000_000_000_000n;
-export const COOLDOWN_SECONDS = 120;
+// The minimum deposit and the redemption cooldown are vault parameters that governance can change:
+// they are read live through the Lens (readProtocolLimits), never hard-coded here.
 export const ORACLE_STALENESS_SECONDS = 86_400;
 export const SLIPPAGE_NORMAL_BPS = 250n;
 export const SLIPPAGE_CRASH_SHIELD_BPS = 400n;
@@ -275,6 +275,21 @@ export const LENS_ABI = [
       { name: "premiumBps", type: "int256" },
       { name: "vaultBuysAsset", type: "bool" },
       { name: "gapEth", type: "uint256" },
+    ],
+  },
+  {
+    name: "configFees",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vault", type: "address" }],
+    outputs: [
+      { name: "protocolFee", type: "uint256" },
+      { name: "stabilityFee", type: "uint256" },
+      { name: "minDeposit", type: "uint256" },
+      { name: "oracleAge", type: "uint256" },
+      { name: "oracleAgeTrade", type: "uint256" },
+      { name: "sellCooldown", type: "uint256" },
+      { name: "basketCap", type: "uint256" },
     ],
   },
   {
@@ -508,8 +523,33 @@ export interface CooldownStatus {
   lastDeposit: number;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// PROTOCOL LIMITS — minimum deposit and redemption cooldown, read live
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface ProtocolLimits {
+  minDepositWei: bigint;
+  sellCooldownSeconds: number;
+}
+
+let limitsCache: { value: ProtocolLimits; at: number } | null = null;
+const LIMITS_CACHE_TTL_MS = 300_000;
+
+export async function readProtocolLimits(): Promise<ProtocolLimits> {
+  if (limitsCache && Date.now() - limitsCache.at < LIMITS_CACHE_TTL_MS) return limitsCache.value;
+  const r = await client.readContract({
+    address: GBLIN_LENS,
+    abi: LENS_ABI,
+    functionName: "configFees",
+    args: [GBLIN],
+  });
+  const value = { minDepositWei: r[2], sellCooldownSeconds: Number(r[5]) };
+  limitsCache = { value, at: Date.now() };
+  return value;
+}
+
 export async function checkCooldown(wallet: Address): Promise<CooldownStatus> {
-  const [lastDeposit, block] = await Promise.all([
+  const [lastDeposit, block, limits] = await Promise.all([
     client.readContract({
       address: GBLIN_LENS,
       abi: LENS_ABI,
@@ -517,11 +557,12 @@ export async function checkCooldown(wallet: Address): Promise<CooldownStatus> {
       args: [GBLIN, wallet],
     }),
     client.getBlock(),
+    readProtocolLimits(),
   ]);
 
   const lastDepositNum = Number(lastDeposit);
   const nowOnChain = Number(block.timestamp);
-  const unlockAt = lastDepositNum + COOLDOWN_SECONDS;
+  const unlockAt = lastDepositNum + limits.sellCooldownSeconds;
 
   if (nowOnChain < unlockAt) {
     return {
@@ -671,9 +712,10 @@ export async function buildInvestCalldata(
   const wethExpected = (usdcUnits * parseUnits("1", 18)) / ethPriceScaled;
   const minWethOut = applySlippageBuffer(wethExpected, slippage.bps);
 
-  if (minWethOut < MIN_DEPOSIT_WEI) {
+  const { minDepositWei } = await readProtocolLimits();
+  if (minWethOut < minDepositWei) {
     throw new Error(
-      `DepositTooSmall: ~${formatUnits(wethExpected, 18)} WETH below min ${formatUnits(MIN_DEPOSIT_WEI, 18)} ETH.`
+      `DepositTooSmall: ~${formatUnits(wethExpected, 18)} WETH below min ${formatUnits(minDepositWei, 18)} ETH.`
     );
   }
 

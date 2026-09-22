@@ -5,7 +5,7 @@
  * calldata. Use this immediately before paying an x402 invoice when the
  * agent's USDC balance is insufficient.
  *
- * V6: GBLIN -> USDC in two steps (sellGBLINForEth + Uniswap WETH->USDC).
+ * GBLIN -> USDC in three steps: approve the shares to the Zap, GBLINZap.sellGBLINForEth, Uniswap WETH->USDC.
  * Returns a sequential_txs payload. EOAs sign twice; smart accounts can batch.
  *
  * Paywall: $0.005 USDC per call.
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     // 2. Reverse quote: how much GBLIN must be sold?
     const quote = await quoteGblinForUsdc(usdc);
 
-    // 3. Build V6 calldata (2 steps: sellGBLINForEth + Uniswap WETH->USDC)
+    // 3. Build the calldata (3 steps: approve to the Zap, Zap.sellGBLINForEth, Uniswap WETH->USDC)
     const jit = await buildJitCalldata(quote.gblinToSell, quote.minUsdcOut, quote.slippage.bps, wallet);
 
     return jsonResponse({
@@ -73,8 +73,9 @@ export async function GET(req: Request) {
         slippage_buffer_pct: quote.slippage.pct,
         slippage_reason: quote.slippage.reason,
       },
-      compatibility: { eoa: true, erc4337: true, eip7702: true, note: "Redemption is two steps (sellGBLINForEth + Uniswap WETH->USDC). EOAs sign twice; ERC-4337/EIP-7702 can batch into one UserOp." },
-      gas_hint: 600_000,
+      compatibility: { eoa: true, erc4337: true, eip7702: true, note: "Redemption is three steps (approve to the Zap, Zap.sellGBLINForEth, Uniswap WETH->USDC). An EOA signs three times; ERC-4337/EIP-7702 can batch them into one operation." },
+      gas_hint: 1_100_000,
+      gas_hint_note: "Gas limit for step 2 (the Zap exit uses about 810,000 and forwards gas-capped transfers, so a tight limit reverts). Steps 1 and 3 are standard.",
     });
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 400);

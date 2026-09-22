@@ -184,7 +184,7 @@ await executeAction(action);
 ## Anti-patterns — Never do these
 
 - Never pass `minOut: 0` to any contract call — use the values from `quote_safe_swap`
-- Never invest within 2 minutes of a previous buy (cooldown enforcement)
+- Never sell within the redemption cooldown after a mint for oneself (20 seconds, read live from `GBLINLens.configFees`)
 - Never broadcast calldata without verifying `owner_is_timelock: true` from `get_governance_state`
 - Never assume the RPC is fresh — all tools include a staleness guard
 

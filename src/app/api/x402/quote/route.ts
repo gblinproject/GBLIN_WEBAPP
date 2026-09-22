@@ -14,7 +14,7 @@ import { formatUnits, parseUnits } from "viem";
 import {
   GBLIN_ABI,
   GBLIN,
-  MIN_DEPOSIT_WEI,
+  readProtocolLimits,
   applySlippageBuffer,
   client,
   getDynamicSlippage,
@@ -48,10 +48,11 @@ export async function GET(req: Request) {
     const amountWei = parseUnits(amount, 18);
 
     if (direction === "buy") {
-      if (amountWei < MIN_DEPOSIT_WEI) {
+      const { minDepositWei } = await readProtocolLimits();
+      if (amountWei < minDepositWei) {
         return jsonResponse(
           {
-            error: `DepositTooSmall: minimum buy is ${formatUnits(MIN_DEPOSIT_WEI, 18)} ETH.`,
+            error: `DepositTooSmall: minimum buy is ${formatUnits(minDepositWei, 18)} ETH.`,
             hint: "Increase amount or batch buys.",
           },
           400
@@ -99,8 +100,9 @@ export async function GET(req: Request) {
       slippage_buffer_bps: Number(slippage.bps),
       slippage_reason: slippage.reason,
       cooldown_note:
-        "Sell reverts with CooldownActive if last buy was <2 min ago. Check via /api/x402/health.",
-      next_step: "Call contract.sellGBLINForEth(amount, safe_min_eth_out).",
+        "A sale reverts with CooldownActive during the vault's redemption cooldown after a mint for oneself (live value in /api/x402/health).",
+      next_step:
+        "Approve the shares to the GBLIN Zap, then call GBLINZap.sellGBLINForEth(shares, safe_min_eth_out, venueData, receiver). Allow at least 1,100,000 gas for that call. Redemption in kind (vault.sellGBLIN) needs no quote and no minimum.",
     });
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 500);

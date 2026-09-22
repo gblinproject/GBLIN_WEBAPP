@@ -109,7 +109,7 @@ verifier against this, then switch the URL to the paid route.
 
 - Every paid response includes a \`PAYMENT-RESPONSE\` header with the settlement tx hash.
 - Read endpoints (treasury-state, governance) are heavily cached (30–60s).
-- The /jit endpoint checks the wallet's 2-minute cooldown before quoting.
+- The /jit endpoint checks the vault's redemption cooldown (read live, currently 20 seconds after a mint for oneself) before quoting.
 - For free local use, install the MCP server: \`npx @gblin-protocol/mcp-server\`.
 `;
 
