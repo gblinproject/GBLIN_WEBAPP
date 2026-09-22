@@ -201,17 +201,13 @@ function MigrateBanner() {
     const minEthOut = quote - (quote * SELL_SLIPPAGE_BPS) / 10_000n;
     await simulateContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut], account, chainId: base.id });
 
-    // One confirmation is only offered when the account can already cover the deposit on its
-    // own. Inside an atomic batch the sale funds the deposit, so on chain the order is sound --
-    // but wallets price each call against the balance held BEFORE the batch, and a deposit
-    // larger than that balance makes the arithmetic go negative: the wallet then reports that
-    // there is not even enough ETH for the network fee and refuses the whole request.
-    //
-    // The two-step path has no such problem: the sale lands first, and the deposit is priced
-    // against a balance that already holds the proceeds.
+    // One confirmation whenever the wallet can batch atomically. A requirement that the wallet already hold the
+    // proceeds was added after wallets reported "not enough ETH for the network fee" on the batch; the cause
+    // turned out to be the connector, which sent the request for a different, empty account (fixed in
+    // src/lib/wagmi.ts). Should a wallet still refuse the batch, nothing has moved and the two-step path below
+    // takes over.
     const ethHeld = (await getBalance(wagmiConfig, { address: account, chainId: base.id })).value;
-    const canPrefund = ethHeld >= minEthOut;
-    if (canPrefund && (await supportsAtomicBatch(account))) {
+    if (await supportsAtomicBatch(account)) {
       try {
         setStatus(`Migrating from the ${s.label} in one confirmation…`);
         const minOut = await minSharesFor(minEthOut);
