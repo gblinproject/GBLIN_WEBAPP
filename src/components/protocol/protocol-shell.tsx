@@ -328,49 +328,51 @@ export function ProtocolShell(props: ProtocolShellProps) {
             </button>
           </div>
         </div>
+      </header>
 
-        {menuOpen ? (
-          <div className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto border-t border-white/[0.07] bg-[#050505] lg:hidden">
-            <div className={`${CONTAINER} py-4`}>
-              <nav aria-label="Mobile" className="grid gap-1">
-                {[...PRIMARY_NAV, ...MORE_NAV].map((item) => (
-                  <Link
-                    className={`rounded-lg px-3 py-3 text-base font-medium ${isActive(item.href) ? 'bg-white/[0.07] text-white' : 'text-zinc-300'}`}
-                    href={item.href}
-                    key={item.key}
-                  >
-                    {nav(item.key)}
+      {/* Outside the header on purpose: the header's backdrop blur makes it the containing block of any fixed
+          descendant, which collapsed this panel to the header's height. */}
+      {menuOpen ? (
+        <div className="fixed inset-x-0 bottom-0 top-[calc(4rem+env(safe-area-inset-top))] z-50 overflow-y-auto border-t border-white/[0.07] bg-[#050505] lg:hidden">
+          <div className={`${CONTAINER} py-4`}>
+            <nav aria-label="Mobile" className="grid gap-1">
+              {[...PRIMARY_NAV, ...MORE_NAV].map((item) => (
+                <Link
+                  className={`rounded-lg px-3 py-3 text-base font-medium ${isActive(item.href) ? 'bg-white/[0.07] text-white' : 'text-zinc-300'}`}
+                  href={item.href}
+                  key={item.key}
+                >
+                  {nav(item.key)}
+                </Link>
+              ))}
+            </nav>
+            <div className="mt-4 grid gap-2">
+              {isConnected && address ? (
+                <>
+                  <Link className="g-btn g-btn-secondary w-full font-mono text-xs" href="/account">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {shortenAddress(address)}
                   </Link>
+                  <button className="g-btn g-btn-ghost w-full" onClick={disconnectWallet} type="button">{nav('disconnect')}</button>
+                </>
+              ) : (
+                <HeaderConnect label={nav('connect')} variant="sheet" />
+              )}
+            </div>
+            <div className="mt-6">
+              <p className="g-eyebrow px-3">{nav('contacts')}</p>
+              <div className="mt-2 grid gap-1">
+                {CONTACT_LINKS.map((item) => (
+                  <a className={menuItem} href={item.href} key={item.key} rel={item.external ? 'noreferrer' : undefined} target={item.external ? '_blank' : undefined}>
+                    {item.label}
+                    {item.external ? <ExternalLink className="h-3.5 w-3.5 text-zinc-500" /> : null}
+                  </a>
                 ))}
-              </nav>
-              <div className="mt-4 grid gap-2">
-                {isConnected && address ? (
-                  <>
-                    <Link className="g-btn g-btn-secondary w-full font-mono text-xs" href="/account">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      {shortenAddress(address)}
-                    </Link>
-                    <button className="g-btn g-btn-ghost w-full" onClick={disconnectWallet} type="button">{nav('disconnect')}</button>
-                  </>
-                ) : (
-                  <HeaderConnect label={nav('connect')} variant="sheet" />
-                )}
-              </div>
-              <div className="mt-6">
-                <p className="g-eyebrow px-3">{nav('contacts')}</p>
-                <div className="mt-2 grid gap-1">
-                  {CONTACT_LINKS.map((item) => (
-                    <a className={menuItem} href={item.href} key={item.key} rel={item.external ? 'noreferrer' : undefined} target={item.external ? '_blank' : undefined}>
-                      {item.label}
-                      {item.external ? <ExternalLink className="h-3.5 w-3.5 text-zinc-500" /> : null}
-                    </a>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
-        ) : null}
-      </header>
+        </div>
+      ) : null}
 
       <main className={`${CONTAINER} py-8 sm:py-10`}>{children}</main>
 
