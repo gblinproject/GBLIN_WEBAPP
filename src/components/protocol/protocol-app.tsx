@@ -1041,8 +1041,23 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         setTradeError('Base sequencer unavailable. Try again later.');
       } else if (normalizedMessage.includes('transferfailed')) {
         setTradeError('Transfer failed during settlement. Retry in a moment.');
-      } else if (normalizedMessage.includes('unknown rpc error') || normalizedMessage.includes('internal json-rpc')) {
-        setTradeError('The wallet could not simulate the transaction on its own node. Reload the page and retry; if it keeps failing, redeem in basket tokens, which needs no swap.');
+      } else if (
+        normalizedMessage.includes('unknown rpc error') ||
+        normalizedMessage.includes('internal json-rpc') ||
+        normalizedMessage.includes('different account') ||
+        normalizedMessage.includes('not been authorized') ||
+        normalizedMessage.includes('unauthorized')
+      ) {
+        // The most common cause is an account switch inside the wallet: the site still holds the
+        // account it was connected with, and the wallet refuses a request for an account that is
+        // not the selected one. Name the connected account so the mismatch is visible.
+        const connected = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'the connected account';
+        const accountHint = `Check that the account selected in your wallet is ${connected}, the one connected to this site. If you switched account in the wallet, switch back or connect the new account to gblin.digital, then reload and retry.`;
+        setTradeError(
+          mode === 'sell' && redeemOption === 'eth'
+            ? `The wallet could not prepare the transaction. ${accountHint} If it keeps failing, redeem in basket tokens, which needs no swap.`
+            : `The wallet could not prepare the transaction. ${accountHint}`,
+        );
       } else {
         setTradeError(message.length > 180 ? `${message.slice(0, 177)}...` : message);
       }

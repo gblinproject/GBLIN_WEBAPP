@@ -1211,10 +1211,18 @@ function TokenPicker({
 function ConnectInline({ t }: { t: (key: string) => string }) {
   const { connectors, connect, isPending, error } = useConnect();
   const [open, setOpen] = useState(false);
+  // The shared config carries both SDK connectors (MetaMask SDK, Coinbase SDK) and the wallets the
+  // browser announces through EIP-6963. With the extension installed, both appear under the same name;
+  // the SDK one opens a session of its own, with its own account, and the wallet then rejects the
+  // request as coming from "a different account". Installed wallets therefore win over SDKs of the same
+  // name, as in the wallet menu on /account.
+  const isAnnounced = (c: (typeof connectors)[number]) => c.type === 'injected' || c.id.includes('.');
+  const ordered = [...connectors].sort((a, b) => Number(isAnnounced(b)) - Number(isAnnounced(a)));
   const seen = new Set<string>();
-  const list = connectors.filter((c) => {
-    if (seen.has(c.name)) return false;
-    seen.add(c.name);
+  const list = ordered.filter((c) => {
+    const key = c.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
   if (!open) {

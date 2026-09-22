@@ -94,7 +94,15 @@ function HeaderConnect({ label, variant }: { label: string; variant: 'bar' | 'sh
   const [open, setOpen] = useState(false);
   const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   const seen = new Set<string>();
-  const list = connectors.filter((c) => (seen.has(c.name) ? false : (seen.add(c.name), true)));
+  // Installed wallets (EIP-6963) before SDK connectors of the same name: the MetaMask SDK opens a
+  // session with its own account, and the extension then rejects requests as from "a different account".
+  const isAnnounced = (c: (typeof connectors)[number]) => c.type === 'injected' || c.id.includes('.');
+  const list = [...connectors]
+    .sort((a, b) => Number(isAnnounced(b)) - Number(isAnnounced(a)))
+    .filter((c) => {
+      const key = c.name.toLowerCase();
+      return seen.has(key) ? false : (seen.add(key), true);
+    });
 
   const choices = (
     <div className="grid gap-1">
