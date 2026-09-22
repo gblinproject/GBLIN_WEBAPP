@@ -105,6 +105,9 @@ const ETH_ORACLE: Address = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
 // (rounding, a deposit landing in between), and a deposit call that asks for more than arrived would
 // revert the whole batch. The remainder stays in the wallet.
 const IN_KIND_MARGIN_BPS = 50n;
+// Fee tier of the pools the previous contracts swap their cbBTC and USDC legs through (read on chain from
+// their basket rows: 500 = 0.05%).
+const POOL_FEE_BPS = 5n;
 const VAULT_ABI = parseAbi([
   "function buyGBLIN(uint256 minOut) payable",
   "function buyGBLINInKind(address token, uint256 amountIn, uint256 minOut)",
@@ -286,6 +289,7 @@ function MigrateBanner() {
     // What this route is expected to mint, so it can be compared with the ETH route before either runs.
     const totalEth = await readContract(wagmiConfig, { address: NEW_VAULT, abi: VAULT_VIEW_ABI, functionName: "totalEthValue", args: [0n], chainId: base.id });
     let expectedShares = 0n;
+    let swappedEthValue = 0n; // value of the legs the ETH route would sell on a pool
 
     for (const a of IN_KIND_ASSETS) {
       const held = await readContract(wagmiConfig, { address: a.token, abi: ERC20_ABI, functionName: "balanceOf", args: [s.address], chainId: base.id });
@@ -299,6 +303,7 @@ function MigrateBanner() {
       const [quoted] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_ABI, functionName: "quoteBuy", args: [NEW_VAULT, ethValue], chainId: base.id });
       // `quoteBuy` prices an ETH mint, which pays the protocol and stability fees; an in-kind deposit pays
       // the in-kind fee instead, so the quote is restated on that fee before it is compared or bounded.
+      swappedEthValue += ethValue;
       const fee = await inKindFeeBps(a.index, ethValue, totalEth, ethPrice, a);
       const expected = (quoted * (10_000n - fee)) / 9_990n;
       expectedShares += expected;
@@ -317,7 +322,7 @@ function MigrateBanner() {
       calls.push({ to: NEW_VAULT, value: ethOut, data: withCode(encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] })) });
     }
     if (calls.length === 1) throw new Error("The previous contract holds nothing to migrate.");
-    return { calls, expectedShares };
+    return { calls, expectedShares, swappedEthValue };
   }
 
   async function migrateOne(h: Holding, account: Address) {
@@ -351,7 +356,17 @@ function MigrateBanner() {
         // deposit pushes a row away from its target weight. Redeeming for ETH sells the cbBTC and USDC
         // legs on a pool instead. Both outcomes are quoted first and the better one is used.
         const inKind = await inKindCalls(s, balance).catch(() => null);
-        const ethRouteShares = await minSharesFor(minEthOut);
+        // Both routes are compared on what they are EXPECTED to mint. Comparing against the ETH route's
+        // guaranteed minimum instead would understate it by the slippage bound and tilt every decision
+        // towards the in-kind route.
+        const [ethRouteQuoted] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_ABI, functionName: "quoteBuy", args: [NEW_VAULT, quote], chainId: base.id });
+        // `quoteSellGBLIN` prices the redemption at the oracle, so it ignores what the swaps cost. The pool
+        // fee on the legs the previous contract actually sells (0.05% on each) is taken off here. Price
+        // impact is not modelled: at these sizes the cbBTC/WETH and USDC/WETH pools are deep.
+        const swapped = inKind ? inKind.swappedEthValue : 0n;
+        const ethRouteShares = swapped > 0n && quote > 0n
+          ? ethRouteQuoted - (ethRouteQuoted * POOL_FEE_BPS * swapped) / (10_000n * quote)
+          : ethRouteQuoted;
         const useInKind = inKind !== null && inKind.expectedShares > ethRouteShares;
         setStatus(
           useInKind
