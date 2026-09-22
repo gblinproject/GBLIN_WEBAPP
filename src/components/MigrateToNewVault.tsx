@@ -70,8 +70,44 @@ const LEGACY_ABI = parseAbi([
   "function sellGBLIN(uint256 gblinAmount)",
 ]);
 const LEGACY_COOLDOWN_ABI = parseAbi(["function sellCooldown() view returns (uint256)"]);
+// Reading the previous contract's own redemption arithmetic, so the in-kind route can predict what a
+// redemption pays before it happens: pro rata on the circulating supply, with the stability fund kept
+// out of the WETH leg. Same formula as its `_getPreBurnShares`.
+const LEGACY_SHARE_ABI = parseAbi([
+  "function totalSupply() view returns (uint256)",
+  "function stabilityFund() view returns (uint256)",
+]);
+const ERC20_ABI = parseAbi([
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+]);
+const ORACLE_ABI = parseAbi(["function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)"]);
+// Everything the vault needs to price an in-kind deposit before it happens: the basket row, what the
+// vault already holds of it, and the two parameters of the in-kind fee.
+const VAULT_VIEW_ABI = parseAbi(["function totalEthValue(uint256 extra) view returns (uint256)"]);
+const LENS_VIEW_ABI = parseAbi([
+  "function asset(address v, uint256 i) view returns (address token, address oracle, bool isStable, bool delisted, uint256 baseWeight, uint256 dynamicWeight, bool shielded, bool abandoned)",
+  "function reservedAmount(address v, address token) view returns (uint256)",
+  "function configAuction(address v) view returns (uint256 driftBand, uint256 driftClose, uint256 auctionStart, uint256 auctionCap, uint256 auctionRamp, uint256 volUpdateInterval, uint256 listingDelay, uint256 inKindFee, uint256 inKindTax)",
+]);
+// The three basket assets, identical on both previous contracts and on the vault in service (read on
+// chain before this was written). Oracles are the same Chainlink feeds the vault itself prices with.
+const CBBTC: Address = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
+const USDC: Address = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+// Rows of the vault in service: 0 cbBTC, 1 WETH, 2 USDC. WETH is not listed here because the previous
+// contracts pay their WETH share out as ETH, which mints through `buyGBLIN`.
+const IN_KIND_ASSETS: { token: Address; decimals: number; oracle: Address; index: bigint }[] = [
+  { token: CBBTC, decimals: 8, oracle: "0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D", index: 0n },
+  { token: USDC, decimals: 6, oracle: "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B", index: 2n },
+];
+const ETH_ORACLE: Address = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
+// What the redemption actually pays can be a few units below the reading taken a moment earlier
+// (rounding, a deposit landing in between), and a deposit call that asks for more than arrived would
+// revert the whole batch. The remainder stays in the wallet.
+const IN_KIND_MARGIN_BPS = 50n;
 const VAULT_ABI = parseAbi([
   "function buyGBLIN(uint256 minOut) payable",
+  "function buyGBLINInKind(address token, uint256 amountIn, uint256 minOut)",
   "function isNavReliable() view returns (bool)",
   "function balanceOf(address) view returns (uint256)",
 ]);
@@ -167,6 +203,11 @@ function MigrateBanner() {
     return last + cd > now ? last + cd - now : 0n;
   }
 
+  /** Every call carries the app's on-chain attribution suffix, as the single calls already do. */
+  function withCode(data: `0x${string}`): `0x${string}` {
+    return (data + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}`;
+  }
+
   async function minSharesFor(ethIn: bigint): Promise<bigint> {
     const [out] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_ABI, functionName: "quoteBuy", args: [NEW_VAULT, ethIn], chainId: base.id });
     return out - (out * BUY_SLIPPAGE_BPS) / 10_000n;
@@ -190,6 +231,95 @@ function MigrateBanner() {
     } catch { return false; }
   }
 
+  /**
+   * The in-kind route, which never touches a pool.
+   *
+   * Redeeming for ETH on a previous contract sells the cbBTC and USDC legs on Uniswap: the holder pays
+   * the pool fee and the slippage, and a leg whose swap fails is skipped in silence. Redeeming in kind
+   * pays out the underlying instead, and the vault in service takes each asset at its oracle price. So
+   * the whole migration settles between the two contracts, at net asset value on both sides.
+   *
+   * The amounts are predicted with the previous contract's own formula because an atomic batch has to
+   * be built before the redemption runs. They are then shaded by IN_KIND_MARGIN_BPS so a deposit can
+   * never ask for more than the redemption delivered.
+   */
+  /** The in-kind mint fee the vault will charge for `ethValue` on row `index`, as ShieldLib computes it. */
+  async function inKindFeeBps(index: bigint, ethValue: bigint, totalEth: bigint, ethPrice: bigint, asset: { token: Address; decimals: number; oracle: Address }) {
+    const [, , , , , dynamicWeight] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_VIEW_ABI, functionName: "asset", args: [NEW_VAULT, index], chainId: base.id });
+    const [, , , , , , , floorBps, taxBps] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_VIEW_ABI, functionName: "configAuction", args: [NEW_VAULT], chainId: base.id });
+    const target = (totalEth * dynamicWeight) / 10_000n;
+    if (target === 0n) return floorBps + taxBps;
+    const [held, reserved, price] = await Promise.all([
+      readContract(wagmiConfig, { address: asset.token, abi: ERC20_ABI, functionName: "balanceOf", args: [NEW_VAULT], chainId: base.id }),
+      readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_VIEW_ABI, functionName: "reservedAmount", args: [NEW_VAULT, asset.token], chainId: base.id }),
+      readContract(wagmiConfig, { address: asset.oracle, abi: ORACLE_ABI, functionName: "latestRoundData", chainId: base.id }).then((r) => r[1]),
+    ]);
+    const free = held > reserved ? held - reserved : 0n;
+    const rawCur = (free * price) / ethPrice;
+    const cur = asset.decimals < 18 ? rawCur * 10n ** BigInt(18 - asset.decimals) : rawCur / 10n ** BigInt(asset.decimals - 18);
+    const diffBefore = cur > target ? cur - target : target - cur;
+    const after = cur + ethValue;
+    const diffAfter = after > target ? after - target : target - after;
+    if (diffAfter < diffBefore) return floorBps;
+    let average = (diffBefore + diffAfter) / 2n;
+    if (average > target) average = target;
+    return floorBps + (taxBps * average) / target;
+  }
+
+  async function inKindCalls(s: Source, balance: bigint) {
+    const [supply, heldByContract, stabilityFund, wethBal] = await Promise.all([
+      readContract(wagmiConfig, { address: s.address, abi: LEGACY_SHARE_ABI, functionName: "totalSupply", chainId: base.id }),
+      readContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "balanceOf", args: [s.address], chainId: base.id }),
+      readContract(wagmiConfig, { address: s.address, abi: LEGACY_SHARE_ABI, functionName: "stabilityFund", chainId: base.id }).catch(() => 0n),
+      readContract(wagmiConfig, { address: WETH, abi: ERC20_ABI, functionName: "balanceOf", args: [s.address], chainId: base.id }),
+    ]);
+    const circulating = supply - heldByContract; // the contract's own _circulating()
+    if (circulating === 0n) throw new Error("The previous contract reports no circulating supply.");
+
+    const shade = (v: bigint) => (v * (10_000n - IN_KIND_MARGIN_BPS)) / 10_000n;
+    const ethPrice = (await readContract(wagmiConfig, { address: ETH_ORACLE, abi: ORACLE_ABI, functionName: "latestRoundData", chainId: base.id }))[1];
+    if (ethPrice <= 0n) throw new Error("The ETH price feed is unusable right now.");
+
+    const calls: { to: Address; value?: bigint; data: `0x${string}` }[] = [
+      { to: s.address, data: withCode(encodeFunctionData({ abi: LEGACY_ABI, functionName: "sellGBLIN", args: [balance] })) },
+    ];
+    // What this route is expected to mint, so it can be compared with the ETH route before either runs.
+    const totalEth = await readContract(wagmiConfig, { address: NEW_VAULT, abi: VAULT_VIEW_ABI, functionName: "totalEthValue", args: [0n], chainId: base.id });
+    let expectedShares = 0n;
+
+    for (const a of IN_KIND_ASSETS) {
+      const held = await readContract(wagmiConfig, { address: a.token, abi: ERC20_ABI, functionName: "balanceOf", args: [s.address], chainId: base.id });
+      const amountIn = shade((held * balance) / circulating);
+      if (amountIn === 0n) continue;
+      // ethValue as the vault computes it: the asset's feed against the ETH feed.
+      const price = (await readContract(wagmiConfig, { address: a.oracle, abi: ORACLE_ABI, functionName: "latestRoundData", chainId: base.id }))[1];
+      if (price <= 0n) throw new Error("A price feed is unusable right now.");
+      const raw = (amountIn * price) / ethPrice;
+      const ethValue = a.decimals < 18 ? raw * 10n ** BigInt(18 - a.decimals) : raw / 10n ** BigInt(a.decimals - 18);
+      const [quoted] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_ABI, functionName: "quoteBuy", args: [NEW_VAULT, ethValue], chainId: base.id });
+      // `quoteBuy` prices an ETH mint, which pays the protocol and stability fees; an in-kind deposit pays
+      // the in-kind fee instead, so the quote is restated on that fee before it is compared or bounded.
+      const fee = await inKindFeeBps(a.index, ethValue, totalEth, ethPrice, a);
+      const expected = (quoted * (10_000n - fee)) / 9_990n;
+      expectedShares += expected;
+      const minOut = expected - (expected * 300n) / 10_000n;
+      calls.push({ to: a.token, data: withCode(encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NEW_VAULT, amountIn] })) });
+      calls.push({ to: NEW_VAULT, data: withCode(encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLINInKind", args: [a.token, amountIn, minOut] })) });
+    }
+
+    // The WETH leg is paid out as ETH, net of the stability fund, exactly as the contract does it.
+    const availableWeth = wethBal > stabilityFund ? wethBal - stabilityFund : 0n;
+    const ethOut = shade((availableWeth * balance) / circulating);
+    if (ethOut > 0n) {
+      const [quotedEth] = await readContract(wagmiConfig, { address: NEW_LENS, abi: LENS_ABI, functionName: "quoteBuy", args: [NEW_VAULT, ethOut], chainId: base.id });
+      expectedShares += quotedEth;
+      const minOut = await minSharesFor(ethOut);
+      calls.push({ to: NEW_VAULT, value: ethOut, data: withCode(encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] })) });
+    }
+    if (calls.length === 1) throw new Error("The previous contract holds nothing to migrate.");
+    return { calls, expectedShares };
+  }
+
   async function migrateOne(h: Holding, account: Address) {
     const s = h.source;
     const wait = await cooldownLeft(s, account);
@@ -199,33 +329,52 @@ function MigrateBanner() {
     if (balance === 0n) return;
     const quote = await readContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "quoteSellGBLIN", args: [balance], chainId: base.id });
     const minEthOut = quote - (quote * SELL_SLIPPAGE_BPS) / 10_000n;
-    await simulateContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut], account, chainId: base.id });
+    // Each route is simulated with the redemption it actually uses: in kind for the batch, for ETH for
+    // the fallback. Simulating the ETH redemption for both would let a stalled pool block the route that
+    // does not need a pool at all.
+    const canBatch = await supportsAtomicBatch(account);
+    if (!canBatch) {
+      await simulateContract(wagmiConfig, { address: s.address, abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut], account, chainId: base.id });
+    }
 
-    // One confirmation whenever the wallet can batch atomically. A requirement that the wallet already hold the
-    // proceeds was added after wallets reported "not enough ETH for the network fee" on the batch; the cause
-    // turned out to be the connector, which sent the request for a different, empty account (fixed in
-    // src/lib/wagmi.ts). Should a wallet still refuse the batch, nothing has moved and the two-step path below
-    // takes over.
+    // One confirmation whenever the wallet can batch atomically, and that confirmation carries the in-kind
+    // route: redeem the underlying and deposit it at net asset value, with no pool anywhere. A requirement
+    // that the wallet already hold the proceeds was added after wallets reported "not enough ETH for the
+    // network fee" on the batch; the cause turned out to be the connector, which sent the request for a
+    // different, empty account (fixed in src/lib/wagmi.ts). Should a wallet still refuse the batch, nothing
+    // has moved and the two-step path below takes over.
     const ethHeld = (await getBalance(wagmiConfig, { address: account, chainId: base.id })).value;
-    if (await supportsAtomicBatch(account)) {
+    if (canBatch) {
       try {
-        setStatus(`Migrating from the ${s.label} in one confirmation…`);
-        const minOut = await minSharesFor(minEthOut);
-        const { id } = await sendCalls(wagmiConfig, {
-          account, chainId: base.id, forceAtomic: true,
-          calls: [
-            { to: s.address, data: (encodeFunctionData({ abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
-            { to: NEW_VAULT, value: minEthOut, data: (encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] }) + BUILDER_CODE_SUFFIX.slice(2)) as `0x${string}` },
-          ],
-        });
+        // Two routes, one confirmation either way. In kind redeems the underlying and deposits it at the
+        // oracle price, with no pool anywhere, but the vault charges an in-kind fee that grows when a
+        // deposit pushes a row away from its target weight. Redeeming for ETH sells the cbBTC and USDC
+        // legs on a pool instead. Both outcomes are quoted first and the better one is used.
+        const inKind = await inKindCalls(s, balance).catch(() => null);
+        const ethRouteShares = await minSharesFor(minEthOut);
+        const useInKind = inKind !== null && inKind.expectedShares > ethRouteShares;
+        setStatus(
+          useInKind
+            ? `Migrating from the ${s.label} in one confirmation, without touching a pool…`
+            : `Migrating from the ${s.label} in one confirmation…`,
+        );
+        const calls = useInKind
+          ? inKind.calls
+          : [
+              { to: s.address, data: withCode(encodeFunctionData({ abi: LEGACY_ABI, functionName: "sellGBLINForEth", args: [balance, minEthOut] })) },
+              { to: NEW_VAULT, value: minEthOut, data: withCode(encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [await minSharesFor(minEthOut)] })) },
+            ];
+        const { id } = await sendCalls(wagmiConfig, { account, chainId: base.id, forceAtomic: true, calls });
         const res = await waitForCallsStatus(wagmiConfig, { id });
         if (res.status !== "success") throw new Error("batch not successful");
         return;
       } catch (e) {
         // A refusal in the wallet is a decision, not a fault: it is not retried another way.
         if (explain(e) === null) throw e;
-        // Nothing moved: the batch is atomic, so falling back cannot sell twice.
-        setStatus("The wallet refused the single confirmation. Falling back to two confirmations…");
+        // Nothing moved: the batch is atomic, so falling back cannot sell twice. The fallback redeems
+        // for ETH instead, which sells the cbBTC and USDC legs on Uniswap — the holder pays the pool
+        // fee and the slippage there, which is why the in-kind batch above is tried first.
+        setStatus("The wallet refused the single confirmation. Falling back to two confirmations, which sell the basket legs on a pool…");
       }
     }
 
