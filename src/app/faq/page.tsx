@@ -47,7 +47,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'Why is the total supply of GBLIN so small?',
     answer:
-      'By design. GBLIN has no pre-mine and no fixed supply: tokens only exist when someone deposits value, and each token is priced at NAV — currently thousands of dollars per token — so a small vault means a small supply, down to fractions of a single token. Supply equals vault value divided by NAV, nothing more. If a block explorer shows a total supply below 1 GBLIN, that is the vault being young, not a display error and not a signal that something is broken: scarcity plays no role in the price, the reserves do.',
+      'By design. GBLIN has no pre-mine and no fixed supply: shares exist only when someone deposits value, and each share is priced at NAV, so the supply is simply the vault value divided by NAV. A small vault means a small supply, and a supply of a few shares, or even a fraction of one, is the vault being young rather than a display error or a sign that something is broken. Scarcity plays no part in the price: the reserves do.',
   },
   {
     question: 'What fees does GBLIN charge? Is there a management fee?',
