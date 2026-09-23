@@ -22,6 +22,7 @@
 - **Min deposit:** none (read live: `GBLINLens.configFees(vault).minDeposit`)
 - **Sell cooldown after a mint for oneself:** 20 seconds (read live: `GBLINLens.configFees(vault).sellCooldown`)
 - **License:** MIT (open source, no telemetry)
+- **Supply:** every share is minted against assets at NAV; no premine, team allocation or vesting. Circulating = total minus the unredeemable launch seed at 0x…dEaD. Project-operated wallets are disclosed, not hidden: https://gblin.digital/api/supply (JSON) · plain numbers for aggregators: https://gblin.digital/api/supply/total and https://gblin.digital/api/supply/circulating
 
 ## For AI agent developers
 
