@@ -27,10 +27,12 @@
 
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
-  — 8 free tools (risk regime, attestation sample, stats, coherence, AI Action Receipts seal/get/verify); tool list below.
+  — 21 free tools: risk regime, attestation sample, stats, coherence, AI Action Receipts, and the vault, action and payment tools of the npm package; tool list below.
+- **GBLIN payment relay (for a payer with no ETH):** GET https://gblin.digital/api/relay/gblin quotes the fee (in GBLIN at the NAV);
+  POST a signed payment and a signed fee: both settle in one transaction or neither does.
 - **Attestor address (pin this): `0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4`** — every paid EIP-712 risk attestation is signed by it.
   A signature that recovers to any other address is not ours. Rotations are published here with the date.
-- **AI Action Receipts (seal what your agent did):** $0.01 via x402 at https://gblin.digital/api/x402/seal —
+- **AI Action Receipts (seal what your agent did):** $0.0045 via x402 at https://gblin.digital/api/x402/seal —
   hashes only, portable receipt (signature + Merkle proof + signed checkpoint), root anchored daily on Base;
   free demo and free reading at https://gblin-mcp.gblin-mcp-worker.workers.dev/log
 - **x402 Uptime Observatory (free data):** https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory
@@ -43,16 +45,18 @@
 - **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts
   — every x402 settlement from a third-party ERC-8004 agent (id 59895) with on-chain tx hashes;
   it bought daily until 16 Aug 2026, then its settlement step stopped for every vendor (details on the page)
-- **MCP hosted (Streamable HTTP, no install) — 8 free tools, different from the stdio package:**
+- **MCP hosted (Streamable HTTP, no install) — 21 free tools:**
   `risk.regime` · `risk.attestation_sample` · `protocol.stats` · `protocol.info` ·
-  `coherence.report` · `receipts.seal` (demo, 5/day/IP) · `receipts.get` · `receipts.verify`.
+  `coherence.report` · `receipts.seal` (demo, 5/day/IP) · `receipts.get` · `receipts.verify`, and, from the same
+  source as the npm package, `treasury.state` · `treasury.quote` · `treasury.health` · `treasury.nav_history` · `governance.state` · `auction.state` · `attestation.verify` · `actions.prepare` · `actions.preview` · `actions.status` · `payments.prepare` · `payments.verify` · `payments.relay`.
+  The npm package's snake_case names are accepted there as aliases.
   Dot-notation tree; the old flat names still work as unlisted aliases until 2026-11-21. Prompts: risk_gate, seal_and_verify.
   Resources (not tools): `gblin://howto/attestation`, `gblin://howto/seal`, `gblin://limits`, `gblin://keys` (60 req/min/IP).
   Witness endpoints: /witness and /witness/markovian (we co-sign a third party's log).
   Nothing is paid over MCP; paid = x402 HTTP endpoints. GET-only audit of the live surface:
   /meta (counts + manifest hash) · /tools.json · /resources.json · /conformance · /v1/verify/:index
   (all under https://gblin-mcp.gblin-mcp-worker.workers.dev).
-- **MCP stdio package `@gblin-protocol/mcp-server` (npm) — 13 tools, full treasury toolset:**
+- **MCP stdio package `@gblin-protocol/mcp-server` (npm) — 20 tools, 4 prompts, 4 resources; every tool that returns an object declares an `outputSchema`:**
   1. `get_market_risk_regime` — BTC/ETH risk regime (calm/elevated/crash) + posture (free) ← start here
   2. `get_treasury_state` — live NAV + basket + Crash Shield status
   3. `quote_safe_swap` — preview buy/sell with dynamic slippage
@@ -60,12 +64,20 @@
   5. `invest_usdc_to_gblin` — MEV-safe USDC→GBLIN reinvestment
   6. `analyze_treasury_health` — balance, gas, runway, advice
   7. `get_governance_state` — verify 48h timelock ownership + pending ops
-  8. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding
+  8. `share_skill_with_peer` — portable JSON skill seed for peer agent onboarding (its referral code is a label only: no fee is paid for it)
   9. `get_auction_state` — read the vault's Dutch auction: open or not, current premium over the oracle price, side and gap per row. Bidding is trading with the vault toward its target weights; the premium is the reward, nothing is paid out of the vault
   10. `verify_risk_attestation` — FREE verifier for GBLIN Risk Attestations (EIP-712 recover + freshness + live drift). Mint attestations at https://gblin.digital/api/x402/attestation ($0.003)
   11. `seal_action_demo` — free demo seal (5/day/IP) into the AI Action Receipts log
   12. `get_receipt` — read a sealed receipt by index, with inclusion proof and signed checkpoint
-  13. `how_to_seal_paid` — instructions for unlimited paid seals ($0.01 via x402) and offline verification
+  13. `how_to_seal_paid` — instructions for unlimited paid seals ($0.0045 via x402) and offline verification
+  14. `prepare_gblin_payment` — pay in GBLIN with a signature and no ETH (EIP-3009): returns the EIP-712 message to sign, the calldata and the x402 "exact" payload; the EIP-712 domain is read from the token
+  15. `verify_gblin_authorization` — check a signed GBLIN authorization against the chain (signature, validity window, nonce, balance) before anyone spends gas
+  16. `relay_gblin_payment` — when nobody else will carry the payment: GBLIN's relay settles payment and fee (in GBLIN) in one atomic transaction
+  17. `prepare_action` — unsigned steps for any operation: mint with ETH, WETH or USDC, redeem in kind, exit to ETH or USDC, bid
+  18. `preview_steps` — simulate the steps before signing; decoded reverts, and the gas limit each vault step really needs
+  19. `get_transaction_status` — what a sent transaction did
+  20. `get_nav_history` — NAV per share over time beside ETH/USD and BTC/USD
+  Prompts: `risk_gate`, `pay_in_gblin`, `pay_invoice_just_in_time`, `seal_and_verify`. Resources: `gblin://contracts`, `gblin://payments`, `gblin://keys`, `gblin://limits`.
   (the stdio package keeps flat snake_case names; the hosted server uses the dot-notation tree above)
 
 ## Wallet compatibility

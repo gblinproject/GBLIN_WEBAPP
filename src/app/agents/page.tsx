@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 13 tools, no API key.';
+  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 20 tools, no API key.';
 
 export const metadata: Metadata = {
   title: { absolute: 'Market risk regime and treasury tools for AI agents on Base' },
@@ -54,7 +54,7 @@ const TOOLS = [
   },
   {
     name: 'swap_gblin_to_usdc_jit',
-    purpose: 'Generate ready-to-broadcast calldata for a deterministic two-step GBLIN→USDC redemption right before paying an x402 invoice. Works on EOA, ERC-4337, EIP-7702 (batchable in one UserOp on smart accounts).',
+    purpose: 'Generate ready-to-broadcast calldata for a deterministic three-step GBLIN→USDC exit right before paying an x402 invoice: approve the Zap, exit to ETH through the Zap, swap ETH to USDC. Works on EOA, ERC-4337, EIP-7702 (batchable in one operation on smart accounts). The Zap step carries its gas limit.',
   },
   {
     name: 'invest_usdc_to_gblin',
@@ -70,7 +70,7 @@ const TOOLS = [
   },
   {
     name: 'share_skill_with_peer',
-    purpose: 'Generate a portable JSON skill seed to onboard a peer agent. Embeds a referral code — when the peer executes its first GBLIN tx, a share of the protocol fee is attributed to you via ERC-8021 Builder Code.',
+    purpose: 'Generate a portable JSON skill seed to onboard a peer agent: install instructions, the tool list and a worked example. It carries a referral code as a label only; no fee is paid for it.',
   },
   {
     name: 'get_auction_state',
@@ -79,6 +79,38 @@ const TOOLS = [
   {
     name: 'verify_risk_attestation',
     purpose: 'Verify a peer agent\'s Risk Attestation before trusting it: recomputes the EIP-712 id (tamper check), recovers the signer against GBLIN\'s published attestor, checks the 10-minute freshness, and flags if the on-chain regime has drifted. Free — the paid side is minting one at /api/x402/attestation ($0.003).',
+  },
+  {
+    name: 'prepare_gblin_payment',
+    purpose: 'Pay in GBLIN with a signature and no ETH (EIP-3009, like USDC). Returns the EIP-712 message to sign in your own wallet, the calldata that carries it, and the x402 "exact" payload. The EIP-712 domain is read from the token, not assumed.',
+  },
+  {
+    name: 'verify_gblin_authorization',
+    purpose: 'Check a signed GBLIN authorization against the chain before anyone spends gas: signature (ECDSA or ERC-1271), validity window, nonce, balance. Returns the calldata only when it would settle.',
+  },
+  {
+    name: 'relay_gblin_payment',
+    purpose: 'When nobody else will carry a GBLIN payment on chain: GBLIN\'s relay settles the payment and its fee, paid in GBLIN at the NAV, in one transaction, so both settle or neither does. The payer needs no ETH.',
+  },
+  {
+    name: 'prepare_action',
+    purpose: 'The unsigned steps for any operation on the vault: mint with ETH, WETH or USDC, redeem in kind, exit to ETH or USDC, bid in the auction. Every step through the vault or the Zap carries its gas limit.',
+  },
+  {
+    name: 'preview_steps',
+    purpose: 'Simulate the steps in sequence against the latest block before signing: whether each would succeed, the decoded reason when it would not, the net balance changes, and the gas limit each vault step really needs.',
+  },
+  {
+    name: 'get_transaction_status',
+    purpose: 'After sending: what the transaction did, the fee paid, the tokens moved, and the reason if it reverted.',
+  },
+  {
+    name: 'get_nav_history',
+    purpose: 'NAV per share over time, read at past blocks, beside the ETH/USD and BTC/USD feeds the vault uses, with the change of each and the largest drawdown.',
+  },
+  {
+    name: 'seal_action_demo · get_receipt · how_to_seal_paid',
+    purpose: 'AI Action Receipts: seal the hashes of an action into the public transparency log (demo, 5 per day per IP), read a receipt back with its inclusion proof, and the instructions for unlimited paid seals over x402.',
   },
 ];
 
@@ -126,8 +158,8 @@ await mcp.connect(transport);`,
   {
     name: 'ElizaOS',
     file: 'character plugins',
-    code: `# plugin-gblin is in the official ElizaOS registry
-npm install plugin-gblin@0.5.0
+    code: `# plugin-gblin is published on npm (source: github.com/gblinproject/GBLIN_PLUGIN)
+npm install plugin-gblin
 # then add "plugin-gblin" to the plugins array in your character file`,
   },
 ];
@@ -243,8 +275,9 @@ export default function AgentsPage() {
         </pre>
 
         <p className="mt-4 text-sm text-white/60">
-          No install? Use the hosted MCP (Streamable HTTP, 8 free
-          tools incl. live risk regime + coherence proof):{' '}
+          No install? Use the hosted MCP (Streamable HTTP, 21 free
+          tools: the vault, action and payment tools below under two-level
+          names, plus the live risk regime and the coherence proof):{' '}
           <code className="text-white/80 break-all">
             https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
           </code>{' '}
@@ -272,7 +305,7 @@ export default function AgentsPage() {
             {[
               {
                 title: 'AI Action Receipts — prove what your agent did',
-                body: 'Seal the hashes of any AI action into our public, signed append-only transparency log: $0.01 via x402 at /api/x402/seal, free demo via the hosted MCP tool receipts.seal (mode demo). Input/output go in as hashes only (the action label and metadata you send are published). You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time: not a compliance certificate.',
+                body: 'Seal the hashes of any AI action into our public, signed append-only transparency log: $0.0045 via x402 at /api/x402/seal, free demo via the hosted MCP tool receipts.seal (mode demo). Input/output go in as hashes only (the action label and metadata you send are published). You get a portable receipt — signature, RFC 6962 inclusion proof, signed checkpoint — verifiable offline with a zero-dependency script; the tree root is anchored daily on Base. Evidence of existence and time: not a compliance certificate.',
               },
               {
                 title: 'Yield without breaking x402',
@@ -337,16 +370,18 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      {/* ───────── The 13 stdio tools ───────── */}
+      {/* ───────── The stdio tools ───────── */}
       <section className="px-6 py-16 border-t border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            The 13 tools (npm stdio package)
+            The 20 tools (npm stdio package)
           </h2>
           <p className="mt-3 text-white/60">
             Every tool reads live state from Base mainnet. None of them hold
             keys or broadcast — they return JSON results and ABI-encoded
-            calldata. Your wallet stays in control.
+            calldata. Your wallet stays in control. The package also ships four
+            prompts and four resources, and every tool that returns an object
+            declares an output schema.
           </p>
 
           <div className="mt-10 space-y-3">

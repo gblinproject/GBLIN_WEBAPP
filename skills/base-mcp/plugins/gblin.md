@@ -109,7 +109,7 @@ A perishable (10-minute) proof of the current BTC/ETH risk regime (`calm` | `ele
 GET https://gblin.digital/api/x402/invest?usdc=<decimal>&wallet=<wallet_address>
 ```
 
-Returns a 2-step ordered batch of unsigned calldata. The vault never swaps, so an arbitrary token goes through the Zap: approve USDC to the Zap, then one call that swaps USDC→WETH on the adapter and mints at NAV. Every step carries a non-zero `minOut`.
+Returns a 2-step ordered batch of unsigned calldata. The vault never swaps, so an arbitrary token goes through the Zap: approve USDC to the Zap, then one call that swaps USDC→WETH on the adapter and mints at NAV. Every step carries a non-zero `minOut`. Step 2 carries a `gas` limit: send it with that limit, because the vault reserves gas for its capped transfers and an automatic estimate can revert out of gas.
 
 Response shape:
 
@@ -118,8 +118,9 @@ Response shape:
   "action": "sequential_txs",
   "steps": [
     { "step": 1, "description": "Approve USDC to the GBLIN Zap", "target": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "calldata": "0x...", "value": "0" },
-    { "step": 2, "description": "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", "target": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200", "calldata": "0x...", "value": "0" }
+    { "step": 2, "description": "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", "target": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200", "calldata": "0x...", "value": "0", "gas": "1100000" }
   ],
+  "gas_hint": 1100000,
   "expected": { "usdc_in": "…", "weth_min": "…", "gblin_expected": "…", "gblin_min": "…", "slippage_buffer_pct": 0, "slippage_reason": "…" },
   "security": { "mev_protected": true, "min_outs_set": true }
 }
@@ -131,7 +132,7 @@ Response shape:
 GET https://gblin.digital/api/x402/jit?usdc=<decimal>&wallet=<wallet_address>
 ```
 
-Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **three steps** (approve the shares to the Zap, `GBLINZap.sellGBLINForEth` — redeem in kind and sell every leg, all or nothing — then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs three times; an ERC-4337 / EIP-7702 account can batch them into one operation. Requires the redemption cooldown (20 seconds after a mint for oneself) to have elapsed. Give step 2 a gas limit of at least `gas_hint`: the Zap forwards gas-capped transfers, so a tight limit reverts.
+Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption is **three steps** (approve the shares to the Zap, `GBLINZap.sellGBLINForEth` — redeem in kind and sell every leg, all or nothing — then a Uniswap WETH→USDC swap) returned in the same `sequential_txs` shape as invest. An EOA signs three times; an ERC-4337 / EIP-7702 account can batch them into one operation. Requires the redemption cooldown (20 seconds after a mint for oneself) to have elapsed. Step 2 carries a `gas` limit (also given as `gas_hint`): send it with at least that limit, because the Zap forwards gas-capped transfers and a tight limit reverts.
 
 ```json
 {
@@ -143,6 +144,15 @@ Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption 
   "gas_hint": 1100000
 }
 ```
+
+### Relay a gasless GBLIN payment — fee paid in GBLIN
+
+```
+GET  https://gblin.digital/api/relay/gblin
+POST https://gblin.digital/api/relay/gblin
+```
+
+For a payer that holds GBLIN but no ETH, and has nobody to carry its payment on chain. The GET returns the fee (in GBLIN at the live NAV), its recipient and the token's EIP-712 domain. The payer signs two `TransferWithAuthorization` messages — the payment and the fee, with different nonces — and POSTs `{ payment: { authorization, signature }, fee: { authorization, signature } }`. The relay checks both against the chain, simulates them and submits them in one transaction: both settle or neither does. Not an x402 endpoint: the fee travels inside the signed transfer, so the payer needs neither ETH nor USDC.
 
 ---
 
@@ -160,7 +170,7 @@ Just-In-Time redemption to pay an x402 invoice when USDC runs short. Redemption 
 }
 ```
 
-Include one entry per element of `steps[]`, in the order returned — 2 for invest, 3 for JIT. Never reorder them, and carry each step's `value` over as hex: the JIT swap step sends ETH.
+Include one entry per element of `steps[]`, in the order returned — 2 for invest, 3 for JIT. Never reorder them, and carry each step's `value` over as hex: the JIT swap step sends ETH. A step that carries `gas` needs that limit: if the wallet estimates the batch as a whole and it reverts out of gas, send the steps one by one with the limit given.
 
 ---
 

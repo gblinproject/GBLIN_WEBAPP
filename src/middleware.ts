@@ -191,7 +191,7 @@ const x402Middleware = paymentProxy(
     // other methods has to declare the same thing, or the two diverge and the
     // golden fixtures fail.
     "POST /api/x402/seal": {
-      accepts: accepts("$0.01"),
+      accepts: accepts("$0.0045"),
       description:
         "AI Action Receipts: seal the HASHES of an AI action (input/output as hashes; your action label + meta are published) into GBLIN's signed append-only transparency log. Portable receipt: Ed25519 signature + RFC 6962 inclusion proof + C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time — not a compliance certificate. Free reads + demo: gblin-mcp.gblin-mcp-worker.workers.dev/log. Offline verifier: github.com/gblinproject/gblin-treasury-risk-regime",
       mimeType: "application/json",
@@ -518,6 +518,7 @@ const x402Middleware = paymentProxy(
               gas_health: {
                 status: "sufficient",
                 eth_balance: "0.001234",
+                exit_cost_eth: "0.000006354",
                 warning: null,
               },
               cooldown: {
@@ -526,12 +527,13 @@ const x402Middleware = paymentProxy(
                 last_deposit_unix: 1747500000,
               },
               recommendation: {
-                target_gblin_pct: 90,
-                target_usdc_pct: 10,
-                action: "hold",
+                target_gblin_pct: 82.42,
+                target_usdc_pct: 17.58,
+                usdc_reserve_usd: 10.5,
+                action: "rebalance_to_usdc",
                 runway_days: 2,
                 reasoning:
-                  "Low burn rate ($1.5/day): maximize GBLIN exposure (90%) for treasury yield. JIT-swap on demand.",
+                  "USDC covers 2 days against a reserve of 7: exit enough GBLIN to rebuild the reserve (/api/x402/jit).",
               },
             },
           },

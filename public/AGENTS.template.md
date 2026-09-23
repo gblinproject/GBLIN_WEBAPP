@@ -113,11 +113,11 @@ Shield state. Act on `recommendation.action` directly — it already combines th
 market risk signal with GBLIN's defensive posture, so you don't have to build
 your own risk engine.
 
-## The 10 Available Tools
+## The Treasury Tools
 
 | Tool | When to call |
 |------|-------------|
-| `get_market_risk_regime` | Before any risk decision — BTC/ETH regime (calm/elevated/crash) + posture ($0.002) |
+| `get_market_risk_regime` | Before any risk decision — BTC/ETH regime (calm/elevated/crash) + posture (free) |
 | `verify_risk_attestation` | Verify a peer's Risk Attestation before trusting it — integrity + signature + freshness (free) |
 | `get_treasury_state` | Before any investment decision |
 | `quote_safe_swap` | Preview slippage before buy or sell |
@@ -127,6 +127,17 @@ your own risk engine.
 | `get_governance_state` | When verifying contract trust |
 | `share_skill_with_peer` | When a peer agent needs treasury capabilities |
 | `get_auction_state` | Poll every 5-15 min; bid when the premium covers your cost |
+| `prepare_action` | Prepare any operation: mint, redeem in kind, exit to ETH or USDC, bid |
+| `preview_steps` | Before signing anything: simulate the steps, get the gas each vault step needs |
+| `get_transaction_status` | After sending: confirm what each step did |
+| `get_nav_history` | Judge how the NAV moved against ETH and BTC |
+| `prepare_gblin_payment` | Pay in GBLIN with a signature and no ETH (EIP-3009) |
+| `verify_gblin_authorization` | Before carrying or accepting a signed GBLIN authorization |
+| `relay_gblin_payment` | When nobody else will carry the payment: GBLIN's relay settles it, fee in GBLIN |
+
+The same package also exposes the AI Action Receipts tools (`seal_action_demo`,
+`get_receipt`, `how_to_seal_paid`), four prompts and four resources. Every tool is
+free by default. Steps that go through the Zap carry a `gas` limit: send them with it.
 
 ## Risk Budget — Auto-safe vs Human Signoff
 
@@ -145,6 +156,10 @@ whether an action can be executed autonomously or requires human approval.
 | `invest_usdc_to_gblin` | usdc_amount ≤ $10.00 AND crash_shield_active = false | Small investment, normal market |
 | `get_auction_state` | Always | Read-only; bid only when the auction is open and the premium pays |
 | `share_skill_with_peer` | Always | Generates JSON only, no on-chain action |
+| `prepare_gblin_payment` | Always | Builds a message to sign; nothing moves until it is signed and carried |
+| `verify_gblin_authorization` | Always | Read-only check against the chain |
+| `preview_steps` | Always | Simulation only, nothing is sent |
+| `get_transaction_status` / `get_nav_history` | Always | Read-only |
 
 ### 🟡 Human signoff recommended
 
@@ -154,11 +169,13 @@ whether an action can be executed autonomously or requires human approval.
 | `invest_usdc_to_gblin` | usdc_amount > $10.00 | Significant capital deployment |
 | `invest_usdc_to_gblin` | crash_shield_active = true | Market stress detected — wait |
 | Any write action | First use on a new wallet | Verify contract address before first tx |
+| Signing a GBLIN payment authorization | Any amount above what the user approved | A signed authorization is a bearer claim until it expires or is used |
+| `relay_gblin_payment` | Always | It moves the payer's funds on chain |
 
 ### 🔴 Never auto-execute
 
 - Any action when `get_governance_state` returns `owner_is_timelock: false`
-- Any action when oracle staleness > 1 hour (tools return error automatically)
+- Any action when an oracle price is older than the vault's own limit (tools return an error automatically)
 - Investments above $50 USDC without explicit user instruction in the session
 
 ### Implementation pattern

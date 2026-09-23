@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "GBLIN Protocol",
-  "description": "A reserve asset for AI-agent treasuries on Base, backed one-to-one by an on-chain cbBTC / WETH / USDC basket with a Crash Shield that cuts risk-asset weights during drawdowns (it fired on mainnet once: tx 0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca). In-kind redemption any time. Risk policy is public code; risk state is a signed observable. Free: the market risk regime (calm | elevated | crash) over MCP, and a public append-only transparency log for AI actions (RFC 6962, Ed25519-signed, cosigned by an independent witness, root anchored daily on Base via EAS) with a demo seal. Paid, via x402 on Base (USDC, 0.001 to 0.03 per call): EIP-712-signed risk attestations verifiable offline, unlimited action receipts (0.01 per seal), treasury and governance state, quotes, JIT swaps. Two MCP servers: a hosted Streamable-HTTP one with 8 tools (no install, no key) and the npm package @gblin-protocol/mcp-server with 13 stdio tools. Pre-registered, hash-pinned promises about our own conduct are probed every 10 minutes and sealed daily on Base (Coherence Proof). Slither static analysis on the live contract: 0 critical, 0 high; no manual third-party audit; parameters are changeable by a 48h timelock.",
+  "description": "A reserve asset for AI-agent treasuries on Base, backed one-to-one by an on-chain cbBTC / WETH / USDC basket with a Crash Shield that cuts risk-asset weights during drawdowns (it fired on mainnet once: tx 0x896be221989930776972c78f81e2be9081c90d0027c14f7cd74bf51b9ad0acca). In-kind redemption any time. Risk policy is public code; risk state is a signed observable. Free: the market risk regime (calm | elevated | crash) over MCP, and a public append-only transparency log for AI actions (RFC 6962, Ed25519-signed, cosigned by an independent witness, root anchored daily on Base via EAS) with a demo seal. Paid, via x402 on Base (USDC, 0.001 to 0.03 per call): EIP-712-signed risk attestations verifiable offline, unlimited action receipts (0.0045 per seal), treasury and governance state, quotes, JIT swaps. Two MCP servers: a hosted Streamable-HTTP one with 21 tools (no install, no key) and the npm package @gblin-protocol/mcp-server with 20 stdio tools: prepare, simulate and follow any operation on the vault, and gasless payments in GBLIN (EIP-3009) with an optional relay. Pre-registered, hash-pinned promises about our own conduct are probed every 10 minutes and sealed daily on Base (Coherence Proof). Slither static analysis on the live contract: 0 critical, 0 high; no manual third-party audit; parameters are changeable by a 48h timelock.",
   "image": "https://gblin.digital/LOGO_GBLIN.png",
   "services": [
     {
@@ -54,12 +54,10 @@
     "reputation"
   ],
   "active": true,
-
   "x402support": true,
   "supportedTrusts": [
     "reputation"
   ],
-
   "mcp": {
     "hosted": {
       "endpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp",
@@ -72,7 +70,20 @@
         "receipts.seal",
         "receipts.get",
         "receipts.verify",
-        "coherence.report"
+        "coherence.report",
+        "treasury.state",
+        "treasury.quote",
+        "treasury.health",
+        "treasury.nav_history",
+        "actions.prepare",
+        "actions.preview",
+        "actions.status",
+        "governance.state",
+        "auction.state",
+        "payments.prepare",
+        "payments.verify",
+        "payments.relay",
+        "attestation.verify"
       ],
       "audit": "https://gblin-mcp.gblin-mcp-worker.workers.dev/meta",
       "registry": "io.github.gblinproject/gblin-treasury-risk-regime",
@@ -94,9 +105,28 @@
         "verify_risk_attestation",
         "seal_action_demo",
         "get_receipt",
-        "how_to_seal_paid"
+        "how_to_seal_paid",
+        "prepare_gblin_payment",
+        "verify_gblin_authorization",
+        "relay_gblin_payment",
+        "prepare_action",
+        "preview_steps",
+        "get_transaction_status",
+        "get_nav_history"
       ],
-      "note": "Different, larger tool set than the hosted server. The stdio names are NOT valid on the hosted endpoint; the hosted server answers such calls with a pointer to the equivalent."
+      "prompts": [
+        "risk_gate",
+        "pay_in_gblin",
+        "pay_invoice_just_in_time",
+        "seal_and_verify"
+      ],
+      "resources": [
+        "gblin://contracts",
+        "gblin://payments",
+        "gblin://keys",
+        "gblin://limits"
+      ],
+      "note": "Runs locally over stdio. Its vault, action and payment tools are also served by the hosted server under two-level names, from the same source; the hosted server accepts these names as aliases."
     }
   },
   "x402": {
@@ -108,7 +138,8 @@
     "network": "eip155:8453",
     "asset": "USDC 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "pay_to": "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B",
-    "free_sample": "https://gblin.digital/api/x402/attestation-sample"
+    "free_sample": "https://gblin.digital/api/x402/attestation-sample",
+    "relay": "https://gblin.digital/api/relay/gblin"
   },
   "proof": {
     "receipts_log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
@@ -126,12 +157,12 @@
     "lens": "0xfCFea8027019E8551A1f09AD91532471F5D26f61",
     "zap": "0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200",
     "owner_timelock_48h": "0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd",
-    "fee_wallet": "0x0ebA5d314F4f5Dcb7A094953Fa9311a45172dd1B"
+    "fee_recipient": "0x9FFa542E369C53af62380296092EC669f329a9ee"
   },
   "docs": {
     "llms_txt": "https://gblin.digital/llms.txt",
     "agents": "https://gblin.digital/agents",
     "repository": "https://github.com/gblinproject/gblin-treasury-risk-regime"
   },
-  "updated": "2026-09-10"
+  "updated": "2026-09-23"
 }

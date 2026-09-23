@@ -677,11 +677,26 @@ function AccountPageInner() {
             });
             await provider.waitForTransaction(approveHash, 1, 60000);
           }
+          const buyArgs = [token, amountIn, minWethOut, minAmountOut, VENUE_FEE_500, address as `0x${string}`] as const;
+          // The mint's transfers run under a gas cap and need that reserve up front: pass a limit a quarter
+          // above the estimate so a wallet does not set it on the edge. Only gas used is paid.
+          let gas: bigint | undefined;
+          try {
+            const est = await getProvider().estimateGas({
+              from: address,
+              to: ZAP_ADDRESS,
+              data: encodeFunctionData({ abi: ZAP_WRITE_ABI, functionName: 'buyGBLINWithToken', args: buyArgs }),
+            });
+            gas = (est * 125n) / 100n;
+          } catch {
+            // Leave the estimate to the wallet: it will surface the revert reason.
+          }
           const hash = await writeContractAsync({ account: address as `0x${string}`, dataSuffix: BUILDER_CODE_SUFFIX,
             address: ZAP_ADDRESS as `0x${string}`,
             abi: ZAP_WRITE_ABI,
             functionName: 'buyGBLINWithToken',
-            args: [token, amountIn, minWethOut, minAmountOut, VENUE_FEE_500, address as `0x${string}`],
+            args: buyArgs,
+            ...(gas ? { gas } : {}),
             chainId: base.id,
           });
           setTradeTxHash(hash);

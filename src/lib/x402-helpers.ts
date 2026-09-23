@@ -48,7 +48,9 @@ export const SWAP_ROUTER_02: Address = "0x2626664c2603336E57B271c5C0b26F421741e4
 // ─── Protocol Constants ─────────────────────────────────────────────────────
 // The minimum deposit and the redemption cooldown are vault parameters that governance can change:
 // they are read live through the Lens (readProtocolLimits), never hard-coded here.
-export const ORACLE_STALENESS_SECONDS = 86_400;
+// Fallback for the oldest ETH/USD answer accepted; the live limit is the vault's own oracleAge,
+// read through the Lens (readProtocolLimits). This value is used only when that read fails.
+export const ORACLE_STALENESS_SECONDS = 7_200;
 export const SLIPPAGE_NORMAL_BPS = 250n;
 export const SLIPPAGE_CRASH_SHIELD_BPS = 400n;
 export const BPS_DENOMINATOR = 10_000n;
@@ -377,9 +379,12 @@ export async function getEthPriceUsd(): Promise<number> {
   }
 
   const nowSec = Math.floor(now / 1_000);
-  if (nowSec - updatedAt > ORACLE_STALENESS_SECONDS) {
+  const maxAge = await readProtocolLimits()
+    .then((l) => l.oracleAgeSeconds)
+    .catch(() => ORACLE_STALENESS_SECONDS);
+  if (nowSec - updatedAt > maxAge) {
     throw new Error(
-      `OracleStale: Chainlink ETH/USD feed is ${nowSec - updatedAt}s old (max ${ORACLE_STALENESS_SECONDS}s).`
+      `OracleStale: Chainlink ETH/USD feed is ${nowSec - updatedAt}s old (the vault accepts at most ${maxAge}s).`
     );
   }
 
@@ -530,6 +535,8 @@ export interface CooldownStatus {
 export interface ProtocolLimits {
   minDepositWei: bigint;
   sellCooldownSeconds: number;
+  /** The oldest price the vault accepts from a volatile feed when it prices its NAV. */
+  oracleAgeSeconds: number;
 }
 
 let limitsCache: { value: ProtocolLimits; at: number } | null = null;
@@ -543,7 +550,7 @@ export async function readProtocolLimits(): Promise<ProtocolLimits> {
     functionName: "configFees",
     args: [GBLIN],
   });
-  const value = { minDepositWei: r[2], sellCooldownSeconds: Number(r[5]) };
+  const value = { minDepositWei: r[2], sellCooldownSeconds: Number(r[5]), oracleAgeSeconds: Number(r[3]) || ORACLE_STALENESS_SECONDS };
   limitsCache = { value, at: Date.now() };
   return value;
 }
@@ -608,7 +615,7 @@ export async function quoteGblinForUsdc(usdcTargetStr: string): Promise<{
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// JIT CALLDATA — sellGBLINForToken (single atomic tx)
+// JIT CALLDATA — GBLIN -> USDC in three steps through the Zap
 // ───────────────────────────────────────────────────────────────────────────
 
 export interface JitStep {
@@ -617,7 +624,18 @@ export interface JitStep {
   target: Address;
   calldata: `0x${string}`;
   value: string;
+  /** Explicit gas limit, set on the steps that go through the Zap. */
+  gas?: string;
 }
+
+/**
+ * Gas limit set on every step that goes through the Zap. The vault forwards gas-capped transfers
+ * and keeps a reserve for them (the 63/64 rule), so a wallet's automatic estimate can land just
+ * under what the call needs and revert out of gas. Measured on a fork of Base: the exit uses about
+ * 810,000 and needs a limit above 1,013,000; the investment uses about 720,000 against an estimate
+ * of 855,000. On Base the extra limit costs nothing unless it is used.
+ */
+export const ZAP_GAS_LIMIT = 1_100_000;
 
 // The vault redeems in kind and never swaps, so GBLIN -> USDC is three steps:
 //   1) approve the shares to the Zap (it pulls them);
@@ -676,14 +694,14 @@ export async function buildJitCalldata(
     minEthOut,
     steps: [
       { step: 1, description: "Approve the shares to the GBLIN Zap", target: GBLIN, calldata: withBuilderSuffix(approveCalldata), value: "0" },
-      { step: 2, description: "Redeem in kind and sell the legs for ETH through the Zap (all or nothing)", target: GBLIN_ZAP, calldata: withBuilderSuffix(sellCalldata), value: "0" },
+      { step: 2, description: "Redeem in kind and sell the legs for ETH through the Zap (all or nothing)", target: GBLIN_ZAP, calldata: withBuilderSuffix(sellCalldata), value: "0", gas: ZAP_GAS_LIMIT.toString() },
       { step: 3, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: minEthOut.toString() },
     ],
   };
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// INVEST CALLDATA — USDC → GBLIN (4 sequential txs: bypass broken exactInput)
+// INVEST CALLDATA — USDC → GBLIN in two steps through the Zap
 // ───────────────────────────────────────────────────────────────────────────
 
 export interface InvestStep {
@@ -692,6 +710,8 @@ export interface InvestStep {
   target: Address;
   calldata: `0x${string}`;
   value: string;
+  /** Explicit gas limit, set on the steps that go through the Zap. */
+  gas?: string;
 }
 
 export async function buildInvestCalldata(
@@ -748,7 +768,7 @@ export async function buildInvestCalldata(
   return {
     steps: [
       { step: 1, description: "Approve USDC to the GBLIN Zap", target: USDC, calldata: withBuilderSuffix(approveZapCalldata), value: "0" },
-      { step: 2, description: "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", target: GBLIN_ZAP, calldata: withBuilderSuffix(buyCalldata), value: "0" },
+      { step: 2, description: "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", target: GBLIN_ZAP, calldata: withBuilderSuffix(buyCalldata), value: "0", gas: ZAP_GAS_LIMIT.toString() },
     ],
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),

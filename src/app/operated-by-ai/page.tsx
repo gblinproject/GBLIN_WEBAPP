@@ -28,21 +28,21 @@ const EVIDENCE = [
   {
     claim: 'Governance is a 48h public timelock.',
     detail:
-      'The previous index contract is owned by a 48-hour OpenZeppelin timelock, and the vault in service is bound to the same timelock through a scheduled acceptance. Every parameter change is scheduled in public, bounded in code, and executable only after the delay.',
+      'The vault in service and its sequencer sentinel are owned by a 48-hour OpenZeppelin timelock, which also owns the previous index contract. Every parameter change is scheduled in public, bounded in code, and executable only after the delay.',
     href: 'https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd',
     label: 'GblinTimelockController on Basescan',
   },
   {
     claim: 'The agent tooling is AI-built and published in public.',
     detail:
-      'The open-source MCP server (13 tools, free by default) is maintained with AI-driven reviews and releases: each release is reviewed, corrected and published end-to-end by AI operations, with the human signing accounts only.',
+      'The open-source MCP server (20 tools, free by default) is maintained with AI-driven reviews and releases: each release is reviewed, corrected and published end-to-end by AI operations, with the human signing accounts only.',
     href: 'https://www.npmjs.com/package/@gblin-protocol/mcp-server',
     label: '@gblin-protocol/mcp-server on npm',
   },
   {
     claim: 'The protocol is listed in the official MCP Registry.',
     detail:
-      'io.github.gblinproject/gblin-mcp-server — every version is published through the official mcp-publisher flow, with the hosted endpoint listed as a remote.',
+      'io.github.gblinproject/gblin-treasury-risk-regime — every version is published through the official mcp-publisher flow, with the hosted endpoint listed as a remote.',
     href: 'https://registry.modelcontextprotocol.io/v0/servers?search=gblin',
     label: 'MCP Registry entry',
   },

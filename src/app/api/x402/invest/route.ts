@@ -1,14 +1,13 @@
 /**
  * GET /api/x402/invest?usdc=10&wallet=0x...
  *
- * Treasury accumulation: converts USDC earnings into GBLIN. Returns four
- * sequential transactions (bypasses broken exactInput in contract):
- *   1. approve USDC to SwapRouter02
- *   2. swap USDC→WETH via exactInputSingle
- *   3. approve WETH to GBLIN
- *   4. buyGBLINWithToken with WETH as tokenIn
+ * Treasury accumulation: converts USDC into GBLIN. Returns two sequential
+ * transactions:
+ *   1. approve USDC to the GBLIN Zap
+ *   2. GBLINZap.buyGBLINWithToken: swaps USDC to WETH and mints at NAV in one call
  *
- * All transactions have non-zero minOut values to prevent MEV sandwich.
+ * Both bounds are non-zero (minWethOut on the swap, minGblinOut on the mint).
+ * Step 2 carries an explicit gas limit: an automatic estimate can fall short.
  *
  * Paywall: $0.002 USDC per call.
  */
@@ -16,6 +15,7 @@
 import {
   GBLIN,
   USDC,
+  ZAP_GAS_LIMIT,
   buildInvestCalldata,
   getDynamicSlippage,
   jsonResponse,
@@ -51,6 +51,8 @@ export async function GET(req: Request) {
     return jsonResponse({
       action: "sequential_txs",
       steps: calldata.steps,
+      gas_hint: ZAP_GAS_LIMIT,
+      gas_hint_note: "Send step 2 with the gas it carries: the vault reserves gas for its capped transfers, so an automatic estimate can revert out of gas.",
       expected: {
         usdc_in: usdc,
         weth_min: calldata.minWethOut,

@@ -54,7 +54,7 @@ The middleware is a single file: [`src/middleware.ts`](src/middleware.ts). Each 
 Seal the **hashes** of any AI action (never the content) into GBLIN's public
 append-only transparency log and get back a portable, offline-verifiable receipt.
 
-- **Seal (paid, unlimited):** `POST /api/x402/seal` — $0.01 USDC via x402 on Base.
+- **Seal (paid, unlimited):** `POST /api/x402/seal` — $0.0045 USDC via x402 on Base.
   Body: `{action, input_hash, output_hash?, agent_id?, tool?, meta?}` (hashes = sha256 hex).
 - **Demo (free, 5/day/IP):** `POST https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo`
   (receipts are marked `demo:true`), or the hosted MCP tool `seal_action_demo`.

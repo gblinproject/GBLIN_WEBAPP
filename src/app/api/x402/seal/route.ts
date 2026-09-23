@@ -1,5 +1,5 @@
 /**
- * POST /api/x402/seal — AI ACTION RECEIPTS (paid, $0.01 USDC via x402).
+ * POST /api/x402/seal — AI ACTION RECEIPTS (paid, $0.0045 USDC via x402).
  *
  * Seals the HASHES of an AI action (never content) into GBLIN's public
  * append-only transparency log and returns a portable receipt: Ed25519
@@ -195,7 +195,7 @@ function postOnly() {
   return Response.json(
     {
       error: "POST only",
-      how: "POST JSON {action, input_hash, output_hash?, agent_id?, tool?, meta?} with x402 payment ($0.01). Free demo (5/day/IP): POST https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo. Docs: /api/x402/llms.txt",
+      how: "POST JSON {action, input_hash, output_hash?, agent_id?, tool?, meta?} with x402 payment ($0.0045). Free demo (5/day/IP): POST https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo. Docs: /api/x402/llms.txt",
     },
     { status: 405, headers: { allow: "POST", "cache-control": "public, max-age=300" } },
   );

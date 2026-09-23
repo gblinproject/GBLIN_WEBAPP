@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "GBLIN Protocol \u2014 x402 API",
+    "title": "GBLIN Protocol — x402 API",
     "version": "1.0.0",
     "description": "GBLIN is the Treasury Standard for AI Agents on Base mainnet: an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield. These endpoints let agents read protocol state, get safe swap quotes and generate ready-to-broadcast calldata. Paid via x402 (USDC on Base, chain id 8453).",
     "contact": {
@@ -25,7 +25,7 @@
     "network": "eip155:8453",
     "chainId": 8453,
     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "facilitator": "PayAI (https://facilitator.payai.network)",
+    "facilitator": "Coinbase CDP (https://api.cdp.coinbase.com/platform/v2/x402); PayAI (https://facilitator.payai.network) only when CDP is disabled",
     "requirementsHeader": "PAYMENT-REQUIRED",
     "signatureHeader": "PAYMENT-SIGNATURE",
     "responseHeader": "PAYMENT-RESPONSE",
@@ -233,6 +233,20 @@
       "get": {
         "summary": "Risk Attestation (perishable, verifiable)",
         "description": "Perishable (10-minute) proof of the current BTC/ETH risk regime (calm | elevated | crash) derived from the on-chain Crash Shield. Attach it to your action as portable proof-of-diligence; any counterparty verifies it in one step (EIP-712 signature when an attestor key is configured, else a tamper-evident attestation_id). Expires in 10 minutes, so re-fetch each decision cycle.\n\nRequires an x402 USDC payment on Base mainnet ($0.003 USDC). Free verifier: verify_risk_attestation in @gblin-protocol/mcp-server.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required (x402, USDC on Base)"
+          }
+        }
+      }
+    },
+    "/api/x402/seal": {
+      "post": {
+        "summary": "AI Action Receipt: seal the hashes of an action",
+        "description": "Seal the SHA-256 hashes of an AI action into GBLIN's public append-only RFC 6962 transparency log. Returns a portable receipt: Ed25519 signature, inclusion proof and signed checkpoint; the tree root is anchored daily on Base. Body: {action, input_hash, output_hash?, agent_id?, tool?, meta?}. The labels are public; only the hashes protect the content.\n\nRequires an x402 USDC payment on Base mainnet ($0.0045 USDC). Free demo (5 per day per IP) and free reading: https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
         "responses": {
           "200": {
             "description": "Success"

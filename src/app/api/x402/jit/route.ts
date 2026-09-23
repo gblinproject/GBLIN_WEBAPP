@@ -6,7 +6,8 @@
  * agent's USDC balance is insufficient.
  *
  * GBLIN -> USDC in three steps: approve the shares to the Zap, GBLINZap.sellGBLINForEth, Uniswap WETH->USDC.
- * Returns a sequential_txs payload. EOAs sign twice; smart accounts can batch.
+ * Returns a sequential_txs payload. EOAs sign three times; smart accounts can batch.
+ * Step 2 carries an explicit gas limit: an automatic estimate can fall short.
  *
  * Paywall: $0.005 USDC per call.
  */

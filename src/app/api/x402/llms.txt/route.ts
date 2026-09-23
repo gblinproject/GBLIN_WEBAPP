@@ -26,10 +26,13 @@ Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
 MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
-             no install, 8 free tools — a DIFFERENT set from the stdio package:
-             risk.regime · risk.attestation_sample · protocol.stats ·
-             protocol.info · coherence.report · receipts.seal (demo) ·
-             receipts.get · receipts.verify (old flat names still work as aliases). Resources: gblin://howto/attestation, gblin://howto/seal,
+             no install, 21 free tools: risk.regime · risk.attestation_sample ·
+             protocol.stats · protocol.info · coherence.report · receipts.seal (demo) ·
+             receipts.get · receipts.verify, and from the npm package's own source
+             treasury.* · actions.prepare/preview/status · payments.prepare/verify/relay ·
+             governance.state · auction.state · attestation.verify (npm names work as aliases).
+Relay:       https://gblin.digital/api/relay/gblin — carries a signed GBLIN payment for a
+             payer with no ETH; fee in GBLIN, payment and fee settle in one transaction. Resources: gblin://howto/attestation, gblin://howto/seal,
              gblin://limits, gblin://keys (60 req/min/IP). Nothing is paid over MCP.
              GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i
              Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
@@ -73,7 +76,7 @@ will not change without versioning): \`regime\` (calm|elevated|crash),
 A third-party ERC-8004 agent pins this attestation as a required input of its
 published decision rule and bought it daily until 16 Aug 2026 (their settlement step then stopped for every vendor; see gblin.digital/receipts).
 
-### POST /api/x402/seal                     ($0.01)
+### POST /api/x402/seal                     ($0.0045)
 AI ACTION RECEIPTS — seal the HASHES of an AI action into GBLIN's public,
 signed append-only transparency log (origin: gblin.digital/receipts-log).
 Body: {action, input_hash(sha256 hex), output_hash?, agent_id?, tool?, meta?<=512ch}.
