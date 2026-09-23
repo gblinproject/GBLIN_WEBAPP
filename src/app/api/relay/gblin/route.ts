@@ -15,6 +15,7 @@
  */
 
 import {
+  createPublicClient,
   createWalletClient,
   encodeFunctionData,
   formatUnits,
@@ -94,6 +95,26 @@ async function quote() {
   if (!(nav > 0)) throw new Error("The NAV cannot be priced right now.");
   const feeShares = parseUnits((RELAY_FEE_USD / nav).toFixed(18), 18) + 1n;
   return { nav, feeShares };
+}
+
+/**
+ * Receipts are read from several endpoints, because some public RPCs refuse eth_getTransactionReceipt
+ * outright (publicnode answers every receipt request as an archive request), and a refusal is not the
+ * same as "not mined yet". Each is asked in turn until one returns the receipt or the time runs out.
+ */
+const RECEIPT_CLIENTS = [RPC_URL, "https://mainnet.base.org", "https://base.drpc.org", "https://gateway.tenderly.co/public/base"].map(
+  (url) => createPublicClient({ chain: base, transport: http(url, { timeout: 8_000, retryCount: 0 }) })
+);
+async function waitForReceipt(hash: Hex, timeoutMs: number) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) {
+    for (const c of RECEIPT_CLIENTS) {
+      const receipt = await c.getTransactionReceipt({ hash }).catch(() => null);
+      if (receipt) return receipt;
+    }
+    await new Promise((r) => setTimeout(r, 1_500));
+  }
+  return null;
 }
 
 /** Per-instance limit: a few relays per IP per minute. The fee is the real guard; this caps bursts. */
@@ -246,7 +267,7 @@ export async function POST(req: Request) {
     }
 
     const hash = await r.wallet.sendTransaction({ to: MULTICALL3, data, gas: RELAY_GAS_LIMIT, chain: base });
-    const receipt = await client.waitForTransactionReceipt({ hash, timeout: 30_000 }).catch(() => null);
+    const receipt = await waitForReceipt(hash, 30_000);
     return jsonResponse(
       {
         status: receipt ? (receipt.status === "success" ? "settled" : "reverted") : "submitted",

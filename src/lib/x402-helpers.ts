@@ -26,7 +26,21 @@ import { base } from "viem/chains";
 // ─── Network ────────────────────────────────────────────────────────────────
 export const BASE_CHAIN_ID = 8453;
 const DEFAULT_RPC_URL = "https://base-rpc.publicnode.com";
-export const RPC_URL = process.env.GBLIN_RPC_URL ?? DEFAULT_RPC_URL;
+// Alchemy first when the key is configured: it serves receipts and historical state, which publicnode
+// refuses as "archive requests", and a relay that cannot read a receipt cannot tell whether it settled.
+// Publicnode stays only as the last resort for plain reads.
+const ALCHEMY_KEY = process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
+export const RPC_URL =
+  process.env.GBLIN_RPC_URL || (ALCHEMY_KEY ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}` : DEFAULT_RPC_URL);
+
+/** Secrets that must never leave in a response body: RPC errors quote the URL they failed on. */
+const SECRETS = [ALCHEMY_KEY, process.env.ALCHEMY_API_KEY, process.env.NEXT_PUBLIC_ALCHEMY_API_KEY]
+  .filter((k): k is string => typeof k === "string" && k.length >= 8);
+export function redactSecrets(text: string): string {
+  let out = text;
+  for (const k of SECRETS) out = out.split(k).join("<redacted>");
+  return out;
+}
 
 // ─── Core Contracts (Base Mainnet, verified) ────────────────────────────────
 // The single production GBLIN contract on Base. Deliberately unversioned:
@@ -831,10 +845,12 @@ export async function getWalletBalances(wallet: Address): Promise<WalletBalances
 // ───────────────────────────────────────────────────────────────────────────
 
 export function toJson<T>(payload: T): string {
-  return JSON.stringify(
-    payload,
-    (_k, v) => (typeof v === "bigint" ? v.toString() : v),
-    2
+  return redactSecrets(
+    JSON.stringify(
+      payload,
+      (_k, v) => (typeof v === "bigint" ? v.toString() : v),
+      2
+    )
   );
 }
 
