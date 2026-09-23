@@ -13,6 +13,7 @@ import MigrateToNewVault from "@/components/MigrateToNewVault";
 import { ProofSection, FeeEngineSection } from './proof-section';
 import { NavFeesHeroLedger } from './nav-fees';
 import { ReserveCore } from './reserve-core';
+import { AgentActivity } from './agent-activity';
 import { AssetMark } from './asset-mark';
 
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
@@ -577,7 +578,7 @@ function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onCh
 }
 
 export function HomeView(props: HomeViewProps) {
-  const { t, onChainData, basketData, isOnChainLoading, copyContract, copied } = props;
+  const { t, language, onChainData, basketData, isOnChainLoading, copyContract, copied } = props;
 
   const why = [
     { icon: <Landmark className="h-4 w-4" />, title: t('ui.home.why1T'), body: t('ui.home.why1B') },
@@ -671,6 +672,8 @@ export function HomeView(props: HomeViewProps) {
           {/* The reserve core carries the light of the whole page. */}
           <div className="min-w-0">
             <ReserveCore basket={basketData} loading={isOnChainLoading} t={t} />
+            {/* Under the core: what agents do with it, external wallets only. */}
+            <AgentActivity language={language} t={t} />
           </div>
         </div>
       </section>
