@@ -110,9 +110,23 @@ const SOURCE = {
 
 const MCP_USAGE_URL = 'https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp/usage?days=60';
 
+// Last good reading, kept so that one slow or failed fetch of the counter does not blank the home
+// page's MCP figures for a whole cache period. Never older than an hour.
+let lastFreeMcp: { data: FreeMcpUsage; at: number } | null = null;
+const FREE_MCP_MAX_AGE_MS = 60 * 60 * 1_000;
+
 async function fetchFreeMcp(): Promise<FreeMcpUsage | null> {
+  const fresh = await readFreeMcp();
+  if (fresh) {
+    lastFreeMcp = { data: fresh, at: Date.now() };
+    return fresh;
+  }
+  return lastFreeMcp && Date.now() - lastFreeMcp.at < FREE_MCP_MAX_AGE_MS ? lastFreeMcp.data : null;
+}
+
+async function readFreeMcp(): Promise<FreeMcpUsage | null> {
   try {
-    const res = await fetch(MCP_USAGE_URL, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    const res = await fetch(MCP_USAGE_URL, { signal: AbortSignal.timeout(9000), cache: 'no-store' });
     if (!res.ok) return null;
     const body = (await res.json()) as { daily?: Array<{ day: string; calls: Record<string, number> }> };
     const daily = Array.isArray(body.daily) ? body.daily : [];
