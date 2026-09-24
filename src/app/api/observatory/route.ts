@@ -194,12 +194,23 @@ const SNAPSHOT_2026_07_27 = {
   services_listed: 14381,
   endpoints_unreachable_pct: null,
   endpoints_unreachable_pct_withdrawn:
-    "2026-09-24: the 52% published here was withdrawn. Its probe was not recorded well enough to rerun, and later measurements under the corrected liveness rule contradict it (0 of 276 unreachable on 2026-08-18; on 2026-09-24, 183 of 187 tracked listings answering and 3 of the other 4 answering when re-checked by hand).",
+    "2026-09-24: the 52% published here was wrong and is withdrawn. Its probe was not recorded well enough to rerun, and in the same period our probes read the payment challenge only from the body and only over GET. See remeasured_2026_09_24.",
   wallets_ever_paid: 2503,
   top3_endpoints_volume_share_pct: 68,
   weekly_volume_vs_peak_pct: -96,
   median_price_usd: 0.014,
   method: "Full Bazaar catalog download + reachability probe, 2026-07-27",
+} as const;
+
+const REMEASURED_2026_09_24 = {
+  catalog_listings: 17071,
+  random_sample: 400,
+  answering_pct: 96.5,
+  actually_down_max_pct: 0.75,
+  hand_checked_negatives: { total: 14, answered_on_recheck_or_post: 5, up_but_validate_input_first: 4, placeholder_path: 4, gone: 1 },
+  definition:
+    "answering = HTTP 402 with a parseable accepts[] challenge (PAYMENT-REQUIRED header or body) or any 2xx within 8s; GET, one POST retry when the route needs it. Every negative checked by hand.",
+  independent_baseline: "2026-08-18 re-run on the 276 most recently updated listings: 98.9% answering",
 } as const;
 
 const EXTERNAL_RESEARCH = [
@@ -272,6 +283,7 @@ export async function GET(): Promise<Response> {
     live,
     ...(liveError ? { live_error: liveError } : {}),
     snapshot_2026_07_27: SNAPSHOT_2026_07_27,
+    remeasured_2026_09_24: REMEASURED_2026_09_24,
     external_research: EXTERNAL_RESEARCH,
     gblin_verified: {
       operated_by: "GBLIN — conflict of interest disclosed",

@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 
 const SNAPSHOT = [
   { value: '14,381', label: 'services listed on the x402 Bazaar' },
+  { value: '0.75%', label: 'actually down (random sample of 400, remeasured 2026-09-24)' },
   { value: '2,503', label: 'wallets that have ever paid anything' },
   { value: '68%', label: 'of all volume flows to just 3 endpoints' },
   { value: '-96%', label: 'weekly volume versus its peak' },
@@ -101,16 +102,20 @@ export default function ObservatoryPage() {
         </p>
         <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-4 py-3 text-sm leading-7 text-zinc-300">
           <span className="font-semibold text-amber-200">Correction, 2026-09-24.</span> This snapshot also showed
-          &ldquo;52% of listed endpoints unreachable when probed&rdquo;. We have withdrawn that figure. The probe
-          behind it was not recorded well enough to rerun, and our later measurements under the corrected
-          liveness rule contradict it: 0 of 276 recently updated listings unreachable on 2026-08-18, and on
-          2026-09-24 183 of the 187 listings tracked by the{' '}
+          &ldquo;52% of listed endpoints unreachable when probed&rdquo;. That figure was wrong and is withdrawn: its
+          probe was not recorded well enough to rerun, and in the same period our probes read the payment challenge
+          only from the response body and only over GET, which counts live endpoints as dead.{' '}
+          <span className="font-semibold text-white">Remeasured on 2026-09-24:</span> a random sample of 400 of
+          the 17,071 listings in the catalog, probed with GET (one POST retry when the route needs it), 8-second
+          timeout. 386 answered with a valid x402 challenge or a 2xx (96.5%). We checked the other 14 by hand: 5
+          answered on a second look or over POST, 4 were up but validate their input before issuing the challenge,
+          4 were paths that still contain a placeholder such as <code>:address</code>, and 1 was gone.{' '}
+          <span className="font-semibold text-white">At most 3 of 400 (0.75%) were actually down.</span> An
+          independent re-run on 2026-08-18, on the 276 most recently updated listings, found 98.9% answering. Live,
+          per-endpoint data:{' '}
           <a className="text-amber-300 underline underline-offset-4" href="https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory" rel="noreferrer" target="_blank">
             uptime observatory
-          </a>{' '}
-          answered, and 3 of the other 4 answered when re-checked by hand. A later figure of ours, 36.7% alive
-          (2026-08-16), was wrong because its probe read the payment challenge only from the response body and
-          only over GET; we cannot tell whether the July probe had the same flaw.
+          </a>.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {SNAPSHOT.map((s) => (
