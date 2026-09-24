@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Agent activity under the reserve core: paid calls, external wallets, calls today and the last call.
+ * Agent activity under the reserve core: paid calls since launch and calls today.
  *
  * Every figure counts EXTERNAL payers only: the wallets listed in promise P2 are excluded by the API,
  * so tests run from our own wallets never show up here. "Today" is counted in the reader's time zone
@@ -27,17 +27,6 @@ function startOfToday(now: number): number {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d.getTime();
-}
-
-function relative(iso: string, now: number, language: string, justNow: string): string {
-  const seconds = Math.round((Date.parse(iso) - now) / 1000);
-  if (seconds > -60) return justNow;
-  const rtf = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
-  const minutes = Math.round(seconds / 60);
-  if (minutes > -60) return rtf.format(minutes, 'minute');
-  const hours = Math.round(minutes / 60);
-  if (hours > -24) return rtf.format(hours, 'hour');
-  return rtf.format(Math.round(hours / 24), 'day');
 }
 
 export function AgentActivity({ t, language }: { t: (key: string) => string; language: string }) {
@@ -69,22 +58,18 @@ export function AgentActivity({ t, language }: { t: (key: string) => string; lan
 
   const ready = activity !== null && now !== null;
   const today = ready ? activity.recent.filter((ts) => Date.parse(ts) >= startOfToday(now)).length : null;
-  const last = ready ? (activity.lastAt ? relative(activity.lastAt, now, language, t('ui.activity.justNow')) : t('ui.activity.never')) : null;
-  const recentHour = ready && activity.lastAt ? now - Date.parse(activity.lastAt) < 3_600_000 : false;
   const number = (n: number) => n.toLocaleString(language);
 
   // `text` marks a phrase ("47 minutes ago") rather than a figure: it is set smaller, in the text face,
   // on one line, so it never breaks into a column of words.
   const cells: Array<{ label: string; value: string | null; live?: boolean; text?: boolean }> = [
     { label: t('ui.activity.calls'), value: ready ? number(activity.calls) : null },
-    { label: t('ui.activity.wallets'), value: ready ? number(activity.wallets) : null },
     { label: t('ui.activity.today'), value: today === null ? null : number(today) },
-    { label: t('ui.activity.last'), value: last, live: recentHour, text: true },
   ];
 
   return (
-    <div className="relative mx-auto mt-6 w-full max-w-[680px] sm:mt-2">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-6 text-center sm:grid-cols-4">
+    <div className="relative mx-auto mt-6 w-full max-w-[360px] sm:mt-2">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-6 text-center">
         {cells.map((cell) => (
           <div key={cell.label} className="min-w-0">
             {/* Labels sit on a two-line box aligned to its foot, so every figure starts on the same line. */}
