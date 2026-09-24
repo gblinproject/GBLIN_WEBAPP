@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import MiniBuy from "./MiniBuy";
 import {
   ArrowRight,
   BarChart3,
@@ -9,7 +10,6 @@ import {
   RotateCcw,
   Share2,
   Shield,
-  Sparkles,
   X,
 } from "lucide-react";
 
@@ -25,7 +25,7 @@ import {
  */
 
 const SITE_URL = "https://gblin.digital";
-const DASHBOARD_URL = "https://dune.com/gblin/dashboard";
+const DASHBOARD_URL = `${SITE_URL}/dashboard`;
 
 const C = {
   text: "#ffffff",
@@ -230,6 +230,7 @@ export default function FrameHook() {
           {/* Actions */}
           {revealed && (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              <MiniBuy />
               <button
                 onClick={onShare}
                 disabled={shareState === "loading"}
@@ -251,10 +252,7 @@ export default function FrameHook() {
                 <Share2 size={16} /> {shareState === "loading" ? "Opening…" : "Share this result"}
               </button>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-                <ActionCard href="/buy-gblin" icon={<Sparkles size={16} />} title="Mint GBLIN" subtitle="Buy the basket" tone="amber" />
-                <ActionCard href="/game" icon={<Shield size={16} />} title="Full challenge" subtitle="Backtest real crashes" tone="blue" />
-              </div>
+              <ActionCard href="/game" icon={<Shield size={16} />} title="Full challenge" subtitle="Backtest real crashes" tone="blue" />
 
               <Link href="/portfolio" style={{ textDecoration: "none" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "13px", borderRadius: 13, border: "1px solid rgba(251,191,36,0.5)", background: "rgba(251,191,36,0.12)", color: "#fde68a", fontWeight: 800, fontSize: 14 }}>
