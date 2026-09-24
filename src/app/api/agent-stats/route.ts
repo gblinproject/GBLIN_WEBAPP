@@ -52,6 +52,24 @@ interface OrganicRecent {
   payment_times_48h: string[];
 }
 
+/**
+ * Free use of the hosted MCP server, read from its public counter (/mcp/usage on the Worker).
+ * `tool_calls` counts tools/call, resources/read and prompts/get: actual use, not the session
+ * handshakes and tool listings that registry crawlers send. The counter has no caller identity,
+ * so our own checks are included; days are UTC days.
+ */
+export interface FreeMcpUsage {
+  tool_calls_total: number;
+  tool_calls_today: number;
+  sessions_today: number;
+  counted_since: string;
+  /** First UTC day of the current run of consecutive days with at least one tool call. */
+  used_every_day_since: string | null;
+  today_utc: string;
+  includes_our_own_traffic: true;
+  source: string;
+}
+
 export interface AgentStats {
   total_paid_calls: number;
   total_unique_agents: number;
@@ -62,6 +80,10 @@ export interface AgentStats {
   internal: Split;
   our_wallets_source: string;
   last_payment_at: string | null;
+  /** External paid calls since 00:00 UTC, so it matches the UTC day of the MCP counter. */
+  organic_paid_today_utc?: number;
+  /** Null when the MCP counter could not be read: the page then shows a dash, never a zero. */
+  free_mcp?: FreeMcpUsage | null;
 }
 
 const EMPTY_SPLIT: Split = { paid_calls: 0, unique_agents: 0, usdc: 0 };
@@ -83,8 +105,48 @@ const SOURCE = {
   docs: 'https://gblin.digital/llms.txt',
   license: "CC BY 4.0 — cite 'GBLIN Agent Economy Observatory'",
   disclosure:
-    'GBLIN operates paid x402 endpoints. Per promise P2, total_* counters are cumulative since launch and include payments made by our own wallets; the `organic` block excludes them, using the wallet list published in P2. organic.last_payment_at and organic.payment_times_48h (times only, no addresses) back the last call and today figures on the home page. Methodology is public.',
+    'GBLIN operates paid x402 endpoints. Per promise P2, total_* counters are cumulative since launch and include payments made by our own wallets; the `organic` block excludes them, using the wallet list published in P2. organic.last_payment_at and organic.payment_times_48h (times only, no addresses) back the last call and today figures on the home page. free_mcp is read from the public counter of the hosted MCP server: tool calls (not session handshakes), UTC days, our own checks included because that counter has no caller identity. Methodology is public.',
 } as const;
+
+const MCP_USAGE_URL = 'https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp/usage?days=60';
+
+async function fetchFreeMcp(): Promise<FreeMcpUsage | null> {
+  try {
+    const res = await fetch(MCP_USAGE_URL, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { daily?: Array<{ day: string; calls: Record<string, number> }> };
+    const daily = Array.isArray(body.daily) ? body.daily : [];
+    if (daily.length === 0) return null;
+    const use = (c: Record<string, number>) =>
+      Object.entries(c).reduce(
+        (sum, [k, n]) => (k.startsWith('tools/call') || k === 'resources/read' || k === 'prompts/get' ? sum + (Number(n) || 0) : sum),
+        0,
+      );
+    const today = new Date().toISOString().slice(0, 10);
+    const byDay = new Map(daily.map((d) => [d.day, d.calls ?? {}]));
+    // Consecutive UTC days with at least one call, walking back from yesterday (today is still running).
+    let since: string | null = null;
+    for (let i = 1; i < 400; i++) {
+      const day = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+      const calls = byDay.get(day);
+      if (!calls || use(calls) === 0) break;
+      since = day;
+    }
+    const todayCalls = byDay.get(today) ?? {};
+    return {
+      tool_calls_total: daily.reduce((sum, d) => sum + use(d.calls ?? {}), 0),
+      tool_calls_today: use(todayCalls),
+      sessions_today: Number(todayCalls['initialize'] ?? 0),
+      counted_since: daily[daily.length - 1].day,
+      used_every_day_since: since,
+      today_utc: today,
+      includes_our_own_traffic: true,
+      source: 'https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp/usage',
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function fetchAgentStats(): Promise<AgentStats> {
   const payments = await inboundTokenPayments(FEE_WALLET, USDC_BASE);
@@ -150,6 +212,8 @@ async function fetchAgentStats(): Promise<AgentStats> {
     },
     our_wallets_source: 'https://gblin.digital/promises/P2-honest-counters.json',
     last_payment_at: lastAt,
+    organic_paid_today_utc: organicRecent.filter((t) => t.slice(0, 10) === new Date().toISOString().slice(0, 10)).length,
+    free_mcp: await fetchFreeMcp(),
   };
 }
 
