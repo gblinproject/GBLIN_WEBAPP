@@ -46,6 +46,7 @@ const MORE_NAV: NavLeaf[] = [
   { key: 'aureus', href: '/aureus' },
   { key: 'faq', href: '/faq' },
   { key: 'operatedByAi', href: '/operated-by-ai' },
+  { key: 'about', href: '/about' },
 ];
 
 const CONTAINER = 'mx-auto w-full max-w-[1200px] px-5 sm:px-6 lg:px-8';
@@ -430,6 +431,7 @@ export function ProtocolShell(props: ProtocolShellProps) {
             <div>
               <p className="g-eyebrow">{t('ui.footer.resources')}</p>
               <ul className="mt-3 space-y-2 text-sm">
+                <li><Link className="text-zinc-400 hover:text-white" href="/about">{nav('about')}</Link></li>
                 <li><a className="text-zinc-400 hover:text-white" href={WHITEPAPER_URL} rel="noreferrer" target="_blank">{t('site.whitepaper')}</a></li>
                 <li><a className="text-zinc-400 hover:text-white" href={GITHUB_URL} rel="noreferrer" target="_blank">{t('ui.footer.source')}</a></li>
                 <li><a className="text-zinc-400 hover:text-white" href={REVIEWS_URL} rel="noreferrer" target="_blank">{t('ui.footer.reviews')}</a></li>
