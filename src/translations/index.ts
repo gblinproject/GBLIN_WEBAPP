@@ -81,9 +81,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "GBLIN Amount",
       redeemOption: "Redeem Option",
       oracleGuard: {
-        title: 'Price feed unusable — ETH redemption paused',
-        body: 'One of the price feeds the contract prices the basket with is not usable right now. On the ETH exit the contract would send its internal swap out without a minimum, so we have paused that path. Redeeming into basket tokens uses no price feed and is unaffected — your holding is not locked.',
+        title: 'Price unavailable — ETH redemption paused',
+        body: 'The vault cannot price its basket right now: a price feed is older than its window or an auction fill is in progress. The ETH exit needs that price, so it is paused. Redeeming into basket tokens uses no price and stays available.',
         badge: 'Paused',
+      },
+      legGuard: {
+        title: 'A basket token is not responding — redemptions paused here',
+        body: 'The token {names} does not answer the vault right now. A redemption made now would not deliver that part and would create no credit, so this page does not send one. Wait until it answers again; nothing is lost while you wait.',
+      },
+      smallExit: {
+        title: 'Amount too small for the ETH exit',
+        body: 'Below about 0.01 GBLIN the ETH exit pays proportionally more in swap fees on each leg, and below 0.001 GBLIN it fails. We switched to redemption into basket tokens, which has no fee. Press again to confirm, or pick ETH to keep that route (above 0.001 GBLIN).',
       },
       proRata: "Pro-Rata Basket",
       zapOut: "Zap-Out to Asset",
@@ -324,9 +332,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "Quantità GBLIN",
       redeemOption: "Opzione di Riscatto",
       oracleGuard: {
-        title: 'Feed di prezzo inutilizzabile — riscatto in ETH sospeso',
-        body: 'Uno dei feed di prezzo con cui il contratto valuta il paniere al momento non è utilizzabile. Sul riscatto in ETH il contratto invierebbe lo swap interno senza un minimo, quindi abbiamo sospeso quel percorso. Il riscatto in token del paniere non usa alcun feed e resta disponibile: i tuoi token non sono bloccati.',
+        title: 'Prezzo non disponibile — riscatto in ETH sospeso',
+        body: 'Il vault in questo momento non riesce a prezzare il paniere: un feed di prezzo è più vecchio della sua finestra oppure è in corso un riempimento dell\'asta. L\'uscita in ETH ha bisogno di quel prezzo, quindi è sospesa. Il riscatto in token del paniere non usa alcun prezzo e resta disponibile.',
         badge: 'Sospeso',
+      },
+      legGuard: {
+        title: 'Un token del paniere non risponde — riscatti sospesi qui',
+        body: 'Il token {names} al momento non risponde al vault. Un riscatto fatto adesso non consegnerebbe quella parte e non creerebbe alcun credito, quindi questa pagina non lo invia. Aspetta che torni a rispondere: mentre aspetti non perdi nulla.',
+      },
+      smallExit: {
+        title: 'Importo troppo piccolo per l\'uscita in ETH',
+        body: 'Sotto circa 0,01 GBLIN l\'uscita in ETH paga in proporzione più commissioni di scambio su ogni gamba, e sotto 0,001 GBLIN fallisce. Siamo passati al riscatto in token del paniere, che non ha commissioni. Premi di nuovo per confermare, oppure scegli ETH per tenere quella strada (sopra 0,001 GBLIN).',
       },
       proRata: "Paniere Pro-Quota",
       zapOut: "Zap-Out verso Asset",
@@ -567,9 +583,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "Cantidad GBLIN",
       redeemOption: "Opción de Canje",
       oracleGuard: {
-        title: 'Feed de precio inutilizable — canje en ETH en pausa',
-        body: 'Uno de los feeds de precio con los que el contrato valora la cesta no es utilizable ahora mismo. En el canje a ETH el contrato enviaría su swap interno sin un mínimo, así que hemos pausado esa vía. El canje en tokens de la cesta no usa ningún feed y sigue disponible: tus tokens no están bloqueados.',
+        title: 'Precio no disponible — canje en ETH en pausa',
+        body: 'El vault no puede valorar su cesta ahora mismo: un feed de precio supera su ventana o hay un relleno de subasta en curso. La salida en ETH necesita ese precio, así que está en pausa. El canje en tokens de la cesta no usa precio y sigue disponible.',
         badge: 'En pausa',
+      },
+      legGuard: {
+        title: 'Un token de la cesta no responde — canjes en pausa aquí',
+        body: 'El token {names} no responde al vault ahora mismo. Un canje hecho ahora no entregaría esa parte ni crearía un crédito, así que esta página no lo envía. Espera a que vuelva a responder; no pierdes nada mientras esperas.',
+      },
+      smallExit: {
+        title: 'Importe demasiado pequeño para la salida en ETH',
+        body: 'Por debajo de unos 0,01 GBLIN la salida en ETH paga proporcionalmente más comisiones de swap en cada pata, y por debajo de 0,001 GBLIN falla. Hemos pasado al canje en tokens de la cesta, sin comisión. Pulsa de nuevo para confirmar, o elige ETH para mantener esa vía (por encima de 0,001 GBLIN).',
       },
       proRata: "Cesta Pro-Rata",
       zapOut: "Zap-Out a Activo",
@@ -763,9 +787,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "Quantité GBLIN",
       redeemOption: "Option de Rachat",
       oracleGuard: {
-        title: 'Flux de prix inutilisable — rachat en ETH suspendu',
-        body: "L'un des flux de prix avec lesquels le contrat valorise le panier n'est pas utilisable actuellement. Sur le rachat en ETH, le contrat enverrait son swap interne sans minimum : cette voie est donc suspendue. Le rachat en jetons du panier n'utilise aucun flux de prix et reste disponible — vos jetons ne sont pas bloqués.",
+        title: 'Prix indisponible — rachat en ETH suspendu',
+        body: 'Le vault ne peut pas valoriser son panier pour le moment : un flux de prix dépasse sa fenêtre ou un remplissage d\'enchère est en cours. La sortie en ETH a besoin de ce prix, elle est donc suspendue. Le rachat en jetons du panier n\'utilise aucun prix et reste disponible.',
         badge: 'Suspendu',
+      },
+      legGuard: {
+        title: 'Un jeton du panier ne répond pas — rachats suspendus ici',
+        body: 'Le jeton {names} ne répond pas au vault pour le moment. Un rachat effectué maintenant ne livrerait pas cette part et ne créerait aucun crédit, cette page n\'en envoie donc pas. Attendez qu\'il réponde à nouveau ; vous ne perdez rien en attendant.',
+      },
+      smallExit: {
+        title: 'Montant trop faible pour la sortie en ETH',
+        body: 'En dessous d\'environ 0,01 GBLIN, la sortie en ETH paie proportionnellement plus de frais d\'échange sur chaque jambe, et en dessous de 0,001 GBLIN elle échoue. Nous sommes passés au rachat en jetons du panier, sans frais. Appuyez à nouveau pour confirmer, ou choisissez ETH pour garder cette voie (au-dessus de 0,001 GBLIN).',
       },
       proRata: "Panier Pro-Rata",
       zapOut: "Zap-Out vers Actif",
@@ -959,9 +991,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "GBLIN Menge",
       redeemOption: "Einlöseoption",
       oracleGuard: {
-        title: 'Preis-Feed unbrauchbar — ETH-Rücknahme pausiert',
-        body: 'Einer der Preis-Feeds, mit denen der Vertrag den Korb bewertet, ist derzeit nicht brauchbar. Beim Ausstieg in ETH würde der Vertrag seinen internen Swap ohne Mindestbetrag senden, daher haben wir diesen Weg pausiert. Die Rücknahme in Korb-Token nutzt keinen Preis-Feed und bleibt verfügbar — Ihre Token sind nicht gesperrt.',
+        title: 'Preis nicht verfügbar — ETH-Rücknahme pausiert',
+        body: 'Der Vault kann seinen Korb gerade nicht bewerten: Ein Preis-Feed ist älter als sein Zeitfenster oder eine Auktionsfüllung läuft. Der Ausstieg in ETH braucht diesen Preis und ist daher pausiert. Die Rücknahme in Korb-Token nutzt keinen Preis und bleibt verfügbar.',
         badge: 'Pausiert',
+      },
+      legGuard: {
+        title: 'Ein Korb-Token antwortet nicht — Rücknahmen hier pausiert',
+        body: 'Der Token {names} antwortet dem Vault gerade nicht. Eine Rücknahme jetzt würde diesen Anteil nicht liefern und kein Guthaben erzeugen, daher sendet diese Seite keine. Warten Sie, bis er wieder antwortet; beim Warten geht nichts verloren.',
+      },
+      smallExit: {
+        title: 'Betrag zu klein für den Ausstieg in ETH',
+        body: 'Unter etwa 0,01 GBLIN zahlt der Ausstieg in ETH anteilig mehr Swap-Gebühren pro Anteil, unter 0,001 GBLIN schlägt er fehl. Wir haben auf die gebührenfreie Rücknahme in Korb-Token umgestellt. Erneut drücken zum Bestätigen, oder ETH wählen, um diesen Weg zu behalten (über 0,001 GBLIN).',
       },
       proRata: "Pro-Rata Korb",
       zapOut: "Zap-Out zu Asset",
@@ -1155,9 +1195,17 @@ export const translations: Record<Language, any> = {
       amountGblin: "GBLIN 数量",
       redeemOption: "赎回选项",
       oracleGuard: {
-        title: '价格预言机不可用 — ETH 赎回已暂停',
-        body: '合约用于为资产篮子定价的其中一个价格预言机目前不可用。在 ETH 赎回路径上，合约会在没有最小成交量保护的情况下发出内部兑换，因此我们暂停了该路径。以篮子代币赎回不使用任何价格预言机，仍然可用 — 您的代币没有被锁定。',
+        title: '价格不可用 — ETH 赎回已暂停',
+        body: '金库目前无法为资产篮子定价：某个价格预言机超出了其有效时间窗口，或者拍卖成交正在进行。ETH 退出需要该价格，因此已暂停。以篮子代币赎回不使用价格，仍然可用。',
         badge: '已暂停',
+      },
+      legGuard: {
+        title: '篮子中的某个代币没有响应 — 此处暂停赎回',
+        body: '代币 {names} 目前没有响应金库。此时赎回将不会交付该部分，也不会产生任何可领取的余额，因此本页面不会发送赎回。请等待其恢复响应；等待期间不会有任何损失。',
+      },
+      smallExit: {
+        title: '金额过小，不适合 ETH 退出',
+        body: '低于约 0.01 GBLIN 时，ETH 退出在每一部分上支付的兑换费用比例更高；低于 0.001 GBLIN 时会失败。我们已切换为无手续费的篮子代币赎回。再次点击以确认，或选择 ETH 继续使用该方式（高于 0.001 GBLIN）。',
       },
       proRata: "比例篮子",
       zapOut: "Zap-Out 至资产",
@@ -1274,9 +1322,17 @@ export const translations: Record<Language, any> = {
   ja: {
     trade: {
       oracleGuard: {
-        title: "価格フィードが利用不可 — ETH での償還を一時停止",
-        body: "コントラクトがバスケットの価格算定に使う価格フィードの一つが、現在利用できません。ETH での償還では、コントラクトが内部スワップを最小受取額なしで送信してしまうため、この経路を一時停止しました。バスケットトークンでの償還は価格フィードを使わないため影響を受けず、引き続き利用できます — 保有分がロックされることはありません。",
-        badge: "停止中",
+        title: '価格が利用できません — ETH での償還を一時停止',
+        body: 'ボールトは現在バスケットを評価できません。価格フィードが有効期間を過ぎているか、オークションの約定が進行中です。ETH での退出にはその価格が必要なため、一時停止しています。バスケットトークンでの償還は価格を使わず、引き続き利用できます。',
+        badge: '停止中',
+      },
+      legGuard: {
+        title: 'バスケットのトークンが応答していません — ここでの償還を停止中',
+        body: 'トークン {names} が現在ボールトに応答していません。今償還すると、その部分は受け渡されず、請求可能な残高も作られないため、このページからは送信しません。再び応答するまでお待ちください。待っている間に失うものはありません。',
+      },
+      smallExit: {
+        title: 'ETH での退出には金額が小さすぎます',
+        body: '約 0.01 GBLIN 未満では、ETH での退出は各部分でスワップ手数料の割合が高くなり、0.001 GBLIN 未満では失敗します。手数料のないバスケットトークンでの償還に切り替えました。もう一度押して確定するか、ETH を選んでその経路を使えます（0.001 GBLIN 以上）。',
       },
     },
     // ... (rest of the code remains the same)

@@ -32,6 +32,8 @@ import {
   parseUsdText,
   quoteBuyShares,
   quoteSellShares,
+  ETH_EXIT_MIN_SHARES,
+  ETH_EXIT_ADVISED_SHARES,
   quoteTokenToWeth,
   resolveTradeToken,
   type TradeTokenOption,
@@ -122,6 +124,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [customTokenAddress, setCustomTokenAddress] = useState('');
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
   const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
+  // The amount for which the small-ETH-exit notice was already shown; a second press goes through.
+  const smallExitWarnedRef = useRef<string | null>(null);
   const [oracleHealth, setOracleHealth] = useState<OracleHealth>(UNCHECKED_ORACLE_HEALTH);
   const [amount, setAmount] = useState('');
   const [slippage, setSlippage] = useState(1);
@@ -903,6 +907,23 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       } else {
         const gblinAmount = ethers.parseEther(amount);
 
+        // A basket token that reverts on balanceOf loses its leg on any redemption, in kind included,
+        // so nothing is sent while one is observed. Re-read at click time: a guard must not be cached.
+        const exitHealth = await fetchOracleHealth();
+        setOracleHealth(exitHealth);
+        if (exitHealth.checked && !exitHealth.inKindRedeemSafe) {
+          throw new Error(`LEG_MUTE:${exitHealth.muteLegs.join(', ')}`);
+        }
+
+        // Small ETH exits: below the minimum it reverts, below the advised size it costs more than the
+        // fee-free in-kind exit. Switch once and let a second press confirm.
+        if (redeemOption === 'eth' && (gblinAmount < ETH_EXIT_MIN_SHARES
+          || (gblinAmount < ETH_EXIT_ADVISED_SHARES && smallExitWarnedRef.current !== amount))) {
+          smallExitWarnedRef.current = amount;
+          setRedeemOption('basket');
+          throw new Error('SMALL_ETH_EXIT');
+        }
+
         if (redeemOption === 'basket') {
           // The in-kind redemption reads no price feed and is never paused: it is the guaranteed exit.
           const redeemTx = prepareContractCall({
@@ -926,10 +947,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
           // Re-read rather than trust the render-time flag: the state can turn between paint and click.
           // The Lens quote routes through the same conversion, so a floor derived from it would already
           // carry the loss — the quote cannot be used to detect this.
-          const health = await fetchOracleHealth();
-          if (health.checked && !health.ethRedeemSafe) {
-            const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
-            setOracleHealth(health);
+          if (exitHealth.checked && !exitHealth.ethRedeemSafe) {
+            const names = exitHealth.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
             throw new Error(`ORACLE_UNUSABLE:${names}`);
           }
 
@@ -1017,8 +1036,12 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       } else if (decoded) {
         setTradeError(decoded);
       } else if (message.startsWith('ORACLE_UNUSABLE:')) {
-        const names = message.slice('ORACLE_UNUSABLE:'.length);
-        setTradeError(`Price feed unusable (${names}). ETH redemption is paused because the swap would go out without a floor. Redeem in basket tokens instead — that path uses no price feed.`);
+        setTradeError(`${t('trade.oracleGuard.title')}. ${t('trade.oracleGuard.body')}`);
+      } else if (message.startsWith('LEG_MUTE:')) {
+        const names = message.slice('LEG_MUTE:'.length);
+        setTradeError(`${t('trade.legGuard.title')}. ${String(t('trade.legGuard.body')).replace('{names}', names)}`);
+      } else if (message === 'SMALL_ETH_EXIT') {
+        setTradeError(`${t('trade.smallExit.title')}. ${t('trade.smallExit.body')}`);
       } else if (normalizedMessage.includes('user rejected') || normalizedMessage.includes('user denied')) {
         setTradeError('Transaction rejected in wallet.');
       } else if (normalizedMessage.includes('insufficient funds')) {
@@ -1064,7 +1087,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     } finally {
       setIsTransacting(false);
     }
-  }, [activeTradeToken, address, addLog, amount, getProvider, isConnected, mode, quoteMintFromWeth, rawQuote, redeemOption, refreshOnChainData, refreshTransactions, slippage, syncWalletBalances, sendTx]);
+  }, [activeTradeToken, address, addLog, amount, getProvider, isConnected, mode, quoteMintFromWeth, rawQuote, redeemOption, refreshOnChainData, refreshTransactions, slippage, syncWalletBalances, sendTx, t]);
 
   // The vault pulls the bidder's input, so it needs an allowance for exactly that token: the asset when
   // the vault buys it, WETH when it sells it. Approved once per amount, before the bid.
@@ -1251,6 +1274,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   // A feed the contract cannot price makes the ETH exit swap out with no floor. The in-kind exit
   // reads no oracle, so the UI steers to that path instead of leaving the choice open.
   const isEthRedeemBlocked = oracleHealth.checked && !oracleHealth.ethRedeemSafe;
+  const isRedeemBlocked = oracleHealth.checked && !oracleHealth.inKindRedeemSafe;
 
   // Deliberately not folded into refreshOnChainData: that path returns early on a cache hit, which
   // would leave the guard unevaluated on any revisit inside the TTL. A guard must not be cached.
@@ -1261,7 +1285,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setOracleHealth(health);
       if (health.checked && !health.ethRedeemSafe) {
         const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
-        addLog(`Oracle feed unusable (${names}). ETH redemption disabled; in-kind exit unaffected.`);
+        addLog(`NAV not reliable (${names || 'open fill'}). ETH redemption disabled.`);
+      }
+      if (health.checked && !health.inKindRedeemSafe) {
+        addLog(`Basket token not answering (${health.muteLegs.join(', ')}). Redemptions disabled on this page.`);
       }
     });
     read();
@@ -1277,7 +1304,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
     ? quote !== '0' && quote !== 'Err' && quote !== 'Basket unavailable'
     : rawQuote > 0n;
   const isTradeDisabled = isTransacting || isLoadingQuote || !amount || Number.parseFloat(amount) <= 0 || (mode === 'buy' && !activeTradeToken) || !hasTradeQuote
-    || (mode === 'sell' && redeemOption === 'eth' && isEthRedeemBlocked);
+    || (mode === 'sell' && redeemOption === 'eth' && isEthRedeemBlocked)
+    || (mode === 'sell' && isRedeemBlocked);
   // Enabled as long as there is an opportunity to bid on, including below the minimum swap size:
   // the attempt is allowed and the contract decides. Disabled only while a transaction is pending.
   const isArbDisabled = isArbitraging || !autoRebalanceOpportunity;
@@ -1323,6 +1351,7 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
         inputBalance={inputBalanceDisplay}
         isLoadingQuote={isLoadingQuote}
         isEthRedeemBlocked={isEthRedeemBlocked}
+        muteLegs={oracleHealth.checked ? oracleHealth.muteLegs : []}
         isTradeDisabled={isTradeDisabled}
         isTransacting={isTransacting}
         mode={mode}

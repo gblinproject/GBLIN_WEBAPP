@@ -95,6 +95,8 @@ interface BuyViewProps extends SharedViewProps {
   quoteAssetLabel: string;
   redeemOption: 'eth' | 'basket';
   isEthRedeemBlocked: boolean;
+  /** Basket tokens that reverted on balanceOf(vault); while any is listed no redemption is sent. */
+  muteLegs?: string[];
   oracleHealth: OracleHealth;
   resolvedTokenSymbol: string;
   selectedToken: string;
@@ -1258,7 +1260,7 @@ function ConnectInline({ t }: { t: (key: string) => string }) {
 }
 
 export function BuyView(props: BuyViewProps) {
-  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, customTokenAddress, quoteAssetLabel, redeemOption, isEthRedeemBlocked, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken } = props;
+  const { t, mode, setMode, amount, setAmount, slippage, setSlippage, quote, usdValue, isLoadingQuote, isTransacting, isTradeDisabled, executeTrade, tradeError, tradeTxHash, ethBalance, gblinBalance, inputBalance, isConnected, openWallet, marketData, onChainData, customTokenAddress, quoteAssetLabel, redeemOption, isEthRedeemBlocked, muteLegs, resolvedTokenSymbol, selectedToken, setCustomTokenAddress, setRedeemOption, setSelectedToken } = props;
 
   // Detect language from <html lang> attribute (set by ProtocolShell) — lazy init avoids extra render
   const [detectedLang] = useState<string>(() => {
@@ -1518,7 +1520,13 @@ export function BuyView(props: BuyViewProps) {
                 <p className="text-xs text-zinc-500">{t('trade.redeemOption')}</p>
                 <p className="mt-1 text-sm font-semibold text-white">cbBTC + ETH + USDC</p>
               </button>
-              {isEthRedeemBlocked ? (
+              {muteLegs && muteLegs.length > 0 ? (
+                <div className="col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-3 py-2" role="alert">
+                  <p className="text-xs font-semibold text-amber-200">{t('trade.legGuard.title')}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-zinc-400">{String(t('trade.legGuard.body')).replace('{names}', muteLegs.join(', '))}</p>
+                </div>
+              ) : null}
+              {isEthRedeemBlocked && !(muteLegs && muteLegs.length > 0) ? (
                 <div className="col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-3 py-2" role="status">
                   <p className="text-xs font-semibold text-amber-200">{t('trade.oracleGuard.title')}</p>
                   <p className="mt-1 text-[11px] leading-5 text-zinc-400">{t('trade.oracleGuard.body')}</p>

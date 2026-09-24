@@ -63,21 +63,20 @@ export interface OnChainData {
 }
 
 /**
- * Health of the three Chainlink feeds the contract prices the basket with.
+ * Health of the feeds and tokens the vault prices the basket with.
  *
- * This mirrors `_getOraclePrice`, which returns 0 — rather than reverting — when a feed is stale,
- * answers non-positively, or is unreachable. On the ETH exit path that zero propagates into the
- * per-leg `amountOutMinimum`, so the internal swap goes out with no floor. The in-kind exit
- * `sellGBLIN` reads no oracle and is unaffected, so it is offered instead.
+ * The vault answers `isNavReliable()` itself: false while a feed is older than its window, a basket
+ * token does not answer `balanceOf`, or a fill of the fill agent is open. Its answer decides whether a
+ * quote or an exit in ETH goes through, so the ETH exit is offered only while it is true.
+ *
+ * The in-kind exit `sellGBLIN` reads no feed, so stale prices do not affect it. A token that does not
+ * answer `balanceOf` does: that leg is not delivered and creates no credit, so the redeemer loses it.
+ * `muteLegs` lists the rows whose token reverted on `balanceOf(vault)`, and while any is listed the
+ * in-kind exit is not offered either.
  *
  * `checked: false` means the chain could not be read. In that case nothing is blocked: refusing a
- * redemption because an RPC call failed would be worse than the state being guarded against.
- *
- * Only a positively observed state blocks the ETH exit — stale, or a non-positive answer. A failed
- * read says nothing about the feed itself, since a rate-limited RPC endpoint is indistinguishable
- * from a dead aggregator seen from off chain, so it downgrades the whole result to unchecked
- * instead of counting as a fault. The guard therefore under-blocks rather than over-blocks: it is a
- * convenience for users of this interface, not a safety property of the protocol.
+ * redemption because an RPC call failed would be worse than the state being guarded against. Only a
+ * positively observed state blocks: a revert on `balanceOf` counts, a network error does not.
  */
 export type OracleFeedStatus = {
   asset: string;
@@ -91,6 +90,9 @@ export interface OracleHealth {
   timeoutSeconds: number;
   feeds: OracleFeedStatus[];
   ethRedeemSafe: boolean;
+  /** Symbols of basket tokens that reverted on `balanceOf(vault)`; their leg would be lost on an in-kind exit. */
+  muteLegs: string[];
+  inKindRedeemSafe: boolean;
 }
 
 export const UNCHECKED_ORACLE_HEALTH: OracleHealth = {
@@ -98,7 +100,14 @@ export const UNCHECKED_ORACLE_HEALTH: OracleHealth = {
   timeoutSeconds: 0,
   feeds: [],
   ethRedeemSafe: true,
+  muteLegs: [],
+  inKindRedeemSafe: true,
 };
+
+/** Below this many shares the ETH exit reverts on its dust legs (measured on a Base fork, 22/09/2026). */
+export const ETH_EXIT_MIN_SHARES = 10n ** 15n;
+/** Below this many shares the ETH exit pays proportionally more in swap fees than the fee-free in-kind exit. */
+export const ETH_EXIT_ADVISED_SHARES = 10n ** 16n;
 
 export const fetchOracleHealth = async (): Promise<OracleHealth> => {
   try {
@@ -121,13 +130,33 @@ export const fetchOracleHealth = async (): Promise<OracleHealth> => {
     if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) return UNCHECKED_ORACLE_HEALTH;
 
     const indices = Array.from({ length: Number(rowCountRaw) }, (_, i) => i);
+    const mute: string[] = [];
     const feeds = await Promise.all(
       indices.map(async (i): Promise<OracleFeedStatus> => {
         let asset = `row ${i}`;
         try {
           const row = await lens.asset(CONTRACT_ADDRESS, i);
           const token = new ethers.Contract(row[0], ERC20_ABI, provider);
-          asset = (await token.symbol().catch(() => asset)) || asset;
+          const known = TRADE_TOKEN_OPTIONS.find((o) => o.address.toLowerCase() === String(row[0]).toLowerCase());
+          asset = (await token.symbol().catch(() => known?.symbol ?? asset)) || asset;
+          // The vault skips WETH and abandoned rows when it looks for a silent token.
+          // Only looked for when the vault itself reports its NAV as unreliable: the vault reads the same
+          // balanceOf, so a true answer already rules a silent token out. A public RPC can refuse a call
+          // with "missing revert data", which ethers reports like a revert, so a leg counts as mute only if
+          // every one of three reads reverts.
+          if (navReliable === false && !row[7] && String(row[0]).toLowerCase() !== WETH_ADDRESS.toLowerCase()) {
+            let reverts = 0;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                await token.balanceOf(CONTRACT_ADDRESS);
+                break;
+              } catch (err) {
+                if ((err as { code?: string })?.code === 'CALL_EXCEPTION') reverts++;
+                else break;
+              }
+            }
+            if (reverts === 3) mute.push(asset);
+          }
           const oracle = new ethers.Contract(row[1], ORACLE_ABI, provider);
           const round = await oracle.latestRoundData();
           const answer = BigInt(round[1]);
@@ -154,7 +183,12 @@ export const fetchOracleHealth = async (): Promise<OracleHealth> => {
       feeds,
       // The vault answers this question itself, and its answer is the one that decides whether a mint
       // or a quote goes through. The per-feed view is shown beside it, never instead of it.
-      ethRedeemSafe: navReliable === null ? feeds.every((feed) => !feed.unusable) : Boolean(navReliable),
+      ethRedeemSafe:
+        mute.length === 0 &&
+        (navReliable === null ? feeds.every((feed) => !feed.unusable) : Boolean(navReliable)),
+      muteLegs: mute,
+      // Only an observed revert blocks; an unreadable balance says nothing about the token.
+      inKindRedeemSafe: mute.length === 0,
     };
   } catch {
     return UNCHECKED_ORACLE_HEALTH;

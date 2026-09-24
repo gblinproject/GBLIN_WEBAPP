@@ -35,9 +35,9 @@ export async function GET(): Promise<Response> {
       {
         ...feed,
         alive_definition:
-          "answers within 8s with HTTP 402 + parseable accepts[] challenge, or any 2xx",
+          "rule v2.2: answers within 8s with HTTP 402 + a parseable accepts[] challenge (PAYMENT-REQUIRED header or body; GET, one POST retry on 400/404/405/501), or any 2xx. A single probe with no HTTP answer is unconfirmed until repeated; a placeholder path that refuses the literal placeholder is left out. Full method and correction log: https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory.json",
         selection_rule:
-          "top ~200 listings by lastUpdated on the public CDP discovery catalog, refreshed daily; probed in rotation (~2h cadence each)",
+          "top ~200 listings by lastUpdated on the public CDP discovery catalog, refreshed daily; 17 probed every 3 hours, so each about every 36 hours",
         free_aggregate_view: `${WORKER}/catalog`,
       },
       // paid response: never CDN-cached

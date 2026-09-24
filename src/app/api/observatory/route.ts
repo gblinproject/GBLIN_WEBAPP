@@ -192,7 +192,9 @@ async function fetchGblinStats(): Promise<AgentStatsBlock> {
 
 const SNAPSHOT_2026_07_27 = {
   services_listed: 14381,
-  endpoints_unreachable_pct: 52,
+  endpoints_unreachable_pct: null,
+  endpoints_unreachable_pct_withdrawn:
+    "2026-09-24: the 52% published here was withdrawn. Its probe was not recorded well enough to rerun, and later measurements under the corrected liveness rule contradict it (0 of 276 unreachable on 2026-08-18; on 2026-09-24, 183 of 187 tracked listings answering and 3 of the other 4 answering when re-checked by hand).",
   wallets_ever_paid: 2503,
   top3_endpoints_volume_share_pct: 68,
   weekly_volume_vs_peak_pct: -96,
@@ -231,7 +233,7 @@ const SOURCE = {
   methodology: "https://gblin.digital/observatory#methodology",
   license: "CC BY 4.0 — cite 'GBLIN Agent Economy Observatory'",
   disclosure:
-    "GBLIN operates 11 paid x402 endpoints; own traffic is excluded from organic counts; methodology is public",
+    "GBLIN operates 13 paid x402 endpoints; own traffic is excluded from organic counts; methodology is public",
 } as const;
 
 // ─── In-memory cache (24h ok / 1h on live-probe failure) ─────────────────────

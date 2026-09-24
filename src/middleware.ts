@@ -159,7 +159,7 @@ const x402Middleware = paymentProxy(
     "/api/x402/catalog": {
       accepts: accepts("$0.005"),
       description:
-        "x402 catalog observatory: factual liveness of the ~200 most recently updated Bazaar listings, probed in rotation (~2h cadence). Per-endpoint HTTP code, latency, last-OK time, consecutive fails. No payments made by probes; no judgements — measurements only. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog",
+        "x402 catalog observatory: factual liveness of the ~200 most recently updated Bazaar listings, probed in rotation (each about every 36h). Per-endpoint HTTP code, latency, last-OK time, consecutive fails. No payments made by probes; no judgements — measurements only. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog",
       mimeType: "application/json",
       extensions: {
         ...declareDiscoveryExtension({

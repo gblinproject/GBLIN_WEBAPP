@@ -30,6 +30,8 @@ import {
   ZAP_ADDRESS,
   quoteBuyShares,
   quoteSellShares,
+  ETH_EXIT_MIN_SHARES,
+  ETH_EXIT_ADVISED_SHARES,
   shortenAddress,
   LOGO_URL,
   TRADE_TOKEN_OPTIONS,
@@ -244,11 +246,8 @@ function AccountPageInner() {
   const [resolvedCustomToken, setResolvedCustomToken] = useState<TradeTokenOption | null>(null);
   const [redeemOption, setRedeemOption] = useState<'eth' | 'basket'>('eth');
   const [oracleHealth, setOracleHealth] = useState<OracleHealth>(UNCHECKED_ORACLE_HEALTH);
-
-  // Debug: log redeemOption changes
-  useEffect(() => {
-    console.log('[redeemOption] Changed to:', redeemOption);
-  }, [redeemOption]);
+  // The amount for which the small-ETH-exit notice was already shown; a second press goes through.
+  const smallExitWarnedRef = useRef<string | null>(null);
 
   // Read feed health once on mount so the ETH option is already disabled when the panel paints,
   // rather than only failing at click time. Re-checked before the write regardless.
@@ -747,19 +746,27 @@ function AccountPageInner() {
         }
         await ensureBase();
 
-        // When a feed the contract cannot price is in the basket, the ETH exit dispatches its
-        // internal swap with no minimum, so the check runs at click time rather than at render.
-        // The in-kind exit reads no oracle and stays available.
-        if (redeemOption !== 'basket') {
-          const health = await fetchOracleHealth();
-          setOracleHealth(health);
-          if (health.checked && !health.ethRedeemSafe) {
-            const names = health.feeds.filter((feed) => feed.unusable).map((feed) => feed.asset).join(', ');
+        // Re-read the vault's state at click time: a guard must not be cached. A basket token that reverts
+        // on balanceOf loses its leg on any redemption, in kind included, so nothing is sent while one is
+        // observed. The ETH exit also needs the vault to price its basket.
+        const health = await fetchOracleHealth();
+        setOracleHealth(health);
+        if (health.checked && !health.inKindRedeemSafe) {
+          setTradeError(`${t('trade.legGuard.title')}. ${String(t('trade.legGuard.body')).replace('{names}', health.muteLegs.join(', '))}`);
+          return;
+        }
+        if (redeemOption !== 'basket' && health.checked && !health.ethRedeemSafe) {
+          setRedeemOption('basket');
+          setTradeError(`${t('trade.oracleGuard.title')}. ${t('trade.oracleGuard.body')}`);
+          return;
+        }
+        {
+          const shares = ethers.parseEther(amount);
+          if (redeemOption !== 'basket' && (shares < ETH_EXIT_MIN_SHARES
+            || (shares < ETH_EXIT_ADVISED_SHARES && smallExitWarnedRef.current !== amount))) {
+            smallExitWarnedRef.current = amount;
             setRedeemOption('basket');
-            setTradeError(
-              `Price feed unusable (${names}). ETH redemption is paused because the swap would go out ` +
-              `without a floor. Switched to basket redemption, which uses no price feed — your holding is not locked.`
-            );
+            setTradeError(`${t('trade.smallExit.title')}. ${t('trade.smallExit.body')}`);
             return;
           }
         }
@@ -836,7 +843,7 @@ function AccountPageInner() {
     } finally {
       setIsTransacting(false);
     }
-  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, tradeMode, writeContractAsync, ensureBase, ethPriceUsd, ethBalance, getProvider]);
+  }, [account, address, activeTradeToken, amount, quoteMintFromWeth, rawQuote, redeemOption, slippage, t, tradeMode, writeContractAsync, ensureBase, ethPriceUsd, ethBalance, getProvider]);
 
   const gblinPriceUsd = useMemo(() => {
     if (!quoteData) return 0;
@@ -1565,7 +1572,7 @@ function AccountPageInner() {
                   usdValue={usdValue}
                   isLoadingQuote={isLoadingQuote}
                   isTransacting={isTransacting}
-                  isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && !isLoadingQuote && rawQuote <= 0n)}
+                  isTradeDisabled={isTransacting || !amount || Number.parseFloat(amount) <= 0 || (tradeMode === 'buy' && !activeTradeToken) || (redeemOption !== 'basket' && !isLoadingQuote && rawQuote <= 0n) || (tradeMode === 'sell' && oracleHealth.checked && !oracleHealth.inKindRedeemSafe)}
                   executeTrade={executeTrade}
                   tradeError={tradeError}
                   tradeTxHash={tradeTxHash}
@@ -1602,6 +1609,7 @@ function AccountPageInner() {
                   quoteAssetLabel={quoteAssetLabel}
                   redeemOption={redeemOption}
                   isEthRedeemBlocked={oracleHealth.checked && !oracleHealth.ethRedeemSafe}
+                  muteLegs={oracleHealth.checked ? oracleHealth.muteLegs : []}
                   oracleHealth={oracleHealth}
                   resolvedTokenSymbol={resolvedTokenSymbol}
                   selectedToken={selectedToken}

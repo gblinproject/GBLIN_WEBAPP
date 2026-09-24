@@ -20,7 +20,6 @@ export const metadata: Metadata = {
 
 const SNAPSHOT = [
   { value: '14,381', label: 'services listed on the x402 Bazaar' },
-  { value: '52%', label: 'of listed endpoints unreachable when probed' },
   { value: '2,503', label: 'wallets that have ever paid anything' },
   { value: '68%', label: 'of all volume flows to just 3 endpoints' },
   { value: '-96%', label: 'weekly volume versus its peak' },
@@ -69,7 +68,7 @@ export default function ObservatoryPage() {
         <h2 className="mt-12 text-xl font-semibold text-white">Paid agent calls received by GBLIN</h2>
         <GblinNumbers />
         <p className="mt-4 text-sm leading-7 text-zinc-400">
-          Conflict of interest, disclosed plainly: GBLIN operates 11 paid x402 endpoints, so we are a
+          Conflict of interest, disclosed plainly: GBLIN operates 13 paid x402 endpoints, so we are a
           participant in the market this observatory measures. Our numbers are on-chain-verifiable (USDC
           transfers to the fee wallet on Base), our own traffic is excluded from the organic counts below, and
           we never inflate Bazaar statistics with self-calls.
@@ -95,10 +94,23 @@ export default function ObservatoryPage() {
         <LiveSection />
 
         {/* ── Dated snapshot ───────────────────────────────────────────── */}
-        <h2 className="mt-12 text-xl font-semibold text-white">Verified snapshot — July 27, 2026</h2>
+        <h2 className="mt-12 text-xl font-semibold text-white">Snapshot — July 27, 2026</h2>
         <p className="mt-2 text-sm leading-7 text-zinc-400">
           Our primary research: full Bazaar catalog download plus reachability probe, performed 2026-07-27.
           These are dated constants, not live numbers.
+        </p>
+        <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] px-4 py-3 text-sm leading-7 text-zinc-300">
+          <span className="font-semibold text-amber-200">Correction, 2026-09-24.</span> This snapshot also showed
+          &ldquo;52% of listed endpoints unreachable when probed&rdquo;. We have withdrawn that figure. The probe
+          behind it was not recorded well enough to rerun, and our later measurements under the corrected
+          liveness rule contradict it: 0 of 276 recently updated listings unreachable on 2026-08-18, and on
+          2026-09-24 183 of the 187 listings tracked by the{' '}
+          <a className="text-amber-300 underline underline-offset-4" href="https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory" rel="noreferrer" target="_blank">
+            uptime observatory
+          </a>{' '}
+          answered, and 3 of the other 4 answered when re-checked by hand. A later figure of ours, 36.7% alive
+          (2026-08-16), was wrong because its probe read the payment challenge only from the response body and
+          only over GET; we cannot tell whether the July probe had the same flaw.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {SNAPSHOT.map((s) => (
@@ -135,7 +147,8 @@ export default function ObservatoryPage() {
         <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
           <p>
             <span className="font-semibold text-white">Snapshot (2026-07-27).</span> We downloaded the full
-            Coinbase x402 Bazaar discovery catalog and probed every listed resource URL. Counts, price
+            Coinbase x402 Bazaar discovery catalog and probed every listed resource URL (the reachability figure
+            from that probe is withdrawn, see the correction above). Counts, price
             distribution and volume concentration were computed over the complete catalog, cross-checked
             against public on-chain data for payer counts.
           </p>
