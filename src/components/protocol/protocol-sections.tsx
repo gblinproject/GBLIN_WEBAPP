@@ -16,6 +16,15 @@ import { ReserveCore } from './reserve-core';
 import { AgentActivity } from './agent-activity';
 import { AssetMark } from './asset-mark';
 
+// Closed auction: say how far the basket is from target and where the auction opens, both read from the
+// contract, instead of claiming the basket is on target while a row sits several points away.
+function auctionClosedText(t: (key: string) => string, d: OnChainData | null | undefined): string {
+  if (!d || d.driftBps === null || d.driftBandBps === null) return t('ui.home.auctionClosed');
+  return t('ui.home.auctionClosedGap')
+    .replace('{gap}', formatPercent(d.driftBps / 100, 1))
+    .replace('{band}', formatPercent(d.driftBandBps / 100, 0));
+}
+
 export type ProtocolView = 'home' | 'dashboard' | 'buy' | 'rebalance' | 'vault';
 
 export interface RebalanceCard {
@@ -227,7 +236,7 @@ function LiveTicker({ t, onChainData, basket }: { t: (key: string) => string; on
       v: onChainData
         ? onChainData.auctionOpen
           ? `${t('ui.home.auctionOpen')} · ${onChainData.auctionPremiumBps} bps`
-          : t('ui.home.auctionClosed')
+          : auctionClosedText(t, onChainData)
         : '—',
     },
     { k: 'Base', v: shortenAddress(DISPLAY_CONTRACT_ADDRESS) },
@@ -654,7 +663,7 @@ export function HomeView(props: HomeViewProps) {
                 <p className="g-eyebrow">{t('ui.home.statAuction')}</p>
                 <p className="mt-2 flex items-center gap-2 text-sm text-zinc-300">
                   {onChainData?.auctionOpen ? <span className="gblin-blink h-1.5 w-1.5 rounded-full bg-amber-300" /> : null}
-                  {onChainData ? (onChainData.auctionOpen ? `${t('ui.home.auctionOpen')} · ${onChainData.auctionPremiumBps} bps` : t('ui.home.auctionClosed')) : '—'}
+                  {onChainData ? (onChainData.auctionOpen ? `${t('ui.home.auctionOpen')} · ${onChainData.auctionPremiumBps} bps` : auctionClosedText(t, onChainData)) : '—'}
                 </p>
               </div>
             </div>

@@ -52,6 +52,10 @@ export interface OnChainData {
   auctionPremiumBps: number;
   /** True while the largest deviation from the target weights keeps an auction open. */
   auctionOpen: boolean;
+  /** Largest deviation from target, in bps of the vault value, as the vault measures it (WETH excluded). Null when unread. */
+  driftBps: number | null;
+  /** The auction opens above this deviation, in bps (configAuction). Null when unread. */
+  driftBandBps: number | null;
   basketData: BasketItem[];
   totalYieldDistributed: number | null;
   apyData?: {
@@ -933,14 +937,23 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
     const vault = new ethers.Contract(CONTRACT_ADDRESS, GBLIN_ABI, provider);
     const lens = new ethers.Contract(LENS_ADDRESS, LENS_ABI, provider);
 
-    const [totalSupply, navReliable, premiumRaw, mgmtFeeRaw, lastAccrualRaw, rowCountRaw] = await Promise.all([
+    const [totalSupply, navReliable, premiumRaw, mgmtFeeRaw, lastAccrualRaw, rowCountRaw, driftEthRaw, totalEthRaw, auctionCfg] = await Promise.all([
       vault.totalSupply().catch(() => 0n),
       vault.isNavReliable().catch(() => false),
       vault.auctionPremiumBps().catch(() => 0n),
       lens.managementFeeBps(CONTRACT_ADDRESS).catch(() => 0n),
       lens.lastManagementFeeAccrual(CONTRACT_ADDRESS).catch(() => 0n),
       lens.basketLength(CONTRACT_ADDRESS).catch(() => 0n),
+      // The same two figures the vault compares in _markDrift, so the page never says "on target"
+      // while a row sits several points away from it.
+      vault.currentDriftEth().catch(() => null),
+      vault.totalEthValue(0).catch(() => null),
+      lens.configAuction(CONTRACT_ADDRESS).catch(() => null),
     ]);
+    const driftBps = driftEthRaw !== null && totalEthRaw !== null && BigInt(totalEthRaw) > 0n
+      ? Number((BigInt(driftEthRaw) * 10000n) / BigInt(totalEthRaw))
+      : null;
+    const driftBandBps = auctionCfg ? Number(auctionCfg[0]) : null;
 
     const supplyFormatted = parseFloat(ethers.formatEther(totalSupply));
     const rowCount = Number(rowCountRaw);
@@ -1011,6 +1024,8 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       navReliable: Boolean(navReliable),
       auctionPremiumBps: Number(premiumRaw),
       auctionOpen,
+      driftBps,
+      driftBandBps,
       basketData: basketItems,
       totalYieldDistributed,
       apyData: null
@@ -1026,6 +1041,8 @@ export const fetchOnChainData = async (): Promise<OnChainData> => {
       navReliable: false,
       auctionPremiumBps: 0,
       auctionOpen: false,
+      driftBps: null,
+      driftBandBps: null,
       basketData: [],
       totalYieldDistributed: null,
       apyData: null
