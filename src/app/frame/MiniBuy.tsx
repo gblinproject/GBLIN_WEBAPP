@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicClient, encodeFunctionData, formatUnits, http, parseAbi, parseUnits, type Hex } from "viem";
 import { base } from "viem/chains";
@@ -9,15 +8,15 @@ import { withBuilderSuffix } from "@/lib/builder-code";
 import { SiteLink } from "./site-link";
 
 /**
- * Mint inside the Farcaster / Base App mini app.
+ * Mint from the mini app page, inside Farcaster / Base App or in a plain browser.
  *
- * The wallet is the one the host app already provides (sdk.wallet.getEthereumProvider), so a
- * visitor who has ETH on Base can buy without leaving the feed, connecting anything or switching
- * app. Two ways to buy: one tap on a fixed amount, or an amount the buyer types in dollars or ETH,
- * quoted by the Lens while it is typed. The call is the same one the website makes:
- * `buyGBLIN(minOut)` on the vault, priced at net asset value, with a 1% floor on the shares
- * received and the Base builder code appended for attribution. Outside a mini app the component
- * links to the full buy page instead.
+ * Inside a host the wallet is the one the app already provides (sdk.wallet.getEthereumProvider),
+ * so a visitor with ETH on Base buys without leaving the feed. In a browser it is the injected
+ * wallet (window.ethereum). Two ways to buy: one tap on a fixed amount, or an amount the buyer
+ * types in dollars or ETH, quoted by the Lens while it is typed. The call is the same one the
+ * website makes: `buyGBLIN(minOut)` on the vault, priced at net asset value, with a 1% floor on
+ * the shares received and the Base builder code appended for attribution. Without any wallet the
+ * page points to the full buy page, which connects mobile wallets too.
  */
 
 const ETH_USD_FEED = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
@@ -42,7 +41,25 @@ type Status =
   | { kind: "idle" }
   | { kind: "busy"; note: string }
   | { kind: "done"; hash: string; shares: string }
-  | { kind: "error"; note: string };
+  | { kind: "error"; note: string }
+  | { kind: "nowallet" };
+
+const BASE_CHAIN = {
+  chainId: "0x2105",
+  chainName: "Base",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: ["https://mainnet.base.org"],
+  blockExplorerUrls: ["https://basescan.org"],
+};
+
+/** The host wallet inside a mini app, the injected wallet in a browser, or null. */
+async function getWallet(inMiniApp: boolean): Promise<Eip1193 | null> {
+  if (inMiniApp) {
+    const { sdk } = await import("@farcaster/miniapp-sdk");
+    return ((await sdk.wallet.getEthereumProvider()) as Eip1193 | undefined) ?? null;
+  }
+  return (window as unknown as { ethereum?: Eip1193 }).ethereum ?? null;
+}
 
 /** Dollars to wei of ETH at the feed price (8 decimals). */
 function usdToWei(usd: string, ethUsd: bigint): bigint {
@@ -111,15 +128,17 @@ export default function MiniBuy() {
         const { sdk } = await import("@farcaster/miniapp-sdk");
         inside = await sdk.isInMiniApp();
         if (!cancelled) setInMiniApp(inside);
-        if (inside) {
-          // The host wallet is usually connected already: eth_accounts reads it without a prompt.
-          const provider = (await sdk.wallet.getEthereumProvider()) as Eip1193 | undefined;
-          const accounts = (await provider?.request({ method: "eth_accounts" })) as string[] | undefined;
-          const first = accounts?.[0] as Hex | undefined;
-          if (first && !cancelled) void refreshBalance(first);
-        }
       } catch {
         if (!cancelled) setInMiniApp(inside);
+      }
+      try {
+        // A wallet already connected answers eth_accounts without a prompt: show its balance.
+        const provider = await getWallet(inside);
+        const accounts = (await provider?.request({ method: "eth_accounts" })) as string[] | undefined;
+        const first = accounts?.[0] as Hex | undefined;
+        if (first && !cancelled) void refreshBalance(first);
+      } catch {
+        /* no wallet or not connected yet: the balance is simply not shown */
       }
     })();
     (async () => {
@@ -165,19 +184,27 @@ export default function MiniBuy() {
 
   const buy = async (wei: bigint) => {
     if (wei === 0n) return;
+    const provider = await getWallet(inMiniApp === true).catch(() => null);
+    if (!provider) {
+      setStatus({ kind: "nowallet" });
+      return;
+    }
     setStatus({ kind: "busy", note: "Opening your wallet…" });
     try {
-      const { sdk } = await import("@farcaster/miniapp-sdk");
-      const provider = (await sdk.wallet.getEthereumProvider()) as Eip1193 | undefined;
-      if (!provider) throw new Error("This app did not provide a wallet.");
-
       const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
       const from = accounts?.[0] as Hex | undefined;
       if (!from) throw new Error("No account selected.");
       try {
         await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x2105" }] });
-      } catch {
-        /* most hosts are already on Base; the transaction itself names the chain */
+      } catch (switchErr) {
+        // 4902: the wallet does not know Base yet. Hosts are already on Base and land here rarely.
+        if ((switchErr as { code?: number })?.code === 4902) {
+          await provider.request({ method: "wallet_addEthereumChain", params: [BASE_CHAIN] });
+        }
+      }
+      if (inMiniApp !== true) {
+        const chainId = (await provider.request({ method: "eth_chainId" })) as string;
+        if (parseInt(chainId, 16) !== 8453) throw new Error("Switch your wallet to Base and try again.");
       }
 
       const [out] = await client.readContract({ address: LENS_ADDRESS as Hex, abi: LENS_ABI, functionName: "quoteBuy", args: [CONTRACT_ADDRESS as Hex, wei] });
@@ -210,21 +237,11 @@ export default function MiniBuy() {
     }
   };
 
-  if (inMiniApp === false) {
-    return (
-      <Link href="/buy-gblin" style={{ textDecoration: "none" }}>
-        <div style={box}>
-          <div style={{ fontWeight: 800, fontSize: 14.5, color: "#1a1405" }}>Buy GBLIN at net asset value →</div>
-        </div>
-      </Link>
-    );
-  }
-
   const busy = status.kind === "busy";
   const shown = quote && value !== null && quote.value === value ? quote : null;
   const quoting = value !== null && value > 0n && !shown && quoteFailed !== value;
   const overBalance = value !== null && balance !== null && value > balance;
-  const canBuyCustom = !busy && inMiniApp === true && value !== null && value > 0n && !!shown && shown.out > 0n && !overBalance;
+  const canBuyCustom = !busy && inMiniApp !== null && value !== null && value > 0n && !!shown && shown.out > 0n && !overBalance;
   const navUsd = navEth && ethUsd ? fmtUsd(navEth, ethUsd) : null;
 
   const switchUnit = () => {
@@ -326,6 +343,15 @@ export default function MiniBuy() {
 
       {status.kind === "busy" && <p style={note}>{status.note}</p>}
       {status.kind === "error" && <p style={{ ...note, color: "#fda4af" }}>{status.note}</p>}
+      {status.kind === "nowallet" && (
+        <p style={{ ...note, color: "#fde68a" }}>
+          No wallet in this browser. Open this page inside Farcaster or Base App, or{" "}
+          <SiteLink path="/buy-gblin" style={{ color: "#fde68a", fontWeight: 700 }}>
+            buy on gblin.digital
+          </SiteLink>{" "}
+          with any wallet, mobile ones included.
+        </p>
+      )}
       {status.kind === "done" && (
         <p style={{ ...note, color: "#a7f3d0" }}>
           Sent: about {status.shares} GBLIN on the way.{" "}
@@ -349,13 +375,6 @@ export default function MiniBuy() {
   );
 }
 
-const box: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  padding: 13,
-  borderRadius: 13,
-  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
-};
 const chip: React.CSSProperties = {
   padding: "13px 6px",
   borderRadius: 13,
