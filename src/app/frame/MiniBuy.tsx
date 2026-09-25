@@ -9,18 +9,19 @@ import { withBuilderSuffix } from "@/lib/builder-code";
 import { SiteLink } from "./site-link";
 
 /**
- * Mint inside the Farcaster / Base App mini app, for any amount.
+ * Mint inside the Farcaster / Base App mini app.
  *
  * The wallet is the one the host app already provides (sdk.wallet.getEthereumProvider), so a
- * visitor who has ETH on Base can buy without leaving the feed. The buyer types the amount in
- * dollars or in ETH; the quick amounts only fill the field. The Lens quotes the shares at net
- * asset value while the amount is typed, and the call is the one the website makes:
- * `buyGBLIN(minOut)` on the vault, with a 1% floor on the shares received and the Base builder
- * code appended for attribution. Outside a mini app the component links to the full buy page.
+ * visitor who has ETH on Base can buy without leaving the feed, connecting anything or switching
+ * app. Two ways to buy: one tap on a fixed amount, or an amount the buyer types in dollars or ETH,
+ * quoted by the Lens while it is typed. The call is the same one the website makes:
+ * `buyGBLIN(minOut)` on the vault, priced at net asset value, with a 1% floor on the shares
+ * received and the Base builder code appended for attribution. Outside a mini app the component
+ * links to the full buy page instead.
  */
 
 const ETH_USD_FEED = "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70";
-const PRESETS_USD = [10, 25, 50, 100];
+const AMOUNTS_USD = [5, 10, 25];
 const SLIPPAGE_BPS = 100n;
 // ETH that "Max" leaves in the wallet to pay the gas of the mint itself (about $0.25).
 const GAS_RESERVE_WEI = 100_000_000_000_000n;
@@ -43,6 +44,11 @@ type Status =
   | { kind: "done"; hash: string; shares: string }
   | { kind: "error"; note: string };
 
+/** Dollars to wei of ETH at the feed price (8 decimals). */
+function usdToWei(usd: string, ethUsd: bigint): bigint {
+  return (parseUnits(usd, 8) * 10n ** 18n) / ethUsd;
+}
+
 /** Amount typed by the buyer, in wei of ETH. Accepts a comma as decimal separator. */
 function toWei(raw: string, unit: Unit, ethUsd: bigint | null): bigint | null {
   const s = raw.trim().replace(",", ".");
@@ -50,7 +56,7 @@ function toWei(raw: string, unit: Unit, ethUsd: bigint | null): bigint | null {
   try {
     if (unit === "ETH") return parseUnits(s, 18);
     if (!ethUsd || ethUsd <= 0n) return null;
-    return (parseUnits(s, 8) * 10n ** 18n) / ethUsd;
+    return usdToWei(s, ethUsd);
   } catch {
     return null;
   }
@@ -83,10 +89,9 @@ export default function MiniBuy() {
   const [ethUsd, setEthUsd] = useState<bigint | null>(null);
   const [navEth, setNavEth] = useState<bigint | null>(null);
   const [unit, setUnit] = useState<Unit>("USD");
-  const [amount, setAmount] = useState("25");
+  const [amount, setAmount] = useState("");
   const [quote, setQuote] = useState<{ value: bigint; out: bigint } | null>(null);
   const [quoteFailed, setQuoteFailed] = useState<bigint | null>(null);
-  const [account, setAccount] = useState<Hex | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -94,7 +99,7 @@ export default function MiniBuy() {
     try {
       setBalance(await client.getBalance({ address: addr }));
     } catch {
-      /* the balance line is simply not shown */
+      /* the balance is simply not shown */
     }
   }, []);
 
@@ -111,10 +116,7 @@ export default function MiniBuy() {
           const provider = (await sdk.wallet.getEthereumProvider()) as Eip1193 | undefined;
           const accounts = (await provider?.request({ method: "eth_accounts" })) as string[] | undefined;
           const first = accounts?.[0] as Hex | undefined;
-          if (first && !cancelled) {
-            setAccount(first);
-            void refreshBalance(first);
-          }
+          if (first && !cancelled) void refreshBalance(first);
         }
       } catch {
         if (!cancelled) setInMiniApp(inside);
@@ -125,7 +127,7 @@ export default function MiniBuy() {
         const [, answer] = await client.readContract({ address: ETH_USD_FEED, abi: FEED_ABI, functionName: "latestRoundData" });
         if (!cancelled && answer > 0n) setEthUsd(answer);
       } catch {
-        /* dollar amounts stay unavailable without a price; ETH amounts still work */
+        /* the dollar buttons stay disabled without a price; ETH amounts still work */
       }
     })();
     (async () => {
@@ -133,7 +135,7 @@ export default function MiniBuy() {
         const nav = await client.readContract({ address: CONTRACT_ADDRESS as Hex, abi: VAULT_ABI, functionName: "navPerShare", args: [0n] });
         if (!cancelled && nav > 0n) setNavEth(nav);
       } catch {
-        /* the price line is simply not shown */
+        /* the price is simply not shown */
       }
     })();
     return () => {
@@ -161,31 +163,8 @@ export default function MiniBuy() {
     };
   }, [value]);
 
-  const shown = quote && value !== null && quote.value === value ? quote : null;
-  const quoting = value !== null && value > 0n && !shown && quoteFailed !== value;
-  const overBalance = value !== null && balance !== null && value > balance;
-  const busy = status.kind === "busy";
-  const canBuy = !busy && inMiniApp === true && !!shown && shown.out > 0n && !overBalance;
-
-  const switchUnit = () => {
-    const next: Unit = unit === "USD" ? "ETH" : "USD";
-    if (value !== null && value > 0n && ethUsd) {
-      if (next === "ETH") setAmount(ethInput(value));
-      else setAmount((Number((value * ethUsd) / 10n ** 18n) / 1e8).toFixed(2));
-    } else if (next === "USD" && !ethUsd) {
-      return; // no price to convert with
-    }
-    setUnit(next);
-  };
-
-  const setMax = () => {
-    if (balance === null || balance <= GAS_RESERVE_WEI) return;
-    setUnit("ETH");
-    setAmount(ethInput(balance - GAS_RESERVE_WEI));
-  };
-
-  const buy = async () => {
-    if (!value || value === 0n) return;
+  const buy = async (wei: bigint) => {
+    if (wei === 0n) return;
     setStatus({ kind: "busy", note: "Opening your wallet…" });
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
@@ -195,15 +174,13 @@ export default function MiniBuy() {
       const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
       const from = accounts?.[0] as Hex | undefined;
       if (!from) throw new Error("No account selected.");
-      setAccount(from);
       try {
         await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x2105" }] });
       } catch {
         /* most hosts are already on Base; the transaction itself names the chain */
       }
 
-      // Quote again at the moment of buying: the one on screen can be a few seconds old.
-      const [out] = await client.readContract({ address: LENS_ADDRESS as Hex, abi: LENS_ABI, functionName: "quoteBuy", args: [CONTRACT_ADDRESS as Hex, value] });
+      const [out] = await client.readContract({ address: LENS_ADDRESS as Hex, abi: LENS_ABI, functionName: "quoteBuy", args: [CONTRACT_ADDRESS as Hex, wei] });
       if (out === 0n) throw new Error("The vault is not quoting right now. Try again in a minute.");
       const minOut = (out * (10000n - SLIPPAGE_BPS)) / 10000n;
       const data = withBuilderSuffix(encodeFunctionData({ abi: VAULT_ABI, functionName: "buyGBLIN", args: [minOut] }));
@@ -212,7 +189,7 @@ export default function MiniBuy() {
       // block does not send a limit that falls short. If the estimate fails, the wallet estimates.
       let gas: string | undefined;
       try {
-        const est = await client.estimateGas({ account: from, to: CONTRACT_ADDRESS as Hex, data, value });
+        const est = await client.estimateGas({ account: from, to: CONTRACT_ADDRESS as Hex, data, value: wei });
         gas = `0x${((est * 5n) / 4n).toString(16)}`;
       } catch {
         gas = undefined;
@@ -221,7 +198,7 @@ export default function MiniBuy() {
       setStatus({ kind: "busy", note: "Confirm in your wallet…" });
       const hash = (await provider.request({
         method: "eth_sendTransaction",
-        params: [{ from, to: CONTRACT_ADDRESS, value: `0x${value.toString(16)}`, data, chainId: "0x2105", ...(gas ? { gas } : {}) }],
+        params: [{ from, to: CONTRACT_ADDRESS, value: `0x${wei.toString(16)}`, data, chainId: "0x2105", ...(gas ? { gas } : {}) }],
       })) as string;
       setStatus({ kind: "done", hash, shares: fmtShares(out) });
       setTimeout(() => void refreshBalance(from), 6000);
@@ -235,88 +212,119 @@ export default function MiniBuy() {
 
   if (inMiniApp === false) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Link href="/buy-gblin" style={{ textDecoration: "none" }}>
-          <div style={buyBox}>
-            <div style={{ fontWeight: 800, fontSize: 14.5, color: "#1a1405" }}>Buy any amount at net asset value →</div>
-          </div>
-        </Link>
-        <p style={{ ...note, textAlign: "center", fontSize: 11 }}>
-          On gblin.digital, with any wallet: ETH, USDC, cbBTC or any token on Base.
-        </p>
-      </div>
+      <Link href="/buy-gblin" style={{ textDecoration: "none" }}>
+        <div style={box}>
+          <div style={{ fontWeight: 800, fontSize: 14.5, color: "#1a1405" }}>Buy GBLIN at net asset value →</div>
+        </div>
+      </Link>
     );
   }
 
+  const busy = status.kind === "busy";
+  const shown = quote && value !== null && quote.value === value ? quote : null;
+  const quoting = value !== null && value > 0n && !shown && quoteFailed !== value;
+  const overBalance = value !== null && balance !== null && value > balance;
+  const canBuyCustom = !busy && inMiniApp === true && value !== null && value > 0n && !!shown && shown.out > 0n && !overBalance;
   const navUsd = navEth && ethUsd ? fmtUsd(navEth, ethUsd) : null;
-  let summary: string;
-  if (value === null || value === 0n) summary = unit === "USD" && !ethUsd ? "Loading the ETH price…" : "Type an amount in dollars or ETH.";
-  else if (quoting) summary = "Quoting at net asset value…";
-  else if (!shown) summary = "No quote right now. Try again in a minute.";
-  else {
-    const other = unit === "USD" ? `${fmtEth(value)} ETH` : ethUsd ? fmtUsd(value, ethUsd) : `${fmtEth(value)} ETH`;
-    summary = `≈ ${other} → about ${fmtShares(shown.out)} GBLIN`;
+
+  const switchUnit = () => {
+    const next: Unit = unit === "USD" ? "ETH" : "USD";
+    if (next === "USD" && !ethUsd) return; // no price to convert with
+    if (value !== null && value > 0n && ethUsd) {
+      setAmount(next === "ETH" ? ethInput(value) : (Number((value * ethUsd) / 10n ** 18n) / 1e8).toFixed(2));
+    }
+    setUnit(next);
+  };
+
+  let summary: string | null = null;
+  if (value !== null && value > 0n) {
+    if (quoting) summary = "Quoting at net asset value…";
+    else if (!shown) summary = "No quote right now. Try again in a minute.";
+    else {
+      const other = unit === "USD" ? `${fmtEth(value)} ETH` : ethUsd ? fmtUsd(value, ethUsd) : `${fmtEth(value)} ETH`;
+      summary = `≈ ${other} → about ${fmtShares(shown.out)} GBLIN`;
+    }
   }
 
   return (
-    <div style={panel}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: "#fde68a" }}>Buy GBLIN · any amount</div>
-        {navUsd && <div style={{ fontSize: 11.5, color: "#94a3b8" }}>1 GBLIN = {navUsd} at NAV</div>}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#fde68a" }}>Hold the basket — mint at net asset value</div>
+        {navUsd && <div style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>1 GBLIN = {navUsd}</div>}
       </div>
 
-      <div style={inputRow}>
-        <span style={{ color: "#94a3b8", fontWeight: 800, fontSize: 18, width: 16, textAlign: "center" }}>{unit === "USD" ? "$" : "Ξ"}</span>
-        <input
-          inputMode="decimal"
-          autoComplete="off"
-          aria-label={unit === "USD" ? "Amount in US dollars" : "Amount in ETH"}
-          value={amount}
-          onChange={(e) => {
-            setAmount(e.target.value);
-            if (status.kind !== "busy") setStatus({ kind: "idle" });
-          }}
-          placeholder="0"
-          style={inputStyle}
-        />
-        <button onClick={switchUnit} disabled={busy} style={unitBtn} aria-label="Switch between dollars and ETH">
-          {unit} ⇄
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {PRESETS_USD.map((usd) => (
+      {/* One tap: buys the amount right away */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        {AMOUNTS_USD.map((usd) => (
           <button
             key={usd}
-            onClick={() => {
-              setUnit("USD");
-              setAmount(String(usd));
-            }}
-            disabled={busy || !ethUsd}
-            style={{ ...chip, ...(unit === "USD" && amount === String(usd) ? chipOn : null) }}
+            onClick={() => ethUsd && buy(usdToWei(String(usd), ethUsd))}
+            disabled={busy || !ethUsd || inMiniApp === null}
+            style={{ ...chip, opacity: busy || !ethUsd ? 0.55 : 1 }}
           >
             ${usd}
           </button>
         ))}
-        {balance !== null && balance > GAS_RESERVE_WEI && (
-          <button onClick={setMax} disabled={busy} style={chip}>
-            Max
-          </button>
-        )}
       </div>
 
-      <p style={{ ...note, color: "#cbd5e1" }}>{summary}</p>
-      {account && balance !== null && (
-        <p style={{ ...note, fontSize: 11 }}>
-          Wallet: {fmtEth(balance)} ETH on Base{ethUsd ? ` (${fmtUsd(balance, ethUsd)})` : ""}
-          {overBalance ? " · more than you have" : ""}
+      {/* Or the buyer's own amount */}
+      <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 2 }}>Or choose your amount</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={inputRow}>
+          <span style={{ color: "#94a3b8", fontWeight: 800, fontSize: 16, width: 14, textAlign: "center" }}>{unit === "USD" ? "$" : "Ξ"}</span>
+          <input
+            inputMode="decimal"
+            autoComplete="off"
+            aria-label={unit === "USD" ? "Amount in US dollars" : "Amount in ETH"}
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              if (!busy) setStatus({ kind: "idle" });
+            }}
+            placeholder={unit === "USD" ? "e.g. 40" : "e.g. 0.02"}
+            style={inputStyle}
+          />
+          <button onClick={switchUnit} disabled={busy} style={unitBtn} aria-label="Switch between dollars and ETH">
+            {unit} ⇄
+          </button>
+        </div>
+        <button
+          onClick={() => value && buy(value)}
+          disabled={!canBuyCustom}
+          style={{ ...chip, padding: "0 16px", opacity: canBuyCustom ? 1 : 0.5, cursor: canBuyCustom ? "pointer" : "default" }}
+        >
+          Buy
+        </button>
+      </div>
+      {(summary || balance !== null) && (
+        <p style={note}>
+          {summary}
+          {summary && balance !== null ? " · " : ""}
+          {balance !== null && (
+            <>
+              Wallet {fmtEth(balance)} ETH
+              {overBalance ? ", not enough" : ""}
+              {balance > GAS_RESERVE_WEI && (
+                <>
+                  {" · "}
+                  <button
+                    onClick={() => {
+                      setUnit("ETH");
+                      setAmount(ethInput(balance - GAS_RESERVE_WEI));
+                    }}
+                    disabled={busy}
+                    style={maxLink}
+                  >
+                    Max
+                  </button>
+                </>
+              )}
+            </>
+          )}
         </p>
       )}
 
-      <button onClick={buy} disabled={!canBuy} style={{ ...buyBtn, opacity: canBuy ? 1 : 0.5, cursor: canBuy ? "pointer" : "default" }}>
-        {status.kind === "busy" ? status.note : shown ? `Buy about ${fmtShares(shown.out)} GBLIN` : "Buy GBLIN"}
-      </button>
-
+      {status.kind === "busy" && <p style={note}>{status.note}</p>}
       {status.kind === "error" && <p style={{ ...note, color: "#fda4af" }}>{status.note}</p>}
       {status.kind === "done" && (
         <p style={{ ...note, color: "#a7f3d0" }}>
@@ -327,32 +335,46 @@ export default function MiniBuy() {
         </p>
       )}
       <p style={{ ...note, fontSize: 10.5 }}>
-        Paid in ETH on Base. 0.10% to mint, 0.50% a year, nothing taken when you redeem in kind. Redeemable from the
-        contract at any time. GBLIN is volatile, not a stablecoin.{" "}
-        <SiteLink path="/buy-gblin" style={{ color: "#fde68a" }}>
-          Other tokens on gblin.digital
+        Paid in ETH on Base, 0.10% mint fee, redeemable from the contract at any time. GBLIN is volatile, not a
+        stablecoin.{" "}
+        <SiteLink path="/about" style={{ color: "#94a3b8" }}>
+          Who is behind it
+        </SiteLink>
+        {" · "}
+        <SiteLink path="/buy-gblin" style={{ color: "#94a3b8" }}>
+          Pay with other tokens on gblin.digital
         </SiteLink>
       </p>
     </div>
   );
 }
 
-const panel: React.CSSProperties = {
+const box: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column",
-  gap: 9,
-  padding: "14px 13px",
-  borderRadius: 16,
-  border: "1px solid rgba(251,191,36,0.35)",
-  background: "linear-gradient(135deg, rgba(251,191,36,0.10), rgba(251,191,36,0.03))",
+  justifyContent: "center",
+  padding: 13,
+  borderRadius: 13,
+  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+};
+const chip: React.CSSProperties = {
+  padding: "13px 6px",
+  borderRadius: 13,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 800,
+  fontSize: 15,
+  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+  color: "#1a1405",
 };
 const inputRow: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
   display: "flex",
   alignItems: "center",
-  gap: 8,
-  padding: "6px 6px 6px 12px",
+  gap: 6,
+  padding: "4px 4px 4px 10px",
   borderRadius: 13,
-  border: "1px solid rgba(148,163,184,0.25)",
+  border: "1px solid rgba(251,191,36,0.35)",
   background: "rgba(0,0,0,0.35)",
 };
 const inputStyle: React.CSSProperties = {
@@ -362,51 +384,30 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   background: "transparent",
   color: "#ffffff",
-  fontSize: 22,
+  fontSize: 17,
   fontWeight: 800,
-  padding: "6px 0",
+  padding: "8px 0",
   fontVariantNumeric: "tabular-nums",
 };
 const unitBtn: React.CSSProperties = {
-  padding: "9px 11px",
-  borderRadius: 10,
+  padding: "8px 9px",
+  borderRadius: 9,
   border: "1px solid rgba(251,191,36,0.4)",
   background: "rgba(251,191,36,0.12)",
   color: "#fde68a",
   fontWeight: 800,
-  fontSize: 12.5,
+  fontSize: 12,
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
-const chip: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(148,163,184,0.25)",
-  background: "rgba(255,255,255,0.04)",
-  color: "#e2e8f0",
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: "pointer",
-};
-const chipOn: React.CSSProperties = {
-  border: "1px solid rgba(251,191,36,0.7)",
-  background: "rgba(251,191,36,0.16)",
-  color: "#fde68a",
-};
-const buyBtn: React.CSSProperties = {
-  padding: "14px 10px",
-  borderRadius: 13,
+const maxLink: React.CSSProperties = {
   border: "none",
-  fontWeight: 800,
-  fontSize: 15,
-  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
-  color: "#1a1405",
-};
-const buyBox: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  padding: 13,
-  borderRadius: 13,
-  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+  background: "none",
+  padding: 0,
+  color: "#fde68a",
+  fontWeight: 700,
+  fontSize: 12,
+  cursor: "pointer",
+  textDecoration: "underline",
 };
 const note: React.CSSProperties = { margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.5 };

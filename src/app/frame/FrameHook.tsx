@@ -235,12 +235,10 @@ export default function FrameHook() {
             </div>
           )}
 
-          {/* Buy, any amount: always open, so a visitor does not have to play first */}
-          <MiniBuy />
-
           {/* Actions */}
           {revealed && (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              <MiniBuy />
               <button
                 onClick={onShare}
                 disabled={shareState === "loading"}
