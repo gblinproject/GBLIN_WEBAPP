@@ -67,11 +67,11 @@ export async function generateMetadata({
   return {
     title: "GBLIN — Crash Shield Challenge",
     description:
-      "Guess how little GBLIN drops when BTC and ETH crash. Backed, self-rebalancing basket on Base. Governed by a 48h public timelock.",
+      "Guess how little GBLIN drops when BTC and ETH crash, then buy any amount at net asset value. cbBTC, WETH and USDC in one token on Base. gblin.digital",
     openGraph: {
       title: "GBLIN — Crash Shield Challenge",
       description:
-        "Guess how little GBLIN drops when BTC and ETH crash. Autonomous on-chain basket on Base.",
+        "Guess how little GBLIN drops when BTC and ETH crash, then buy any amount at net asset value. gblin.digital",
       images: [{ url: frameImage, width: 1200, height: 800 }],
       url: `${SITE_URL}/frame`,
     },

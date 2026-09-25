@@ -312,7 +312,7 @@ export async function GET(req: Request) {
                 letterSpacing: 0.2,
               }}
             >
-              Guess how little GBLIN drops in a real crash · gblin.digital/frame
+              Guess how little it drops in a real crash · buy any amount at NAV · gblin.digital
             </div>
           </div>
           <div

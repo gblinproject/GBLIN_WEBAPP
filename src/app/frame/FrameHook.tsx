@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import MiniBuy from "./MiniBuy";
+import { SiteLink } from "./site-link";
 import {
   ArrowRight,
-  BarChart3,
   Check,
   RotateCcw,
   Share2,
@@ -25,7 +25,6 @@ import {
  */
 
 const SITE_URL = "https://gblin.digital";
-const DASHBOARD_URL = `${SITE_URL}/dashboard`;
 
 const C = {
   text: "#ffffff",
@@ -58,6 +57,15 @@ const CRASHES: Crash[] = [
   { id: "bear2018", label: "Bear market 2018", short: "the 2018 bear", gblin: 41.4, btc: 81.4, eth: 94.0, options: [21, 41.4, 68] },
 ];
 
+// Pages of the website shown at the bottom of the mini app.
+const FOOTER_LINKS = [
+  { label: "How it works", path: "/" },
+  { label: "Vault", path: "/vault" },
+  { label: "Contracts", path: "/about" },
+  { label: "Dashboard", path: "/dashboard" },
+  { label: "For agents", path: "/agents" },
+];
+
 const glassCard: React.CSSProperties = {
   borderRadius: 22,
   background:
@@ -83,7 +91,7 @@ export default function FrameHook() {
       `When ${crash.short} hit, Bitcoin fell -${crash.btc}% and Ethereum -${crash.eth}%.\n\n` +
       `In the 10-year backtest, GBLIN's Crash Shield rule caps that drawdown at -${crash.gblin}% — ` +
       `it de-risks itself, on-chain, on Base.\n\n` +
-      `Could you have guessed it? Try the @gblin Crash Shield 👇`;
+      `Could you have guessed it? Try the @gblin Crash Shield 👇\n\ngblin.digital`;
     const embed = `${SITE_URL}/frame`;
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
@@ -227,10 +235,12 @@ export default function FrameHook() {
             </div>
           )}
 
+          {/* Buy, any amount: always open, so a visitor does not have to play first */}
+          <MiniBuy />
+
           {/* Actions */}
           {revealed && (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              <MiniBuy />
               <button
                 onClick={onShare}
                 disabled={shareState === "loading"}
@@ -285,15 +295,19 @@ export default function FrameHook() {
             </div>
           )}
 
-          {/* Footer */}
+          {/* Footer: the website, always in view */}
           <div style={{ height: 1, background: C.border, margin: "2px -4px 0" }} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontSize: 11, color: C.textMute }}>
-            <a href={DASHBOARD_URL} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.textMute, textDecoration: "none" }}>
-              <BarChart3 size={12} /> Live dashboard
-            </a>
-            <Link href="/buy-gblin" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.textMute, textDecoration: "none" }}>
-              cbBTC + WETH + USDC <ArrowRight size={12} />
-            </Link>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <SiteLink path="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#fde68a", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
+              gblin.digital <ArrowRight size={13} />
+            </SiteLink>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", fontSize: 11.5 }}>
+              {FOOTER_LINKS.map((l) => (
+                <SiteLink key={l.path} path={l.path} style={{ color: C.textDim, textDecoration: "none" }}>
+                  {l.label}
+                </SiteLink>
+              ))}
+            </div>
           </div>
         </section>
       </div>
