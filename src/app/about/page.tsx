@@ -22,6 +22,14 @@ const TIMELOCK = '0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd';
 const GUARDIAN = '0x30590c0D05c26562d7296CE3D927d3418d2e6dcA';
 const VAULT = '0xc2181d975c05c8c724b334bcED0764c0b86B1D53';
 const SENTINEL = '0x9F13C5c46a864183e1c57Ec02837fe5B980D3F67';
+const LENS = '0xfCFea8027019E8551A1f09AD91532471F5D26f61';
+const ZAP = '0x0E9D6Ceb6D313b021622C121Cda9C62e86e60200';
+const UNISWAP_ADAPTER = '0x062654Bf9b5Bd88b84D7861a8f22ba94dECd9d3F';
+const COW_FILL_AGENT = '0x0f4307A5Eb7D33d04Cb68fb0bA4d47a56C7E2fc8';
+const AUCTION_ORDER = '0x156Ffd19819e02d9809cED8fa1416EDCD31ddaB9';
+const UNISWAP_POOL = '0x779C4260022bf7493d303Ff016C3C63215ee9B19';
+const PREVIOUS_VAULT = '0x36C81d7E1966310F305eA637e761Cf77F90852f0';
+const OLDER_VAULT = '0x38DcDB3A381677239BBc652aed9811F2f8496345';
 
 const scan = (address: string) => `https://basescan.org/address/${address}`;
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -74,6 +82,23 @@ const CANNOT = [
   'Pause redemptions: redemption in kind reads no price feed, charges no fee and cannot be paused.',
   'Upgrade the code: the contracts are not proxies.',
   "Act without the timelock's 48-hour delay.",
+];
+
+const CONTRACTS: Array<{ name: string; address: string; role: string }> = [
+  { name: 'GBLIN', address: VAULT, role: 'The vault and the token. Mints at net asset value, redeems in kind, runs the rebalancing auction. Owned by the timelock.' },
+  { name: 'GBLINLens', address: LENS, role: 'Read-only views and quotes over the vault (basket rows, auction state, fee and shield parameters, mint and redemption quotes).' },
+  { name: 'GBLINZap', address: ZAP, role: 'Periphery: buy with any token routed through Uniswap, and redeem for ETH in one transaction. Holds nothing between calls.' },
+  { name: 'SequencerSentinel', address: SENTINEL, role: 'Wraps the Chainlink sequencer-uptime feed; the guardian can report the sequencer as down for a budgeted stretch. Owned by the timelock.' },
+  { name: 'UniswapV3Adapter', address: UNISWAP_ADAPTER, role: 'The swap adapter the vault and the zap use for internal swaps, with a TWAP band that rejects manipulated prices.' },
+  { name: 'CowFillAgent', address: COW_FILL_AGENT, role: 'Fill agent for the rebalancing auction: lets CoW Protocol solvers fill an open auction through a conditional order (ComposableCoW).' },
+  { name: 'GblinAuctionOrder', address: AUCTION_ORDER, role: 'Conditional-order handler that turns the open auction into a CoW Protocol order at the auction price.' },
+  { name: 'Timelock', address: TIMELOCK, role: 'Owner of the vault and of the sentinel. 48-hour delay on every change, 14-day grace period, public schedule.' },
+  { name: 'Uniswap V3 pool WETH/GBLIN (0.30%)', address: UNISWAP_POOL, role: 'The secondary market. The vault itself is the primary market: minting has no cap and no price impact.' },
+];
+
+const SUPERSEDED: Array<{ name: string; address: string; note: string }> = [
+  { name: 'Previous index contract', address: PREVIOUS_VAULT, note: 'Superseded. Holders redeem in kind or migrate from the account page.' },
+  { name: 'Older index contract', address: OLDER_VAULT, note: 'Superseded.' },
 ];
 
 const LINKS: Array<{ label: string; href: string }> = [
@@ -157,6 +182,38 @@ export default function AboutPage() {
             </a>
           </li>
         </ul>
+
+        <h2 className="mt-12 text-xl font-semibold text-white">Contracts on Base</h2>
+        <p className="mt-2 text-sm leading-7 text-zinc-400">
+          Every contract the protocol runs on. Each source is verified on Sourcify and on Basescan. No proxies: what is deployed is
+          what is verified.
+        </p>
+        <div className="mt-5 space-y-3">
+          {CONTRACTS.map((c) => (
+            <div key={c.address} className="g-card p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="text-sm font-semibold text-white">{c.name}</p>
+                <a className="font-mono text-xs text-amber-200 underline-offset-4 hover:underline" href={scan(c.address)} rel="noopener noreferrer" target="_blank">
+                  {c.address}
+                </a>
+              </div>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">{c.role}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-xs leading-6 text-zinc-500">
+          Superseded contracts, kept for holders who have not migrated:{' '}
+          {SUPERSEDED.map((c, i) => (
+            <span key={c.address}>
+              {i > 0 ? ' · ' : ''}
+              <a className="font-mono text-amber-200/80 underline-offset-4 hover:underline" href={scan(c.address)} rel="noopener noreferrer" target="_blank">
+                {short(c.address)}
+              </a>{' '}
+              ({c.note.toLowerCase().replace(/\.$/, '')})
+            </span>
+          ))}
+          .
+        </p>
 
         <h2 className="mt-12 text-xl font-semibold text-white">Documents</h2>
         <ul className="mt-4 space-y-2 text-sm leading-7">
