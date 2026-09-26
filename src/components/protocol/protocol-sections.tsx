@@ -15,6 +15,7 @@ import { NavFeesHeroLedger } from './nav-fees';
 import { ReserveCore } from './reserve-core';
 import { AgentActivity } from './agent-activity';
 import { AssetMark } from './asset-mark';
+import { AddToWallet } from './add-to-wallet';
 
 // Closed auction: say how far the basket is from target and where the auction opens, both read from the
 // contract, instead of claiming the basket is on target while a row sits several points away.
@@ -677,6 +678,7 @@ export function HomeView(props: HomeViewProps) {
                 {t('landing.proofVerify')}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
+              <AddToWallet t={t} />
             </div>
           </div>
 
@@ -1369,6 +1371,9 @@ export function BuyView(props: BuyViewProps) {
         <p className="g-eyebrow g-eyebrow-gold">{t('trade.instant')}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">{t('trade.title1')} {t('trade.title2')}</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-400 lg:mx-0 lg:text-base lg:leading-7">{t('landing.buyIntro')}</p>
+        <div className="mt-4 flex justify-center lg:justify-start">
+          <AddToWallet t={t} />
+        </div>
       </div>
 
       <div className="mx-auto w-full max-w-[520px] lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -1576,6 +1581,9 @@ export function BuyView(props: BuyViewProps) {
                 {t('trade.viewTx')}
                 <ExternalLink className="h-4 w-4" />
               </a>
+              <div className="mt-2">
+                <AddToWallet className="inline-flex items-center gap-2 text-emerald-200 hover:text-white" t={t} />
+              </div>
             </div>
           ) : null}
         </div>

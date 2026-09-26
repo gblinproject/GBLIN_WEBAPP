@@ -183,6 +183,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'Account'
     },
     site: {
+      addToWallet: 'Add GBLIN to your wallet',
+      addToWalletDone: 'Added to your wallet',
+      addToWalletNone: 'No wallet found in this browser',
+      addToWalletError: 'The wallet did not add the token',
       footerTagline: 'Built for a stronger financial future.',
       brandSubtitle: 'Base Treasury Protocol',
       network: 'Base Mainnet',
@@ -708,6 +712,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'Account'
     },
     site: {
+      addToWallet: 'Aggiungi GBLIN al wallet',
+      addToWalletDone: 'Aggiunto al wallet',
+      addToWalletNone: 'Nessun wallet in questo browser',
+      addToWalletError: 'Il wallet non ha aggiunto il token',
       footerTagline: 'Costruito per un futuro finanziario piu solido.',
       brandSubtitle: 'Protocollo Treasury su Base',
       network: 'Base Mainnet',
@@ -1233,6 +1241,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'Cuenta'
     },
     site: {
+      addToWallet: 'Añadir GBLIN a tu wallet',
+      addToWalletDone: 'Añadido a tu wallet',
+      addToWalletNone: 'No hay wallet en este navegador',
+      addToWalletError: 'El wallet no añadió el token',
       footerTagline: 'Construido para un futuro financiero mas solido.',
       brandSubtitle: 'Protocolo de tesorería en Base',
       network: 'Base Mainnet',
@@ -1675,6 +1687,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'Compte'
     },
     site: {
+      addToWallet: 'Ajouter GBLIN au wallet',
+      addToWalletDone: 'Ajouté au wallet',
+      addToWalletNone: 'Aucun wallet dans ce navigateur',
+      addToWalletError: 'Le wallet n\'a pas ajouté le jeton',
       footerTagline: 'Construit pour un avenir financier plus solide.',
       brandSubtitle: 'Protocole de trésorerie sur Base',
       network: 'Base Mainnet',
@@ -2117,6 +2133,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'Konto'
     },
     site: {
+      addToWallet: 'GBLIN zum Wallet hinzufügen',
+      addToWalletDone: 'Zum Wallet hinzugefügt',
+      addToWalletNone: 'Kein Wallet in diesem Browser',
+      addToWalletError: 'Das Wallet hat den Token nicht hinzugefügt',
       footerTagline: 'Gebaut fuer eine stabilere finanzielle Zukunft.',
       brandSubtitle: 'Treasury-Protokoll auf Base',
       network: 'Base Mainnet',
@@ -2559,6 +2579,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: '账户'
     },
     site: {
+      addToWallet: '将 GBLIN 添加到钱包',
+      addToWalletDone: '已添加到钱包',
+      addToWalletNone: '此浏览器中没有钱包',
+      addToWalletError: '钱包未添加该代币',
       footerTagline: '为更稳健的金融未来而建。',
       brandSubtitle: 'Base 金库协议',
       network: 'Base Mainnet',
@@ -3001,6 +3025,10 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       accountShort: 'アカウント'
     },
     site: {
+      addToWallet: 'GBLIN をウォレットに追加',
+      addToWalletDone: 'ウォレットに追加しました',
+      addToWalletNone: 'このブラウザにウォレットがありません',
+      addToWalletError: 'ウォレットはトークンを追加しませんでした',
       footerTagline: 'より確かな金融の未来のために。',
       brandSubtitle: 'Base トレジャリー・プロトコル',
       network: 'Base Mainnet',
