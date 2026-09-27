@@ -228,7 +228,7 @@ function LiveTicker({ t, onChainData, basket }: { t: (key: string) => string; on
     { k: t('ui.home.statNav'), v: onChainData?.nav || '—' },
     { k: t('ui.home.statTvl'), v: onChainData ? formatCurrency(onChainData.tvl) : '—' },
     ...basket.map((a) => ({ k: a.name, v: formatWeight(a.realWeight) })),
-    { k: t('ui.home.statFee'), v: `${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% ${t('ui.home.perYear')}` },
+    { k: t('ui.home.statFee'), v: (onChainData ? `${formatPercent(onChainData.managementFeeBps / 100)} ${t('ui.home.perYear')}` : '—') },
     ...(agents
       ? [{ k: t('ui.home.agentsEyebrow'), v: `${agents.calls} ${t('ui.home.agentsStat').replace('{n}', String(agents.wallets))}` }]
       : []),
@@ -959,7 +959,7 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
             <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
               <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.managementFee')}</p>
-              <p className="mt-2 text-xl font-semibold text-white">{((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year</p>
+              <p className="mt-2 text-xl font-semibold text-white">{(onChainData ? `${formatPercent(onChainData.managementFeeBps / 100)} ${t('ui.home.perYear')}` : '—')}</p>
             </div>
           </div>
         </div>
@@ -1746,7 +1746,7 @@ export function RebalanceView(props: RebalanceViewProps) {
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">{t('site.managementFee')}</p>
-                <p className="mt-2 text-lg font-semibold text-white">{((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year</p>
+                <p className="mt-2 text-lg font-semibold text-white">{(onChainData ? `${formatPercent(onChainData.managementFeeBps / 100)} ${t('ui.home.perYear')}` : '—')}</p>
               </div>
             </div>
           </div>
@@ -2038,7 +2038,7 @@ export function VaultView(props: VaultViewProps) {
             <p className="mt-3 text-sm leading-6 text-zinc-300">{t('yield.automationDesc')}</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <MetricCard hint={t('site.managementFeeHint')} label={t('site.managementFee')} value={`${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year`} />
+            <MetricCard hint={t('site.managementFeeHint')} label={t('site.managementFee')} value={(onChainData ? `${formatPercent(onChainData.managementFeeBps / 100)} ${t('ui.home.perYear')}` : '—')} />
             <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '—'} />
           </div>
         </div>
