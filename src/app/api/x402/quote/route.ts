@@ -7,7 +7,8 @@
  * - direction=buy   → `amount` is ETH amount (e.g. 0.01)
  * - direction=sell  → `amount` is GBLIN amount (e.g. 5.0)
  *
- * Paywall: $0.001 USDC per call.
+ * Free since 2026-09-27: no payment required (the same data is free in the MCP server).
+ * Responses carry a short CDN cache directive so repeated probes do not run the function.
  */
 
 import { formatUnits, parseUnits } from "viem";
@@ -21,6 +22,7 @@ import {
   jsonResponse,
   GBLIN_LENS,
   LENS_ABI,
+  FREE_CACHE_SHORT,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -80,7 +82,7 @@ export async function GET(req: Request) {
         slippage_buffer_bps: Number(slippage.bps),
         slippage_reason: slippage.reason,
         next_step: "Call contract.buyGBLIN(safe_min_gblin_out) with msg.value = amount_in_eth.",
-      });
+      }, 200, FREE_CACHE_SHORT);
     }
 
     // sell
@@ -103,7 +105,7 @@ export async function GET(req: Request) {
         "A sale reverts with CooldownActive during the vault's redemption cooldown after a mint for oneself (live value in /api/x402/health).",
       next_step:
         "Approve the shares to the GBLIN Zap, then call GBLINZap.sellGBLINForEth(shares, safe_min_eth_out, venueData, receiver). Allow at least 1,100,000 gas for that call. Redemption in kind (vault.sellGBLIN) needs no quote and no minimum.",
-    });
+    }, 200, FREE_CACHE_SHORT);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 500);
   }

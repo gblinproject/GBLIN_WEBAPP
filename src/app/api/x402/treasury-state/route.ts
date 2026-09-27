@@ -4,7 +4,8 @@
  * Reads GBLIN protocol state on Base mainnet and returns NAV (USD per GBLIN),
  * basket composition with dynamic weights, and Crash Shield status.
  *
- * Paywall: $0.001 USDC per call (configured in src/middleware.ts).
+ * Free since 2026-09-27: no payment required (the same data is free in the MCP server).
+ * Responses carry a short CDN cache directive so repeated probes do not run the function.
  * Read-only — no private keys.
  */
 
@@ -15,6 +16,7 @@ import {
   getEthPriceUsd,
   getNavUsd,
   jsonResponse,
+  FREE_CACHE,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -47,7 +49,7 @@ export async function GET() {
         chain_id: 8453,
         as_of_unix: Math.floor(Date.now() / 1000),
       },
-    });
+    }, 200, FREE_CACHE);
   } catch (err) {
     return jsonResponse(
       { error: (err as Error).message, hint: "Check RPC connectivity and oracle freshness." },

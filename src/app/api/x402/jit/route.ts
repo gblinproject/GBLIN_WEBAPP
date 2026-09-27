@@ -9,7 +9,8 @@
  * Returns a sequential_txs payload. EOAs sign three times; smart accounts can batch.
  * Step 2 carries an explicit gas limit: an automatic estimate can fall short.
  *
- * Paywall: $0.005 USDC per call.
+ * Free since 2026-09-27: no payment required (the same data is free in the MCP server).
+ * Responses carry a short CDN cache directive so repeated probes do not run the function.
  */
 
 import { formatUnits } from "viem";
@@ -21,6 +22,7 @@ import {
   jsonResponse,
   parseWallet,
   quoteGblinForUsdc,
+  FREE_CACHE_SHORT,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -77,7 +79,7 @@ export async function GET(req: Request) {
       compatibility: { eoa: true, erc4337: true, eip7702: true, note: "Redemption is three steps (approve to the Zap, Zap.sellGBLINForEth, Uniswap WETH->USDC). An EOA signs three times; ERC-4337/EIP-7702 can batch them into one operation." },
       gas_hint: 1_100_000,
       gas_hint_note: "Gas limit for step 2 (the Zap exit uses about 810,000 and forwards gas-capped transfers, so a tight limit reverts). Steps 1 and 3 are standard.",
-    });
+    }, 200, FREE_CACHE_SHORT);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 400);
   }

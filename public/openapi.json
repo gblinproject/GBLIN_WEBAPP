@@ -35,7 +35,7 @@
     "/api/x402/treasury-state": {
       "get": {
         "summary": "Treasury state",
-        "description": "NAV in USD, basket composition with dynamic weights, Crash Shield status.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "NAV in USD, basket composition with dynamic weights, Crash Shield status.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success",
@@ -81,9 +81,6 @@
                 }
               }
             }
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         }
       }
@@ -91,13 +88,10 @@
     "/api/x402/quote": {
       "get": {
         "summary": "Swap quote",
-        "description": "Preview a GBLIN swap (no execution). Returns expected output and safe minOut.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "Preview a GBLIN swap (no execution). Returns expected output and safe minOut.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success"
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         },
         "parameters": [
@@ -125,13 +119,10 @@
     "/api/x402/jit": {
       "get": {
         "summary": "Just-In-Time GBLIN to USDC",
-        "description": "Two-step calldata: sellGBLINForEth then Uniswap WETH to USDC. Single atomic tx.\n\nRequires an x402 USDC payment on Base mainnet ($0.005 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "Two-step calldata: sellGBLINForEth then Uniswap WETH to USDC. Single atomic tx.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success"
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         },
         "parameters": [
@@ -159,13 +150,10 @@
     "/api/x402/invest": {
       "get": {
         "summary": "Invest USDC into GBLIN",
-        "description": "Two-step approve + buyGBLINWithToken calldata for treasury accumulation.\n\nRequires an x402 USDC payment on Base mainnet ($0.002 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "Two-step approve + buyGBLINWithToken calldata for treasury accumulation.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success"
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         },
         "parameters": [
@@ -184,13 +172,10 @@
     "/api/x402/health": {
       "get": {
         "summary": "Wallet treasury health",
-        "description": "Balances, gas runway and rebalance recommendation for a wallet.\n\nRequires an x402 USDC payment on Base mainnet ($0.002 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "Balances, gas runway and rebalance recommendation for a wallet.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success"
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         },
         "parameters": [
@@ -218,13 +203,10 @@
     "/api/x402/governance": {
       "get": {
         "summary": "Governance check",
-        "description": "Verify owner is the 48h Timelock and read min delay parameters.\n\nRequires an x402 USDC payment on Base mainnet ($0.001 USDC). Free MCP equivalent: @gblin-protocol/mcp-server.",
+        "description": "Verify owner is the 48h Timelock and read min delay parameters.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
         "responses": {
           "200": {
             "description": "Success"
-          },
-          "402": {
-            "description": "Payment Required (x402, USDC on Base)"
           }
         }
       }

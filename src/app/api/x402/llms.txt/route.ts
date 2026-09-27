@@ -37,30 +37,35 @@ Relay:       https://gblin.digital/api/relay/gblin — carries a signed GBLIN pa
              GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i
              Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
 
-## Paid endpoints
+## Free endpoints (no payment, plain GET)
 
-All endpoints below require an x402 USDC payment on Base mainnet. This API speaks
-x402 v2. Recommended client: @x402/fetch or @x402/axios (the current v2 SDK — they
-handle both v1 and v2 automatically). Free MCP equivalent: \`@gblin-protocol/mcp-server\`.
+Made free on 2026-09-27. They read the vault state; the same data is free in the MCP server.
+Responses carry a short CDN cache directive (20–60 s).
 
-### GET /api/x402/treasury-state          ($0.001 USDC)
+### GET /api/x402/treasury-state          (free)
 NAV in USD, basket composition with dynamic weights, Crash Shield status.
 
-### GET /api/x402/quote?direction=buy|sell&amount=…   ($0.001 USDC)
+### GET /api/x402/quote?direction=buy|sell&amount=…   (free)
 Preview a GBLIN swap (no execution). Returns expected output + safe minOut.
 
-### GET /api/x402/jit?usdc=…&wallet=0x…    ($0.005 USDC)
+### GET /api/x402/jit?usdc=…&wallet=0x…    (free)
 Just-In-Time GBLIN→USDC: two-step calldata: sellGBLINForEth (GBLIN->ETH) then a Uniswap WETH->USDC swap.
 Single atomic tx. Compatible with EOA, ERC-4337, EIP-7702.
 
-### GET /api/x402/invest?usdc=…            ($0.002 USDC)
+### GET /api/x402/invest?usdc=…            (free)
 Treasury accumulation: 2-step approve + buyGBLINWithToken calldata.
 
-### GET /api/x402/health?wallet=0x…&daily_burn=…   ($0.002 USDC)
+### GET /api/x402/health?wallet=0x…&daily_burn=…   (free)
 Wallet treasury analysis: balances, gas runway, rebalance recommendation.
 
-### GET /api/x402/governance                ($0.001 USDC)
+### GET /api/x402/governance                (free)
 Verify owner is the 48h Timelock + read min delay parameters.
+
+## Paid endpoints (x402, USDC on Base mainnet)
+
+This API speaks x402 v2. Recommended client: @x402/fetch or @x402/axios (the current v2 SDK — they
+handle both v1 and v2 automatically). Call attestation BEFORE your agent trades or moves capital,
+seal AFTER an action it may have to prove, catalog BEFORE paying an x402 service you have not used recently.
 
 ### GET /api/x402/attestation               ($0.003 USDC)
 Perishable (10-minute) Risk Attestation: a verifiable proof of the current BTC/ETH
@@ -111,7 +116,7 @@ verifier against this, then switch the URL to the paid route.
 ## Notes for agents
 
 - Every paid response includes a \`PAYMENT-RESPONSE\` header with the settlement tx hash.
-- Read endpoints (treasury-state, governance) are heavily cached (30–60s).
+- The free vault-state routes are CDN-cached for 20–60 s; the paid routes are never cached.
 - The /jit endpoint checks the vault's redemption cooldown (read live, currently 20 seconds after a mint for oneself) before quoting.
 - For free local use, install the MCP server: \`npx @gblin-protocol/mcp-server\`.
 `;

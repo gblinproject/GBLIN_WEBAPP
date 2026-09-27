@@ -854,12 +854,21 @@ export function toJson<T>(payload: T): string {
   );
 }
 
-export function jsonResponse<T>(payload: T, status = 200): Response {
+export function jsonResponse<T>(payload: T, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(toJson(payload), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
   });
 }
+
+/**
+ * CDN cache directives for the FREE routes only. A free 200 is cacheable by the Vercel CDN (a 402
+ * never was), so repeated probes of the same URL are answered without running the function.
+ * Never attach these to a paid route: a cached paid response would be served to the next caller
+ * for nothing.
+ */
+export const FREE_CACHE = { "cache-control": "public, s-maxage=60, stale-while-revalidate=300" };
+export const FREE_CACHE_SHORT = { "cache-control": "public, s-maxage=20, stale-while-revalidate=60" };
 
 // ───────────────────────────────────────────────────────────────────────────
 // Address validator (returns checksummed Address or throws)

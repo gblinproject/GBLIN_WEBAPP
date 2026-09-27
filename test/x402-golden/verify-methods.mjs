@@ -16,7 +16,7 @@
 // and the challenge echoes the full URL in `resource.url`: asking the origin with a query string
 // and the edge without it compares two different questions, and the difference is exactly the
 // length of the query.
-const PATHS = ["attestation", "catalog", "governance", "seal", "treasury-state", "quote", "jit", "invest", "health"];
+const PATHS = ["attestation", "catalog", "seal"];
 const METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
 
 let mismatches = 0, total = 0;

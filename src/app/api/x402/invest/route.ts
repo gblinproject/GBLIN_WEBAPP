@@ -9,7 +9,8 @@
  * Both bounds are non-zero (minWethOut on the swap, minGblinOut on the mint).
  * Step 2 carries an explicit gas limit: an automatic estimate can fall short.
  *
- * Paywall: $0.002 USDC per call.
+ * Free since 2026-09-27: no payment required (the same data is free in the MCP server).
+ * Responses carry a short CDN cache directive so repeated probes do not run the function.
  */
 
 import {
@@ -19,6 +20,7 @@ import {
   buildInvestCalldata,
   getDynamicSlippage,
   jsonResponse,
+  FREE_CACHE_SHORT,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -65,7 +67,7 @@ export async function GET(req: Request) {
         mev_protected: true,
         min_outs_set: true,
       },
-    });
+    }, 200, FREE_CACHE_SHORT);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 400);
   }

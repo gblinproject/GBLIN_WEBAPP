@@ -2,8 +2,9 @@
 // counts UTF-16 code units, and the challenge contains 3-byte dashes, so the two
 // measurements differ by a dozen and a stable challenge looks unstable.
 export const BASE = "https://gblin.digital";
-// The nine paths covered by the x402 middleware (same list as the matcher).
-export const PATHS = ["catalog","treasury-state","quote","jit","invest","health","governance","attestation","seal"];
+// The three paid paths covered by the x402 middleware (same list as the matcher). The six vault-state
+// paths were made free on 2026-09-27 and no longer have a challenge.
+export const PATHS = ["catalog","attestation","seal"];
 // Headers that are part of the public contract: the x402 challenge lives in the
 // PAYMENT-REQUIRED header as well as in the body, and the content type decides the "flavor".
 const CONTRACT_HEADERS = ["payment-required", "www-authenticate", "content-type", "x-payment-required"];

@@ -116,7 +116,7 @@ via x402 micropayments. Any agent with USDC on Base can query it.
 - LLM reference: https://gblin-sentinel.vercel.app/llms.txt
 - Source: https://github.com/gblinproject/gblin-sentinel
 
-Endpoints: base-risk-pulse ($0.002), gblin-analytics ($0.002), keeper-opps ($0.002)
+Endpoints: base-risk-pulse ($0.002), risk-pulse-pro ($0.005); free: gblin-analytics, keeper-opps
 
 ## Useful repos
 

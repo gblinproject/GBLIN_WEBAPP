@@ -8,75 +8,22 @@
   "facilitator": "https://api.cdp.coinbase.com/platform/v2/x402",
   "endpoints": [
     {
-      "path": "/api/x402/treasury-state",
-      "method": "GET",
-      "price": "0.001",
-      "description": "NAV, basket composition, Crash Shield status"
-    },
-    {
-      "path": "/api/x402/health",
-      "method": "GET",
-      "price": "0.002",
-      "description": "Wallet-specific balances, cooldown status",
-      "requiredParams": [
-        "wallet"
-      ],
-      "example": "https://gblin.digital/api/x402/health?wallet=0x0000000000000000000000000000000000000001",
-      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
-    },
-    {
-      "path": "/api/x402/quote",
-      "method": "GET",
-      "price": "0.001",
-      "description": "Quote USDC→GBLIN with fees",
-      "requiredParams": [
-        "direction",
-        "amount"
-      ],
-      "example": "https://gblin.digital/api/x402/quote?direction=buy&amount=100",
-      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
-    },
-    {
-      "path": "/api/x402/invest",
-      "method": "GET",
-      "price": "0.002",
-      "description": "4-step unsigned calldata for USDC→GBLIN",
-      "requiredParams": [
-        "usdc",
-        "wallet"
-      ],
-      "example": "https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001",
-      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
-    },
-    {
-      "path": "/api/x402/jit",
-      "method": "GET",
-      "price": "0.005",
-      "description": "JIT unsigned calldata for GBLIN→USDC",
-      "requiredParams": [
-        "usdc",
-        "wallet"
-      ],
-      "example": "https://gblin.digital/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001",
-      "note": "Anonymous requests always receive the 402 challenge, with or without these parameters. The parameters are checked only once a payment header is present, and an invalid request is rejected with 400 before settlement — so a malformed call is never charged."
-    },
-    {
-      "path": "/api/x402/governance",
-      "method": "GET",
-      "price": "0.001",
-      "description": "Timelock state and governance info"
-    },
-    {
       "path": "/api/x402/attestation",
       "method": "GET",
       "price": "0.003",
-      "description": "Perishable (10-min) verifiable Risk Attestation: BTC/ETH regime proof-of-diligence agents attach to actions"
+      "description": "Call before your agent trades, rebalances or moves capital: is the crypto market calm, elevated or in a crash regime right now? Returns a 10-minute, EIP-712-signed risk attestation for BTC and ETH computed from Chainlink prices and the on-chain shield rule, with severity and a defensive cash share. Any counterparty verifies it offline in one step. Free sample: /api/x402/attestation-sample; free verifier in the MCP server."
     },
     {
       "path": "/api/x402/seal",
       "method": "POST",
       "price": "0.0045",
-      "description": "AI Action Receipts: seal the hashes of an AI action into the public RFC 6962 transparency log; returns a portable receipt (Ed25519 signature + inclusion proof + signed checkpoint), root anchored daily on Base. Body: {action, input_hash, output_hash?, agent_id?, tool?, meta?}"
+      "description": "Call after your agent completes an action it may later have to prove: seal the hashes of its input and output (only your action label and meta are published) into GBLIN's signed append-only transparency log and get a portable receipt: Ed25519 signature, RFC 6962 inclusion proof, C2SP signed checkpoint; root anchored daily on Base (EAS). Proves existence and time, not correctness. Free reads and demo: gblin-mcp.gblin-mcp-worker.workers.dev/log"
+    },
+    {
+      "path": "/api/x402/catalog",
+      "method": "GET",
+      "price": "0.005",
+      "description": "Call before your agent pays an x402 service it has not used recently: is that endpoint actually alive? Liveness of the ~200 most recently updated Bazaar listings, probed in rotation (each about every 36h): HTTP status, latency, last-OK time and consecutive failures per endpoint. Measurements only, no judgements; the probes never pay. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog"
     }
   ],
   "contact": "info@gblin.digital",
@@ -107,7 +54,7 @@
   "attestationSample": "https://gblin.digital/api/x402/attestation-sample",
   "receipts": {
     "seal": "https://gblin.digital/api/x402/seal",
-    "price": "$0.01 USDC (x402, Base)",
+    "price": "$0.0045 USDC (x402, Base)",
     "demo": "https://gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo",
     "log": "https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
     "note": "input/output as hashes only (action label and meta are published); evidence of existence and time in a signed append-only log, root anchored daily on Base; not a compliance certificate; independent witness cosigning: one witness cosigns (markovianprotocol.com/witness), more welcome",
@@ -136,5 +83,69 @@
     "endpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/witness",
     "cosigns": "markovianprotocol.com/log",
     "note": "We co-sign a third party's transparency log every 10 minutes, after verifying its signature and a consistency proof."
-  }
+  },
+  "free_endpoints": [
+    {
+      "path": "/api/x402/treasury-state",
+      "method": "GET",
+      "price": "free",
+      "description": "NAV, basket composition, Crash Shield status",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/health",
+      "method": "GET",
+      "price": "free",
+      "description": "Wallet-specific balances, cooldown status",
+      "requiredParams": [
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/health?wallet=0x0000000000000000000000000000000000000001",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/quote",
+      "method": "GET",
+      "price": "free",
+      "description": "Quote USDC→GBLIN with fees",
+      "requiredParams": [
+        "direction",
+        "amount"
+      ],
+      "example": "https://gblin.digital/api/x402/quote?direction=buy&amount=100",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/invest",
+      "method": "GET",
+      "price": "free",
+      "description": "4-step unsigned calldata for USDC→GBLIN",
+      "requiredParams": [
+        "usdc",
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/jit",
+      "method": "GET",
+      "price": "free",
+      "description": "JIT unsigned calldata for GBLIN→USDC",
+      "requiredParams": [
+        "usdc",
+        "wallet"
+      ],
+      "example": "https://gblin.digital/api/x402/jit?usdc=10&wallet=0x0000000000000000000000000000000000000001",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/governance",
+      "method": "GET",
+      "price": "free",
+      "description": "Timelock state and governance info",
+      "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    }
+  ],
+  "free_endpoints_note": "These routes read the vault state (also available free in the MCP server). They were paid until 2026-09-27; a request with a payment header is served without charge."
 }

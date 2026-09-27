@@ -5,7 +5,8 @@
  * owned by the 48h Timelock, reads the timelock's min delay, and reports
  * the founder wallet. Use to gate trust-sensitive agent actions.
  *
- * Paywall: $0.001 USDC per call.
+ * Free since 2026-09-27: no payment required (the same data is free in the MCP server).
+ * Responses carry a short CDN cache directive so repeated probes do not run the function.
  */
 
 import { getAddress } from "viem";
@@ -19,6 +20,7 @@ import {
   jsonResponse,
   GBLIN_LENS,
   LENS_ABI,
+  FREE_CACHE,
 } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
@@ -82,7 +84,7 @@ export async function GET() {
         contract_basescan: `https://basescan.org/address/${GBLIN}#readContract`,
         timelock_basescan: `https://basescan.org/address/${GBLIN_TIMELOCK}#readContract`,
       },
-    });
+    }, 200, FREE_CACHE);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 500);
   }

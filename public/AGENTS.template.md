@@ -89,7 +89,7 @@ The swap uses the contract's own funds — you only pay gas.
 ### Rule 6 — Check Base risk signal before investing
 
 Before calling `invest_usdc_to_gblin`, optionally query the GBLIN Sentinel for a
-current market risk signal (costs $0.002 USDC via x402):
+current market risk signal (free in the MCP server; the signed x402 attestation costs $0.003):
 
 ```
 GET https://gblin-sentinel.vercel.app/api/data/base-risk-pulse
@@ -101,7 +101,7 @@ investment amount. If `signal: "normal"`, proceed as usual.
 ### Rule 6b — Get an actionable decision (premium)
 
 For a single, ready-to-act treasury decision (not just a raw signal), call the
-premium GBLIN Sentinel endpoint (costs $0.03 USDC via x402):
+premium GBLIN Sentinel endpoint (costs $0.005 USDC via x402):
 
 ```
 GET https://gblin-sentinel.vercel.app/api/data/risk-pulse-pro

@@ -187,7 +187,7 @@ const FAQS = [
   },
   {
     q: 'Are there paid endpoints?',
-    a: 'Yes — 8 x402 HTTP endpoints are live at gblin.digital/api/x402/*. Prices range from $0.001 to $0.01 USDC per call, paid on Base mainnet. The MCP server itself remains free.',
+    a: 'Yes — 3 paid x402 endpoints on gblin.digital (attestation $0.003, seal $0.0045, catalog $0.005) and 2 on the Sentinel (base-risk-pulse $0.002, risk-pulse-pro $0.005), paid in USDC on Base mainnet. The vault-state routes (treasury-state, quote, governance, health, invest, jit) are free. Full list: gblin.digital/.well-known/x402. The MCP server itself remains free.',
   },
 ];
 
