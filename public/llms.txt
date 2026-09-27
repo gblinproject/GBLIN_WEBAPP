@@ -27,6 +27,7 @@
 ## For AI agent developers
 
 - **MCP Server (stdio, full toolset):** `npx @gblin-protocol/mcp-server`
+- **Agent treasury (library + CLI):** `npx @gblin-protocol/agent-treasury status|park|ensure-usdc <amount>|pay <url>` — USDC reserve, surplus parked in GBLIN, USDC refilled from GBLIN just in time when an x402 invoice arrives (Coinbase's x402Client with the refill on its onBeforePaymentCreation hook). Self-custody. Skill: `npx skills add gblinproject/gblin-treasury-risk-regime`.
 - **MCP hosted (Streamable HTTP, no install):** https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
   — 21 free tools: risk regime, attestation sample, stats, coherence, AI Action Receipts, and the vault, action and payment tools of the npm package; tool list below.
 - **GBLIN payment relay (for a payer with no ETH):** GET https://gblin.digital/api/relay/gblin quotes the fee (in GBLIN at the NAV);

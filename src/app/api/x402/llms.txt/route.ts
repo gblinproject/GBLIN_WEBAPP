@@ -31,6 +31,8 @@ MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP
              receipts.get · receipts.verify, and from the npm package's own source
              treasury.* · actions.prepare/preview/status · payments.prepare/verify/relay ·
              governance.state · auction.state · attestation.verify (npm names work as aliases).
+Treasury:    npm @gblin-protocol/agent-treasury (library + CLI) — USDC reserve, surplus parked in GBLIN,
+             USDC refilled from GBLIN just in time when a 402 arrives, on Coinbase's x402Client hook.
 Relay:       https://gblin.digital/api/relay/gblin — carries a signed GBLIN payment for a
              payer with no ETH; fee in GBLIN, payment and fee settle in one transaction. Resources: gblin://howto/attestation, gblin://howto/seal,
              gblin://limits, gblin://keys (60 req/min/IP). Nothing is paid over MCP.

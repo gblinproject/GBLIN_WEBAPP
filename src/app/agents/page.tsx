@@ -186,6 +186,10 @@ const FAQS = [
     a: 'Yes. MIT licensed. Source on GitHub, npm package public, no telemetry.',
   },
   {
+    q: 'Can my agent keep its treasury in GBLIN and still pay x402 invoices in USDC?',
+    a: 'Yes. The @gblin-protocol/agent-treasury package (library and CLI) keeps an operating reserve in USDC, parks the surplus in GBLIN and refills USDC from GBLIN just in time when an x402 invoice arrives: the refill runs on the onBeforePaymentCreation hook of the x402 client, before the authorization is signed. Self-custody, verified on a fork of Base. Skill: npx skills add gblinproject/gblin-treasury-risk-regime.',
+  },
+  {
     q: 'Are there paid endpoints?',
     a: 'Yes — 3 paid x402 endpoints on gblin.digital (attestation $0.003, seal $0.0045, catalog $0.005) and 2 on the Sentinel (base-risk-pulse $0.002, risk-pulse-pro $0.005), paid in USDC on Base mainnet. The vault-state routes (treasury-state, quote, governance, health, invest, jit) are free. Full list: gblin.digital/.well-known/x402. The MCP server itself remains free.',
   },
