@@ -10,15 +10,16 @@ The files in this directory are a byte-for-byte snapshot of that response.
     node verify.mjs                  # compare the live responses with the fixtures (exit 1 on any difference)
     node verify.mjs https://<base>   # same comparison against a preview deployment
     node capture.mjs                 # rewrite the fixtures - only when the change is intended
-    node verify-methods.mjs          # 45 edge-against-origin comparisons (9 paths x 5 HTTP methods)
+    node verify-methods.mjs          # 15 edge-against-origin comparisons (3 paths x 5 HTTP methods)
 
 `capture.mjs` overwrites the committed contract: its output must be reviewed and committed
 only when the difference it produces is the intended one.
 
 ## Coverage
 
-18 fixtures: the nine paths of the x402 matcher, each in the two `accept` flavors
-(`json` and `html`).
+6 fixtures: the three paid paths of the x402 matcher (`attestation`, `catalog`, `seal`), each
+in the two `accept` flavors (`json` and `html`). The free endpoints answer 200 and are not
+part of the challenge contract.
 
 Three things are compared: the status code, the contract headers (`payment-required`,
 `www-authenticate`, `content-type`, `x-payment-required`) and the whole response body.
@@ -28,17 +29,6 @@ Each path is captured with the verb its challenge is implemented for: `seal` ans
 every method while still advertising `method: GET`, so a client that follows the advertised
 metadata would pay and then receive a 405.
 
-## Guarded paths
-
-`quote`, `jit`, `invest` and `health` take query parameters. Their parameter guard is bound
-to the presence of a **non-empty** payment header, which keeps two properties at once:
-
-- an unpaid request always receives the 402 challenge, so crawlers, the catalogue indexer
-  and the payment validator can read the terms;
-- a paying request carrying wrong parameters is rejected with 400 *before* verification and
-  settlement, so a signed authorization is never submitted and nothing is ever charged for a
-  malformed call.
-
 ## The capture reads the origin, the verification reads the edge
 
 Unpaid requests are rewritten to an edge worker by routing rules, so a plain anonymous `GET`
@@ -46,11 +36,11 @@ reads the edge. A capture made that way would record the edge's own output as if
 origin's, report everything identical and compare nothing.
 
 `capture.mjs` therefore sends an **empty** `x-payment` header. The routing rule triggers on
-the *absence* of the payment headers, while the parameter guard triggers on their *non-empty
-presence*; the two conditions do not coincide, and an empty value fits exactly in the gap:
+the *absence* of the payment headers, while the origin treats an empty value as no payment;
+an empty value fits exactly in the gap:
 
     routing -> the header exists    -> the rule does not match -> the request reaches the origin
-    origin  -> headers.get() === "" -> falsy, so not paying    -> anonymous challenge, no guard
+    origin  -> headers.get() === "" -> falsy, so not paying    -> anonymous challenge
 
 A whitespace-only value behaves identically, because the Headers API trims it per
 specification. This is observed behaviour, not documented behaviour: the documentation

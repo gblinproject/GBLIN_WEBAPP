@@ -12,8 +12,7 @@
 //
 // Usage: node verify-methods.mjs
 
-// No query parameters here. The guarded paths answer the challenge to anyone who is not paying,
-// and the challenge echoes the full URL in `resource.url`: asking the origin with a query string
+// No query parameters here. The challenge echoes the full URL in `resource.url`: asking the origin with a query string
 // and the edge without it compares two different questions, and the difference is exactly the
 // length of the query.
 const PATHS = ["attestation", "catalog", "seal"];
@@ -25,8 +24,8 @@ for (const method of METHODS) {
     const url = `https://gblin.digital/api/x402/${name}`;
     const edge = await fetch(url, { method, headers: { accept: "application/json" } });
     // EMPTY payment header: present for the routing rule, so the request reaches the origin, and
-    // falsy for the middleware, so no parameter guard runs and the anonymous challenge is served.
-    // A NON-empty value would make the origin answer 400 on the four guarded paths.
+    // falsy for the middleware, so the anonymous challenge is served. A non-empty value would be
+    // treated as a payment and sent to the facilitator for verification.
     const origin = await fetch(url, { method, headers: { accept: "application/json", "x-payment": "" } });
     const [bb, ob] = [await edge.text(), await origin.text()];
     const hb = edge.headers.get("payment-required") || "";

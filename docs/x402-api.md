@@ -1,66 +1,70 @@
 # GBLIN x402 API
 
-Paid HTTP endpoints that expose the GBLIN protocol to autonomous agents.
-Every endpoint requires a micropayment in USDC on Base mainnet, settled
-on-chain via the [x402](https://x402.org) protocol.
+HTTP endpoints that expose the GBLIN protocol to autonomous agents. Reading state and
+preparing transactions is free; three endpoints are paid per call in USDC on Base mainnet,
+settled on-chain via the [x402](https://x402.org) protocol.
 
-These endpoints are the HTTP / paid mirror of the free
-[`@gblin-protocol/mcp-server`](https://www.npmjs.com/package/@gblin-protocol/mcp-server)
-MCP server. Same logic, different distribution channel:
+The same data is available over MCP:
 
-|                  | MCP server (free)            | x402 API (paid)                    |
-| ---------------- | ---------------------------- | ---------------------------------- |
-| Transport        | stdio (local process)        | HTTPS                              |
-| Target           | Developers building agents   | Live agents paying per call        |
-| Discovery        | MCP Registry                 | agentic.market, x402scan, Bazaar   |
-| Code path        | `GBLIN-MCP/src/tools.ts`     | `GBLIN_WEBAPP/src/app/api/x402/*`  |
+|             | MCP server                                                        | HTTP API                                  |
+| ----------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| Transport   | stdio (`npx @gblin-protocol/mcp-server`) or hosted Streamable HTTP | HTTPS                                     |
+| Price       | free                                                              | free, except the three paid endpoints     |
+| Discovery   | MCP Registry, Smithery                                            | x402 Bazaar, `.well-known/x402`, llms.txt |
+| Code path   | `gblin-treasury-risk-regime/src/`                                 | `GBLIN_WEBAPP/src/app/api/x402/*`         |
 
 ## 1. Endpoints
 
-Public discovery manifest (free, no paywall):
+Discovery manifests (free):
 
 ```
 GET https://gblin.digital/api/x402/llms.txt
+GET https://gblin.digital/.well-known/x402
 ```
 
-Paid endpoints (each returns HTTP 402 + payment requirements on first call,
-then the JSON response on the second call with the `X-PAYMENT` header set):
+Paid endpoints (HTTP 402 with the payment requirements on the first call, then the JSON
+response on the retry that carries the payment header):
 
-| Endpoint                        | Price       | Description                                                                 |
-| ------------------------------- | ----------- | --------------------------------------------------------------------------- |
-| `GET /api/x402/treasury-state`  | $0.001 USDC | NAV + basket weights + Crash Shield status                                  |
-| `GET /api/x402/quote`           | $0.001 USDC | Preview a buy or sell (no execution) with dynamic slippage                  |
-| `GET /api/x402/jit`             | $0.005 USDC | JIT GBLIN→USDC calldata (`sellGBLINForToken`)                               |
-| `GET /api/x402/invest`          | $0.002 USDC | USDC→GBLIN treasury accumulation (approve + `buyGBLINWithToken`)            |
-| `GET /api/x402/health`          | $0.002 USDC | Wallet balances + gas runway + rebalance recommendation                     |
-| `GET /api/x402/governance`      | $0.001 USDC | Verify the 48h Timelock owns the contract + read its min delay              |
+| Endpoint                     | Price        | Description                                                                          |
+| ---------------------------- | ------------ | ------------------------------------------------------------------------------------ |
+| `GET /api/x402/attestation`  | $0.003 USDC  | 10-minute, EIP-712-signed market-risk attestation (calm / elevated / crash)           |
+| `POST /api/x402/seal`        | $0.0045 USDC | Seals the hashes of an AI action into the transparency log; returns a portable receipt |
+| `GET /api/x402/catalog`      | $0.005 USDC  | Liveness of the ~200 most recently updated x402 Bazaar listings                      |
 
-USDC payments flow directly to the wallet defined by `X402_PAY_TO_WALLET`.
-The server never holds funds.
+Free endpoints (plain `GET`, no payment, cached at the CDN for 20-60 seconds):
+
+| Endpoint                        | Description                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET /api/x402/treasury-state`  | NAV, basket weights, Crash Shield status                                             |
+| `GET /api/x402/quote`           | Preview a buy or sell (no execution) with a dynamic slippage buffer                  |
+| `GET /api/x402/governance`      | Whether the 48h timelock owns the vault, and its minimum delay                       |
+| `GET /api/x402/health`          | Wallet balances, gas for an exit, redemption cooldown, USDC runway                   |
+| `GET /api/x402/invest`          | USDC→GBLIN calldata: approve + `GBLINZap.buyGBLINWithToken`                          |
+| `GET /api/x402/jit`             | GBLIN→USDC calldata: approve + `GBLINZap.sellGBLINForEth` + Uniswap WETH→USDC        |
+
+The free paths keep the `/api/x402/` prefix so existing integrations keep working.
+USDC payments go directly to the wallet defined by `X402_PAY_TO_WALLET`; the server never
+holds funds.
 
 ## 2. How payments work
 
 ```
-Agent (wallet) ──HTTP GET──▶ api.gblin.digital
-                              │
-                              ├─ 1st call: returns 402 + payment requirements
-                              │
-                              ◀─ X-PAYMENT header (signed EIP-3009 auth) ─┐
-                                                                          │
-Agent retries with X-PAYMENT ──HTTP GET──▶ api.gblin.digital              │
-                                              │                            │
-                                              ├─ middleware calls          │
-                                              │  Coinbase CDP facilitator  │
-                                              │  to verify + settle on Base│
-                                              │                            │
-                                              ◀── JSON response + ─────────┘
-                                                 X-PAYMENT-RESPONSE
-                                                 (settlement tx hash)
+Agent (wallet) ──HTTP──▶ gblin.digital/api/x402/<paid path>
+                          │
+                          ├─ no payment header: 402 + payment requirements
+                          │  (served at the edge, byte-identical to the origin)
+                          │
+Agent retries with the signed EIP-3009 authorization in the payment header
+                          │
+                          ├─ middleware asks the Coinbase CDP facilitator
+                          │  to verify and settle on Base
+                          │
+                          ◀── JSON response + PAYMENT-RESPONSE header
+                              (settlement transaction hash)
 ```
 
-Payments are atomic: the route handler runs **after** the facilitator
-confirms the USDC transfer. If verification fails, the response is still
-402 and no work is done.
+Payments are atomic: the route handler runs **after** the facilitator confirms the USDC
+transfer. If verification fails, the response is still 402 and no work is done.
 
 ## 3. Setup
 
@@ -92,77 +96,91 @@ charged to your CDP account — independent from the USDC you collect.
 
 ### 3.3 Listing on discovery catalogs
 
-Once deployed and the `/api/x402/llms.txt` endpoint returns 200:
+Once deployed and the `/api/x402/llms.txt` endpoint returns 200 (catalogues index only the paid endpoints):
 
 1. **agentic.market** — go to [agentic.market/validate](https://agentic.market/validate),
-   paste `https://gblin.digital/api/x402/treasury-state`, click **Validate**.
+   paste `https://gblin.digital/api/x402/attestation`, click **Validate**.
 2. **x402scan.com** — go to [x402scan.com/resources/register](https://x402scan.com/resources/register),
    paste the same URL, click **Add**.
-3. **x402 Bazaar** — automatic. The Coinbase facilitator indexes your routes
-   after the first settled payment.
+3. **x402 Bazaar** — automatic. The Coinbase facilitator indexes a route after
+   its first settled payment; a route with no settlement for 30 days is removed.
+   The free validator `POST api.cdp.coinbase.com/platform/v2/x402/validate` checks
+   a route before any payment.
 
 ## 4. Example agent code
 
-### TypeScript (Coinbase x402-fetch)
+### TypeScript (`@x402/fetch`)
 
 ```ts
-import { wrapFetchWithPayment } from "x402-fetch";
-import { createWalletClient, http } from "viem";
+import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
+import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
 
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`);
-const wallet = createWalletClient({ account, chain: base, transport: http() });
-const fetchWithPayment = wrapFetchWithPayment(fetch, wallet);
+const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: "eip155:8453", client: new ExactEvmScheme(account) }],
+});
 
-const res = await fetchWithPayment(
-  "https://gblin.digital/api/x402/treasury-state"
-);
-const state = await res.json();
-console.log("NAV:", state.nav_usd, "Crash Shield:", state.crash_shield_active);
+const res = await fetchWithPayment("https://gblin.digital/api/x402/attestation");
+const { attestation, signature, attestor } = await res.json();
+console.log("regime:", attestation.regime, "signed by", attestor);
 ```
 
-### Python (x402-python)
-
-```python
-from x402 import x402_requests
-import os
-
-session = x402_requests.Session(private_key=os.environ["AGENT_PRIVATE_KEY"])
-state = session.get("https://gblin.digital/api/x402/treasury-state").json()
-print(f"NAV: ${state['nav_usd']}, Crash Shield: {state['crash_shield_active']}")
-```
-
-### MCP equivalent (free, local)
+Free endpoints need no client at all:
 
 ```bash
-npx @gblin-protocol/mcp-server   # exposes the same 6 tools over stdio
+curl -s https://gblin.digital/api/x402/treasury-state
+```
+
+### Paying from a treasury that holds GBLIN
+
+[`@gblin-protocol/agent-treasury`](https://www.npmjs.com/package/@gblin-protocol/agent-treasury)
+wraps the same client and refills USDC from GBLIN before signing when the wallet is short:
+
+```bash
+npx @gblin-protocol/agent-treasury pay https://gblin.digital/api/x402/attestation --max-amount 3000 --json
+```
+
+### MCP equivalent (free)
+
+```bash
+npx @gblin-protocol/mcp-server                              # stdio, 20 tools
+# hosted, no install: https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (21 tools)
 ```
 
 ## 5. Operational notes
 
-- All responses are cached (NAV/basket: 30–60s in-process). Repeated agent
-  polling within the same Vercel invocation pays again but reads cache.
-- The `/jit` endpoint enforces the contract's 2-minute cooldown via an
-  on-chain `block.timestamp` read — agents that recently called `buyGBLIN`
-  get a 409 with `seconds_remaining` instead of bad calldata.
-- All `minOut` values are computed from on-chain quotes plus a dynamic
-  slippage buffer (2.5% normal, 4% during Crash Shield). No endpoint ever
-  returns a 0 minOut.
-- The middleware is in `src/middleware.ts`. Pricing is configurable there.
+- NAV and basket reads are cached 30-60 seconds in-process; the free endpoints are also
+  cached at the CDN for 20-60 seconds.
+- `/jit` checks the vault's redemption cooldown on-chain (`block.timestamp`, length read from
+  the Lens). It applies only after a mint the wallet made for itself; a mint through the Zap
+  leaves none. During the cooldown the endpoint answers 409 with `cooldown.secondsRemaining`
+  instead of calldata that would revert.
+- Every `minOut` is computed from on-chain quotes plus a dynamic slippage buffer (2.5%
+  normally, 4% while the Crash Shield is active). No endpoint returns a zero `minOut`.
+- Steps that go through the Zap carry an explicit gas limit (1,100,000): the vault reserves
+  gas for its capped transfers and an automatic estimate can fall short.
+- Prices and descriptions are configured in `src/middleware.ts`. A change to a paid
+  challenge must be followed by a recapture of `test/x402-golden/` and a regeneration of the
+  edge worker's challenge module.
 
 ## 6. Files
 
 ```
 src/
-├── middleware.ts                      # x402 paywall, route + price config
-├── lib/x402-helpers.ts                # NAV, basket, JIT quote, calldata
+├── middleware.ts                      # x402 paywall: the three paid paths, prices, descriptions
+├── lib/x402-helpers.ts                # NAV, basket, quotes, calldata, protocol limits
 └── app/api/x402/
-    ├── treasury-state/route.ts
-    ├── quote/route.ts
-    ├── jit/route.ts
-    ├── invest/route.ts
-    ├── health/route.ts
-    ├── governance/route.ts
-    └── llms.txt/route.ts              # public discovery manifest (no paywall)
+    ├── attestation/route.ts           # paid
+    ├── seal/route.ts                  # paid
+    ├── catalog/route.ts               # paid
+    ├── attestation-sample/route.ts    # free: a signed sample, already expired, with the same schema
+    ├── treasury-state/route.ts        # free
+    ├── quote/route.ts                 # free
+    ├── governance/route.ts            # free
+    ├── health/route.ts                # free
+    ├── invest/route.ts                # free
+    ├── jit/route.ts                   # free
+    └── llms.txt/route.ts              # discovery manifest
+test/x402-golden/                      # byte-for-byte fixtures of the paid challenges
 ```

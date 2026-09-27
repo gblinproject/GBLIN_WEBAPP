@@ -16,10 +16,9 @@ export const fixtureName = (p, flavor) => new URL(`./${p}.${flavor}.json`, impor
 // Why empty rather than a fake value: the anonymous 402 challenge is served by the edge worker,
 // so a plain GET reads the EDGE and the tool captures its own output. Reaching the origin means
 // bypassing the routing rule, which triggers on the ABSENCE of the payment headers, while the
-// parameter guard triggers on their NON-EMPTY presence. The two conditions do not coincide, and
-// an empty header fits exactly in the gap:
+// origin treats an empty value as no payment. An empty header fits exactly in the gap:
 //   routing -> the header exists -> the rule does not match -> the request reaches the origin
-//   origin  -> headers.get() returns "" (falsy) -> not paying -> anonymous challenge, no guard
+//   origin  -> headers.get() returns "" (falsy) -> not paying -> anonymous challenge
 // A whitespace-only value behaves the same, because the Headers API trims it per spec.
 // VERIFICATION stays anonymous: there the point is to measure what the world sees.
 //
