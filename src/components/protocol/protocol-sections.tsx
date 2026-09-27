@@ -226,7 +226,7 @@ function LiveTicker({ t, onChainData, basket }: { t: (key: string) => string; on
 
   const items: Array<{ k: string; v: string }> = [
     { k: t('ui.home.statNav'), v: onChainData?.nav || '—' },
-    { k: t('ui.home.statTvl'), v: formatCurrency(onChainData?.tvl || 0) },
+    { k: t('ui.home.statTvl'), v: onChainData ? formatCurrency(onChainData.tvl) : '—' },
     ...basket.map((a) => ({ k: a.name, v: formatWeight(a.realWeight) })),
     { k: t('ui.home.statFee'), v: `${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% ${t('ui.home.perYear')}` },
     ...(agents
@@ -564,7 +564,7 @@ function MintVsPoolSection({ t }: { t: (key: string) => string }) {
  * why the mechanism makes that size not matter for their own entry and exit.
  */
 function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onChainData: OnChainData | null }) {
-  const tvl = formatCurrency(onChainData?.tvl || 0);
+  const tvl = onChainData ? formatCurrency(onChainData.tvl) : '—';
 
   return (
     <section className="g-section">
@@ -909,8 +909,8 @@ export function DashboardView(props: DashboardViewProps) {
         />
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard hint={t('dashboard.backing')} label={t('dashboard.priceLabel')} loading={isMarketLoading} value={formatCurrency(marketData?.priceUsd || 0, 4)} />
-          <MetricCard hint={t('dashboard.backing')} label={t('dashboard.navTitle')} loading={isOnChainLoading} value={onChainData?.nav || '$0.00'} />
-          <MetricCard hint={t('dashboard.assetsInVault')} label={t('dashboard.tvlTitle')} loading={isOnChainLoading} value={formatCurrency(onChainData?.tvl || 0)} />
+          <MetricCard hint={t('dashboard.backing')} label={t('dashboard.navTitle')} loading={isOnChainLoading} value={onChainData?.nav || '—'} />
+          <MetricCard hint={t('dashboard.assetsInVault')} label={t('dashboard.tvlTitle')} loading={isOnChainLoading} value={onChainData ? formatCurrency(onChainData.tvl) : '—'} />
           <MetricCard hint={t('site.marketDislocation')} label={t('site.discountPremium')} loading={isMarketLoading || isOnChainLoading} value={`${discountPercentage.toFixed(2)}%`} />
         </div>
         {/* Headline figure: total value redistributed to every holder. */}
@@ -2039,7 +2039,7 @@ export function VaultView(props: VaultViewProps) {
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <MetricCard hint={t('site.managementFeeHint')} label={t('site.managementFee')} value={`${((onChainData?.managementFeeBps ?? 0) / 100).toFixed(2)}% / year`} />
-            <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '$0.00'} />
+            <MetricCard hint="Treasury net asset value" label={t('dashboard.navTitle')} value={onChainData?.nav || '—'} />
           </div>
         </div>
       </section>

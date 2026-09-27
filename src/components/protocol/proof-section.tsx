@@ -25,7 +25,7 @@ const DUNE_URL = 'https://dune.com/gblin/dashboard';
 const DEFILLAMA_URL = 'https://defillama.com/protocol/tvl/global-balanced-liquidity-index';
 
 /** One colour per series, read by both the chart and the figures under it. */
-const SERIES_COLOUR = { gblin: '#ffe4a1', btc: '#ff9f33', eth: '#9fb2ff' } as const;
+const SERIES_COLOUR = { gblin: '#ffe4a1', btc: '#ff9f33', eth: '#9fb2ff', basket: '#c9c2b6' } as const;
 
 type Row = {
   key: keyof typeof SERIES_COLOUR;
@@ -40,6 +40,8 @@ const ROWS: Row[] = [
   { key: 'gblin', labelKey: 'proof.gblinLabel', subKey: 'proof.gblinSub', finalValue: 1_546_640, drawdownPct: 50.3, winner: true },
   { key: 'btc', labelKey: 'proof.btcLabel', subKey: 'proof.btcSub', finalValue: 1_301_533, drawdownPct: 83.8 },
   { key: 'eth', labelKey: 'proof.ethLabel', subKey: 'proof.ethSub', finalValue: 1_183_376, drawdownPct: 94.0 },
+  // Same 45/45/10 basket with the shield off: the row that isolates what the shield does.
+  { key: 'basket', labelKey: 'proof.basketLabel', subKey: 'proof.basketSub', finalValue: 1_629_256, drawdownPct: 84.7 },
 ];
 
 
@@ -49,7 +51,7 @@ const ROWS: Row[] = [
  * published figures come from. Three bars of text could not show what the shield
  * actually does, which is not end higher but fall less.
  */
-function drawdownOf(idx: 1 | 2 | 3) {
+function drawdownOf(idx: 1 | 2 | 3 | 4) {
   let peak = 0;
   return BACKTEST_SERIES.map((p) => {
     peak = Math.max(peak, p[idx]);
@@ -60,12 +62,12 @@ function drawdownOf(idx: 1 | 2 | 3) {
 function BacktestChart({ t }: { t: T }) {
   // One view only: the fall. That is what the shield does, and the closing
   // value of all three strategies is spelled out in the figures below.
-  const falls = [drawdownOf(1), drawdownOf(2), drawdownOf(3)];
+  const falls = [drawdownOf(1), drawdownOf(2), drawdownOf(3), drawdownOf(4)];
   const w = 720;
   const h = 330;
   const padL = 52;
   // Room on the right for the name of each line, the way a terminal labels them.
-  const padR = 62;
+  const padR = 78;
   const padT = 18;
   const padB = 30;
   const n = BACKTEST_SERIES.length - 1;
@@ -73,16 +75,27 @@ function BacktestChart({ t }: { t: T }) {
   // Drawdown runs 0 to -100 on a plain scale: no log, because the distance from the
   // peak is the quantity being compared.
   const yFall = (v: number) => padT + (-v / 100) * (h - padT - padB);
-  const path = (idx: 1 | 2 | 3) =>
+  const path = (idx: 1 | 2 | 3 | 4) =>
     falls[idx - 1].map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${yFall(v).toFixed(1)}`).join(' ');
   const fallTicks = [0, -25, -50, -75, -100];
   const years = ['2016', '2018', '2020', '2022', '2024', '2026'];
   const yearIndex = (yr: string) => BACKTEST_SERIES.findIndex((p) => p[0].startsWith(yr));
-  const lines: Array<{ d: string; color: string; width: number; label: string; short: string; endY: number }> = [
+  const lines: Array<{ d: string; color: string; width: number; label: string; short: string; endY: number; dash?: string }> = [
     { d: path(1), color: SERIES_COLOUR.gblin, width: 2.6, label: t('proof.gblinLabel'), short: 'GBLIN', endY: yFall(falls[0][n]) },
     { d: path(2), color: SERIES_COLOUR.btc, width: 1.6, label: t('proof.btcLabel'), short: 'BTC', endY: yFall(falls[1][n]) },
     { d: path(3), color: SERIES_COLOUR.eth, width: 1.6, label: t('proof.ethLabel'), short: 'ETH', endY: yFall(falls[2][n]) },
+    { d: path(4), color: SERIES_COLOUR.basket, width: 1.6, label: t('proof.basketLabel'), short: '45/45/10', endY: yFall(falls[3][n]), dash: '4 3' },
   ];
+  // End labels are pushed apart when two lines finish close together, so no name
+  // is printed over another. The dot stays on the line; only the text moves.
+  const labelY = new Map<string, number>();
+  [...lines]
+    .sort((p, q) => p.endY - q.endY)
+    .reduce((last, l) => {
+      const yy = Math.max(l.endY, last + 12);
+      labelY.set(l.short, Math.round(yy * 10) / 10);
+      return yy;
+    }, -Infinity);
 
   // Crosshair: without it the chart is a poster. Pointer only, no library.
   const box = useRef<SVGSVGElement>(null);
@@ -139,13 +152,13 @@ function BacktestChart({ t }: { t: T }) {
         {/* Drawn back to front: ours is the subject, so it is painted last and
             nothing crosses over it. */}
         {[...lines].reverse().map((l) => (
-          <path d={l.d} fill="none" key={l.label} stroke={l.color} strokeLinejoin="round" strokeWidth={l.width} />
+          <path d={l.d} fill="none" key={l.label} stroke={l.color} strokeDasharray={l.dash} strokeLinejoin="round" strokeWidth={l.width} />
         ))}
         {/* The name sits at the end of its own line, so no legend is needed. */}
         {lines.map((l) => (
           <g key={`end-${l.short}`}>
             <circle cx={w - padR + 6} cy={l.endY} fill={l.color} r="3" />
-            <text fill={l.color} fontFamily="var(--font-mono)" fontSize="10" x={w - padR + 14} y={l.endY + 3.5}>
+            <text fill={l.color} fontFamily="var(--font-mono)" fontSize="10" x={w - padR + 14} y={(labelY.get(l.short) ?? l.endY) + 3.5}>
               {l.short}
             </text>
           </g>
@@ -153,7 +166,7 @@ function BacktestChart({ t }: { t: T }) {
         {point ? (
           <g>
             <line stroke="rgba(244,239,228,0.25)" x1={x(hover as number)} x2={x(hover as number)} y1={padT} y2={h - padB} />
-            {([1, 2, 3] as const).map((idx) => (
+            {([1, 2, 3, 4] as const).map((idx) => (
               <circle
                 cx={x(hover as number)}
                 cy={yFall(falls[idx - 1][hover as number])}
@@ -173,7 +186,7 @@ function BacktestChart({ t }: { t: T }) {
               {lines.map((l, i) => (
                 <div className="flex items-center gap-3 text-[11px]" key={l.label}>
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: l.color }} />
-                  <span className="min-w-[38px] text-zinc-400">{l.short}</span>
+                  <span className="min-w-[56px] text-zinc-400">{l.short}</span>
                   <span className="tnum font-mono text-zinc-100">
                     {`\u2212${formatPercent(Math.abs(falls[i][hover as number]), 1)}`}
                   </span>
@@ -212,6 +225,8 @@ export function ProofSection({ t }: { t: T }) {
               <p className="mt-6 max-w-[30rem] text-[15px] leading-7 text-zinc-400">{t('proof.intro')}</p>
               {/* What the shield is for, stated before the figures. */}
               <p className="mt-4 max-w-[30rem] text-sm leading-7 text-zinc-500">{t('proof.ethNote')}</p>
+              {/* The comparison that isolates the shield: same basket, shield off. */}
+              <p className="mt-4 max-w-[30rem] text-sm leading-7 text-zinc-500">{t('proof.basketNote')}</p>
               <a className="g-pill mt-8" href={WHITEPAPER_URL} rel="noopener noreferrer" target="_blank">
                 {t('proof.whitepaper')}
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -223,7 +238,7 @@ export function ProofSection({ t }: { t: T }) {
               <BacktestChart t={t} />
 
               {/* The three outcomes, on one line under the chart. */}
-              <div className="mt-6 grid grid-cols-3 gap-4 border-t border-[color:var(--line)] pt-5">
+              <div className="mt-6 grid grid-cols-2 gap-4 border-t border-[color:var(--line)] pt-5 sm:grid-cols-4">
                 {ROWS.map((row) => (
                   <div key={row.key}>
                     <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: SERIES_COLOUR[row.key] }}>
