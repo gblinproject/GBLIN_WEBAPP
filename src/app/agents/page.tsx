@@ -546,10 +546,11 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
             GBLIN Sentinel — buy on-chain data with x402
           </h2>
           <p className="mt-4 text-white/70 max-w-3xl leading-relaxed">
-            An open-source autonomous agent that <strong>sells</strong> real-time
-            Base DeFi risk signals via x402 micropayments. Any agent with a USDC
-            wallet on Base can call these endpoints — no API key, no account,
-            pay-per-request.
+            An autonomous agent that <strong>sells</strong> real-time Base DeFi
+            risk signals via x402 micropayments. Any agent with a USDC wallet on
+            Base can call these endpoints — no API key, no account. The risk
+            signals are paid per request; the treasury analytics and the auction
+            state are free.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -561,19 +562,19 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
               },
               {
                 path: '/api/data/gblin-analytics',
-                price: '$0.001',
+                price: 'free',
                 desc: 'GBLIN treasury state: supply, basket weights, NAV reliability, auction state',
               },
               {
                 path: '/api/data/keeper-opps',
-                price: '$0.001',
+                price: 'free',
                 desc: 'Live auction state per row — premium, side and gap, with the bid to send',
               },
             ].map((ep) => (
               <div key={ep.path} className="border border-white/[0.07] bg-white/[0.02]rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
                   <code className="text-xs text-amber-400 font-mono break-all">{ep.path}</code>
-                  <span className="ml-3 text-xs text-white/40 whitespace-nowrap">{ep.price} USDC</span>
+                  <span className="ml-3 text-xs text-white/40 whitespace-nowrap">{ep.price === 'free' ? 'free' : `${ep.price} USDC`}</span>
                 </div>
                 <p className="text-sm text-white/60 leading-relaxed">{ep.desc}</p>
               </div>

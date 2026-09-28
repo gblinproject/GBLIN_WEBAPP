@@ -93,7 +93,8 @@ Returns a portable receipt: Ed25519 signature + RFC 6962 inclusion proof +
 C2SP signed checkpoint; the tree root is anchored daily on Base via EAS.
 A seal proves existence and time — it is NOT a compliance certificate and
 NOT an endorsement of the content. The checkpoint is signed by the log
-operator; independent witness cosigning is an open invitation.
+operator and cosigned by an independent witness (C2SP tlog-cosignature): the
+cosignature attests the log stayed append-only, not that a receipt is true.
 Free demo (5/day/IP, marked demo:true): POST gblin-mcp.gblin-mcp-worker.workers.dev/v1/seal-demo
 Read free forever: /v1/receipt/:index · /log/checkpoint · /log/proof/:index · human page /receipt/:index
 Offline verifier (zero deps): verify-receipt.mjs in github.com/gblinproject/gblin-treasury-risk-regime

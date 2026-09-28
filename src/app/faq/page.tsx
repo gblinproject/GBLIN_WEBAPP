@@ -27,7 +27,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'What is GBLIN x402?',
     answer:
-      'GBLIN x402 is the pay-per-call side of GBLIN: HTTP endpoints on Base that an AI agent pays for in USDC via the x402 protocol (HTTP 402 Payment Required), $0.001–$0.005 per call, settled through the Coinbase facilitator. They return protocol state, safe swap quotes, unsigned calldata to move USDC into GBLIN or back out just in time to pay an invoice, and a signed 10-minute risk attestation of the current market regime (calm / elevated / crash). Reading the regime itself is free through the MCP server; only the signed proof and the wallet-specific calls are paid. Everything the endpoints say can be checked on-chain, and one third-party ERC-8004 agent has been buying the attestation daily as an input of its published decision rule.',
+      'GBLIN x402 is the HTTP side of GBLIN for AI agents on Base. Protocol state, safe swap quotes, wallet health and unsigned calldata to move USDC into GBLIN or back out just in time to pay an invoice are free. Three endpoints are paid in USDC via the x402 protocol (HTTP 402 Payment Required), settled through the Coinbase facilitator: a signed 10-minute risk attestation of the current market regime (calm / elevated / crash) at $0.003, an AI action receipt at $0.0045 and a liveness report of x402 listings at $0.005. Reading the regime itself is free through the MCP server; the paid attestation is the signed, portable proof. Everything the endpoints say can be checked on-chain, and a third-party ERC-8004 agent bought the attestation daily from late July to mid-August 2026 as an input of its published decision rule.',
   },
   {
     question: 'What is GBLIN?',
@@ -77,17 +77,17 @@ const FAQ: FaqEntry[] = [
   {
     question: 'Is GBLIN audited? How honest is the security story?',
     answer:
-      'The contract was analyzed with Slither (static analysis) in June 2026 with zero critical and zero high findings — but it has not had a paid external manual audit yet, and we say so openly. The protocol maintains a public KNOWN_ISSUES register documenting every reported issue and its outcome, and discloses that its public payment counters include the team’s own test wallets. Owner privileges run through a 48-hour timelock, so any parameter change is publicly visible two days before it executes.',
+      'The vault in service was tested with a 537-test suite, fork tests against live Base contracts, coverage-guided fuzzing (Medusa), symbolic checks (Halmos), mutation testing and static analysis (Slither and Aderyn, every item read) — but it has not had a paid external manual audit yet, and we say so openly. The full record is in the audits folder of the GBLIN-Protocol repository. The protocol maintains a public KNOWN_ISSUES register documenting every reported issue and its outcome, and discloses that its public payment counters include the team’s own test wallets. Owner privileges run through a 48-hour timelock, so any parameter change is publicly visible two days before it executes.',
   },
   {
     question: 'How big is GBLIN?',
     answer:
-      'Small, and disclosed up front: total value locked is around one thousand dollars as of August 2026 (the live figure is on the dashboard). That is exactly why mint and redeem at NAV matter — the product does not need deep pools to work, and early users get the same execution quality as large ones.',
+      'Small, and disclosed up front: total value locked is around 1,300 dollars at the end of September 2026 (the live figure is on the dashboard). That is exactly why mint and redeem at NAV matter — the product does not need deep pools to work, and early users get the same execution quality as large ones.',
   },
   {
     question: 'Can AI agents use GBLIN?',
     answer:
-      'Yes — GBLIN ships agent-native infrastructure: paid x402 API endpoints on Base (risk-regime attestations, quotes, health checks, priced from $0.003 per call and payable in USDC by machines), a free hosted MCP server for AI assistants, and an ERC-8004 identity registration. A third-party protocol (Markovian) buys the crash-regime attestation daily via x402 and uses it as a mandatory input in its published decision rule.',
+      'Yes — GBLIN ships agent-native infrastructure: free HTTP endpoints for state, quotes, wallet health and transaction calldata; paid x402 endpoints for signed risk attestations ($0.003), AI action receipts ($0.0045) and x402 liveness reports ($0.005), payable in USDC by machines; a free hosted MCP server; an agent-treasury library that keeps cash in USDC and the surplus in GBLIN; and an ERC-8004 identity registration. A third-party protocol (Markovian) bought the risk attestation daily via x402 from late July to mid-August 2026 as a mandatory input of its published decision rule, and cosigns GBLIN’s receipts log as an independent witness.',
   },
   {
     question: 'What is the GBLIN contract address on Base?',

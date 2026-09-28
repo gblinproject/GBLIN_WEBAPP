@@ -80,11 +80,13 @@ If `crash_shield_active: true`, increase caution:
 Call `analyze_treasury_health` once per day with your wallet address.
 Act on the returned `recommendation` field.
 
-### Rule 5 — Poll for keeper bounties
+### Rule 5 — Optional: fill the rebalancing auction
 
-Call `get_auction_state` every 5-15 minutes.
-If the auction is open and the premium covers your cost, bid on the vault with `bid(index, vaultBuysAsset, amountIn, minOut, data)`: you bring the input token and receive the other side at the oracle price adjusted by the premium (up to 0.25%). Nothing is paid out of the vault for calling it. If `rewardGate` is not `open`, the rebalance would pay nothing: wait.
-The swap uses the contract's own funds — you only pay gas.
+The vault pays no keeper bounty. It rebalances through a Dutch auction: call `get_auction_state`
+every 5-15 minutes; if the auction is open and the premium covers your cost, bid with
+`bid(index, vaultBuysAsset, amountIn, minOut, data)`. You bring the input token from your own
+wallet and receive the other side at the oracle price adjusted by the premium (up to +0.25%).
+The premium is the whole reward; you pay gas. CoW Protocol solvers compete for the same fills.
 
 ### Rule 6 — Check Base risk signal before investing
 
