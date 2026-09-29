@@ -122,11 +122,11 @@ export default function AboutPage() {
           token contract, minted and redeemed at net asset value.
         </p>
         <p className="mt-3 text-base leading-8 text-zinc-300">
-          GBLIN is built and operated by{' '}
+          GBLIN is built and operated by Roberto Parise, an independent builder who publishes under the onchain name{' '}
           <a className="text-amber-200 underline-offset-4 hover:underline" href={scan(OPERATOR)} rel="noopener noreferrer" target="_blank">
             gblin.base.eth
           </a>
-          , an independent builder who publishes under that onchain name. The name resolves to{' '}
+          . The name resolves to{' '}
           <span className="font-mono text-zinc-200">{short(OPERATOR)}</span>, the address that deployed the contracts, proposes every
           change to the timelock and receives the protocol fee, so the identity behind the project and the powers it
           holds can be checked on chain. Engineering and operations are AI-assisted and carried out in public; see{' '}
