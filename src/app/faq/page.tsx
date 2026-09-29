@@ -77,7 +77,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'Is GBLIN audited? How honest is the security story?',
     answer:
-      'The vault in service was tested with a 537-test suite, fork tests against live Base contracts, coverage-guided fuzzing (Medusa), symbolic checks (Halmos), mutation testing and static analysis (Slither and Aderyn, every item read) — but it has not had a paid external manual audit yet, and we say so openly. The full record is in the audits folder of the GBLIN-Protocol repository. The protocol maintains a public KNOWN_ISSUES register documenting every reported issue and its outcome, and discloses that its public payment counters include the team’s own test wallets. Owner privileges run through a 48-hour timelock, so any parameter change is publicly visible two days before it executes.',
+      'The vault in service and its fill agent were tested with a 591-test suite, fork tests against live Base contracts, coverage-guided fuzzing (Medusa), symbolic checks (Halmos), mutation testing and static analysis (Slither and Aderyn, every item read) — but it has not had a paid external manual audit yet, and we say so openly. The full record is in the audits folder of the GBLIN-Protocol repository. The protocol maintains a public KNOWN_ISSUES register documenting every reported issue and its outcome, and discloses that its public payment counters include the team’s own test wallets. Owner privileges run through a 48-hour timelock, so any parameter change is publicly visible two days before it executes.',
   },
   {
     question: 'How big is GBLIN?',
