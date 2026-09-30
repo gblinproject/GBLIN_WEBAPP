@@ -3,9 +3,10 @@
 /**
  * ProofSection + FeeEngineSection — the protocol's flagship "killer proof" blocks.
  *
- * Data source: 10-year backtest of GBLIN V6's exact on-chain Crash Shield logic
+ * Data source: 10-year backtest of the vault's on-chain Crash Shield logic
  * (refreshWeights) replayed over 3,688 real daily BTC & ETH closes from Coinbase
- * (18 May 2016 → 24 Jun 2026), $10,000 start. Live config: setShieldCurve(15,3000).
+ * (18 May 2016 → 24 Jun 2026), $10,000 start, at the live shield configuration
+ * (full-slash drawdown 3000 bps, slash multiplier 2000, slow peak decay 15 bps/day).
  * Verified four ways: buy&hold reproduces price ratios exactly, shield-off reproduces a
  * static 45/45/10 basket exactly, weights always sum to 1, results are deterministic.
  *
@@ -21,7 +22,6 @@ import { BACKTEST_SERIES, BACKTEST_START } from './backtest-series';
 
 type T = (key: string) => string;
 
-const DUNE_URL = 'https://dune.com/gblin/dashboard';
 const DEFILLAMA_URL = 'https://defillama.com/protocol/tvl/global-balanced-liquidity-index';
 
 /** One colour per series, read by both the chart and the figures under it. */
@@ -267,10 +267,6 @@ export function ProofSection({ t }: { t: T }) {
           <div className="mt-5 flex flex-wrap gap-2">
             <a className="g-chip" href={DEFILLAMA_URL} rel="noopener noreferrer" target="_blank">
               DefiLlama
-              <ExternalLink className="h-3 w-3" />
-            </a>
-            <a className="g-chip" href={DUNE_URL} rel="noopener noreferrer" target="_blank">
-              Dune
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>

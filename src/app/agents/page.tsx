@@ -4,7 +4,7 @@ import { PublicShell } from '@/components/protocol/public-shell';
 
 const SITE_URL = 'https://gblin.digital';
 const PAGE_DESCRIPTION =
-  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 20 tools, no API key.';
+  'Read the live market risk regime (calm / elevated / crash) for free before your AI agent moves capital, buy a signed risk attestation as portable proof it checked, and park idle USDC in a collateral-backed index that redeems back to USDC for x402 invoices. Free MCP server, 21 tools, no API key.';
 
 export const metadata: Metadata = {
   title: { absolute: 'Market risk regime and treasury tools for AI agents on Base' },
@@ -63,6 +63,10 @@ const TOOLS = [
   {
     name: 'analyze_treasury_health',
     purpose: 'Full balance report (GBLIN + USDC + ETH), gas runway, cooldown status, and rebalance recommendation based on the agent burn rate.',
+  },
+  {
+    name: 'plan_treasury',
+    purpose: 'Idle USDC to a reviewable plan in one call: the operating cash to keep liquid (max of a reserve and days of spend), the surplus above it, a mint simulation with every fee read live and today\'s estimated exit value (round-trip cost included), a trial amount, and the blockers. Nothing is executed; the agent shows the plan and waits for a human to confirm. Same plan over HTTP at /api/x402/plan.',
   },
   {
     name: 'get_governance_state',
@@ -272,6 +276,12 @@ export default function AgentsPage() {
           >
             The Risk Gate pattern →
           </a>
+          <a
+            href="/treasury"
+            className="px-5 py-2.5 rounded-lg border border-amber-400/40 bg-amber-500/10 text-sm text-amber-200 hover:bg-amber-500/20 transition"
+          >
+            Plan idle USDC →
+          </a>
         </div>
 
         <pre className="mt-10 p-4 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 overflow-x-auto">
@@ -279,7 +289,7 @@ export default function AgentsPage() {
         </pre>
 
         <p className="mt-4 text-sm text-white/60">
-          No install? Use the hosted MCP (Streamable HTTP, 21 free
+          No install? Use the hosted MCP (Streamable HTTP, 22 free
           tools: the vault, action and payment tools below under two-level
           names, plus the live risk regime and the coherence proof):{' '}
           <code className="text-white/80 break-all">

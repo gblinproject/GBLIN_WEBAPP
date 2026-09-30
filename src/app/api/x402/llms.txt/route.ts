@@ -26,7 +26,7 @@ Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
 MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
-             no install, 21 free tools: risk.regime · risk.attestation_sample ·
+             no install, 22 free tools: risk.regime · risk.attestation_sample ·
              protocol.stats · protocol.info · coherence.report · receipts.seal (demo) ·
              receipts.get · receipts.verify, and from the npm package's own source
              treasury.* · actions.prepare/preview/status · payments.prepare/verify/relay ·
@@ -51,14 +51,22 @@ NAV in USD, basket composition with dynamic weights, Crash Shield status.
 Preview a GBLIN swap (no execution). Returns expected output + safe minOut.
 
 ### GET /api/x402/jit?usdc=…&wallet=0x…    (free)
-Just-In-Time GBLIN→USDC: two-step calldata: sellGBLINForEth (GBLIN->ETH) then a Uniswap WETH->USDC swap.
-Single atomic tx. Compatible with EOA, ERC-4337, EIP-7702.
+Just-In-Time GBLIN→USDC: three-step unsigned calldata: approve the shares to the Zap, GBLINZap.sellGBLINForEth
+(redeem in kind and sell the legs, all or nothing), then a Uniswap WETH->USDC swap. An EOA signs three times;
+ERC-4337 and EIP-7702 accounts can batch them.
 
-### GET /api/x402/invest?usdc=…            (free)
-Treasury accumulation: 2-step approve + buyGBLINWithToken calldata.
+### GET /api/x402/invest?usdc=…&wallet=0x…  (free)
+Treasury accumulation: two-step unsigned calldata: approve USDC to the Zap, then GBLINZap.buyGBLINWithToken
+(swap USDC->WETH and mint at NAV in one transaction). Both minimums are set.
 
 ### GET /api/x402/health?wallet=0x…&daily_burn=…   (free)
 Wallet treasury analysis: balances, gas runway, rebalance recommendation.
+
+### GET /api/x402/plan?wallet=0x…&daily_burn=…&days=7&reserve=…&trial=100   (free)
+Idle USDC to a reviewable plan in one call: operating cash = max(reserve, daily_burn × days), the surplus above it,
+a simulation of minting that surplus at NAV (fees read live, estimated exit value today, round-trip cost), the same
+simulation for a trial amount, the blockers (shield, cooldown, gas) and the prepare URLs to call after a human confirms.
+Nothing is executed and nothing is advised.
 
 ### GET /api/x402/governance                (free)
 Verify owner is the 48h Timelock + read min delay parameters.

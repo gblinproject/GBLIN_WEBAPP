@@ -119,13 +119,30 @@
       "path": "/api/x402/invest",
       "method": "GET",
       "price": "free",
-      "description": "4-step unsigned calldata for USDC→GBLIN",
+      "description": "Two-step unsigned calldata for USDC→GBLIN (approve to the Zap, swap and mint at NAV)",
       "requiredParams": [
         "usdc",
         "wallet"
       ],
       "example": "https://gblin.digital/api/x402/invest?usdc=10&wallet=0x0000000000000000000000000000000000000001",
       "note": "Free since 2026-09-27: no payment, plain GET; short CDN cache."
+    },
+    {
+      "path": "/api/x402/plan",
+      "method": "GET",
+      "price": "free",
+      "description": "Idle USDC to a reviewable plan: operating cash, surplus, mint simulation with live fees and today's exit estimate, trial amount, blockers, prepare URLs",
+      "requiredParams": [
+        "wallet"
+      ],
+      "optionalParams": [
+        "daily_burn",
+        "days",
+        "reserve",
+        "trial"
+      ],
+      "example": "https://gblin.digital/api/x402/plan?wallet=0x0000000000000000000000000000000000000001&daily_burn=25&days=7",
+      "note": "Provide daily_burn or reserve. Nothing is executed; the prepare endpoints return unsigned calldata."
     },
     {
       "path": "/api/x402/jit",

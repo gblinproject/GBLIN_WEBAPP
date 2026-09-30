@@ -325,6 +325,13 @@ export const LENS_ABI = [
     inputs: [{ name: "vault", type: "address" }],
     outputs: [{ name: "", type: "address" }],
   },
+  {
+    name: "managementFeeBps",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "vault", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 // The Zap is the only contract that swaps: it mints with any token and exits to ETH by redeeming in
@@ -567,6 +574,52 @@ export async function readProtocolLimits(): Promise<ProtocolLimits> {
   const value = { minDepositWei: r[2], sellCooldownSeconds: Number(r[5]), oracleAgeSeconds: Number(r[3]) || ORACLE_STALENESS_SECONDS };
   limitsCache = { value, at: Date.now() };
   return value;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// FEE SCHEDULE — every rate is read live; governance can move them within the bounds in the vault
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface FeeSchedule {
+  /** Mint fee paid to the protocol, in bps of the deposit. */
+  protocolFeeBps: number;
+  /** Mint fee that stays in the vault and lifts the NAV, in bps of the deposit. */
+  stabilityFeeBps: number;
+  /** Annual management fee, in bps of the supply, accrued as new shares. */
+  managementFeeBps: number;
+}
+
+let feeCache: { value: FeeSchedule; at: number } | null = null;
+
+export async function readFeeSchedule(): Promise<FeeSchedule> {
+  if (feeCache && Date.now() - feeCache.at < LIMITS_CACHE_TTL_MS) return feeCache.value;
+  const [fees, management] = await Promise.all([
+    client.readContract({ address: GBLIN_LENS, abi: LENS_ABI, functionName: "configFees", args: [GBLIN] }),
+    client.readContract({ address: GBLIN_LENS, abi: LENS_ABI, functionName: "managementFeeBps", args: [GBLIN] }),
+  ]);
+  const value = {
+    protocolFeeBps: Number(fees[0]),
+    stabilityFeeBps: Number(fees[1]),
+    managementFeeBps: Number(management),
+  };
+  feeCache = { value, at: Date.now() };
+  return value;
+}
+
+/**
+ * Gas the three-step exit (approve, Zap exit, WETH->USDC swap) costs at a given gas price, and how the
+ * wallet's ETH compares to it: "sufficient" leaves a fivefold margin for a spike, "low" covers one exit,
+ * "critical" does not cover one.
+ */
+export function assessExitGas(ethBalanceWei: bigint, gasPrice: bigint): {
+  status: "sufficient" | "low" | "critical";
+  exitCostWei: bigint;
+} {
+  const exitGas = 46_000n + BigInt(ZAP_GAS_LIMIT) + 120_000n;
+  const exitCostWei = exitGas * gasPrice;
+  const status =
+    ethBalanceWei >= exitCostWei * 5n ? "sufficient" : ethBalanceWei >= exitCostWei ? "low" : "critical";
+  return { status, exitCostWei };
 }
 
 export async function checkCooldown(wallet: Address): Promise<CooldownStatus> {
