@@ -289,7 +289,7 @@ export default function AgentsPage() {
         </pre>
 
         <p className="mt-4 text-sm text-white/60">
-          No install? Use the hosted MCP (Streamable HTTP, 22 free
+          No install? Use the hosted MCP (Streamable HTTP, 24 free
           tools: the vault, action and payment tools below under two-level
           names, plus the live risk regime and the coherence proof):{' '}
           <code className="text-white/80 break-all">

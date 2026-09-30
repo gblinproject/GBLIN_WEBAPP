@@ -685,6 +685,17 @@ export async function quoteGblinForUsdc(usdcTargetStr: string): Promise<{
 // JIT CALLDATA — GBLIN -> USDC in three steps through the Zap
 // ───────────────────────────────────────────────────────────────────────────
 
+/**
+ * Adds the field names wallet batch APIs expect (`to`, `data`, `chainId`, as in EIP-5792 `wallet_sendCalls`
+ * and Coinbase Wallet MCP's `send_calls`) beside `target` and `calldata`, so a step maps one to one without
+ * renaming. Both spellings stay: existing readers keep working.
+ */
+export function withSendCallsFields<T extends { target: Address; calldata: `0x${string}` }>(
+  step: T
+): T & { to: Address; data: `0x${string}`; chainId: number } {
+  return { ...step, to: step.target, data: step.calldata, chainId: BASE_CHAIN_ID };
+}
+
 export interface JitStep {
   step: number;
   description: string;
@@ -763,7 +774,7 @@ export async function buildJitCalldata(
       { step: 1, description: "Approve the shares to the GBLIN Zap", target: GBLIN, calldata: withBuilderSuffix(approveCalldata), value: "0" },
       { step: 2, description: "Redeem in kind and sell the legs for ETH through the Zap (all or nothing)", target: GBLIN_ZAP, calldata: withBuilderSuffix(sellCalldata), value: "0", gas: ZAP_GAS_LIMIT.toString() },
       { step: 3, description: "Swap the received ETH to USDC via Uniswap V3 (WETH->USDC)", target: SWAP_ROUTER_02, calldata: withBuilderSuffix(swapCalldata), value: minEthOut.toString() },
-    ],
+    ].map(withSendCallsFields),
   };
 }
 
@@ -836,7 +847,7 @@ export async function buildInvestCalldata(
     steps: [
       { step: 1, description: "Approve USDC to the GBLIN Zap", target: USDC, calldata: withBuilderSuffix(approveZapCalldata), value: "0" },
       { step: 2, description: "Swap USDC to WETH and mint GBLIN at NAV, in one transaction", target: GBLIN_ZAP, calldata: withBuilderSuffix(buyCalldata), value: "0", gas: ZAP_GAS_LIMIT.toString() },
-    ],
+    ].map(withSendCallsFields),
     expectedGblinOut: formatUnits(gblinExpected, 18),
     minGblinOut: formatUnits(minGblinOut, 18),
     minWethOut: formatUnits(minWethOut, 18),

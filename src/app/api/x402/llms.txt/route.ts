@@ -26,7 +26,7 @@ Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
 MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
-             no install, 22 free tools: risk.regime · risk.attestation_sample ·
+             no install, 24 free tools: search · fetch (documentation and live state as documents) · risk.regime · risk.attestation_sample ·
              protocol.stats · protocol.info · coherence.report · receipts.seal (demo) ·
              receipts.get · receipts.verify, and from the npm package's own source
              treasury.* · actions.prepare/preview/status · payments.prepare/verify/relay ·
