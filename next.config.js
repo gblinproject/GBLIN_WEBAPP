@@ -25,6 +25,17 @@ const nextConfig = {
       },
     ],
   },
+  // mcp.gblin.digital is the hosted MCP server under the protocol's own name: every request on that host is
+  // proxied to the Worker unchanged. The same server also answers at gblin.digital/mcp.
+  async rewrites() {
+    const worker = 'https://gblin-mcp.gblin-mcp-worker.workers.dev';
+    return {
+      beforeFiles: [
+        { source: '/:path*', has: [{ type: 'host', value: 'mcp.gblin.digital' }], destination: `${worker}/:path*` },
+        { source: '/mcp', destination: `${worker}/mcp` },
+      ],
+    };
+  },
   async headers() {
     return [
       {
