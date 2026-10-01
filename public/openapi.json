@@ -2,13 +2,14 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GBLIN Protocol — x402 API",
-    "version": "1.0.0",
-    "description": "GBLIN is the Treasury Standard for AI Agents on Base mainnet: an auto-rebalancing index of cbBTC / WETH / USDC with an on-chain Crash Shield. These endpoints let agents read protocol state, get safe swap quotes and generate ready-to-broadcast calldata. Paid via x402 (USDC on Base, chain id 8453).",
+    "version": "1.1.0",
+    "description": "GBLIN is a basket token on Base mainnet (45% cbBTC, 45% WETH, 10% USDC) minted and redeemed at net asset value, with an on-chain Crash Shield that cuts the risk-asset weights during drawdowns. It is crypto exposure, not capital protection. Three endpoints are paid per call with x402 (USDC on Base, chain id 8453): a signed risk attestation, a receipt in a public transparency log, and an x402 endpoint liveness catalog. The vault reads, the treasury plan and the unsigned calldata routes are free.",
     "contact": {
       "name": "GBLIN",
       "url": "https://gblin.digital",
       "email": "info@gblin.digital"
-    }
+    },
+    "x-guidance": "Free routes need no payment: call them with a plain GET. Start with /api/x402/treasury-state for NAV, basket and shield status. To decide what to do with idle USDC, call /api/x402/plan?wallet=0x...&daily_burn=25: it returns the cash to keep liquid, the surplus, a mint simulation with live fees and an estimate of exiting the same day. Nothing executes: /api/x402/invest and /api/x402/jit return unsigned calldata that the wallet owner reviews and signs. Paid routes answer HTTP 402 with x402 v2 payment requirements (exact scheme, USDC on Base); retry with the signed payment header. Use /api/x402/attestation before moving capital (free sample: /api/x402/attestation-sample), POST /api/x402/seal after an action you may need to prove, and /api/x402/catalog before paying an x402 service you have not used recently. The same tools are available as a free MCP server at https://mcp.gblin.digital/mcp."
   },
   "servers": [
     {
@@ -82,91 +83,70 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
-    "/api/x402/quote": {
+    "/api/x402/plan": {
       "get": {
-        "summary": "Swap quote",
-        "description": "Preview a GBLIN swap (no execution). Returns expected output and safe minOut.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
-        "responses": {
-          "200": {
-            "description": "Success"
-          }
-        },
+        "summary": "Treasury plan for idle USDC",
+        "description": "Turns a wallet and a spending rate into a reviewable plan: the operating cash to keep in USDC (the larger of reserve and daily_burn x days), the surplus above it, a simulation of minting that surplus into GBLIN with every fee read from the vault, the estimated value of exiting the same day, a trial amount, blockers, and the URLs that prepare unsigned calldata. Nothing is executed. Provide daily_burn or reserve.",
         "parameters": [
-          {
-            "name": "direction",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "buy or sell"
-          },
-          {
-            "name": "amount",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Input amount"
-          }
-        ]
-      }
-    },
-    "/api/x402/jit": {
-      "get": {
-        "summary": "Just-In-Time GBLIN to USDC",
-        "description": "Two-step calldata: sellGBLINForEth then Uniswap WETH to USDC. Single atomic tx.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
-        "responses": {
-          "200": {
-            "description": "Success"
-          }
-        },
-        "parameters": [
-          {
-            "name": "usdc",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Target USDC amount"
-          },
           {
             "name": "wallet",
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{40}$"
             },
             "description": "0x wallet address"
+          },
+          {
+            "name": "daily_burn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            },
+            "description": "USD the wallet spends per day"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "description": "Days of spending to keep liquid (1-365, default 7)"
+          },
+          {
+            "name": "reserve",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            },
+            "description": "USD to keep liquid regardless of spending"
+          },
+          {
+            "name": "trial",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            },
+            "description": "Size in USDC of a first trial (default 100)"
           }
-        ]
-      }
-    },
-    "/api/x402/invest": {
-      "get": {
-        "summary": "Invest USDC into GBLIN",
-        "description": "Two-step approve + buyGBLINWithToken calldata for treasury accumulation.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
+        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "Success"
           }
-        },
-        "parameters": [
-          {
-            "name": "usdc",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "USDC amount to invest"
-          }
-        ]
+        }
       }
     },
     "/api/x402/health": {
@@ -197,13 +177,114 @@
             },
             "description": "Estimated daily USDC burn"
           }
-        ]
+        ],
+        "security": []
+      }
+    },
+    "/api/x402/quote": {
+      "get": {
+        "summary": "Swap quote",
+        "description": "Preview a GBLIN swap (no execution). Returns expected output and safe minOut.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "buy or sell"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Input amount"
+          }
+        ],
+        "security": []
+      }
+    },
+    "/api/x402/invest": {
+      "get": {
+        "summary": "Invest USDC into GBLIN",
+        "description": "Two-step approve + buyGBLINWithToken calldata for treasury accumulation.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "parameters": [
+          {
+            "name": "usdc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "USDC amount to invest"
+          }
+        ],
+        "security": []
+      }
+    },
+    "/api/x402/jit": {
+      "get": {
+        "summary": "Just-In-Time GBLIN to USDC",
+        "description": "Two-step calldata: sellGBLINForEth then Uniswap WETH to USDC. Single atomic tx.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "parameters": [
+          {
+            "name": "usdc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target USDC amount"
+          },
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0x wallet address"
+          }
+        ],
+        "security": []
       }
     },
     "/api/x402/governance": {
       "get": {
         "summary": "Governance check",
         "description": "Verify owner is the 48h Timelock and read min delay parameters.\n\nFree since 2026-09-27: no payment required. Also available free in the MCP server (@gblin-protocol/mcp-server).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/x402/attestation-sample": {
+      "get": {
+        "summary": "Risk attestation sample (free)",
+        "description": "A free static example with the same shape and EIP-712 schema as the paid risk attestation from /api/x402/attestation, for integration testing. The data is frozen and expired: never a live risk signal.",
+        "security": [],
         "responses": {
           "200": {
             "description": "Success"
@@ -220,21 +301,117 @@
             "description": "Success"
           },
           "402": {
-            "description": "Payment Required (x402, USDC on Base)"
+            "description": "Payment Required"
           }
+        },
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.003"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ]
         }
       }
     },
     "/api/x402/seal": {
       "post": {
         "summary": "AI Action Receipt: seal the hashes of an action",
-        "description": "Seal the SHA-256 hashes of an AI action into GBLIN's public append-only RFC 6962 transparency log. Returns a portable receipt: Ed25519 signature, inclusion proof and signed checkpoint; the tree root is anchored daily on Base. Body: {action, input_hash, output_hash?, agent_id?, tool?, meta?}. The labels are public; only the hashes protect the content.\n\nRequires an x402 USDC payment on Base mainnet ($0.0045 USDC). Free demo (5 per day per IP) and free reading: https://gblin-mcp.gblin-mcp-worker.workers.dev/log",
+        "description": "Seal the SHA-256 hashes of an AI action into GBLIN's public append-only RFC 6962 transparency log. Returns a portable receipt: Ed25519 signature, inclusion proof and signed checkpoint; the tree root is anchored daily on Base. Body: {action, input_hash, output_hash?, agent_id?, tool?, meta?}. The labels are public; only the hashes protect the content.\n\nRequires an x402 USDC payment on Base mainnet ($0.0045 USDC). Free demo (5 per day per IP) and free reading: https://mcp.gblin.digital/log",
         "responses": {
           "200": {
             "description": "Success"
           },
           "402": {
-            "description": "Payment Required (x402, USDC on Base)"
+            "description": "Payment Required"
+          }
+        },
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.0045"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ]
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "input_hash"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "description": "Short public label for what the AI did. Published in the log: identifiers only, never secrets."
+                  },
+                  "input_hash": {
+                    "type": "string",
+                    "pattern": "^(0x)?[0-9a-fA-F]{64}$",
+                    "description": "sha256 of your input, 64 hex chars (0x prefix optional)"
+                  },
+                  "output_hash": {
+                    "type": "string",
+                    "pattern": "^((0x)?[0-9a-fA-F]{64})?$",
+                    "description": "sha256 of your output (optional)"
+                  },
+                  "agent_id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "description": "Your agent identifier (optional). Published."
+                  },
+                  "tool": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "description": "Tool or model used (optional). Published."
+                  },
+                  "meta": {
+                    "type": "string",
+                    "maxLength": 512,
+                    "description": "Extra JSON object as a string (optional). Published."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/x402/catalog": {
+      "get": {
+        "summary": "x402 endpoint liveness catalog",
+        "description": "Call before your agent pays an x402 service it has not used recently: is that endpoint actually alive? Liveness of the ~200 most recently updated Bazaar listings, probed in rotation: HTTP status, latency, last-OK time and consecutive failures per endpoint. Measurements only, no judgements; the probes never pay.\n\nRequires an x402 USDC payment on Base mainnet ($0.005 USDC). Free aggregate view: https://mcp.gblin.digital/catalog",
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.005"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ]
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "402": {
+            "description": "Payment Required"
           }
         }
       }
