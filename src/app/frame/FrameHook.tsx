@@ -238,6 +238,17 @@ export default function FrameHook() {
           {/* Buy: one-tap amounts and a custom amount, visible without playing first */}
           <MiniBuy />
 
+          {/* Park your earnings: the treasury plan sized for what a creator or trader earned */}
+          <Link href="/frame/park" style={{ textDecoration: "none" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "13px 14px", borderRadius: 13, border: "1px solid rgba(16,185,129,0.4)", background: "rgba(16,185,129,0.10)" }}>
+              <div>
+                <div style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>Park your earnings</div>
+                <div style={{ color: C.textDim, fontSize: 11.5, marginTop: 2 }}>Keep what you spend liquid, see the rest in BTC, ETH and USDC</div>
+              </div>
+              <ArrowRight size={16} color="#6ee7b7" />
+            </div>
+          </Link>
+
           {/* Actions */}
           {revealed && (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
