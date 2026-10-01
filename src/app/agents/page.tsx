@@ -293,7 +293,7 @@ export default function AgentsPage() {
           tools: the vault, action and payment tools below under two-level
           names, plus the live risk regime and the coherence proof):{' '}
           <code className="text-white/80 break-all">
-            https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
+            https://mcp.gblin.digital/mcp
           </code>{' '}
           — also on{' '}
           <a

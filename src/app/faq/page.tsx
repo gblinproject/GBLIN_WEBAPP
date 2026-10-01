@@ -144,7 +144,7 @@ export default function FaqPage() {
               </a>
               . Free MCP server (hosted, Streamable HTTP):{' '}
               <span className="font-mono text-xs text-emerald-200 break-all">
-                https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp
+                https://mcp.gblin.digital/mcp
               </span>
               . Paid x402 endpoints and integration guides:{' '}
               <a href={`${SITE_URL}/agents`} className="text-emerald-300 underline">

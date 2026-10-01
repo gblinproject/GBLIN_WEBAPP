@@ -10,7 +10,7 @@
     },
     {
       "name": "MCP",
-      "endpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp",
+      "endpoint": "https://mcp.gblin.digital/mcp",
       "version": "2025-06-18"
     },
     {
@@ -60,7 +60,7 @@
   ],
   "mcp": {
     "hosted": {
-      "endpoint": "https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp",
+      "endpoint": "https://mcp.gblin.digital/mcp",
       "transport": "streamable-http, stateless, no auth, 60 req/min/IP, all tools free",
       "tools": [
         "risk.regime",

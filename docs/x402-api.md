@@ -145,7 +145,7 @@ npx @gblin-protocol/agent-treasury pay https://gblin.digital/api/x402/attestatio
 
 ```bash
 npx @gblin-protocol/mcp-server                              # stdio, 20 tools
-# hosted, no install: https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (21 tools)
+# hosted, no install: https://mcp.gblin.digital/mcp (24 tools)
 ```
 
 ## 5. Operational notes

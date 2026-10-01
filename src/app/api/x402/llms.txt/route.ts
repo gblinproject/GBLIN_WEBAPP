@@ -25,7 +25,7 @@ Owner:       48h Timelock 0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd
 Site:        https://gblin.digital
 Repo:        https://github.com/gblinproject/GBLIN-Protocol
 MCP server:  @gblin-protocol/mcp-server (npm, stdio — full toolset, free)
-MCP hosted:  https://gblin-mcp.gblin-mcp-worker.workers.dev/mcp (Streamable HTTP,
+MCP hosted:  https://mcp.gblin.digital/mcp (Streamable HTTP,
              no install, 24 free tools: search · fetch (documentation and live state as documents) · risk.regime · risk.attestation_sample ·
              protocol.stats · protocol.info · coherence.report · receipts.seal (demo) ·
              receipts.get · receipts.verify, and from the npm package's own source
