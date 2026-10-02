@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ParkEarnings from "./ParkEarnings";
 
 const SITE_URL = "https://gblin.digital";
-const IMAGE = `${SITE_URL}/api/frame/og`;
+const IMAGE = `${SITE_URL}/api/frame/park-og`;
 const SPLASH_IMAGE = `${SITE_URL}/LOGO_GBLIN.png`;
 const TITLE = "GBLIN — Park your earnings";
 const DESCRIPTION =

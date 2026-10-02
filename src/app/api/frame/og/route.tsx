@@ -75,7 +75,7 @@ export async function GET() {
                 fontWeight: 600,
               }}
             >
-              AUTONOMOUS BASKET · LIVE ON BASE · 0 ADMIN KEYS
+              AUTONOMOUS BASKET · LIVE ON BASE · 48H TIMELOCK
             </div>
           </div>
           <div
