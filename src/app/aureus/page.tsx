@@ -66,6 +66,29 @@ type Stats = {
   all_trades: Trade[];
   metrics?: Metrics;
   esperimenti?: Experiments;
+  exposure?: { gross_usd: number; gross_x: number | null; cap_x: number };
+  halt_pct?: number;
+  benchmark?: Benchmark | null;
+  gate?: Gate | null;
+};
+type Benchmark = {
+  since: number;
+  days: number;
+  return_pct: number;
+  btc_return_pct: number | null;
+  avg_gross_x: number;
+  gross_x_now: number;
+  benchmark_pct: number | null;
+  excess_pct: number | null;
+  positive_days: number;
+  negative_days: number;
+  worst_day_pct: number | null;
+  best_day_pct: number | null;
+};
+type GateCheck = [number | null, number, boolean];
+type Gate = {
+  checks: { days: GateCheck; closed_trades: GateCheck; sharpe: GateCheck; beats_benchmark: GateCheck };
+  passed: boolean;
 };
 type Experiments = {
   twin_flip?: {
@@ -108,6 +131,11 @@ async function getStats(): Promise<Stats | null> {
 function fmtUsd(n: number | null | undefined, decimals = 2) {
   if (n === null || n === undefined) return '—';
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(decimals);
+}
+
+function fmtPct(n: number | null | undefined, decimals = 2) {
+  if (n == null || !Number.isFinite(n)) return '—';
+  return `${n >= 0 ? '+' : ''}${(n * 100).toFixed(decimals)}%`;
 }
 
 function pnlColor(n: number | null | undefined) {
@@ -339,10 +367,10 @@ function AureusContent() {
               {(s.drawdown_from_peak_pct != null) && (
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>{t('aureus.drawdownFromPeak')}</span>
+                    <span>{t('aureus.drawdownFromPeak')} {((s.halt_pct ?? 0.10) * 100).toFixed(0)}%</span>
                     <span className={(
-                      (s.drawdown_from_peak_pct ?? 0) >= 0.10 ? 'text-red-400' :
-                      (s.drawdown_from_peak_pct ?? 0) >= 0.05 ? 'text-amber-400' :
+                      (s.drawdown_from_peak_pct ?? 0) >= (s.halt_pct ?? 0.10) ? 'text-red-400' :
+                      (s.drawdown_from_peak_pct ?? 0) >= (s.halt_pct ?? 0.10) / 2 ? 'text-amber-400' :
                       'text-emerald-400'
                     )}>
                       {((s.drawdown_from_peak_pct ?? 0) * 100).toFixed(2)}%
@@ -351,11 +379,11 @@ function AureusContent() {
                   <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        (s.drawdown_from_peak_pct ?? 0) >= 0.10 ? 'bg-red-500' :
-                        (s.drawdown_from_peak_pct ?? 0) >= 0.05 ? 'bg-amber-500' :
+                        (s.drawdown_from_peak_pct ?? 0) >= (s.halt_pct ?? 0.10) ? 'bg-red-500' :
+                        (s.drawdown_from_peak_pct ?? 0) >= (s.halt_pct ?? 0.10) / 2 ? 'bg-amber-500' :
                         'bg-emerald-500'
                       }`}
-                      style={{ width: `${Math.min((s.drawdown_from_peak_pct ?? 0) / 0.10 * 100, 100).toFixed(1)}%` }}
+                      style={{ width: `${Math.min((s.drawdown_from_peak_pct ?? 0) / (s.halt_pct ?? 0.10) * 100, 100).toFixed(1)}%` }}
                     />
                   </div>
                 </div>
@@ -379,6 +407,53 @@ function AureusContent() {
                   <p className="text-[10px] text-gray-700 mt-2">
                     {t('aureus.dashedLineNote')} {s.metrics.equity_curve.length} {t('aureus.points')}.
                   </p>
+                </div>
+              )}
+
+              {s.benchmark && (
+                <div className="mt-5 bg-white/5 border border-gray-800 rounded-xl p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">{t('aureus.benchmarkHeading')}</p>
+                  <p className="text-[11px] text-gray-600 mb-3">{t('aureus.benchmarkNote')}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Stat label={t('aureus.bmReturn')} value={fmtPct(s.benchmark.return_pct)}
+                      tone={s.benchmark.return_pct >= 0 ? 'pos' : 'neg'} hint={`${s.benchmark.days.toFixed(1)} d`} />
+                    <Stat label={t('aureus.bmBtc')} value={fmtPct(s.benchmark.benchmark_pct)}
+                      hint={`BTC ${fmtPct(s.benchmark.btc_return_pct)} × ${s.benchmark.avg_gross_x.toFixed(2)}x`} />
+                    <Stat label={t('aureus.bmExcess')} value={fmtPct(s.benchmark.excess_pct)}
+                      tone={(s.benchmark.excess_pct ?? 0) >= 0 ? 'pos' : 'neg'} />
+                    <Stat label={t('aureus.bmExposure')}
+                      value={`${(s.exposure?.gross_x ?? s.benchmark.gross_x_now).toFixed(2)}x / ${(s.exposure?.cap_x ?? 1).toFixed(1)}x`} />
+                    <Stat label={t('aureus.bmDays')} value={`${s.benchmark.positive_days} / ${s.benchmark.negative_days}`} />
+                    <Stat label={t('aureus.bmWorstDay')} value={fmtPct(s.benchmark.worst_day_pct)} tone="neg" />
+                    <Stat label={t('aureus.bmBestDay')} value={fmtPct(s.benchmark.best_day_pct)} tone="pos" />
+                  </div>
+                </div>
+              )}
+
+              {s.gate && (
+                <div className="mt-5 bg-white/5 border border-gray-800 rounded-xl p-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-xs uppercase tracking-wider text-gray-500">{t('aureus.gateHeading')}</p>
+                    <p className={`text-xs ${s.gate.passed ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      {s.gate.passed ? t('aureus.gatePassed') : t('aureus.gatePending')}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-gray-600 mb-3">{t('aureus.gateNote')}</p>
+                  <ul className="space-y-1 text-sm">
+                    {([
+                      ['gateDays', s.gate.checks.days, (v: number) => v.toFixed(1), (v: number) => `≥ ${v}`],
+                      ['gateClosed', s.gate.checks.closed_trades, (v: number) => String(v), (v: number) => `≥ ${v}`],
+                      ['gateSharpe', s.gate.checks.sharpe, (v: number) => v.toFixed(2), (v: number) => `≥ ${v}`],
+                      ['gateBeats', s.gate.checks.beats_benchmark, (v: number) => fmtPct(v), () => '> 0'],
+                    ] as [string, GateCheck, (v: number) => string, (v: number) => string][]).map(([k, c, fv, ft]) => (
+                      <li key={k} className="flex justify-between">
+                        <span className="text-gray-400">{c[2] ? '✓' : '○'} {t(`aureus.${k}`)}</span>
+                        <span className={c[2] ? 'text-emerald-400' : 'text-gray-500'}>
+                          {c[0] == null ? '—' : fv(c[0])} <span className="text-gray-700">({ft(c[1])})</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </section>
