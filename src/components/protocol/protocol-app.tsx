@@ -23,6 +23,7 @@ import {
   ZAP_ADDRESS,
   fetchMarketData,
   fetchOnChainData,
+  type OnChainData,
   fetchOracleHealth,
   UNCHECKED_ORACLE_HEALTH,
   type OracleHealth,
@@ -56,6 +57,8 @@ const VENUE_FEE_500 = ethers.AbiCoder.defaultAbiCoder().encode(['uint24'], [500]
 
 interface ProtocolAppProps {
   view: ProtocolView;
+  /** Vault figures read on the server, so the first HTML already shows them. Null when unread. */
+  initialOnChainData?: OnChainData | null;
 }
 
 function isSupportedLanguage(value: string | null): value is Language {
@@ -88,7 +91,8 @@ const protocolViewCache: {
   transactionsAt: 0,
 };
 
-export function ProtocolApp({ view }: ProtocolAppProps) {
+export function ProtocolApp({ view, initialOnChainData = null }: ProtocolAppProps) {
+  const seedOnChain = protocolViewCache.onChainData ?? initialOnChainData;
   const { address: wagmiAddress } = useAccount();
   const account = useMemo(() => (wagmiAddress ? { address: wagmiAddress } : undefined), [wagmiAddress]);
   const { mutate: sendTx } = useSendTransaction();
@@ -113,8 +117,8 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   }, [language]);
   const [logs, setLogs] = useState<string[]>(protocolViewCache.logs);
 
-  const [lastYieldDistribution, setLastYieldDistribution] = useState(protocolViewCache.lastYieldDistribution);
-  const [basketData, setBasketData] = useState<any[]>(protocolViewCache.basketData);
+  const [lastYieldDistribution, setLastYieldDistribution] = useState(protocolViewCache.lastYieldDistribution || seedOnChain?.lastYield || 0);
+  const [basketData, setBasketData] = useState<any[]>(protocolViewCache.basketData.length ? protocolViewCache.basketData : seedOnChain?.basketData ?? []);
   const [ethBalance, setEthBalance] = useState('0.0000');
   const [tokenBalance, setTokenBalance] = useState('0.0000');
   const [gblinBalance, setGblinBalance] = useState('0.0000');
@@ -146,9 +150,11 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
   const [rebalanceAllResults, setRebalanceAllResults] = useState<Array<{ name: string; hash: string; success: boolean; error?: string }>>([]);
 
   const [marketData, setMarketData] = useState<any>(protocolViewCache.marketData);
-  const [onChainData, setOnChainData] = useState<any>(protocolViewCache.onChainData);
+  const [onChainData, setOnChainData] = useState<any>(seedOnChain);
   const [isMarketLoading, setIsMarketLoading] = useState(!protocolViewCache.marketData);
-  const [isOnChainLoading, setIsOnChainLoading] = useState(!protocolViewCache.onChainData);
+  const [isOnChainLoading, setIsOnChainLoading] = useState(!seedOnChain);
+  // While figures are on screen a refresh keeps showing them instead of blanking to placeholders.
+  const hasOnChainRef = useRef(Boolean(seedOnChain));
   const [transactions, setTransactions] = useState<any[]>(protocolViewCache.transactions);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(protocolViewCache.transactions.length === 0);
 
@@ -276,9 +282,10 @@ export function ProtocolApp({ view }: ProtocolAppProps) {
       setBasketData(protocolViewCache.onChainData.basketData || []);
       return;
     }
-    setIsOnChainLoading(true);
+    if (!hasOnChainRef.current) setIsOnChainLoading(true);
     try {
       const data = await fetchOnChainData();
+      hasOnChainRef.current = true;
       setOnChainData(data);
       setLastYieldDistribution(data.lastYield || 0);
       setBasketData(data.basketData || []);
