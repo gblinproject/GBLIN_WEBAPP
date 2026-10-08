@@ -93,8 +93,11 @@ function useReturnedToReserves() {
     let cancelled = false;
     fetch('/api/nav-fees')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
-      .then((d: { usd?: number }) => {
-        if (!cancelled && typeof d?.usd === 'number') setUsd(d.usd);
+      .then((d: { usd?: number; events?: number; stale?: boolean }) => {
+        // A stale answer is the fallback served while the log source is unreachable, not a reading:
+        // keep the dash rather than print a figure the chain did not give.
+        if (cancelled || d?.stale || !(typeof d?.events === 'number' && d.events > 0)) return;
+        if (typeof d.usd === 'number' && Number.isFinite(d.usd)) setUsd(d.usd);
       })
       .catch(() => undefined);
     return () => {
