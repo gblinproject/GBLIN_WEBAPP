@@ -85,7 +85,8 @@ function AssetNode({ asset, t }: { asset: BasketItem; t: (key: string) => string
 /**
  * What the stability fee has left in the reserves since launch. Not an
  * estimate: the figure comes from the vault's Minted events, summed at the rate
- * read from the contract, and grows on its own with every purchase.
+ * read from the contract, and grows on its own with every purchase. When the route can only serve its stale
+ * fallback, the figure stays a dash.
  */
 function useReturnedToReserves() {
   const [usd, setUsd] = useState<number | null>(null);
