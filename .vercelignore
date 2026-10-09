@@ -1,0 +1,11 @@
+# Local tooling and working files: never part of a deployment.
+.claude/
+.impeccable/
+.playwright-mcp/
+.windsurf/
+graphify-out/
+scripts/
+contracts/GBLIN_BOT
+GBLIN_AI_CONTEXT.md
+SOCIAL_STRATEGY.md
+.DS_Store

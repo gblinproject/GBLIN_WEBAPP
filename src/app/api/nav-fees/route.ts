@@ -16,29 +16,29 @@
  * stays in the vault. Counting every mint at the ETH rate therefore understates
  * the true figure and never overstates it.
  *
- * Logs come from Blockscout, which serves the whole history in a single call.
- * There is deliberately no eth_getLogs fallback: every public Base RPC caps a
- * log query at 10k blocks or less, so covering the contract's life would take
- * hundreds of sequential calls per request — too slow, and too expensive in
- * function CPU. When Blockscout is unavailable the route falls back to the last
- * live figure, and then to a hand-verified baseline, both flagged `stale`. A
- * zero is never synthesised: an incomplete scan is an outage, not "no fees
- * yet". This figure leads the home page, so it has to degrade into an older
- * truth rather than into a wrong number or a blank.
+ * Logs come from the event index kept by the GBLIN worker
+ * (`/vault/mints`), which reads the vault's `Minted` logs in block windows from
+ * its creation block and stores them as emitted. Public Base RPCs cap a log
+ * query at a few hundred blocks and hosted indexers no longer serve Base logs on
+ * their free tiers, so the history cannot be scanned at request time. The index
+ * declares how far it has read: until it is within a few hundred blocks of the
+ * chain head, or when it does not answer, the route serves the last live figure
+ * and then a hand-verified baseline, both flagged `stale`. A zero is never
+ * synthesised: an incomplete scan is an outage, not "no fees yet". This figure
+ * leads the home page, so it has to degrade into an older truth rather than into
+ * a wrong number or a blank.
  *
  * Cache: 15 minutes in memory, plus the platform fetch cache, so the upstream
  * sees roughly one request per window regardless of traffic.
  */
 
 import { formatEther } from "viem";
-import { blockscoutFetch, blockscoutLegacyUrl, blockscoutSource } from "@/lib/blockscout";
 import { client, ETH_USD_FEED, GBLIN, GBLIN_LENS } from "@/lib/x402-helpers";
 
 export const runtime = "nodejs";
 
-/** keccak256("Minted(address,uint256,uint256)") — the vault's mint event. */
-const MINTED_TOPIC =
-  "0x25b428dfde728ccfaddad7e29e4ac23c24ed7fd1a6e3e3f91894a9a073f5dfff";
+/** Event index kept by the GBLIN worker: every `Minted` log of the vault, as emitted. */
+const MINTS_INDEX_URL = "https://gblin-mcp.gblin-mcp-worker.workers.dev/vault/mints?limit=0";
 
 /** The stability rate lives in the Lens, beside the other fee settings. */
 const CONFIG_ABI = [
@@ -59,9 +59,6 @@ const CONFIG_ABI = [
   },
 ] as const;
 
-
-/** Block that created the vault in service: there is nothing to read before it. */
-const DEPLOY_BLOCK = 51_563_253n;
 
 /**
  * Last figure verified by hand against the chain, used when the log source is
@@ -104,7 +101,7 @@ export interface NavFeesPayload {
   stale?: boolean;
   /** Why the read failed (e.g. "log source answered HTTP 429"). Never a URL, never a key. */
   reason?: string;
-  /** Which source is serving the logs: `pro` (key configured), `custom`, or `public`. */
+  /** Which source is serving the logs: the GBLIN worker's event index. */
   log_source?: string;
 }
 
@@ -112,54 +109,42 @@ const CACHE_TTL_MS = 15 * 60 * 1_000;
 let cache: { at: number; payload: NavFeesPayload } | null = null;
 
 /**
- * Full history in one request.
+ * Sum of the stability fee over every mint, from the worker's event index.
  *
- * Throws rather than returning zero when the upstream refuses (rate limit,
- * outage, malformed answer): the caller must be able to tell "nothing was
+ * Throws rather than returning zero when the index is unreachable or has not
+ * yet read up to the chain head: the caller must be able to tell "nothing was
  * distributed" apart from "we could not read the chain".
+ *
+ * The rate is applied to the summed deposit value. Applying it per mint, as the
+ * vault does, rounds each term down; the difference is below one wei per mint.
  */
-async function sumViaBlockscout(): Promise<{ total: bigint; events: number }> {
-  // The endpoint (and any key) comes from BLOCKSCOUT_API_URL — see
-  // src/lib/blockscout.ts. If the configured source does not answer, the public
-  // Blockscout is retried: a misconfigured variable must never leave the service
-  // worse off than not setting it at all.
-  const { res } = await blockscoutFetch(
-    (usePublic) =>
-      blockscoutLegacyUrl(
-        {
-          module: "logs",
-          action: "getLogs",
-          fromBlock: String(DEPLOY_BLOCK),
-          toBlock: "latest",
-          address: GBLIN,
-          topic0: MINTED_TOPIC,
-        },
-        usePublic,
-      ),
-    { signal: AbortSignal.timeout(10_000), next: { revalidate: 900 } },
-  );
-  if (!res.ok) throw new Error(`log source answered HTTP ${res.status}`);
-
-  const body = (await res.json()) as { status?: string; message?: string; result?: unknown };
-  if (!Array.isArray(body.result)) {
-    // status "0" carries a reason: "Too many requests", "No records found", …
-    throw new Error(body.message ?? "log source returned no usable result");
+async function sumViaIndex(): Promise<{ total: bigint; events: number }> {
+  const res = await fetch(MINTS_INDEX_URL, {
+    signal: AbortSignal.timeout(10_000),
+    next: { revalidate: 900 },
+  });
+  if (!res.ok) throw new Error(`event index answered HTTP ${res.status}`);
+  const body = (await res.json()) as {
+    vault?: string;
+    synced?: boolean;
+    count?: number;
+    total_value_wei?: string;
+  };
+  if (String(body.vault ?? "").toLowerCase() !== GBLIN.toLowerCase()) {
+    throw new Error("event index serves a different contract");
+  }
+  if (body.synced !== true) throw new Error("event index is still catching up with the chain");
+  if (typeof body.total_value_wei !== "string" || !/^[0-9]+$/.test(body.total_value_wei)) {
+    throw new Error("event index returned no usable total");
   }
 
-  // `Minted` carries (value, shares) in its data, value first; the receiver is indexed.
-  const logs = body.result as Array<{ data?: string }>;
   const stabilityBps = await client
     .readContract({ address: GBLIN_LENS, abi: CONFIG_ABI, functionName: "configFees", args: [GBLIN] })
     .then((c) => (c as readonly bigint[])[1])
     .catch(() => 5n);
 
-  let total = 0n;
-  for (const log of logs) {
-    if (typeof log.data !== "string" || log.data.length < 66) continue;
-    const value = BigInt("0x" + log.data.slice(2, 66));
-    total += (value * stabilityBps) / 10_000n;
-  }
-  return { total, events: logs.length };
+  const total = (BigInt(body.total_value_wei) * stabilityBps) / 10_000n;
+  return { total, events: Number(body.count ?? 0) };
 }
 
 async function build(): Promise<NavFeesPayload> {
@@ -169,7 +154,7 @@ async function build(): Promise<NavFeesPayload> {
       abi: FEED_ABI,
       functionName: "latestRoundData",
     }),
-    sumViaBlockscout(),
+    sumViaIndex(),
   ]);
 
   const ethUsd = Number(feed[1]) / 1e8;
@@ -190,7 +175,7 @@ async function build(): Promise<NavFeesPayload> {
 
 export async function GET() {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
-    return Response.json({ ...cache.payload, log_source: blockscoutSource() }, {
+    return Response.json({ ...cache.payload, log_source: "gblin-index" }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   }
@@ -198,10 +183,8 @@ export async function GET() {
   try {
     const payload = await build();
     cache = { at: Date.now(), payload };
-    // `log_source` states which source is serving the logs (pro | custom |
-    // public), so an external reader can confirm that a configured key is
-    // actually in use. It discloses nothing else.
-    return Response.json({ ...payload, log_source: blockscoutSource() }, {
+    // `log_source` states which source is serving the logs.
+    return Response.json({ ...payload, log_source: "gblin-index" }, {
       headers: { "Cache-Control": "public, max-age=900, s-maxage=900" },
     });
   } catch (err) {
@@ -214,7 +197,7 @@ export async function GET() {
     const reason = (err as Error)?.message ?? "unknown";
     if (cache) {
       return Response.json(
-        { ...cache.payload, stale: true, reason, log_source: blockscoutSource() },
+        { ...cache.payload, stale: true, reason, log_source: "gblin-index" },
         { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
       );
     }
@@ -236,7 +219,7 @@ export async function GET() {
             updatedAt: Date.now(),
             stale: true,
             reason,
-            log_source: blockscoutSource(),
+            log_source: "gblin-index",
           } satisfies NavFeesPayload,
           { headers: { "Cache-Control": "public, max-age=60, s-maxage=60" } },
         );

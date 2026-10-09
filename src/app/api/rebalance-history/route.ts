@@ -187,11 +187,11 @@ function decodeLog(log: RawLog, blockTimestampHint?: number) {
  * returns pre-decoded event data plus block timestamp in one call).
  * Docs: https://docs.blockscout.com/devs/apis/rest#/Addresses/get_address_logs
  */
-async function fetchFromBlockscout(): Promise<RawLog[]> {
+async function fetchFromBlockscout(contracts: readonly (typeof CONTRACTS)[number][] = CONTRACTS): Promise<RawLog[]> {
   // Query every deployment and merge. A failure on the historical contract must
   // never hide the current one, so each fetch is isolated.
   const perContract = await Promise.all(
-    CONTRACTS.map(async ({ label, address, current }) => {
+    contracts.map(async ({ label, address, current }) => {
       try {
         // Configured host first, falling back to the public indexer when it does not answer.
         const { res } = await blockscoutFetch(
@@ -254,6 +254,46 @@ async function fetchFromBlockscout(): Promise<RawLog[]> {
 }
 
 /**
+ * Primary source for the vault in service: the event index kept by the GBLIN worker, which reads the
+ * vault's `AuctionFill` logs in block windows from its creation block and stores them as emitted
+ * (topics, data, block timestamp). It declares how far it has read; an index that is not yet within a
+ * few hundred blocks of the chain head is treated as unavailable, so a partial history is never served
+ * as the complete one.
+ */
+const FILLS_INDEX_URL = 'https://gblin-mcp.gblin-mcp-worker.workers.dev/vault/auction-fills';
+
+async function fetchFromIndex(limit: number): Promise<{ logs: RawLog[]; total: number }> {
+  const res = await fetch(`${FILLS_INDEX_URL}?limit=${limit}`, {
+    headers: { accept: 'application/json' },
+    next: { revalidate: 60 },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!res.ok) throw new Error(`event index HTTP ${res.status}`);
+  const body = (await res.json()) as {
+    vault?: string;
+    synced?: boolean;
+    count?: number;
+    events?: Array<{ tx: string; block: number; log_index: number; timestamp: number | null; topics: string[]; data: string }>;
+  };
+  if (String(body.vault ?? '').toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
+    throw new Error('event index serves a different contract');
+  }
+  if (body.synced !== true || !Array.isArray(body.events)) throw new Error('event index not synced');
+  const logs = body.events.map((e) => ({
+    topics: e.topics,
+    data: e.data,
+    transactionHash: e.tx,
+    blockNumber: e.block,
+    timeStamp: e.timestamp ?? 0,
+    logIndex: e.log_index,
+    contract: CONTRACTS[0].label,
+    contractAddress: CONTRACT_ADDRESS,
+    isCurrentContract: true,
+  })) as RawLog[];
+  return { logs, total: Number(body.count ?? logs.length) };
+}
+
+/**
  * Fallback fetcher: paginated `eth_getLogs`, used only when the indexer fails.
  * Base RPC providers typically cap `eth_getLogs` at ~10k blocks per call, so the
  * scan is split into block windows.
@@ -287,9 +327,9 @@ const FALLBACK_BLOCKS = 86_400; // ~2 days on Base (~2s per block)
  *
  * It already returns newest-first, like the v2 API, so the rest of the pipeline is unchanged.
  */
-async function fetchFromBlockscoutLegacy(): Promise<RawLog[]> {
+async function fetchFromBlockscoutLegacy(contracts: readonly (typeof CONTRACTS)[number][] = CONTRACTS): Promise<RawLog[]> {
   const perContract = await Promise.all(
-    CONTRACTS.map(async ({ label, address, current }) => {
+    contracts.map(async ({ label, address, current }) => {
       const { res } = await blockscoutFetch(
         (usePublic) =>
           blockscoutLegacyUrl(
@@ -434,9 +474,39 @@ export async function GET(request: Request) {
 async function raccogli(limit: number) {
   {
     let raw: RawLog[] = [];
-    let source: 'blockscout' | 'rpc' = 'blockscout';
+    let source: 'index' | 'blockscout' | 'rpc' = 'blockscout';
     let windowsFailed = 0;
     let windowsTotal = 0;
+
+    // The worker's index holds the complete history of the vault in service. When it answers, the
+    // previous deployments are added from the hosted indexer when that answers too; their events are
+    // final, and their absence is declared rather than hidden.
+    try {
+      const fromIndex = await fetchFromIndex(limit);
+      const older = CONTRACTS.filter((c) => !c.current);
+      const previous = await Promise.allSettled([fetchFromBlockscout(older), fetchFromBlockscoutLegacy(older)]);
+      const best = previous
+        .filter((e): e is PromiseFulfilledResult<RawLog[]> => e.status === 'fulfilled')
+        .map((e) => e.value)
+        .sort((a, b) => b.length - a.length)[0];
+      const merged = [...fromIndex.logs, ...(best ?? [])].sort(
+        (a, b) => Number(BigInt(String(b.blockNumber))) - Number(BigInt(String(a.blockNumber))),
+      );
+      const decoded = merged.slice(0, limit).map((l) => decodeLog(l));
+      return {
+        events: decoded.filter(Boolean),
+        source: 'index' as const,
+        log_source: 'gblin-index',
+        count: decoded.length,
+        vault_fills_total: fromIndex.total,
+        ...(best === undefined
+          ? { previous_deployments: 'unavailable: the hosted indexer did not answer; their history is not included' }
+          : {}),
+        _source: SOURCE,
+      };
+    } catch {
+      // Index unavailable or not synced: the hosted indexer and then the public nodes, as before.
+    }
 
     // The two indexer APIs are queried TOGETHER, not one after the other: they fail at different
     // times, and in sequence the worst case (two APIs x two hosts, each with its own fallback)

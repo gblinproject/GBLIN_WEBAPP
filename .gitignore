@@ -76,3 +76,4 @@ graphify-out/
 
 # local design-hook configuration
 .impeccable/
+.vercel
