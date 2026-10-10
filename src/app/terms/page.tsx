@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-const LAST_UPDATED = 'July 18, 2026';
+const LAST_UPDATED = 'October 9, 2026';
 
 const SECTIONS: { h: string; p: string[] }[] = [
   {
@@ -37,7 +37,7 @@ const SECTIONS: { h: string; p: string[] }[] = [
   {
     h: '3. No custody, no guarantees',
     p: [
-      'The protocol is provided "as is", without warranties of any kind. Smart-contract software can contain bugs. No third-party security audit has been commissioned as of the date of these terms; you should not assume the code is free of defects.',
+      'The protocol is provided "as is", without warranties of any kind. Smart-contract software can contain bugs. The contracts in production were audited by Soken on 9 October 2026; an audit is a point-in-time assessment and does not guarantee that the code is free of defects, and you should not assume it is.',
       'Governance of the production contract is held by a 48-hour public timelock. Parameter changes are announced on-chain and become executable only after the delay. This reduces, but does not eliminate, governance risk.',
     ],
   },

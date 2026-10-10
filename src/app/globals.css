@@ -367,6 +367,16 @@ h1, h2, h3 {
   border-color: var(--line-strong);
   color: var(--ink);
 }
+/* Accent chip: one per view, for the single trust signal that should be seen first. */
+.g-chip-accent {
+  border-color: rgba(255, 199, 46, 0.45);
+  background: var(--gold-soft);
+  color: var(--gold-light);
+}
+.g-chip-accent:hover {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
 
 /* Tables. */
 .g-table {

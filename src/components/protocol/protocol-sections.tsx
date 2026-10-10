@@ -9,6 +9,9 @@ import type { BasketItem, DashboardData, OnChainData, OracleHealth, TransactionI
 import { CONTRACT_ADDRESS, DISPLAY_CONTRACT_ADDRESS, ERC20_ABI, formatCurrency, formatPercent, formatTokenAmount, quoteTokenToWeth, RPC_URL, shortenAddress, TRADE_TOKEN_OPTIONS, WHITEPAPER_URL } from './protocol-data';
 import type { TradeTokenOption } from './protocol-data';
 import { WhaleDepositPanel } from './whale-deposit-panel';
+
+/** The audit report as published by the auditor. */
+const AUDIT_REPORT_URL = 'https://github.com/Soken-LTD/smart-contract-audits/blob/main/GBLIN%20Protocol%20Security%20Review.pdf';
 import MigrateToNewVault from "@/components/MigrateToNewVault";
 import { ProofSection, FeeEngineSection } from './proof-section';
 import { NavFeesHeroLedger } from './nav-fees';
@@ -602,12 +605,13 @@ export function HomeView(props: HomeViewProps) {
     { title: t('ui.home.sec1Title'), body: t('ui.home.sec1Body'), href: `https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`, label: t('landing.proofVerify') },
     { title: t('ui.home.sec2Title'), body: t('ui.home.sec2Body'), href: 'https://basescan.org/address/0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd', label: t('ui.home.linkTimelock') },
     { title: t('ui.home.sec3Title'), body: t('ui.home.sec3Body'), href: 'https://github.com/gblinproject/GBLIN-Protocol', label: t('ui.home.linkSource') },
-    { title: t('ui.home.sec4Title'), body: t('ui.home.sec4Body'), href: 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/audits/README.md', label: t('ui.home.linkReview') },
+    { title: t('ui.home.sec4Title'), body: t('ui.home.sec4Body'), href: AUDIT_REPORT_URL, label: t('ui.home.linkReview') },
   ];
   const resources = [
     { label: t('site.whitepaper'), href: WHITEPAPER_URL },
     { label: t('site.basescan'), href: `https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}` },
     { label: 'GitHub', href: 'https://github.com/gblinproject' },
+    { label: t('ui.home.sec4Title'), href: AUDIT_REPORT_URL },
     { label: 'DefiLlama', href: 'https://defillama.com/protocol/tvl/global-balanced-liquidity-index' },
   ];
 
@@ -676,6 +680,11 @@ export function HomeView(props: HomeViewProps) {
               </button>
               <a className="g-chip" href={`https://basescan.org/address/${DISPLAY_CONTRACT_ADDRESS}#readContract`} rel="noopener noreferrer" target="_blank">
                 {t('landing.proofVerify')}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <a className="g-chip g-chip-accent" href={AUDIT_REPORT_URL} rel="noopener noreferrer" target="_blank">
+                <Shield className="h-3.5 w-3.5" />
+                {t('ui.home.sec4Title')}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
               <AddToWallet t={t} />
