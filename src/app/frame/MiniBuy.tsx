@@ -361,8 +361,9 @@ export default function MiniBuy() {
         </p>
       )}
       <p style={{ ...note, fontSize: 10.5 }}>
-        Paid in ETH on Base, 0.10% mint fee, redeemable from the contract at any time. GBLIN is volatile, not a
-        stablecoin.{" "}
+        Paid in ETH on Base: 0.10% mint fee plus gas. Redemption returns your pro-rata share of the basket (cbBTC,
+        USDC and ETH) from the contract, not a single asset; converting it is a separate step with its own costs.
+        GBLIN is volatile, not a stablecoin.{" "}
         <SiteLink path="/about" style={{ color: "#94a3b8" }}>
           Who is behind it
         </SiteLink>

@@ -32,7 +32,7 @@ export async function generateMetadata({
   const params = await searchParams;
   const frameImage = buildFrameImageUrl(params);
 
-  const BUTTON_TITLE = "🛡️ Beat the crash";
+  const BUTTON_TITLE = "Open GBLIN";
 
   const miniappEmbed = {
     version: "1",
@@ -41,7 +41,7 @@ export async function generateMetadata({
       title: BUTTON_TITLE,
       action: {
         type: "launch_miniapp",
-        name: "GBLIN Crash Shield",
+        name: "GBLIN",
         url: `${SITE_URL}/frame`,
         splashImageUrl: SPLASH_IMAGE,
         splashBackgroundColor: "#0a0b14",
@@ -56,7 +56,7 @@ export async function generateMetadata({
       title: BUTTON_TITLE,
       action: {
         type: "launch_frame",
-        name: "GBLIN Crash Shield",
+        name: "GBLIN",
         url: `${SITE_URL}/frame`,
         splashImageUrl: SPLASH_IMAGE,
         splashBackgroundColor: "#0a0b14",
@@ -65,13 +65,13 @@ export async function generateMetadata({
   };
 
   return {
-    title: "GBLIN — Crash Shield Challenge",
+    title: "GBLIN — cbBTC, WETH and USDC in one token",
     description:
-      "Guess how little GBLIN drops when BTC and ETH crash, then buy any amount at net asset value. cbBTC, WETH and USDC in one token on Base. gblin.digital",
+      "cbBTC, WETH and USDC in one token on Base. Mint with ETH from the vault contract: 0.10% mint fee plus gas. GBLIN is volatile.",
     openGraph: {
-      title: "GBLIN — Crash Shield Challenge",
+      title: "GBLIN — cbBTC, WETH and USDC in one token",
       description:
-        "Guess how little GBLIN drops when BTC and ETH crash, then buy any amount at net asset value. gblin.digital",
+        "cbBTC, WETH and USDC in one token on Base. Mint with ETH from the vault contract: 0.10% mint fee plus gas. GBLIN is volatile.",
       images: [{ url: frameImage, width: 1200, height: 800 }],
       url: `${SITE_URL}/frame`,
     },

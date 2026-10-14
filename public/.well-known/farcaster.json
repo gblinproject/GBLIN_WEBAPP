@@ -7,12 +7,12 @@
   "miniapp": {
     "version": "1",
     "name": "GBLIN",
-    "iconUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN_1024.png",
+    "iconUrl": "https://gblin.digital/miniapp-icon.png",
     "homeUrl": "https://gblin.digital/frame",
-    "splashImageUrl": "https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png",
+    "splashImageUrl": "https://gblin.digital/LOGO_GBLIN.png",
     "splashBackgroundColor": "#0a0b14",
-    "subtitle": "Autonomous basket on Base",
-    "description": "On-chain basket of cbBTC, WETH and USDC on Base. Crash Shield active. Play the crash backtest game.",
+    "subtitle": "cbBTC, WETH and USDC on Base",
+    "description": "One token holding cbBTC, WETH and USDC on Base. Mint with ETH from the vault contract, with a 0.10 percent mint fee plus gas. GBLIN is volatile, not a stablecoin.",
     "primaryCategory": "finance",
     "tags": [
       "defi",
@@ -23,8 +23,8 @@
     ],
     "tagline": "48h timelock, live on Base",
     "heroImageUrl": "https://gblin.digital/api/frame/og",
-    "ogTitle": "GBLIN - Survive the Crash",
-    "ogDescription": "Autonomous on-chain basket. Crash Shield active. Guess the allocation and beat the crash.",
+    "ogTitle": "GBLIN on Base",
+    "ogDescription": "cbBTC, WETH and USDC in one token on Base. Mint with ETH, 0.10 percent mint fee plus gas. Volatile.",
     "ogImageUrl": "https://gblin.digital/api/frame/og",
     "webhookUrl": "https://gblin.digital/api/frame/webhook",
     "requiredChains": [

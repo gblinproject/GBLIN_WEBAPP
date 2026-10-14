@@ -139,12 +139,12 @@ export async function GET(req: Request) {
     console.error("[frame/image] failed to fetch stats", e);
   }
 
-  // Value of one share, in ETH: the number the vault mints and redeems at.
+  // Net asset value of one share, in ETH.
   const navDisplay =
     stats.navPerShareEth > 0 ? `${fmt(stats.navPerShareEth, stats.navPerShareEth < 0.01 ? 6 : 4)}` : "0";
 
   // Optional personalisation: when reshared with ?saved=...&crash=... query params,
-  // the image gets a green "saved $X during {crash}" callout instead of the
+  // the image shows the backtest difference for {crash} instead of the
   // NAV PER SHARE card. This lets share casts deep-link to a personalised image.
   const showSaved =
     savedOverride !== null && savedOverride !== "" && !Number.isNaN(parseFloat(savedOverride));
@@ -216,7 +216,7 @@ export async function GET(req: Request) {
                   fontWeight: 600,
                 }}
               >
-                AUTONOMOUS BASKET · LIVE ON BASE
+                ON-CHAIN BASKET · LIVE ON BASE
               </div>
             </div>
           </div>
@@ -273,7 +273,7 @@ export async function GET(req: Request) {
               label="NAV PER SHARE"
               value={navDisplay}
               unit="ETH"
-              hint="mint and redeem price"
+              hint="net asset value, in ETH"
             />
           )}
         </div>
@@ -302,7 +302,7 @@ export async function GET(req: Request) {
                 display: "flex",
               }}
             >
-              Can you guess how GBLIN survived this crash?
+              cbBTC, WETH and USDC in one token on Base
             </div>
             <div
               style={{
@@ -312,7 +312,7 @@ export async function GET(req: Request) {
                 letterSpacing: 0.2,
               }}
             >
-              Guess how little it drops in a real crash · buy any amount at NAV · gblin.digital
+              Mint with ETH from the vault contract · 0.10% mint fee + gas · volatile · gblin.digital
             </div>
           </div>
           <div
@@ -331,7 +331,7 @@ export async function GET(req: Request) {
               boxShadow: "0 8px 24px -8px rgba(251,191,36,0.6)",
             }}
           >
-            Play
+            Open
           </div>
         </div>
       </div>
@@ -379,7 +379,7 @@ function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string })
           fontWeight: 700,
         }}
       >
-        SAVED VS DIRECT HOLD
+        BACKTEST VS DIRECT HOLD
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <div
@@ -391,8 +391,7 @@ function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string })
             letterSpacing: -1.8,
           }}
         >
-          {positive ? "+" : ""}
-          {formatted}
+          {`${positive ? "+" : ""}${formatted}`}
         </div>
       </div>
       <div
@@ -403,7 +402,7 @@ function SavedCard({ saved, crashLabel }: { saved: number; crashLabel: string })
           minHeight: 18,
         }}
       >
-        {crashLabel ? `during ${crashLabel}` : "crash shield backtest"}
+        {crashLabel ? `${crashLabel} backtest, not a past return` : "shield rule backtest, not a past return"}
       </div>
     </div>
   );

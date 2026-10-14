@@ -14,14 +14,12 @@ import {
 } from "lucide-react";
 
 /**
- * FrameHook — the interactive, feed-first entry point for the GBLIN Mini App.
+ * FrameHook — the entry point of the GBLIN Mini App.
  *
- * Why this shape: the highest-visibility mini apps on Farcaster (June 2026) lead
- * with an INSTANT interactive moment + a shareable result, not a static landing
- * card (ref: Farcaster Mini Apps spec + Builders Garden "viral mini apps" playbook).
- * The hook here uses GBLIN's real differentiator — how little it drops in a real
- * crash — as a one-tap guess that reveals a surprising number, then funnels into
- * Share → Mint → full game. Numbers come from the 10y on-chain Crash-Shield backtest.
+ * Shows one historical BTC/ETH drawdown, asks the viewer to guess the drawdown of
+ * the vault's shield rule over the same window, then reveals the backtest result
+ * next to the mint panel. The backtest is labelled as such before the guess.
+ * Figures are produced by the backtest described in BACKTEST_NOTE.
  */
 
 const SITE_URL = "https://gblin.digital";
@@ -39,7 +37,8 @@ const C = {
   eth: "#7b7bff",
 };
 
-// Real drawdowns from the 10y backtest (peak→trough within each crash window).
+// Peak-to-trough drawdowns within each window. BTC and ETH are observed prices;
+// the GBLIN figure is the backtest of the shield rule over the same daily closes.
 type Crash = {
   id: string;
   label: string;
@@ -56,6 +55,12 @@ const CRASHES: Crash[] = [
   { id: "covid", label: "COVID crash · Mar 2020", short: "the COVID crash", gblin: 28.4, btc: 53.2, eth: 61.5, options: [9, 28.4, 47] },
   { id: "bear2018", label: "Bear market 2018", short: "the 2018 bear", gblin: 41.4, btc: 81.4, eth: 94.0, options: [21, 41.4, 68] },
 ];
+
+// Shown before the guess, so the figure is never read as a past return.
+const BACKTEST_NOTE =
+  "Backtest: the vault's shield rule applied to daily BTC and ETH closes (Coinbase), May 2016 to June 2026, " +
+  "assuming the basket holds its target weights each day, with no fees or rebalancing costs. " +
+  "GBLIN did not exist during these crashes; this is not a past return.";
 
 // Pages of the website shown at the bottom of the mini app.
 const FOOTER_LINKS = [
@@ -88,10 +93,10 @@ export default function FrameHook() {
   const onShare = async () => {
     setShareState("loading");
     const text =
-      `When ${crash.short} hit, Bitcoin fell -${crash.btc}% and Ethereum -${crash.eth}%.\n\n` +
-      `In the 10-year backtest, GBLIN's Crash Shield rule caps that drawdown at -${crash.gblin}% — ` +
-      `it de-risks itself, on-chain, on Base.\n\n` +
-      `Could you have guessed it? Try the @gblin Crash Shield 👇\n\ngblin.digital`;
+      `During ${crash.short}, Bitcoin fell -${crash.btc}% and Ethereum -${crash.eth}%.\n\n` +
+      `In a backtest of GBLIN's shield rule on daily prices (2016 to 2026, target weights, no fees), ` +
+      `the basket's drawdown over the same window was -${crash.gblin}%. A backtest, not a past return.\n\n` +
+      `Make your own guess:`;
     const embed = `${SITE_URL}/frame`;
     try {
       const { sdk } = await import("@farcaster/miniapp-sdk");
@@ -128,7 +133,7 @@ export default function FrameHook() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://raw.githubusercontent.com/gblinproject/GBLIN/main/LOGO_GBLIN.png"
+              src="/LOGO_GBLIN.png"
               alt="GBLIN logo"
               width={36}
               height={36}
@@ -166,8 +171,9 @@ export default function FrameHook() {
             <span style={{ color: C.btc }}>BTC −{crash.btc}%</span>,{" "}
             <span style={{ color: C.eth }}>ETH −{crash.eth}%</span>.
             <br />
-            How far would <span className="gblin-grad-text-amber">GBLIN</span> have fallen?
+            In the backtest, how far did <span className="gblin-grad-text-amber">GBLIN</span>&apos;s shield rule fall?
           </h1>
+          <p style={{ margin: 0, fontSize: 10.5, color: C.textMute, lineHeight: 1.5 }}>{BACKTEST_NOTE}</p>
 
           {/* Interactive guess (one tap) */}
           {!revealed ? (
@@ -211,26 +217,24 @@ export default function FrameHook() {
                 {correct ? <Check size={18} color={C.emerald} /> : <X size={18} color={C.amber} />}
                 <div style={{ fontSize: 13, fontWeight: 700, color: correct ? "#a7f3d0" : "#fde68a" }}>
                   {correct
-                    ? "Spot on — you get it."
-                    : `The rule caps it at −${crash.gblin}%. Better than you guessed.`}
+                    ? `Correct: −${crash.gblin}% in the backtest.`
+                    : `Backtest result: −${crash.gblin}%. You guessed −${picked}%.`}
                 </div>
               </div>
 
               {/* bars */}
-              <Bar label="🛡️ GBLIN Crash Shield (backtest)" value={crash.gblin} max={maxBar} color={C.amber} strong />
-              <Bar label="Bitcoin" value={crash.btc} max={maxBar} color={C.btc} />
-              <Bar label="Ethereum" value={crash.eth} max={maxBar} color={C.eth} />
+              <Bar label="GBLIN shield rule (backtest)" value={crash.gblin} max={maxBar} color={C.amber} strong />
+              <Bar label="Bitcoin (observed)" value={crash.btc} max={maxBar} color={C.btc} />
+              <Bar label="Ethereum (observed)" value={crash.eth} max={maxBar} color={C.eth} />
 
               <p style={{ margin: "2px 0 0", fontSize: 12, color: C.textDim, lineHeight: 1.55 }}>
-                GBLIN rotates risk into stables when drawdowns breach its adaptive
-                threshold — automatically, on-chain. That gap is the whole point.
+                When a drawdown breaches the adaptive threshold, the contract lowers the
+                target weights of cbBTC and WETH in favour of USDC. The reserves move toward
+                the new targets only as the rebalancing auction is filled.
               </p>
-              {/* ONESTÀ: il token non esisteva in questi crash. I numeri sono la regola
-                  del contratto applicata ai prezzi storici, non una discesa realmente subita. */}
               <p style={{ margin: 0, fontSize: 10.5, color: C.textMute, lineHeight: 1.5 }}>
-                BTC and ETH figures are what actually happened. The GBLIN figure is the
-                shield rule from the contract applied to those same 10 years of prices —
-                a backtest, not a past return. GBLIN is volatile, not a stablecoin.
+                BTC and ETH figures are observed prices. The GBLIN figure is a backtest,
+                not a past return. GBLIN is volatile, not a stablecoin.
               </p>
             </div>
           )}
