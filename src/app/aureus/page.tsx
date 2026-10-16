@@ -90,7 +90,30 @@ type Gate = {
   checks: { days: GateCheck; closed_trades: GateCheck; sharpe: GateCheck; beats_benchmark: GateCheck };
   passed: boolean;
 };
+type IntradayReport = {
+  updated: number;
+  since: number;
+  dry_run: boolean;
+  start_capital_usd: number;
+  equity_mtm_usd: number;
+  net_pnl_usd: number;
+  realized_pnl_usd: number;
+  open_count: number;
+  closed_count: number;
+  estimated_costs_usd: number;
+  funding_pnl_usd: number;
+  max_drawdown_pct: number;
+  maximum_loss_usd: number;
+  data_complete: boolean;
+  stale?: boolean;
+  last_error?: string | null;
+  halt_reason?: string | null;
+  session_halted?: boolean;
+  open_positions: { asset: string; direction: string; opened_at: number }[];
+};
+type IntradayExperiment = IntradayReport | { error: string };
 type Experiments = {
+  daytrade_v18?: IntradayExperiment;
   twin_flip?: {
     aperti: { asset: string; direction: string; entry_price: number; opened_at: number }[];
     chiusi: number;
@@ -120,7 +143,8 @@ type Experiments = {
 
 async function getStats(): Promise<Stats | null> {
   try {
-    const r = await fetch('/api/aureus'); // CDN-cached (s-maxage): a polling tab must not invoke the function every time
+    const r = await fetch('/api/aureus', { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
     const j = await r.json();
     return j?.stats || null;
   } catch {
@@ -129,7 +153,7 @@ async function getStats(): Promise<Stats | null> {
 }
 
 function fmtUsd(n: number | null | undefined, decimals = 2) {
-  if (n === null || n === undefined) return '—';
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(decimals);
 }
 
@@ -242,16 +266,39 @@ function AureusContent() {
   const [filter, setFilter] = useState<'today' | '7d' | '30d' | 'all'>('7d');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    getStats().then((data) => {
-      setStats(data);
-      setLoading(false);
-    });
-    const interval = setInterval(() => {
-      getStats().then(setStats);
-    }, 120000);
-    return () => clearInterval(interval);
+    let active = true;
+    let inFlight = false;
+    const refresh = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const data = await getStats();
+        if (!active) return;
+        if (data) setStats(data);
+        setFetchFailed(data === null);
+        setLoading(false);
+        setNow(Date.now() / 1000);
+      } finally {
+        inFlight = false;
+      }
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    void refresh();
+    const interval = setInterval(() => void refresh(), 60000);
+    const clock = setInterval(() => setNow(Date.now() / 1000), 30000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      clearInterval(clock);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const allocated = s?.open_positions?.reduce((sum, p) => sum + (p.size_usd || 0), 0) ?? 0;
@@ -308,6 +355,12 @@ function AureusContent() {
       )}
       {s && (
         <>
+          <IntradaySummary report={s.esperimenti?.daytrade_v18} now={now} fetchFailed={fetchFailed} />
+          <details className="mb-10 rounded-xl border border-gray-800 p-5">
+            <summary className="cursor-pointer text-lg font-semibold text-gray-300">
+              {t('aureus.previousAccount')}
+            </summary>
+            <p className="mt-2 mb-6 text-sm text-gray-500">{t('aureus.previousAccountNote')}</p>
           {s.halted && (
             <div className="mb-6 flex items-center gap-3 bg-red-950/60 border border-red-700 rounded-xl px-5 py-4">
               <span className="text-red-400 text-xl">&#9888;</span>
@@ -705,6 +758,7 @@ function AureusContent() {
               {s.lifetime_pnl_usd !== undefined && ` · ${t('aureus.lifetimePnl')} ${fmtUsd(s.lifetime_pnl_usd)}`}
             </p>
           </section>
+          </details>
         </>
       )}
 
@@ -812,6 +866,86 @@ function AureusContent() {
         {t('aureus.poweredBy')}
       </footer>
       </main>
+  );
+}
+
+function isIntradayReport(report: IntradayExperiment | undefined): report is IntradayReport {
+  return Boolean(report && 'equity_mtm_usd' in report && report.dry_run === true
+    && [report.updated, report.since, report.start_capital_usd, report.equity_mtm_usd,
+      report.net_pnl_usd, report.realized_pnl_usd, report.open_count, report.closed_count,
+      report.estimated_costs_usd, report.funding_pnl_usd, report.max_drawdown_pct,
+      report.maximum_loss_usd].every(Number.isFinite)
+    && report.updated > 0 && report.start_capital_usd > 0
+    && Array.isArray(report.open_positions));
+}
+
+function IntradaySummary({ report, now, fetchFailed }: {
+  report: IntradayExperiment | undefined; now: number | null; fetchFailed: boolean;
+}) {
+  const { t, language } = useT();
+  if (!isIntradayReport(report)) {
+    return (
+      <section className="mb-8 rounded-xl border border-amber-800 bg-amber-950/20 p-6">
+        <h2 className="text-xl font-semibold">{t('aureus.intradayHeading')}</h2>
+        <p className="mt-2 text-sm text-amber-300" role="status">{t('aureus.intradayUnavailable')}</p>
+      </section>
+    );
+  }
+  const age = now === null ? null : now - report.updated;
+  // The publisher runs every five minutes; the CDN may retain one extra minute.
+  const delayed = fetchFailed || report.stale === true || report.data_complete !== true
+    || Boolean(report.last_error) || age === null || age < -5 || age > 600;
+  const halted = Boolean(report.halt_reason || report.session_halted);
+  const openPnl = report.net_pnl_usd - report.realized_pnl_usd;
+  const timestamp = (value: number) => new Intl.DateTimeFormat(language, {
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    second: '2-digit', timeZone: 'Europe/Rome', timeZoneName: 'short',
+  }).format(new Date(value * 1000));
+  return (
+    <section className="mb-8 rounded-xl border border-blue-800/70 bg-blue-950/10 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">{t('aureus.intradayHeading')}</h2>
+        <span role="status" className={`rounded border px-2 py-1 text-xs ${halted
+          ? 'border-red-800 text-red-300' : delayed
+          ? 'border-amber-800 text-amber-300' : 'border-emerald-800 text-emerald-300'}`}>
+          {halted ? t('aureus.intradayHalted') : delayed
+            ? t('aureus.intradayDelayed') : t('aureus.intradayAvailable')}
+        </span>
+      </div>
+      <p className="mt-2 mb-5 text-sm leading-relaxed text-gray-400">{t('aureus.intradayNote')}</p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label={t('aureus.intradayEquity')} value={`$${report.equity_mtm_usd.toFixed(2)}`} />
+        <Stat label={t('aureus.intradayNet')} value={fmtUsd(report.net_pnl_usd)}
+          tone={report.net_pnl_usd >= 0 ? 'pos' : 'neg'}
+          hint={fmtPct(report.net_pnl_usd / report.start_capital_usd)} />
+        <Stat label={t('aureus.intradayRealized')} value={fmtUsd(report.realized_pnl_usd)}
+          tone={report.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
+        <Stat label={t('aureus.intradayOpenPnl')} value={fmtUsd(openPnl)}
+          tone={openPnl >= 0 ? 'pos' : 'neg'} />
+        <Stat label={t('aureus.intradayOpenCount')} value={String(report.open_count)} />
+        <Stat label={t('aureus.intradayClosedCount')} value={String(report.closed_count)} />
+        <Stat label={t('aureus.intradayCosts')} value={`$${report.estimated_costs_usd.toFixed(2)}`} />
+        <Stat label={t('aureus.intradayDrawdown')} value={`${(report.max_drawdown_pct * 100).toFixed(2)}%`} />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
+        <p>{t('aureus.intradayInitial')}: ${report.start_capital_usd.toFixed(2)}</p>
+        <p>{t('aureus.intradayLossLimit')}: ${report.maximum_loss_usd.toFixed(2)}</p>
+        <p>{t('aureus.intradayFunding')}: {fmtUsd(report.funding_pnl_usd, 4)}</p>
+      </div>
+      {report.open_positions.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-2 text-xs text-gray-300">
+          {report.open_positions.map((position) => (
+            <li key={`${position.asset}-${position.opened_at}`} className="rounded border border-gray-700 px-3 py-1">
+              {position.asset} · {position.direction.toUpperCase()}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-5 space-y-1 border-t border-gray-800 pt-4 text-xs text-gray-500">
+        <p>{t('aureus.intradayStarted')}: <time dateTime={new Date(report.since * 1000).toISOString()}>{timestamp(report.since)}</time></p>
+        <p>{t('aureus.intradayUpdated')}: <time dateTime={new Date(report.updated * 1000).toISOString()}>{timestamp(report.updated)}</time></p>
+      </div>
+    </section>
   );
 }
 

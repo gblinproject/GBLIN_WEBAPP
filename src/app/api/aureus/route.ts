@@ -26,11 +26,13 @@ export async function GET() {
     const r = await fetch(`${URL_BASE}/get/aureus:stats`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
     });
+    if (!r.ok) throw new Error('Statistics store unavailable');
     const j = await r.json();
     const raw = j?.result;
     const stats = raw ? JSON.parse(raw) : null;
-    return NextResponse.json({ enabled: true, stats, _source: SOURCE }, { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } });
+    return NextResponse.json({ enabled: true, stats, _source: SOURCE }, { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' } });
   } catch {
     return NextResponse.json({ enabled: false, stats: null, _source: SOURCE });
   }
