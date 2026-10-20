@@ -32,7 +32,7 @@ const FAQ: FaqEntry[] = [
   {
     question: 'What is GBLIN?',
     answer:
-      'GBLIN is a reserve-backed token on Base (an Ethereum L2). One token represents a basket of cbBTC (Coinbase-wrapped Bitcoin), WETH (wrapped Ether) and USDC held by the contract itself. You mint new tokens by depositing value into the contract and redeem them for the underlying reserves at any time — the contract is the venue, not a liquidity pool.',
+      'GBLIN is a reserve-backed token on Base (an Ethereum L2). One token represents a basket of cbBTC (Coinbase-wrapped Bitcoin), WETH (wrapped Ether) and USDC held by the contract itself. You mint new tokens by depositing value into the contract and redeem them in kind for the underlying reserves — the contract is the venue, not a liquidity pool.',
   },
   {
     question: 'Is there a token that holds BTC, ETH and USDC together on Base?',
@@ -65,9 +65,9 @@ const FAQ: FaqEntry[] = [
       'Go to gblin.digital/buy-gblin and connect a wallet on Base. You can mint directly with ETH, mint in-kind with basket assets, or use the built-in cross-chain zap to arrive from other chains and tokens. A full test round trip — mint about $20, then redeem it — costs roughly 2 cents in protocol fees plus gas.',
   },
   {
-    question: 'How do I redeem GBLIN? Can I always exit?',
+    question: 'How do I redeem GBLIN? Can I exit without a pool?',
     answer:
-      'Redemption is a direct call to the contract, available at any time: you can redeem in-kind (receiving your pro-rata share of cbBTC, WETH and USDC) or in ETH. Because redemption pays from the reserves at NAV, a holder never depends on a liquidity pool being deep enough to exit.',
+      'Redemption is a direct call to the contract. In kind, you burn your shares and receive your pro rata share of every basket asset that has not been abandoned (WETH as ETH, plus cbBTC and USDC): no price feed, no fee, no pool, and no pause function. A cooldown applies after your own mint (20 seconds today, at most one hour). Redeeming for ETH in one transaction goes through the zap, which swaps cbBTC and USDC on Uniswap, so that route does depend on pool liquidity and slippage.',
   },
   {
     question: 'What is the Crash Shield?',

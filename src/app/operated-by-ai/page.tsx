@@ -109,7 +109,7 @@ export default function OperatedByAiPage() {
 
         <p className="mt-12 text-sm leading-7 text-zinc-500">
           For a century, risk was an opinion you paid for. We are building it as an observable you verify:
-          public policy code, signed risk attestations, and a treasury anyone can redeem in-kind at any time.
+          public policy code, signed risk attestations, and a treasury anyone can redeem in kind, with no price feed and no fee.
         </p>
       </div>
     </PublicShell>

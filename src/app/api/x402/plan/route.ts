@@ -319,7 +319,7 @@ export async function GET(req: Request) {
           "GBLIN is a basket of cbBTC, WETH and USDC held in the contract and priced by Chainlink: its value moves with cbBTC and WETH. It is not a stablecoin and carries no yield.",
           "Operating cash is arithmetic on the caller's own inputs, not an allocation advice. The surplus is a candidate, never a recommendation.",
           "Every rate above is read from the vault at the block shown; governance can change them through the 48-hour timelock within the bounds written in the contract.",
-          "Redemption in kind reads no price feed and cannot be paused: shares can always be burned for the underlying assets.",
+          "Redemption in kind reads no price feed and has no pause function; a governance-set cooldown of at most one hour applies after the caller's own mint, and an abandoned asset is excluded.",
           "GBLIN shares implement EIP-3009: a holder can pay in GBLIN with a signature and no ETH through /api/relay/gblin.",
         ],
       },

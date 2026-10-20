@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 const OPERATOR = '0x9FFa542E369C53af62380296092EC669f329a9ee';
 const TIMELOCK = '0x6aBeC8716fFeEcf7C3D6e68255b4797113E8e5Dd';
 const GUARDIAN = '0x30590c0D05c26562d7296CE3D927d3418d2e6dcA';
+const SAFE = '0xc7AeFcfC871bA51FA2ddfE3117b69AC055C98eF1';
 const VAULT = '0xc2181d975c05c8c724b334bcED0764c0b86B1D53';
 const SENTINEL = '0x9F13C5c46a864183e1c57Ec02837fe5B980D3F67';
 const LENS = '0xfCFea8027019E8551A1f09AD91532471F5D26f61';
@@ -40,13 +41,13 @@ const ROLES: Array<{ role: string; holder: string; address: string; power: strin
     holder: 'Timelock (48 hours)',
     address: TIMELOCK,
     power:
-      'The only address that can change parameters, list or delist an asset, or replace a price feed, and only within the bounds written in the contract. Every change is scheduled in public and can be executed only after 48 hours.',
+      'The only address that can change parameters within the bounds written in the contract (including the post-mint redemption cooldown, at most one hour), set base weights, list, delist or relist an asset, replace a price feed, set the sequencer feed, the fee recipient and the auction fill agent, and transfer ownership. Its strongest power: abandoning a delisted asset whose price feed has been silent for at least 7 days, which removes that asset from the net asset value and from redemption. Every change is scheduled in public and can be executed only after 48 hours.',
   },
   {
     role: 'Timelock proposer',
-    holder: 'gblin.base.eth',
-    address: OPERATOR,
-    power: 'Schedules changes on the timelock. A scheduled change is visible on chain for 48 hours before it can take effect.',
+    holder: 'Safe multisig (2 of 3)',
+    address: SAFE,
+    power: 'Schedules changes on the timelock; two of its three signers must approve each one. A scheduled change is visible on chain for 48 hours before it can take effect.',
   },
   {
     role: 'Timelock executor',
@@ -56,30 +57,30 @@ const ROLES: Array<{ role: string; holder: string; address: string; power: strin
   },
   {
     role: 'Timelock canceller',
-    holder: 'Project guardian key',
-    address: GUARDIAN,
-    power: 'Can cancel a scheduled change during the delay. Cannot schedule or execute one.',
+    holder: 'Safe multisig (2 of 3)',
+    address: SAFE,
+    power: 'Can cancel a scheduled change during the delay, with two of its three signers.',
   },
   {
     role: 'Sequencer sentinel guardian',
     holder: 'Project guardian key',
     address: GUARDIAN,
     power:
-      'Can report the Base sequencer as down. While it reports down, the vault refuses mints and auction fills; redemptions are not affected. Pauses are budgeted: one stretch of at most 30 days, then a rest.',
+      'Can report the Base sequencer as down. While it reports down, the vault refuses mints and auction fills; redemptions are not affected. Pauses are budgeted: one stretch of at most 30 days, then a rest. The owner can replace the guardian.',
   },
   {
     role: 'Fee recipient',
     holder: 'gblin.base.eth',
     address: OPERATOR,
-    power: 'Receives the protocol fee, minted as shares. It has no other power over the vault.',
+    power: 'Receives the protocol and management fees, minted as shares. It has no other power over the vault. The owner can change it.',
   },
 ];
 
 const CANNOT = [
-  "Move holders' assets.",
-  'Mint shares to itself.',
+  "Transfer holders' assets or shares to itself or to anyone else.",
+  'Mint shares without a deposit, other than the protocol and management fees within the caps written in the contract.',
   'Set a parameter outside the bounds written in the contract.',
-  'Pause redemptions: redemption in kind reads no price feed, charges no fee and cannot be paused.',
+  "Pause redemptions: redemption in kind reads no price feed, charges no fee and has no pause function. A cooldown of at most one hour applies after the holder's own mint, and an abandoned asset is excluded.",
   'Upgrade the code: the contracts are not proxies.',
   "Act without the timelock's 48-hour delay.",
 ];
@@ -127,8 +128,8 @@ export default function AboutPage() {
             gblin.base.eth
           </a>
           . The name resolves to{' '}
-          <span className="font-mono text-zinc-200">{short(OPERATOR)}</span>, the address that deployed the contracts, proposes every
-          change to the timelock and receives the protocol fee, so the identity behind the project and the powers it
+          <span className="font-mono text-zinc-200">{short(OPERATOR)}</span>, the address that deployed the contracts, signs the
+          multisig that proposes changes to the timelock and receives the protocol fee, so the identity behind the project and the powers it
           holds can be checked on chain. Engineering and operations are AI-assisted and carried out in public; see{' '}
           <a className="text-amber-200 underline-offset-4 hover:underline" href="/operated-by-ai">
             Operated by AI
