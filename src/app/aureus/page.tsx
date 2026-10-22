@@ -110,6 +110,7 @@ type IntradayReport = {
   halt_reason?: string | null;
   session_halted?: boolean;
   open_positions: { asset: string; direction: string; opened_at: number }[];
+  daily_results?: Record<string, { net_pnl_usd: number; equity_usd: number }>;
 };
 type IntradayExperiment = IntradayReport | { error: string };
 type Experiments = {
@@ -901,47 +902,99 @@ function IntradaySummary({ report, now, fetchFailed }: {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     second: '2-digit', timeZone: 'Europe/Rome', timeZoneName: 'short',
   }).format(new Date(value * 1000));
+  const equity = report.equity_mtm_usd;
+  const start = report.start_capital_usd;
+  const floor = Math.max(0, start - report.maximum_loss_usd);
+  const top = Math.max(start * 1.1, equity * 1.02);
+  const pos = (value: number) => `${Math.min(100, Math.max(0, ((value - floor) / (top - floor)) * 100))}%`;
+  const up = report.net_pnl_usd >= 0;
+  const daily = Object.entries(report.daily_results ?? {}).sort((x, y) => Number(x[0]) - Number(y[0])).slice(-30);
+  const dayMax = Math.max(0.01, ...daily.map(([, row]) => Math.abs(row.net_pnl_usd)));
+  const statusTone = halted ? 'red' : delayed ? 'amber' : 'emerald';
+  const dot = { red: 'bg-red-400', amber: 'bg-amber-400', emerald: 'bg-emerald-400' }[statusTone];
+  const pill = { red: 'border-red-800 text-red-300', amber: 'border-amber-800 text-amber-300',
+    emerald: 'border-emerald-800 text-emerald-300' }[statusTone];
   return (
-    <section className="mb-8 rounded-xl border border-blue-800/70 bg-blue-950/10 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{t('aureus.intradayHeading')}</h2>
-        <span role="status" className={`rounded border px-2 py-1 text-xs ${halted
-          ? 'border-red-800 text-red-300' : delayed
-          ? 'border-amber-800 text-amber-300' : 'border-emerald-800 text-emerald-300'}`}>
+    <section className="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/80 to-black shadow-[0_0_60px_-30px_rgba(59,130,246,0.6)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-5 py-4 sm:px-7">
+        <h2 className="text-lg font-semibold tracking-tight">{t('aureus.intradayHeading')}</h2>
+        <span role="status" className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${pill}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${dot} ${statusTone === 'emerald' ? 'animate-pulse' : ''}`} />
           {halted ? t('aureus.intradayHalted') : delayed
             ? t('aureus.intradayDelayed') : t('aureus.intradayAvailable')}
         </span>
       </div>
-      <p className="mt-2 mb-5 text-sm leading-relaxed text-gray-400">{t('aureus.intradayNote')}</p>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label={t('aureus.intradayEquity')} value={`$${report.equity_mtm_usd.toFixed(2)}`} />
-        <Stat label={t('aureus.intradayNet')} value={fmtUsd(report.net_pnl_usd)}
-          tone={report.net_pnl_usd >= 0 ? 'pos' : 'neg'}
-          hint={fmtPct(report.net_pnl_usd / report.start_capital_usd)} />
-        <Stat label={t('aureus.intradayRealized')} value={fmtUsd(report.realized_pnl_usd)}
-          tone={report.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
-        <Stat label={t('aureus.intradayOpenPnl')} value={fmtUsd(openPnl)}
-          tone={openPnl >= 0 ? 'pos' : 'neg'} />
-        <Stat label={t('aureus.intradayOpenCount')} value={String(report.open_count)} />
-        <Stat label={t('aureus.intradayClosedCount')} value={String(report.closed_count)} />
-        <Stat label={t('aureus.intradayCosts')} value={`$${report.estimated_costs_usd.toFixed(2)}`} />
-        <Stat label={t('aureus.intradayDrawdown')} value={`${(report.max_drawdown_pct * 100).toFixed(2)}%`} />
+      <div className="px-5 py-6 sm:px-7">
+        <p className="mb-6 max-w-2xl text-sm leading-relaxed text-gray-400">{t('aureus.intradayNote')}</p>
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-500">{t('aureus.intradayEquity')}</p>
+            <p className="mt-1 text-5xl font-bold tabular-nums tracking-tight sm:text-6xl">${equity.toFixed(2)}</p>
+          </div>
+          <div className={`rounded-xl border px-4 py-3 text-right ${up
+            ? 'border-emerald-800/60 bg-emerald-950/30' : 'border-red-900/60 bg-red-950/30'}`}>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-500">{t('aureus.intradayNet')}</p>
+            <p className={`text-2xl font-semibold tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+              {up ? '\u25B2 ' : '\u25BC '}{fmtUsd(report.net_pnl_usd)}
+              <span className="ml-2 text-sm font-medium opacity-80">{fmtPct(report.net_pnl_usd / start)}</span>
+            </p>
+          </div>
+        </div>
+        <div className="mt-7" aria-hidden="true">
+          <div className="relative h-2 rounded-full bg-white/10">
+            <div className={`absolute inset-y-0 left-0 rounded-full ${up ? 'bg-emerald-500/70' : 'bg-red-500/70'}`}
+              style={{ width: pos(equity) }} />
+            <div className="absolute -top-1 h-4 w-px bg-white/60" style={{ left: pos(start) }} />
+          </div>
+          <div className="mt-2 flex justify-between text-[10px] tabular-nums text-gray-500">
+            <span>${floor.toFixed(0)} {t('aureus.intradayLossLimit').toLowerCase()}</span>
+            <span>${start.toFixed(0)} {t('aureus.intradayInitial').toLowerCase()}</span>
+          </div>
+        </div>
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Stat label={t('aureus.intradayRealized')} value={fmtUsd(report.realized_pnl_usd)}
+            tone={report.realized_pnl_usd >= 0 ? 'pos' : 'neg'} />
+          <Stat label={t('aureus.intradayOpenPnl')} value={fmtUsd(openPnl)} tone={openPnl >= 0 ? 'pos' : 'neg'} />
+          <Stat label={t('aureus.intradayClosedCount')} value={String(report.closed_count)} />
+          <Stat label={t('aureus.intradayOpenCount')} value={String(report.open_count)} />
+          <Stat label={t('aureus.intradayCosts')} value={`$${report.estimated_costs_usd.toFixed(2)}`} />
+          <Stat label={t('aureus.intradayDrawdown')} value={`${(report.max_drawdown_pct * 100).toFixed(2)}%`} />
+        </div>
+        {daily.length > 1 && (
+          <div className="mt-7" aria-hidden="true">
+            <div className="flex h-16 items-center gap-1.5">
+              {daily.map(([day, row]) => (
+                <div key={day} className="flex h-full flex-1 flex-col justify-center" title={`${new Date(Number(day) * 86400000).toISOString().slice(0, 10)}: ${fmtUsd(row.net_pnl_usd)}`}>
+                  <div className="flex h-1/2 items-end">
+                    {row.net_pnl_usd >= 0 && <div className="w-full rounded-t bg-emerald-500/70" style={{ height: `${Math.max(6, (row.net_pnl_usd / dayMax) * 100)}%` }} />}
+                  </div>
+                  <div className="flex h-1/2 items-start">
+                    {row.net_pnl_usd < 0 && <div className="w-full rounded-b bg-red-500/70" style={{ height: `${Math.max(6, (-row.net_pnl_usd / dayMax) * 100)}%` }} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] text-gray-500">{daily.length}d · UTC</p>
+          </div>
+        )}
+        {report.open_positions.length > 0 && (
+          <ul className="mt-5 flex flex-wrap gap-2 text-xs">
+            {report.open_positions.map((position) => {
+              const short = position.direction.toLowerCase() === 'short';
+              return (
+                <li key={`${position.asset}-${position.opened_at}`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${short
+                    ? 'border-rose-800/70 bg-rose-950/30 text-rose-200' : 'border-emerald-800/70 bg-emerald-950/30 text-emerald-200'}`}>
+                  <span className="font-semibold">{position.asset}</span>
+                  <span className="opacity-80">{position.direction.toUpperCase()}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-400">
-        <p>{t('aureus.intradayInitial')}: ${report.start_capital_usd.toFixed(2)}</p>
-        <p>{t('aureus.intradayLossLimit')}: ${report.maximum_loss_usd.toFixed(2)}</p>
+      <div className="flex flex-wrap gap-x-8 gap-y-1 border-t border-white/5 bg-black/30 px-5 py-3 text-xs text-gray-500 sm:px-7">
         <p>{t('aureus.intradayFunding')}: {fmtUsd(report.funding_pnl_usd, 4)}</p>
-      </div>
-      {report.open_positions.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-2 text-xs text-gray-300">
-          {report.open_positions.map((position) => (
-            <li key={`${position.asset}-${position.opened_at}`} className="rounded border border-gray-700 px-3 py-1">
-              {position.asset} · {position.direction.toUpperCase()}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-5 space-y-1 border-t border-gray-800 pt-4 text-xs text-gray-500">
         <p>{t('aureus.intradayStarted')}: <time dateTime={new Date(report.since * 1000).toISOString()}>{timestamp(report.since)}</time></p>
         <p>{t('aureus.intradayUpdated')}: <time dateTime={new Date(report.updated * 1000).toISOString()}>{timestamp(report.updated)}</time></p>
       </div>
@@ -952,9 +1005,9 @@ function IntradaySummary({ report, now, fetchFailed }: {
 function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: 'pos' | 'neg'; hint?: string }) {
   const color = tone === 'pos' ? 'text-emerald-400' : tone === 'neg' ? 'text-red-400' : 'text-gray-100';
   return (
-    <div className="bg-white/5 rounded-lg p-4">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">{label}</p>
-      <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
+    <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+      <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</p>
+      <p className={`text-xl font-semibold tabular-nums ${color}`}>{value}</p>
       {hint && <p className="mt-1 text-[10px] leading-tight text-gray-500">{hint}</p>}
     </div>
   );
