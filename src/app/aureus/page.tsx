@@ -995,7 +995,10 @@ function IntradaySummary({ report, now, fetchFailed }: {
             <p className="mt-1 text-[10px] text-gray-500">{daily.length}d · UTC</p>
           </div>
         )}
-        <div className="mt-7 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-gray-400">
+        <p className="mt-7 text-[11px] leading-relaxed text-gray-500">
+          Account restarted from USD 100 on 22 Oct 2026. The previous run (34 closed trades, net -4.9%) is archived.
+        </p>
+        <div className="mt-3 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-gray-400">
           <span className="text-gray-300">Where the P&amp;L comes from:</span>{' '}
           before costs and funding {fmtUsd(report.pnl_before_cost_and_funding_usd ?? report.net_pnl_usd + report.estimated_costs_usd - report.funding_pnl_usd)}
           {' · '}estimated trading costs {fmtUsd(-report.estimated_costs_usd)}
