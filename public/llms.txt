@@ -22,7 +22,7 @@
 - **Min deposit:** none (read live: `GBLINLens.configFees(vault).minDeposit`)
 - **Sell cooldown after a mint for oneself:** 20 seconds (read live: `GBLINLens.configFees(vault).sellCooldown`)
 - **License:** MIT (open source, no telemetry)
-- **Audit:** Soken, 9 October 2026, commit 311bd91 — 0 critical, 0 high, 0 medium, 2 low, 14 informational; all seven deployed contracts match the audited build. Report, as published by the auditor: https://github.com/Soken-LTD/smart-contract-audits/blob/main/GBLIN%20Protocol%20Security%20Review.pdf
+- **Audit:** Soken, 9 October 2026, commit 311bd91 — 0 critical, 0 high, 0 medium, 2 low, 14 informational; all seven deployed contracts match the audited build. Report, as published by the auditor: https://github.com/Soken-LTD/smart-contract-audits/blob/main/GBLIN%20Protocol%20Security%20Review.pdf · identical copy in the protocol repository: https://github.com/gblinproject/GBLIN-Protocol/blob/main/audits/2026-10-09_soken_security_review.pdf (SHA-256 e3096c408b50dacd78368bf1810882cdc26583c0c34e2113e59131f8ea404da4)
 - **Supply:** every share is minted against assets at NAV; no premine, team allocation or vesting. Circulating = total minus the unredeemable launch seed at 0x…dEaD. Project-operated wallets are disclosed, not hidden: https://gblin.digital/api/supply (JSON) · plain numbers for aggregators: https://gblin.digital/api/supply/total and https://gblin.digital/api/supply/circulating
 
 ## For AI agent developers
@@ -116,7 +116,6 @@ via x402 micropayments. Any agent with USDC on Base can query it.
 - Live: https://gblin-sentinel.vercel.app
 - x402 manifest: https://gblin-sentinel.vercel.app/.well-known/x402
 - LLM reference: https://gblin-sentinel.vercel.app/llms.txt
-- Source: https://github.com/gblinproject/gblin-sentinel
 
 Endpoints: base-risk-pulse ($0.002), risk-pulse-pro ($0.005); free: gblin-analytics, keeper-opps
 
@@ -124,7 +123,6 @@ Endpoints: base-risk-pulse ($0.002), risk-pulse-pro ($0.005); free: gblin-analyt
 
 - Protocol web app: https://github.com/gblinproject/GBLIN
 - MCP server: https://github.com/gblinproject/gblin-treasury-risk-regime
-- x402 data agent: https://github.com/gblinproject/gblin-sentinel
 
 ## Contact
 

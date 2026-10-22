@@ -608,14 +608,6 @@ git add AGENTS.md && git commit -m "add AGENTS.md (GBLIN treasury policy)"`}</co
             >
               llms.txt ↗
             </a>
-            <a
-              href="https://github.com/gblinproject/gblin-sentinel"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-400 hover:underline"
-            >
-              Source on GitHub ↗
-            </a>
           </div>
         </div>
       </section>

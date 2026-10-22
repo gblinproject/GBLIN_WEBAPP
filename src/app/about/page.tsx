@@ -106,6 +106,7 @@ const LINKS: Array<{ label: string; href: string }> = [
   { label: 'Specification and source code', href: 'https://github.com/gblinproject/GBLIN-Protocol' },
   { label: 'Deployments, roles and governance history', href: 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/docs/deployments.md' },
   { label: 'Governance bounds', href: 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/docs/governance.md' },
+  { label: 'Audit by Soken, 9 October 2026 (report as published by the auditor)', href: 'https://github.com/Soken-LTD/smart-contract-audits/blob/main/GBLIN%20Protocol%20Security%20Review.pdf' },
   { label: 'Security reviews and their limits', href: 'https://github.com/gblinproject/GBLIN-Protocol/blob/main/audits/README.md' },
   { label: 'Supply disclosure (total, circulating, project wallets)', href: `${SITE_URL}/api/supply` },
   { label: 'Vault on Basescan', href: scan(VAULT) },
