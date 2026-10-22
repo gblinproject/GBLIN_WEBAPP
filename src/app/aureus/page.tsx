@@ -1018,7 +1018,7 @@ function IntradaySummary({ report, now, fetchFailed }: {
               <tbody>
                 {report.open_positions.map((position) => {
                   const short = position.direction.toLowerCase() === 'short';
-                  const pnl = position.unrealized_pnl_usd;
+                  const pnl = position.unrealized_pnl_usd ?? (report.open_positions.length === 1 ? openPnl : null);
                   return (
                     <tr key={`${position.asset}-${position.opened_at}`} className="border-t border-white/5">
                       <td className="px-3 py-2 font-semibold text-gray-100">{position.asset}</td>
