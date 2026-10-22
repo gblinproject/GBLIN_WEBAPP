@@ -58,7 +58,7 @@ const TOOLS = [
   },
   {
     name: 'invest_usdc_to_gblin',
-    purpose: 'Convert USDC earnings back to GBLIN with MEV-safe minOut values. Returns two sequential steps: approve the Zap, then one call that swaps and mints at NAV.',
+    purpose: 'Convert USDC earnings back to GBLIN with positive minOut bounds from on-chain quotes. Returns two sequential steps: approve the Zap, then one call that swaps and mints at NAV.',
   },
   {
     name: 'analyze_treasury_health',
@@ -175,15 +175,15 @@ const FAQS = [
   },
   {
     q: 'Does this break my x402 flow?',
-    a: 'No. x402 invoices still settle in USDC. The MCP server generates a 1-tx swap that delivers the needed USDC to your wallet before you pay. No facilitator changes, no protocol changes.',
+    a: 'No. x402 invoices still settle in USDC. The MCP server returns the calls that turn GBLIN into the USDC you need (approve, exit through the Zap, WETH->USDC swap) before you pay. No facilitator changes, no protocol changes.',
   },
   {
     q: 'Which wallets work?',
-    a: 'Any. The contract function `sellGBLINForEth` + a Uniswap WETH->USDC swap is a two-step flow (V6) — works on EOA (Privy, MetaMask), ERC-4337 smart accounts (Safe, Coinbase smart wallet), and EIP-7702 delegated EOAs (Pectra+).',
+    a: 'Any. The exit is three calls: approve the shares, `sellGBLINForEth` on the Zap, then a Uniswap WETH->USDC swap. EOAs (Privy, MetaMask) sign each call; ERC-4337 smart accounts (Safe, Coinbase smart wallet) and EIP-7702 delegated EOAs can batch them into one operation.',
   },
   {
     q: 'How is slippage handled?',
-    a: 'Every tool returns minOut values computed from on-chain quotes + a buffer that scales with risk: 2.5% in normal markets, 4% when the Crash Shield is active. Never zero — eliminates MEV sandwich exposure.',
+    a: 'Every tool returns minOut values computed from on-chain quotes minus a buffer: 2.5% in normal markets, 4% when the Crash Shield is active. A quote of zero is refused. The Zap also enforces its own floor below NAV while the vault can price itself. These bounds cap how much a sandwich can take; they do not make one impossible.',
   },
   {
     q: 'Is this open source?',
@@ -326,7 +326,7 @@ export default function AgentsPage() {
                 body: 'Hold GBLIN (basket appreciation) and JIT-swap to USDC only when invoices come in. x402 payments still settle in USDC — facilitator unchanged.',
               },
               {
-                title: 'Two-step swap (V6), any wallet',
+                title: 'Three calls, any wallet',
                 body: 'The redemption goes through the Zap: approve the shares, redeem in kind and sell every leg for ETH in one call (all or nothing), then a Uniswap WETH->USDC swap. EOAs sign three times; smart accounts (ERC-4337) and EIP-7702 can batch all of it into one UserOp.',
               },
               {
@@ -334,12 +334,12 @@ export default function AgentsPage() {
                 body: 'NAV is computed from the Lens `quoteSell` × the Chainlink ETH/USD feed. The vault refuses to price itself while a feed is stale, and the tool passes that refusal on instead of guessing.',
               },
               {
-                title: 'MEV-safe by default',
-                body: 'Every tool returns positive minOut values from on-chain quotes plus a dynamic slippage buffer. Never accepts 0. Sandwich attacks rejected.',
+                title: 'Bounded slippage by default',
+                body: 'Every tool returns positive minOut values from on-chain quotes minus a slippage buffer (2.5%, or 4% while the Crash Shield is active). A zero bound is never sent, which limits what a sandwich can extract.',
               },
               {
                 title: 'Crash Shield aware',
-                body: 'When a basket asset breaches its adaptive crash threshold (~15%, dual-peak), dynamic weights re-route proportionally toward USDC. The internal slippage buffer auto-scales within a 0.5%–5.5% envelope driven by on-chain volatility to absorb the temporary pool stress.',
+                body: 'When a basket asset breaches its adaptive crash threshold (~15%, dual-peak), target weights move proportionally toward USDC, and the rebalancing auctions carry out the reallocation. The tools widen the slippage buffer from 2.5% to 4% while the shield is active.',
               },
               {
                 title: 'MCP-native — works everywhere',
@@ -455,21 +455,23 @@ const jit = await mcp.callTool({
 
 // jit.content[0].text contains:
 // {
-//   action: "single_atomic_tx",
-//   action: "sequential_txs", steps: [sellGBLINForEth, WETH->USDC]
-//   target: 0xc2181d97...1D53
+//   action: "sequential_txs",
+//   steps: [approve, Zap.sellGBLINForEth, WETH->USDC swap],
 //   expected: { usdc_out: "0.5128", slippage_buffer_pct: 2.5 },
-//   compatibility: { eoa: true, erc4337: true, eip7702: true }
+//   gas_hint: { ... }
 // }
 
-// 2. Agent broadcasts the tx (one atomic call — GBLIN -> WETH -> USDC)
-const hash = await wallet.sendTransaction({
-  to: jit.target_contract,
-  data: jit.calldata,
-  value: 0n,
-});
+// Step 4. Agent sends the steps in order (or batches them in one UserOp)
+for (const step of jit.steps) {
+  const hash = await wallet.sendTransaction({
+    to: step.target,
+    data: step.calldata,
+    value: BigInt(step.value), // wei
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+}
 
-// 3. Once mined, agent's USDC balance has the needed amount.
+// Step 5. Once mined, agent's USDC balance has the needed amount.
 //    Agent now pays the x402 invoice with USDC as usual.`}</code>
           </pre>
         </div>
