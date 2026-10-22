@@ -176,24 +176,24 @@ export function GblinNumbers() {
     <>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Paid x402 calls from external wallets"
+          label="USDC payments observed from external addresses"
           value={(split?.organic_calls ?? stats.total_paid_calls).toLocaleString('en-US')}
         />
         <StatCard
-          label="External paying wallets"
+          label="External paying addresses"
           value={(split?.organic_agents ?? stats.total_unique_agents).toLocaleString('en-US')}
         />
         <StatCard
-          label="USDC earned from external wallets"
+          label="USDC received from external addresses"
           value={`$${(split?.organic_usdc ?? stats.total_usdc_earned).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          note="Every payment is a USDC transfer to the fee wallet on Base — verifiable on-chain"
+          note="Each payment is a USDC transfer to the x402 payment address on Base, verifiable on-chain. An address is not an identity."
         />
       </div>
       {split ? (
         <p className="mt-3 text-xs leading-5 text-zinc-500">
           Cumulative total including our own wallets:{' '}
-          {stats.total_paid_calls.toLocaleString('en-US')} calls from{' '}
-          {stats.total_unique_agents.toLocaleString('en-US')} wallets ($
+          {stats.total_paid_calls.toLocaleString('en-US')} payments from{' '}
+          {stats.total_unique_agents.toLocaleString('en-US')} addresses ($
           {stats.total_usdc_earned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}),
           of which {split.internal_calls.toLocaleString('en-US')} are ours. The wallet list is
           published in{' '}

@@ -236,6 +236,8 @@ export function ProofSection({ t }: { t: T }) {
             {/* The series that produced those figures. */}
             <div className="min-w-0">
               <BacktestChart t={t} />
+              {/* What the simulation leaves out, stated next to the curve rather than only in the method. */}
+              <p className="mt-3 text-[11px] leading-5 text-zinc-500">{t('proof.simNote')}</p>
 
               {/* The three outcomes, on one line under the chart. */}
               <div className="mt-6 grid grid-cols-2 gap-4 border-t border-[color:var(--line)] pt-5 sm:grid-cols-4">
