@@ -109,7 +109,18 @@ type IntradayReport = {
   last_error?: string | null;
   halt_reason?: string | null;
   session_halted?: boolean;
-  open_positions: { asset: string; direction: string; opened_at: number }[];
+  pnl_before_cost_and_funding_usd?: number;
+  profit_factor?: number | null;
+  open_positions: {
+    asset: string; direction: string; opened_at: number; entry_price?: number; quantity?: number;
+    size_usd?: number; notional_usd?: number; leverage?: number; last_mark_price?: number | null;
+    unrealized_pnl_usd?: number | null; protective_stop_price?: number; session_target_price?: number;
+  }[];
+  closed_trades?: {
+    asset: string; direction: string; opened_at: number; closed_at: number; entry_price: number;
+    exit_price: number; size_usd: number; leverage?: number; pnl_usd: number; cost_usd?: number;
+    funding_pnl_usd?: number; exit_reason?: string; hold_hours?: number;
+  }[];
   daily_results?: Record<string, { net_pnl_usd: number; equity_usd: number }>;
 };
 type IntradayExperiment = IntradayReport | { error: string };
@@ -141,6 +152,9 @@ type Experiments = {
   memoria_asset?: Record<string, number>;
   memoria_min_campioni?: number;
 };
+
+// The previous account (V16) is kept in the source but hidden from the public page for now.
+const SHOW_PREVIOUS_ACCOUNT = false;
 
 async function getStats(): Promise<Stats | null> {
   try {
@@ -357,6 +371,7 @@ function AureusContent() {
       {s && (
         <>
           <IntradaySummary report={s.esperimenti?.daytrade_v18} now={now} fetchFailed={fetchFailed} />
+          {SHOW_PREVIOUS_ACCOUNT && (
           <details className="mb-10 rounded-xl border border-gray-800 p-5">
             <summary className="cursor-pointer text-lg font-semibold text-gray-300">
               {t('aureus.previousAccount')}
@@ -760,6 +775,7 @@ function AureusContent() {
             </p>
           </section>
           </details>
+          )}
         </>
       )}
 
@@ -910,6 +926,8 @@ function IntradaySummary({ report, now, fetchFailed }: {
   const up = report.net_pnl_usd >= 0;
   const daily = Object.entries(report.daily_results ?? {}).sort((x, y) => Number(x[0]) - Number(y[0])).slice(-30);
   const dayMax = Math.max(0.01, ...daily.map(([, row]) => Math.abs(row.net_pnl_usd)));
+  const closed = [...(report.closed_trades ?? [])].sort((x, y) => y.closed_at - x.closed_at);
+  const price = (value: number | null | undefined) => (value == null ? '\u2014' : value >= 1000 ? value.toFixed(1) : value >= 10 ? value.toFixed(2) : value.toFixed(4));
   const statusTone = halted ? 'red' : delayed ? 'amber' : 'emerald';
   const dot = { red: 'bg-red-400', amber: 'bg-amber-400', emerald: 'bg-emerald-400' }[statusTone];
   const pill = { red: 'border-red-800 text-red-300', amber: 'border-amber-800 text-amber-300',
@@ -977,20 +995,88 @@ function IntradaySummary({ report, now, fetchFailed }: {
             <p className="mt-1 text-[10px] text-gray-500">{daily.length}d · UTC</p>
           </div>
         )}
-        {report.open_positions.length > 0 && (
-          <ul className="mt-5 flex flex-wrap gap-2 text-xs">
-            {report.open_positions.map((position) => {
-              const short = position.direction.toLowerCase() === 'short';
-              return (
-                <li key={`${position.asset}-${position.opened_at}`}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${short
-                    ? 'border-rose-800/70 bg-rose-950/30 text-rose-200' : 'border-emerald-800/70 bg-emerald-950/30 text-emerald-200'}`}>
-                  <span className="font-semibold">{position.asset}</span>
-                  <span className="opacity-80">{position.direction.toUpperCase()}</span>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="mt-7 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-gray-400">
+          <span className="text-gray-300">Where the P&amp;L comes from:</span>{' '}
+          before costs and funding {fmtUsd(report.pnl_before_cost_and_funding_usd ?? report.net_pnl_usd + report.estimated_costs_usd - report.funding_pnl_usd)}
+          {' · '}estimated trading costs {fmtUsd(-report.estimated_costs_usd)}
+          {' · '}funding {fmtUsd(report.funding_pnl_usd, 4)}
+          {' = '}net {fmtUsd(report.net_pnl_usd)}.
+          {report.profit_factor != null && <> Profit factor {report.profit_factor.toFixed(2)} over {report.closed_count} closed trades.</>}
+        </div>
+        <h3 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-gray-300">
+          Open positions ({report.open_positions.length})
+        </h3>
+        {report.open_positions.length === 0 ? (
+          <p className="text-sm text-gray-500">No open position right now.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-white/5">
+            <table className="w-full min-w-[820px] text-left text-xs tabular-nums">
+              <thead className="bg-white/[0.03] text-[10px] uppercase tracking-[0.1em] text-gray-500">
+                <tr>{['Asset', 'Side', 'Opened', 'Entry', 'Mark', 'Stop', 'Target', 'Margin', 'Notional', 'Unrealised P&L'].map((h) => (
+                  <th key={h} className="px-3 py-2 font-medium">{h}</th>))}</tr>
+              </thead>
+              <tbody>
+                {report.open_positions.map((position) => {
+                  const short = position.direction.toLowerCase() === 'short';
+                  const pnl = position.unrealized_pnl_usd;
+                  return (
+                    <tr key={`${position.asset}-${position.opened_at}`} className="border-t border-white/5">
+                      <td className="px-3 py-2 font-semibold text-gray-100">{position.asset}</td>
+                      <td className={`px-3 py-2 font-medium ${short ? 'text-rose-300' : 'text-emerald-300'}`}>{position.direction.toUpperCase()}</td>
+                      <td className="px-3 py-2 text-gray-400">{timestamp(position.opened_at)}</td>
+                      <td className="px-3 py-2">{price(position.entry_price)}</td>
+                      <td className="px-3 py-2">{price(position.last_mark_price)}</td>
+                      <td className="px-3 py-2">{price(position.protective_stop_price)}</td>
+                      <td className="px-3 py-2">{price(position.session_target_price)}</td>
+                      <td className="px-3 py-2">{position.size_usd != null ? `$${position.size_usd.toFixed(2)}` : '\u2014'}</td>
+                      <td className="px-3 py-2">{position.notional_usd != null ? `$${position.notional_usd.toFixed(2)}${position.leverage ? ` (${position.leverage}x)` : ''}` : '\u2014'}</td>
+                      <td className={`px-3 py-2 font-medium ${pnl == null ? 'text-gray-500' : pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pnl == null ? '\u2014' : fmtUsd(pnl)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <h3 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-gray-300">
+          Closed trades ({report.closed_count})
+        </h3>
+        {closed.length === 0 ? (
+          <p className="text-sm text-gray-500">No closed trade history in the public feed yet.</p>
+        ) : (
+          <>
+            <div className="max-h-[520px] overflow-auto rounded-xl border border-white/5">
+              <table className="w-full min-w-[900px] text-left text-xs tabular-nums">
+                <thead className="sticky top-0 bg-slate-900 text-[10px] uppercase tracking-[0.1em] text-gray-500">
+                  <tr>{['Closed', 'Asset', 'Side', 'Entry', 'Exit', 'Margin', 'Held', 'Costs', 'Funding', 'Net P&L', 'Exit reason'].map((h) => (
+                    <th key={h} className="px-3 py-2 font-medium">{h}</th>))}</tr>
+                </thead>
+                <tbody>
+                  {closed.map((trade) => {
+                    const short = trade.direction.toLowerCase() === 'short';
+                    return (
+                      <tr key={`${trade.asset}-${trade.opened_at}-${trade.closed_at}`} className="border-t border-white/5">
+                        <td className="px-3 py-2 text-gray-400">{timestamp(trade.closed_at)}</td>
+                        <td className="px-3 py-2 font-semibold text-gray-100">{trade.asset}</td>
+                        <td className={`px-3 py-2 font-medium ${short ? 'text-rose-300' : 'text-emerald-300'}`}>{trade.direction.toUpperCase()}</td>
+                        <td className="px-3 py-2">{price(trade.entry_price)}</td>
+                        <td className="px-3 py-2">{price(trade.exit_price)}</td>
+                        <td className="px-3 py-2">${trade.size_usd.toFixed(2)}{trade.leverage ? ` (${trade.leverage}x)` : ''}</td>
+                        <td className="px-3 py-2">{trade.hold_hours != null ? `${trade.hold_hours.toFixed(1)} h` : '\u2014'}</td>
+                        <td className="px-3 py-2 text-gray-400">{trade.cost_usd != null ? fmtUsd(-trade.cost_usd) : '\u2014'}</td>
+                        <td className="px-3 py-2 text-gray-400">{trade.funding_pnl_usd != null ? fmtUsd(trade.funding_pnl_usd, 4) : '\u2014'}</td>
+                        <td className={`px-3 py-2 font-medium ${trade.pnl_usd >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtUsd(trade.pnl_usd)}</td>
+                        <td className="px-3 py-2 text-gray-400">{(trade.exit_reason ?? '').replace(/-/g, ' ')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10px] text-gray-500">
+              Most recent first, up to 200 trades. Net P&amp;L is after the estimated round-trip cost; funding is shown separately.
+            </p>
+          </>
         )}
       </div>
       <div className="flex flex-wrap gap-x-8 gap-y-1 border-t border-white/5 bg-black/30 px-5 py-3 text-xs text-gray-500 sm:px-7">
