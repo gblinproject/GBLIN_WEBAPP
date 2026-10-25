@@ -475,8 +475,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "Net funding",
       intradayStarted: "Started",
       intradayUpdated: "Latest market observation",
-      previousAccount: "Previous account (V16)",
-      previousAccountNote: "Independent baseline account. Its trades and performance are separate from the intraday simulation above.",
+      previousAccount: "Production account",
+      previousAccountNote: "Main account running on live market data. Independent from the intraday simulation.",
       loading: 'Loading data...',
       noData: "No data yet. The agent will publish stats here as soon as it runs.",
       haltedTitle: 'Agent on HALT',
@@ -1047,8 +1047,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "Funding netto",
       intradayStarted: "Avvio",
       intradayUpdated: "Ultima osservazione di mercato",
-      previousAccount: "Conto precedente (V16)",
-      previousAccountNote: "Conto di confronto indipendente. Operazioni e risultati sono separati dalla simulazione intraday qui sopra.",
+      previousAccount: "Conto di produzione",
+      previousAccountNote: "Conto principale su dati di mercato reali. Indipendente dalla simulazione intraday.",
       loading: 'Caricamento dati...',
       noData: "Nessun dato ancora. L'agente pubblica le statistiche qui appena gira.",
       haltedTitle: 'Agente in HALT',
@@ -1616,8 +1616,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "Financiación neta",
       intradayStarted: "Inicio",
       intradayUpdated: "Última observación de mercado",
-      previousAccount: "Cuenta anterior (V16)",
-      previousAccountNote: "Cuenta de referencia independiente. Sus operaciones y resultados se contabilizan por separado de la simulación intradía anterior.",
+      previousAccount: "Cuenta de producción",
+      previousAccountNote: "Cuenta principal con datos de mercado reales. Independiente de la simulación intradía.",
     }
   },
   fr: {
@@ -2091,8 +2091,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "Financement net",
       intradayStarted: "Début",
       intradayUpdated: "Dernière observation du marché",
-      previousAccount: "Compte précédent (V16)",
-      previousAccountNote: "Compte de référence indépendant. Ses opérations et résultats sont comptabilisés séparément de la simulation intrajournalière ci-dessus.",
+      previousAccount: "Compte de production",
+      previousAccountNote: "Compte principal sur données de marché réelles. Indépendant de la simulation intraday.",
     }
   },
   de: {
@@ -2566,8 +2566,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "Netto-Funding",
       intradayStarted: "Beginn",
       intradayUpdated: "Letzte Marktbeobachtung",
-      previousAccount: "Vorheriges Konto (V16)",
-      previousAccountNote: "Unabhängiges Vergleichskonto. Seine Trades und Ergebnisse werden getrennt von der obigen Intraday-Simulation geführt.",
+      previousAccount: "Produktionskonto",
+      previousAccountNote: "Hauptkonto mit echten Marktdaten. Unabhängig von der Intraday-Simulation.",
     }
   },
   zh: {
@@ -3041,8 +3041,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "净资金费用",
       intradayStarted: "启动时间",
       intradayUpdated: "最新市场观测时间",
-      previousAccount: "之前的账户（V16）",
-      previousAccountNote: "独立的基准账户。其交易和收益与上方的日内模拟分别统计。",
+      previousAccount: "生产账户",
+      previousAccountNote: "主账户，使用真实市场数据。独立于日内模拟。",
     }
   },
   ja: {
@@ -3516,8 +3516,8 @@ export const protocolTranslations: Partial<Record<Language, any>> = {
       intradayFunding: "資金調達料の純額",
       intradayStarted: "開始日時",
       intradayUpdated: "最新の市場観測日時",
-      previousAccount: "以前の口座（V16）",
-      previousAccountNote: "独立した比較用口座です。取引と成績は上の日中取引シミュレーションと別に集計します。",
+      previousAccount: "本番口座",
+      previousAccountNote: "メイン口座、実際の市場データで稼働。日中シミュレーションとは独立。",
     }
   }
 };

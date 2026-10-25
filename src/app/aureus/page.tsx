@@ -153,8 +153,8 @@ type Experiments = {
   memoria_min_campioni?: number;
 };
 
-// The previous account (V16) is kept in the source but hidden from the public page for now.
-const SHOW_PREVIOUS_ACCOUNT = false;
+// Main production account: shown and expanded by default.
+const SHOW_PREVIOUS_ACCOUNT = true;
 
 async function getStats(): Promise<Stats | null> {
   try {
@@ -372,7 +372,7 @@ function AureusContent() {
         <>
           <IntradaySummary report={s.esperimenti?.daytrade_v18} now={now} fetchFailed={fetchFailed} />
           {SHOW_PREVIOUS_ACCOUNT && (
-          <details className="mb-10 rounded-xl border border-gray-800 p-5">
+          <details open className="mb-10 rounded-xl border border-gray-800 p-5">
             <summary className="cursor-pointer text-lg font-semibold text-gray-300">
               {t('aureus.previousAccount')}
             </summary>
