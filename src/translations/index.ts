@@ -66,7 +66,13 @@ export const translations: Record<Language, any> = {
       txTime: "TIME"
     },
     trade: {
-      instant: "INSTANT SETTLEMENT",
+      anyAmountTitle: "Any amount, not a whole token",
+      anyAmountDesc: "A share divides to 18 decimals, so you can mint a fraction of one: twenty dollars buys a slice of the same basket at the same price per token as twenty thousand. ETH mints in one transaction. USDC or another token is first swapped to WETH on Uniswap, then minted at NAV.",
+      exitTitle: "Two ways out",
+      exitDesc: "Redeem in kind: burn your shares and receive your pro-rata slice of cbBTC, WETH and USDC, with no fee and no price feed. Sell for ETH: the Zap redeems and sells each slice on a DEX, so you pay those swaps' fees and price impact, and it needs fresh price feeds.",
+      costTitle: "What it costs",
+      costDesc: "0.10% when you mint with ETH or WETH: half stays in the vault, half goes to the fee recipient as shares. 0.50% a year, accrued as new shares. Nothing to redeem in kind.",
+      instant: "MINT AT NAV ON BASE",
       title1: "Direct Protocol",
       title2: "Minting",
       desc: "Use the native protocol interface to mint or burn GBLIN directly against the smart contract. No external liquidity pool needed. The price is always computed on-chain from the NAV (Net Asset Value) of the reserves — not from a pool.",
@@ -317,7 +323,13 @@ export const translations: Record<Language, any> = {
       txTime: "ORA"
     },
     trade: {
-      instant: "REGOLAMENTO ISTANTANEO",
+      anyAmountTitle: "Qualsiasi importo, non un token intero",
+      anyAmountDesc: "Una quota si divide fino a 18 decimali, quindi puoi coniarne una frazione: venti dollari comprano una fetta dello stesso paniere allo stesso prezzo per token di ventimila. Con ETH il conio avviene in una transazione. USDC o un altro token viene prima scambiato in WETH su Uniswap, poi coniato al NAV.",
+      exitTitle: "Due modi per uscire",
+      exitDesc: "Riscatto in natura: bruci le quote e ricevi la tua parte proporzionale di cbBTC, WETH e USDC, senza commissione e senza feed di prezzo. Vendita in ETH: lo Zap riscatta e vende ogni parte su un DEX, quindi paghi commissioni e impatto di prezzo di quegli scambi, e servono feed di prezzo aggiornati.",
+      costTitle: "Quanto costa",
+      costDesc: "0,10% quando conii con ETH o WETH: metà resta nel vault, metà va al destinatario delle commissioni in quote. 0,50% l'anno, maturato come nuove quote. Nulla per il riscatto in natura.",
+      instant: "CONIO AL NAV SU BASE",
       title1: "Conio Diretto",
       title2: "del Protocollo",
       desc: "Usa l'interfaccia nativa del protocollo per coniare o bruciare GBLIN direttamente contro lo smart contract. Nessuna pool di liquidità esterna necessaria. Il prezzo è sempre calcolato on-chain dal NAV (Net Asset Value) delle riserve — non da un pool.",
@@ -568,7 +580,13 @@ export const translations: Record<Language, any> = {
       txTime: "HORA"
     },
     trade: {
-      instant: "LIQUIDACIÓN INSTANTÁNEA",
+      anyAmountTitle: "Cualquier importe, no un token entero",
+      anyAmountDesc: "Una participación se divide hasta 18 decimales, así que puedes acuñar una fracción: veinte dólares compran una porción de la misma cesta al mismo precio por token que veinte mil. Con ETH se acuña en una transacción. USDC u otro token se intercambia primero a WETH en Uniswap y luego se acuña al NAV.",
+      exitTitle: "Dos formas de salir",
+      exitDesc: "Rescate en especie: quemas tus participaciones y recibes tu parte proporcional de cbBTC, WETH y USDC, sin comisión y sin feed de precios. Venta por ETH: el Zap rescata y vende cada parte en un DEX, así que pagas las comisiones e impacto de precio de esos intercambios, y necesita feeds de precios actualizados.",
+      costTitle: "Lo que cuesta",
+      costDesc: "0,10% al acuñar con ETH o WETH: la mitad se queda en el vault y la otra mitad va al destinatario de comisiones en participaciones. 0,50% al año, devengado como nuevas participaciones. Nada por rescatar en especie.",
+      instant: "ACUÑACIÓN AL NAV EN BASE",
       title1: "Acuñación Directa",
       title2: "del Protocolo",
       desc: "Use la interfaz nativa del protocolo para acuñar o quemar GBLIN directamente contra el contrato inteligente. No se necesita un pool de liquidez externo. El precio siempre se calcula on-chain a partir del NAV (Valor Activo Neto) de las reservas, no de un pool.",
@@ -772,7 +790,13 @@ export const translations: Record<Language, any> = {
       txTime: "HEURE"
     },
     trade: {
-      instant: "RÈGLEMENT INSTANTANÉ",
+      anyAmountTitle: "N'importe quel montant, pas un jeton entier",
+      anyAmountDesc: "Une part se divise jusqu'à 18 décimales : vous pouvez en frapper une fraction. Vingt dollars achètent une tranche du même panier au même prix par jeton que vingt mille. Avec de l'ETH, la frappe se fait en une transaction. L'USDC ou un autre jeton est d'abord échangé en WETH sur Uniswap, puis frappé à la VNI.",
+      exitTitle: "Deux façons de sortir",
+      exitDesc: "Rachat en nature : vous brûlez vos parts et recevez votre tranche proportionnelle de cbBTC, WETH et USDC, sans frais ni flux de prix. Vente contre ETH : le Zap rachète et vend chaque tranche sur un DEX, vous payez donc les frais et l'impact de prix de ces échanges, et il faut des flux de prix à jour.",
+      costTitle: "Ce que ça coûte",
+      costDesc: "0,10 % quand vous frappez avec de l'ETH ou du WETH : la moitié reste dans le vault, l'autre va au destinataire des frais en parts. 0,50 % par an, accumulé en nouvelles parts. Rien pour un rachat en nature.",
+      instant: "FRAPPE À LA VNI SUR BASE",
       title1: "Frappe Directe",
       title2: "du Protocole",
       desc: "Utilisez l'interface native du protocole pour frapper ou brûler du GBLIN directement contre le contrat intelligent. Aucun pool de liquidité externe n'est nécessaire. Le prix est toujours calculé on-chain à partir de la NAV (Valeur Liquidative) des réserves — pas d'un pool.",
@@ -976,7 +1000,13 @@ export const translations: Record<Language, any> = {
       txTime: "ZEIT"
     },
     trade: {
-      instant: "SOFORTIGE ABRECHNUNG",
+      anyAmountTitle: "Jeder Betrag, kein ganzer Token nötig",
+      anyAmountDesc: "Ein Anteil ist auf 18 Dezimalstellen teilbar, Sie können also einen Bruchteil prägen: zwanzig Dollar kaufen einen Teil desselben Korbs zum selben Preis pro Token wie zwanzigtausend. Mit ETH wird in einer Transaktion geprägt. USDC oder ein anderer Token wird zuerst auf Uniswap in WETH getauscht und dann zum NAV geprägt.",
+      exitTitle: "Zwei Wege hinaus",
+      exitDesc: "Einlösung in Sachwerten: Sie verbrennen Ihre Anteile und erhalten Ihren anteiligen Teil an cbBTC, WETH und USDC, ohne Gebühr und ohne Preis-Feed. Verkauf gegen ETH: der Zap löst ein und verkauft jeden Teil auf einer DEX, Sie zahlen also deren Gebühren und Preiseinfluss, und es braucht aktuelle Preis-Feeds.",
+      costTitle: "Was es kostet",
+      costDesc: "0,10 % beim Prägen mit ETH oder WETH: die Hälfte bleibt im Vault, die Hälfte geht als Anteile an den Gebührenempfänger. 0,50 % pro Jahr, als neue Anteile aufgelaufen. Nichts für die Einlösung in Sachwerten.",
+      instant: "PRÄGUNG ZUM NAV AUF BASE",
       title1: "Direktes Protokoll",
       title2: "Minting",
       desc: "Nutzen Sie die native Protokollschnittstelle, um GBLIN direkt gegen den Smart Contract zu minten oder zu burnen. Kein externer Liquiditätspool erforderlich. Der Preis wird immer on-chain aus dem NAV (Net Asset Value) der Reserven berechnet — nicht aus einem Pool.",
@@ -1180,7 +1210,13 @@ export const translations: Record<Language, any> = {
       txTime: "时间"
     },
     trade: {
-      instant: "即时结算",
+      anyAmountTitle: "任意金额，无需整枚代币",
+      anyAmountDesc: "一份份额可分到 18 位小数，因此可以铸造其中一部分：二十美元与两万美元按相同的每枚价格买到同一篮子的一部分。用 ETH 一笔交易即可铸造。USDC 或其他代币会先在 Uniswap 上换成 WETH，再按 NAV 铸造。",
+      exitTitle: "两种退出方式",
+      exitDesc: "实物赎回：销毁份额，按比例获得 cbBTC、WETH 和 USDC，无手续费，不依赖价格源。换成 ETH 卖出：Zap 先赎回，再在 DEX 上卖出每一部分，因此需要承担这些兑换的手续费和价格影响，并且需要最新的价格源。",
+      costTitle: "费用",
+      costDesc: "用 ETH 或 WETH 铸造时收取 0.10%：一半留在金库，一半以份额形式归手续费接收方。每年 0.50%，以新份额形式累计。实物赎回不收费。",
+      instant: "在 BASE 上按 NAV 铸造",
       title1: "直接协议",
       title2: "铸造",
       desc: "使用原生协议界面直接在智能合约中铸造或销毁 GBLIN。无需外部流动性池。价格始终由链上储备的资产净值 (NAV) 计算得出，而非来自池子。",
@@ -1321,6 +1357,12 @@ export const translations: Record<Language, any> = {
   },
   ja: {
     trade: {
+      anyAmountTitle: "トークン1枚でなくても、任意の金額で",
+      anyAmountDesc: "1シェアは小数点以下18桁まで分割できるため、その一部をミントできます。20ドルでも2万ドルでも、同じ1トークンあたりの価格で同じバスケットの一部を買えます。ETH なら1回のトランザクションでミントします。USDC などのトークンは、まず Uniswap で WETH に交換してから NAV でミントします。",
+      exitTitle: "2つの出口",
+      exitDesc: "現物償還：シェアをバーンし、cbBTC・WETH・USDC の持ち分相当を受け取ります。手数料も価格フィードも不要です。ETH で売却：Zap が償還して各部分を DEX で売るため、その交換の手数料と価格影響がかかり、最新の価格フィードが必要です。",
+      costTitle: "かかる費用",
+      costDesc: "ETH または WETH でのミント時に 0.10%：半分はボールトに残り、半分はシェアとして手数料受取人へ。年 0.50% が新しいシェアとして積み上がります。現物償還は無料です。",
       oracleGuard: {
         title: '価格が利用できません — ETH での償還を一時停止',
         body: 'ボールトは現在バスケットを評価できません。価格フィードが有効期間を過ぎているか、オークションの約定が進行中です。ETH での退出にはその価格が必要なため、一時停止しています。バスケットトークンでの償還は価格を使わず、引き続き利用できます。',

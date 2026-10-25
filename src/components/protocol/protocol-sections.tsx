@@ -588,6 +588,7 @@ function VaultSizeSection({ t, onChainData }: { t: (key: string) => string; onCh
           {t('landing.sizeHolders')} <ExternalLink className="h-3 w-3" />
         </a>
       </div>
+      <p className="mt-4 max-w-[42rem] text-[13px] leading-6 text-zinc-500">{t('landing.sizeExplorerNote')}</p>
     </section>
   );
 }
@@ -1103,10 +1104,12 @@ function TokenPicker({
   const term = query.trim().toLowerCase();
   const isAddress = term.startsWith('0x') && term.length >= 10;
   // The list is what the visitor can actually pay with: their own balances once a
-  // wallet is connected, and ETH alone before that, because a catalogue of tokens
-  // nobody has yet is noise on the one screen where they are about to spend.
+  // wallet is connected, plus ETH and USDC, the two most visitors arrive with. A catalogue of
+  // tokens nobody has yet is noise on the one screen where they are about to spend.
   // Everything else is one click away under "show all", and search always reaches it.
-  const held = balances ? all.filter((sym) => sym === 'ETH' || (balances[sym] ?? 0) > 0) : ['ETH'];
+  const held = balances
+    ? all.filter((sym) => sym === 'ETH' || sym === 'USDC' || (balances[sym] ?? 0) > 0)
+    : ['ETH', 'USDC'];
   const base = showAll ? all : held;
   const shown = term ? all.filter((sym) => sym.toLowerCase().includes(term)) : base;
   const hiddenCount = showAll ? 0 : all.length - held.length;
@@ -1603,9 +1606,9 @@ export function BuyView(props: BuyViewProps) {
       <div className="lg:col-start-1 lg:row-start-2">
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
         {[
-          { title: t('trade.feature1Title'), body: t('trade.feature1Desc') },
-          { title: t('trade.feature2Title'), body: t('trade.feature2Desc') },
-          { title: t('yield.mechanismTitle'), body: t('yield.mechanismDesc') },
+          { title: t('trade.anyAmountTitle'), body: t('trade.anyAmountDesc') },
+          { title: t('trade.exitTitle'), body: t('trade.exitDesc') },
+          { title: t('trade.costTitle'), body: t('trade.costDesc') },
         ].map((item) => (
           <div className="g-card p-4" key={item.title}>
             <p className="text-sm font-semibold text-white">{item.title}</p>
