@@ -32,21 +32,7 @@ export async function GET() {
     const j = await r.json();
     const raw = j?.result;
     const stats = raw ? JSON.parse(raw) : null;
-    let blend = null;
-    try {
-      const b = await fetch(`${URL_BASE}/get/aureus:blend`, {
-        headers: { Authorization: `Bearer ${TOKEN}` },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
-      });
-      if (b.ok) {
-        const bj = await b.json();
-        blend = bj?.result ? JSON.parse(bj.result) : null;
-      }
-    } catch {
-      blend = null;
-    }
-    return NextResponse.json({ enabled: true, stats, blend, _source: SOURCE }, { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' } });
+    return NextResponse.json({ enabled: true, stats, _source: SOURCE }, { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=60' } });
   } catch {
     return NextResponse.json({ enabled: false, stats: null, _source: SOURCE });
   }

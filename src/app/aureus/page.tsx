@@ -156,54 +156,15 @@ type Experiments = {
 // Main production account: shown and expanded by default.
 const SHOW_PREVIOUS_ACCOUNT = true;
 
-type BlendBook = {
-  name: string;
-  multiplier: number;
-  start_day: number;
-  last_settled: number;
-  equity: number;
-  plan: Record<string, { vote: number; vol: number; weight: number }>;
-  days: { date: string; equity: number; pnl_pct: number }[];
-  updated: number;
-};
-
-async function getStats(): Promise<{ stats: Stats | null; blend: BlendBook | null }> {
+async function getStats(): Promise<Stats | null> {
   try {
     const r = await fetch('/api/aureus', { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) return { stats: null, blend: null };
+    if (!r.ok) return null;
     const j = await r.json();
-    return { stats: j?.stats || null, blend: j?.blend || null };
+    return j?.stats || null;
   } catch {
-    return { stats: null, blend: null };
+    return null;
   }
-}
-
-function BlendSummary({ book }: { book: BlendBook }) {
-  const startedAt = new Date(book.start_day * 86400 * 1000).toISOString().slice(0, 10);
-  const returnPct = (book.equity / 100 - 1) * 100;
-  const last = book.days[book.days.length - 1];
-  return (
-    <div>
-      <p className="text-sm text-gray-400 mb-4">
-        Paper account of $100, BTC and ETH perpetuals, long only, daily rebalance. The position size follows a
-        blend of six trend votes, scaled by volatility and capped by a target risk. No orders are sent to any
-        exchange. Started {startedAt}.
-      </p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <Stat label="Equity" value={'$' + book.equity.toFixed(2)} tone={returnPct >= 0 ? 'pos' : 'neg'} />
-        <Stat label="Return" value={fmtPct(returnPct)} tone={returnPct >= 0 ? 'pos' : 'neg'} />
-        <Stat label="Settled days" value={String(book.days.length)} />
-        <Stat label="Last day" value={last ? fmtPct(last.pnl_pct) : '—'} tone={last && last.pnl_pct < 0 ? 'neg' : 'pos'} />
-      </div>
-      <div className="text-sm text-gray-300">
-        Planned exposure (share of equity):{' '}
-        {Object.entries(book.plan).map(([asset, p]) => `${asset} ${p.weight.toFixed(2)}x`).join(' · ')}
-      </div>
-      <p className="mt-3 text-xs text-gray-500">
-        Updated {new Date(book.updated * 1000).toLocaleString()}. Simulated results, not investment advice.
-      </p>
-    </div>
-  );
 }
 
 function fmtUsd(n: number | null | undefined, decimals = 2) {
@@ -321,7 +282,6 @@ function AureusContent() {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchFailed, setFetchFailed] = useState(false);
-  const [blend, setBlend] = useState<BlendBook | null>(null);
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -331,10 +291,9 @@ function AureusContent() {
       if (inFlight) return;
       inFlight = true;
       try {
-        const { stats: data, blend: blendData } = await getStats();
+        const data = await getStats();
         if (!active) return;
         if (data) setStats(data);
-        if (blendData) setBlend(blendData);
         setFetchFailed(data === null);
         setLoading(false);
         setNow(Date.now() / 1000);
@@ -733,16 +692,6 @@ function AureusContent() {
             </p>
           </section>
           </details>
-          )}
-          {blend && (
-            <details open className="mb-10 rounded-xl border border-gray-800 p-5">
-              <summary className="cursor-pointer text-lg font-semibold text-gray-300">
-                Blended trend book (paper)
-              </summary>
-              <div className="mt-4">
-                <BlendSummary book={blend} />
-              </div>
-            </details>
           )}
           <details className="mb-10 rounded-xl border border-gray-800 p-5">
             <summary className="cursor-pointer text-lg font-semibold text-gray-300">
