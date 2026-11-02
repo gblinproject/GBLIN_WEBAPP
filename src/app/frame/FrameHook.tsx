@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import AddMiniApp from "./add-mini-app";
 import MiniBuy from "./MiniBuy";
 import { SiteLink } from "./site-link";
 import {
@@ -309,6 +310,8 @@ export default function FrameHook() {
               </button>
             </div>
           )}
+
+          <AddMiniApp />
 
           {/* Footer: the website, always in view */}
           <div style={{ height: 1, background: C.border, margin: "2px -4px 0" }} />

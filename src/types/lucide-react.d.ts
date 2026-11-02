@@ -35,4 +35,5 @@ declare module 'lucide-react' {
   export const Sparkles: any;
   export const TrendingDown: any;
   export const Gauge: any;
+  export const Plus: any;
 }
