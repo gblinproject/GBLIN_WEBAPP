@@ -309,20 +309,31 @@ async function fetchFromIndex(limit: number): Promise<{ logs: RawLog[]; total: n
  *
  * A 30-day window scanned sequentially in 9,000-block steps is ~576 chained `eth_getLogs` calls
  * and takes more than a minute, which is enough on its own to blow through a 60-second budget.
- * Scanning ~2 days of blocks in parallel is ten calls instead.
+ * Scanning a recent window of blocks in parallel is ten calls instead. The span of time that window
+ * covers depends on the block time, so the response states it from the blocks' own timestamps.
  *
  * Only the indexer knows the complete history (no public RPC sustains a multi-month scan), so
  * the fallback declares `partial: true` rather than letting "could not look far enough back" be
  * read as "there were no rebalances".
  */
-const FALLBACK_BLOCKS = 86_400; // ~2 days on Base (~2s per block)
+const FALLBACK_BLOCKS = 86_400;
+
+/** "about 5 hours" or "about 2 days", for a span in seconds. */
+function describeSpan(seconds: number): string {
+  const hours = seconds / 3600;
+  if (hours < 48) {
+    const h = Math.max(1, Math.round(hours));
+    return `${h} hour${h === 1 ? '' : 's'}`;
+  }
+  return `${Math.round(hours / 24)} days`;
+}
 
 /**
  * Second channel on the same indexer: its legacy, etherscan-style API.
  *
  * The two APIs of the same indexer fail at different times: `/api/v2/.../logs` can answer 500 on
  * every contract in a window where `/api?module=logs` still returns the logs. Trying it before
- * dropping to RPC is worth the COMPLETE history instead of a two-day window: with `fromBlock=0`
+ * dropping to RPC is worth the COMPLETE history instead of a recent window: with `fromBlock=0`
  * it has no block-range limit.
  *
  * It already returns newest-first, like the v2 API, so the rest of the pipeline is unchanged.
@@ -477,6 +488,7 @@ async function raccogli(limit: number) {
     let source: 'index' | 'blockscout' | 'rpc' = 'blockscout';
     let windowsFailed = 0;
     let windowsTotal = 0;
+    let coveredSeconds: number | null = null;
 
     // The worker's index holds the complete history of the vault in service. When it answers, the
     // previous deployments are added from the hosted indexer when that answers too; their events are
@@ -547,7 +559,12 @@ async function raccogli(limit: number) {
       const provider = new ethers.JsonRpcProvider(RPC_URL);
       const currentBlock = await provider.getBlockNumber();
       const fromBlock = Math.max(0, currentBlock - FALLBACK_BLOCKS);
-      const esito = await fetchFromRpc(fromBlock, currentBlock);
+      const [esito, firstBlock, lastBlock] = await Promise.all([
+        fetchFromRpc(fromBlock, currentBlock),
+        provider.getBlock(fromBlock).catch(() => null),
+        provider.getBlock(currentBlock).catch(() => null),
+      ]);
+      if (firstBlock && lastBlock) coveredSeconds = lastBlock.timestamp - firstBlock.timestamp;
       raw = esito.logs;
       windowsFailed = esito.fallite;
       windowsTotal = esito.finestre;
@@ -592,14 +609,16 @@ async function raccogli(limit: number) {
       /** Which source served the logs: `pro` (API key configured), `custom`, or `public`. */
       log_source: blockscoutSource(),
       count: decoded.length,
-      // With the indexer down only ~2 days back are visible: an empty list here means
+      // With the indexer down only a recent window is visible: an empty list here means
       // "nothing recent", NOT "there have never been any rebalances".
       ...(source === 'rpc'
         ? {
             partial: true,
             covers: blind
               ? 'nothing: every log window failed, so this list means "we could not look", not "no rebalances"'
-              : `last ~${Math.round((FALLBACK_BLOCKS * 2) / 86400)} days only (Blockscout unavailable; full history needs it)`,
+              : coveredSeconds !== null
+                ? `last ~${describeSpan(coveredSeconds)} only (Blockscout unavailable; full history needs it)`
+                : `last ${FALLBACK_BLOCKS.toLocaleString('en-US')} blocks only (Blockscout unavailable; full history needs it)`,
             windows_failed: windowsFailed,
             windows_total: windowsTotal,
             ...(blind ? { degraded: true } : {}),
