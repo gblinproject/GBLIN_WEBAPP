@@ -294,16 +294,7 @@ export default function AgentsPage() {
           names, plus the live risk regime and the coherence proof):{' '}
           <code className="text-white/80 break-all">
             https://mcp.gblin.digital/mcp
-          </code>{' '}
-          — also on{' '}
-          <a
-            href="https://smithery.ai/servers/gblin-protocol/mcp"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline text-amber-200 hover:text-amber-100"
-          >
-            Smithery
-          </a>
+          </code>
           .
         </p>
       </section>

@@ -36,8 +36,7 @@ Treasury:    npm @gblin-protocol/agent-treasury (library + CLI) — USDC reserve
 Relay:       https://gblin.digital/api/relay/gblin — carries a signed GBLIN payment for a
              payer with no ETH; fee in GBLIN, payment and fee settle in one transaction. Resources: gblin://howto/attestation, gblin://howto/seal,
              gblin://limits, gblin://keys (60 req/min/IP). Nothing is paid over MCP.
-             GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i
-             Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp)
+             GET audit: /meta · /tools.json · /resources.json · /conformance · /v1/verify/:i)
 
 ## Free endpoints (no payment, plain GET)
 

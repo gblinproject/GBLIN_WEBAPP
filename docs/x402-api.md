@@ -10,7 +10,7 @@ The same data is available over MCP:
 | ----------- | ----------------------------------------------------------------- | ----------------------------------------- |
 | Transport   | stdio (`npx @gblin-protocol/mcp-server`) or hosted Streamable HTTP | HTTPS                                     |
 | Price       | free                                                              | free, except the three paid endpoints     |
-| Discovery   | MCP Registry, Smithery                                            | x402 Bazaar, `.well-known/x402`, llms.txt |
+| Discovery   | MCP Registry, Glama                                               | x402 Bazaar, `.well-known/x402`, llms.txt |
 | Code path   | `gblin-treasury-risk-regime/src/`                                 | `GBLIN_WEBAPP/src/app/api/x402/*`         |
 
 ## 1. Endpoints

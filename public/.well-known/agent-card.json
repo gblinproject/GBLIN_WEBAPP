@@ -21,7 +21,6 @@
     "mcp": "npx @gblin-protocol/mcp-server",
     "mcpHttp": "https://mcp.gblin.digital/mcp",
     "mcpRegistry": "io.github.gblinproject/gblin-treasury-risk-regime",
-    "smithery": "https://smithery.ai/servers/gblin-protocol/mcp",
     "web": "https://gblin.digital/agents",
     "x402Base": "https://gblin.digital/api/x402",
     "x402Manifest": "https://gblin.digital/.well-known/x402",

@@ -42,7 +42,6 @@
   — continuous liveness probes of the ~240 most recently updated x402 catalog resources (only ~1/3 answer);
   raw JSON at /observatory.json, per-seller badge at /observatory/badge.svg?host=…, our own endpoints in
   the same table under the same rules. Re-run it yourself: https://github.com/gblinproject/x402-catalog-probe
-  Also on Smithery: https://smithery.ai/servers/gblin-protocol/mcp
 - **GitHub:** https://github.com/gblinproject/gblin-treasury-risk-regime
 - **Docs:** https://gblin.digital/agents
 - **Receipts (transaction record, not endorsement):** https://gblin.digital/receipts

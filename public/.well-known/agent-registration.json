@@ -86,8 +86,7 @@
         "attestation.verify"
       ],
       "audit": "https://gblin-mcp.gblin-mcp-worker.workers.dev/meta",
-      "registry": "io.github.gblinproject/gblin-treasury-risk-regime",
-      "smithery": "https://smithery.ai/servers/gblin-protocol/mcp"
+      "registry": "io.github.gblinproject/gblin-treasury-risk-regime"
     },
     "stdio": {
       "package": "@gblin-protocol/mcp-server",
