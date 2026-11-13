@@ -527,10 +527,19 @@ function AureusContent() {
             </section>
           )}
 
-          {s.open_positions && s.open_positions.length > 0 && (
+          {s.open_positions && s.open_positions.length > 0 && !s.open_positions.some((p) => p.size_usd > 0) && (
+            <section className="mb-10">
+              <h2 className="text-xl font-semibold mb-2">{t('aureus.openPositionsHeading')} (0)</h2>
+              <p className="text-sm text-gray-400">
+                Flat: no capital is deployed right now. The strategy is waiting for its next entry signal. Nothing is broken; the account is simply in cash.
+              </p>
+            </section>
+          )}
+
+          {s.open_positions && s.open_positions.some((p) => p.size_usd > 0) && (
             <section className="mb-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">{t('aureus.openPositionsHeading')} ({s.open_count})</h2>
+                <h2 className="text-xl font-semibold">{t('aureus.openPositionsHeading')} ({s.open_positions.filter((p) => p.size_usd > 0).length})</h2>
                 <span className={`text-sm font-bold ${pnlColor(s.total_unrealized_pnl)}`}>
                   {t('aureus.unrealizedPnl')} {fmtUsd(s.total_unrealized_pnl, 4)}
                 </span>
@@ -550,7 +559,7 @@ function AureusContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {s.open_positions.map((p, i) => (
+                    {s.open_positions.filter((p) => p.size_usd > 0).map((p, i) => (
                       <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                         <td className="py-3 pr-4 font-medium">{p.asset}</td>
                         <td className="py-3 pr-4">
