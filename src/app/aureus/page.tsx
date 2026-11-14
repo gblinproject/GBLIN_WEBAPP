@@ -702,14 +702,16 @@ function AureusContent() {
           </section>
           </details>
           )}
+          {s.esperimenti?.daytrade_v18 && (
           <details className="mb-10 rounded-xl border border-gray-800 p-5">
             <summary className="cursor-pointer text-lg font-semibold text-gray-300">
               {t('aureus.intradayHeading')}
             </summary>
             <div className="mt-4">
-              <IntradaySummary report={s.esperimenti?.daytrade_v18} now={now} fetchFailed={fetchFailed} />
+              <IntradaySummary report={s.esperimenti.daytrade_v18} now={now} fetchFailed={fetchFailed} />
             </div>
           </details>
+          )}
         </>
       )}
 
