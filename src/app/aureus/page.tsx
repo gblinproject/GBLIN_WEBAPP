@@ -15,8 +15,6 @@ type Trade = {
   entry_price?: number;
   exit_price?: number;
   size_usd?: number;
-  catalyst?: string;
-  conviction?: number;
   liquidated?: boolean;
 };
 type EquityPoint = { t: number; equity: number };
@@ -41,58 +39,18 @@ type OpenPosition = {
   unrealized_pnl: number | null;
   settled_pnl_usd?: number;
   open_pnl_usd?: number;
-  mark_price?: number | null;
-  catalyst: string;
-  conviction: number;
   commit_hash: string;
   opened_at: number;
 };
-type BookSleeve = {
-  equity_usd: number; marked_usd: number; open_pnl_usd: number; settled_pnl_usd: number;
-  cost_usd: number; funding_usd: number;
+type AccountDay = {
+  day: number; equity_usd: number; return_pct: number; cost_usd?: number | null; funding_usd?: number | null;
 };
-type BookDay = {
-  day: number; equity_usd: number; return_pct: number; trend_pnl_usd?: number | null; noon_pnl_usd?: number | null;
-  cost_usd?: number | null; funding_usd?: number | null; mean_exposure?: number | null; bars?: number | null;
-};
-type BookBar = {
-  bar: number; exposure: number; result_pct: number; next_exposure: number; liquidated: boolean;
-  move_pct: number; pnl_usd: number; cost_usd: number; funding_usd: number; equity_usd: number;
-};
-type BookSession = {
-  opened_at: number; closed_at: number; entry_price: number; exit_price: number; leverage: number;
-  pnl_usd: number; move_pct: number; liquidated: boolean; cost_usd?: number; funding_usd?: number;
-};
-type BookMarket = {
-  at: number; bar: number; close: number; vote: number; target: number;
-  rules: { total: number; kept: number; long: number; short: number; flat: number };
-  calm_measure: number | null; calm_reference: number; trend_scale: number; noon_scale: number;
-  noon_leverage: number; noon_z: number | null; noon_above: boolean;
-  funding_rate: number | null; funding_at: number | null; fear_greed: number | null;
-};
-type Book = {
+type Account = {
   started_at: number; settled_to: number; days_running: number; start_capital_usd: number;
   price: number; start_price: number | null; return_pct: number; daily_rate_pct: number | null;
   hold_return_pct: number | null; today_return_pct: number; cost_usd: number; funding_usd: number; liquidations: number;
-  sleeves: {
-    trend: BookSleeve & { exposure: number; mark_price: number | null; bars: number; turnover: number; liquidation_price: number | null };
-    noon: BookSleeve & {
-      trades: number; wins: number;
-      open: { opened_at: number; closes_at: number; entry_price: number; leverage: number; liquidation_price: number } | null;
-    };
-  };
   daily: { count: number; positive: number; negative: number; best_pct: number | null; worst_pct: number | null; mean_pct: number | null };
-  days: BookDay[];
-  next: { bar_close: number; noon_check: number; rebalance: number };
-  market: BookMarket | null;
-  bars: BookBar[];
-  sessions: BookSession[];
-  noon_checks: { at: number; z: number | null; above: boolean; signal: boolean; entered: boolean }[];
-  rebalances: { at: number; sleeve_equity: number; to_trend_usd: number }[];
-  parameters: {
-    trend_leverage: number; trend_scale_range: number[]; noon_leverage: number; noon_leverage_cap: number;
-    noon_scale_range: number[]; noon_hold_hours: number; noon_threshold: number; cost_per_side: number; maintenance: number;
-  };
+  days: AccountDay[];
 };
 type Stats = {
   updated: number;
@@ -116,11 +74,11 @@ type Stats = {
   all_trades: Trade[];
   metrics?: Metrics;
   esperimenti?: Experiments;
-  exposure?: { gross_usd: number; gross_x: number | null; cap_x: number };
+  exposure?: { gross_usd: number; gross_x: number | null };
   halt_pct?: number;
   benchmark?: Benchmark | null;
   gate?: Gate | null;
-  book?: Book | null;
+  account?: Account | null;
 };
 type Benchmark = {
   since: number;
@@ -541,7 +499,7 @@ function AureusContent() {
                     <Stat label={t('aureus.bmExcess')} value={fmtPct(s.benchmark.excess_pct)}
                       tone={(s.benchmark.excess_pct ?? 0) >= 0 ? 'pos' : 'neg'} />
                     <Stat label={t('aureus.bmExposure')}
-                      value={`${(s.exposure?.gross_x ?? s.benchmark.gross_x_now).toFixed(2)}x / ${(s.exposure?.cap_x ?? 1).toFixed(1)}x`} />
+                      value={`${(s.exposure?.gross_x ?? s.benchmark.gross_x_now).toFixed(2)}x`} />
                     <Stat label={t('aureus.bmDays')} value={`${s.benchmark.positive_days} / ${s.benchmark.negative_days}`} />
                     <Stat label={t('aureus.bmWorstDay')} value={fmtPct(s.benchmark.worst_day_pct)} tone="neg" />
                     <Stat label={t('aureus.bmBestDay')} value={fmtPct(s.benchmark.best_day_pct)} tone="pos" />
@@ -610,8 +568,7 @@ function AureusContent() {
                       <th className="pb-2 pr-4">{t('aureus.colSizeLev')}</th>
                       <th className="pb-2 pr-4">{t('aureus.colEntry')}</th>
                       <th className="pb-2 pr-4">{t('aureus.colPrice')}</th>
-                      <th className="pb-2 pr-4">{t('aureus.colPnl')}</th>
-                      <th className="pb-2">{t('aureus.colConv')}</th>
+                      <th className="pb-2">{t('aureus.colPnl')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -644,7 +601,7 @@ function AureusContent() {
                         <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
                           {p.delta_neutral ? '—' : (p.current_price?.toLocaleString() ?? '—')}
                         </td>
-                        <td className={`py-3 pr-4 font-bold ${pnlColor(p.unrealized_pnl)}`}>
+                        <td className={`py-3 font-bold ${pnlColor(p.unrealized_pnl)}`}>
                           {fmtUsd(p.unrealized_pnl, 4)}
                           {p.delta_neutral && p.unrealized_pnl !== null && (
                             <span className="ml-1 text-[10px] text-blue-400 font-normal">{t('aureus.funding')}</span>
@@ -655,19 +612,15 @@ function AureusContent() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 text-gray-400 text-xs">
-                          {(p.conviction * 100).toFixed(0)}%
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-600 mt-3">{t('aureus.carryNote')}</p>
             </section>
           )}
 
-          {s.book && <BookDetail book={s.book} now={now} />}
+          {s.account && <AccountDetail account={s.account} />}
 
           {hallOfFame.length > 0 && (
             <section className="mb-10">
@@ -841,28 +794,6 @@ function AureusContent() {
                 </p>
               </div>
             </div>
-
-            {selectedTrade.catalyst && (
-              <div className="mb-4">
-                <p className="text-[11px] uppercase text-gray-500 mb-2">{t('aureus.catalystLabel')}</p>
-                <p className="text-sm text-gray-300 bg-white/5 rounded-lg p-3">{selectedTrade.catalyst}</p>
-              </div>
-            )}
-
-            {selectedTrade.conviction !== undefined && (
-              <div className="mb-4">
-                <p className="text-[11px] uppercase text-gray-500 mb-2">{t('aureus.convictionLabel')}</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-800 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: `${selectedTrade.conviction * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium">{(selectedTrade.conviction * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-            )}
 
             {selectedTrade.commit_hash && (
               <div className="mb-4">
@@ -1151,175 +1082,42 @@ function BookTable({ title, head, rows, empty, open }: {
   );
 }
 
-function BookDetail({ book, now }: { book: Book; now: number | null }) {
+function AccountDetail({ account }: { account: Account }) {
   const { t } = useT();
   const tone = (n: number | null | undefined) => (n == null || n === 0 ? undefined : n > 0 ? 'pos' as const : 'neg' as const);
-  const rawPct = (n: number | null | undefined, decimals = 2) => (n == null ? '—' : fmtPct(n / 100, decimals));
-  const until = (ts: number) => (now == null ? '' : `${t('aureus.bookIn')} ${formatDuration(Math.max(0, ts - now))}`);
-  const { trend, noon } = book.sleeves;
-  const m = book.market;
-  const p = book.parameters;
-  const sleeveRows = (sleeve: BookSleeve) => (
-    <>
-      <div className="flex items-baseline justify-between">
-        <span className="text-2xl font-semibold tabular-nums text-gray-100">${sleeve.marked_usd.toFixed(2)}</span>
-        <span className="text-xs text-gray-500">{t('aureus.bookEquity')}</span>
-      </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs tabular-nums">
-        <dt className="text-gray-500">{t('aureus.bookSettled')}</dt>
-        <dd className={`text-right ${pnlColor(sleeve.settled_pnl_usd)}`}>{signedUsd(sleeve.settled_pnl_usd)}</dd>
-        <dt className="text-gray-500">{t('aureus.bookOpen')}</dt>
-        <dd className={`text-right ${pnlColor(sleeve.open_pnl_usd)}`}>{signedUsd(sleeve.open_pnl_usd)}</dd>
-        <dt className="text-gray-500">{t('aureus.bookCosts')}</dt>
-        <dd className="text-right text-gray-200">${sleeve.cost_usd.toFixed(2)}</dd>
-        <dt className="text-gray-500">{t('aureus.bookFunding')}</dt>
-        <dd className={`text-right ${pnlColor(fundingEffect(sleeve.funding_usd))}`}>{signedUsd(fundingEffect(sleeve.funding_usd), 4)}</dd>
-      </dl>
-    </>
-  );
-  const line = (label: string, value: string) => (
-    <>
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-right text-gray-200">{value}</dd>
-    </>
-  );
 
   return (
     <section className="mb-10">
       <h2 className="text-lg font-semibold text-gray-200">{t('aureus.bookHeading')}</h2>
       <p className="mt-1 mb-5 text-sm text-gray-500">
-        {t('aureus.bookNote')} {t('aureus.bookSettledTo')} {utcTime(book.settled_to)}.
+        {t('aureus.bookNote')} {t('aureus.bookSettledTo')} {utcTime(account.settled_to)}.
       </p>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label={t('aureus.bookReturn')} value={fmtPct(book.return_pct)} tone={tone(book.return_pct)} />
-        <Stat label={t('aureus.bookDailyRate')} value={fmtPct(book.daily_rate_pct, 3)} tone={tone(book.daily_rate_pct)}
+        <Stat label={t('aureus.bookReturn')} value={fmtPct(account.return_pct)} tone={tone(account.return_pct)} />
+        <Stat label={t('aureus.bookDailyRate')} value={fmtPct(account.daily_rate_pct, 3)} tone={tone(account.daily_rate_pct)}
           hint={t('aureus.bookDailyRateHint')} />
-        <Stat label={t('aureus.bookToday')} value={fmtPct(book.today_return_pct)} tone={tone(book.today_return_pct)} />
-        <Stat label={t('aureus.bookHold')} value={fmtPct(book.hold_return_pct)} tone={tone(book.hold_return_pct)}
-          hint={book.start_price ? `$${book.start_price.toFixed(2)} → $${book.price.toFixed(2)}` : undefined} />
-        <Stat label={t('aureus.bookRunning')} value={`${book.days_running.toFixed(1)} ${t('aureus.bookDaysUnit')}`}
-          hint={`${t('aureus.bookSince')} ${utcTime(book.started_at)}`} />
-        <Stat label={t('aureus.bookCosts')} value={`$${book.cost_usd.toFixed(2)}`} hint={t('aureus.bookCostsHint')} />
-        <Stat label={t('aureus.bookFunding')} value={signedUsd(fundingEffect(book.funding_usd), 4)}
-          tone={tone(fundingEffect(book.funding_usd))} hint={t('aureus.bookFundingHint')} />
-        <Stat label={t('aureus.bookDaysUpDown')} value={`${book.daily.positive} / ${book.daily.negative}`}
-          hint={`${t('aureus.bookMeanDay')} ${fmtPct(book.daily.mean_pct)}`} />
-        <Stat label={t('aureus.bookBestWorst')} value={`${fmtPct(book.daily.best_pct, 1)} / ${fmtPct(book.daily.worst_pct, 1)}`} />
-        <Stat label={t('aureus.bookLiquidations')} value={`${book.liquidations}`} tone={book.liquidations > 0 ? 'neg' : undefined} />
+        <Stat label={t('aureus.bookToday')} value={fmtPct(account.today_return_pct)} tone={tone(account.today_return_pct)} />
+        <Stat label={t('aureus.bookHold')} value={fmtPct(account.hold_return_pct)} tone={tone(account.hold_return_pct)}
+          hint={account.start_price ? `$${account.start_price.toFixed(2)} → $${account.price.toFixed(2)}` : undefined} />
+        <Stat label={t('aureus.bookRunning')} value={`${account.days_running.toFixed(1)} ${t('aureus.bookDaysUnit')}`}
+          hint={`${t('aureus.bookSince')} ${utcTime(account.started_at)}`} />
+        <Stat label={t('aureus.bookCosts')} value={`$${account.cost_usd.toFixed(2)}`} hint={t('aureus.bookCostsHint')} />
+        <Stat label={t('aureus.bookFunding')} value={signedUsd(fundingEffect(account.funding_usd), 4)}
+          tone={tone(fundingEffect(account.funding_usd))} hint={t('aureus.bookFundingHint')} />
+        <Stat label={t('aureus.bookDaysUpDown')} value={`${account.daily.positive} / ${account.daily.negative}`}
+          hint={`${t('aureus.bookMeanDay')} ${fmtPct(account.daily.mean_pct)}`} />
+        <Stat label={t('aureus.bookBestWorst')} value={`${fmtPct(account.daily.best_pct, 1)} / ${fmtPct(account.daily.worst_pct, 1)}`} />
+        <Stat label={t('aureus.bookLiquidations')} value={`${account.liquidations}`} tone={account.liquidations > 0 ? 'neg' : undefined} />
       </div>
-
-      <div className="mb-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-white/5 bg-white/[0.03] p-5">
-          <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-gray-500">{t('aureus.bookTrend')}</p>
-          {sleeveRows(trend)}
-          <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs tabular-nums">
-            {line(t('aureus.bookExposure'), `${trend.exposure >= 0 ? '+' : ''}${trend.exposure.toFixed(2)}x`)}
-            {line(t('aureus.bookLiqPrice'), trend.liquidation_price != null ? `$${trend.liquidation_price.toFixed(2)}` : '—')}
-            {line(t('aureus.bookBars'), `${trend.bars}`)}
-            {line(t('aureus.bookTurnover'), `${trend.turnover.toFixed(2)}x`)}
-          </dl>
-        </div>
-        <div className="rounded-xl border border-white/5 bg-white/[0.03] p-5">
-          <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-gray-500">{t('aureus.bookNoon')}</p>
-          {sleeveRows(noon)}
-          <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs tabular-nums">
-            {line(t('aureus.bookSessions'), `${noon.trades} (${noon.wins} ${t('aureus.bookWon')})`)}
-            {line(t('aureus.bookOpenPosition'), noon.open
-              ? `${noon.open.leverage.toFixed(1)}x @ $${noon.open.entry_price.toFixed(2)}`
-              : t('aureus.bookNone'))}
-            {noon.open && line(t('aureus.bookCloses'), `${utcTime(noon.open.closes_at)} ${until(noon.open.closes_at)}`)}
-            {noon.open && line(t('aureus.bookLiqPrice'), `$${noon.open.liquidation_price.toFixed(2)}`)}
-          </dl>
-        </div>
-      </div>
-
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <Stat label={t('aureus.bookNextBar')} value={utcTime(book.next.bar_close)} hint={until(book.next.bar_close)} />
-        <Stat label={t('aureus.bookNextNoon')} value={utcTime(book.next.noon_check)} hint={until(book.next.noon_check)} />
-        <Stat label={t('aureus.bookNextRebalance')} value={utcTime(book.next.rebalance)} hint={until(book.next.rebalance)} />
-      </div>
-
-      {m && (
-        <div className="mb-6 rounded-xl border border-white/5 bg-white/[0.02] p-5">
-          <h3 className="text-sm font-semibold text-gray-300">{t('aureus.bookMarket')}</h3>
-          <p className="mt-1 mb-4 text-xs text-gray-500">
-            {t('aureus.bookMarketNote')} {t('aureus.bookReadAt')} {utcTime(m.at)}, {t('aureus.bookLastBar')} {utcTime(m.bar)} (${m.close.toFixed(2)}).
-          </p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <Stat label={t('aureus.bookVote')} value={`${m.vote >= 0 ? '+' : ''}${m.vote.toFixed(3)}`} tone={tone(m.vote)}
-              hint={t('aureus.bookVoteHint')} />
-            <Stat label={t('aureus.bookTarget')} value={`${m.target >= 0 ? '+' : ''}${m.target.toFixed(2)}x`} tone={tone(m.target)}
-              hint={t('aureus.bookTargetHint')} />
-            <Stat label={t('aureus.bookRules')} value={`${m.rules.long} / ${m.rules.short} / ${m.rules.flat}`}
-              hint={`${m.rules.kept} ${t('aureus.bookRulesActive')} ${m.rules.total}`} />
-            <Stat label={t('aureus.bookVolatility')}
-              value={`${m.calm_measure != null ? (m.calm_measure * 100).toFixed(2) : '—'}% / ${(m.calm_reference * 100).toFixed(2)}%`}
-              hint={t('aureus.bookVolatilityHint')} />
-            <Stat label={t('aureus.bookScale')} value={`${m.trend_scale.toFixed(2)} / ${m.noon_scale.toFixed(2)}`}
-              hint={`${p.trend_scale_range.join('–')} · ${p.noon_scale_range.join('–')}`} />
-            <Stat label={t('aureus.bookNoonLeverage')} value={`${m.noon_leverage.toFixed(1)}x`}
-              hint={`${t('aureus.bookCap')} ${p.noon_leverage_cap}x`} />
-            <Stat label={t('aureus.bookNoonZ')} value={m.noon_z != null ? `${m.noon_z >= 0 ? '+' : ''}${m.noon_z.toFixed(2)}` : '—'}
-              tone={m.noon_z != null && m.noon_z > p.noon_threshold ? 'pos' : undefined}
-              hint={`${t('aureus.bookThreshold')} +${p.noon_threshold.toFixed(1)}`} />
-            <Stat label={t('aureus.bookNoonAbove')} value={m.noon_above ? t('aureus.bookYes') : t('aureus.bookNo')}
-              tone={m.noon_above ? 'pos' : undefined} hint={t('aureus.bookNoonAboveHint')} />
-            <Stat label={t('aureus.bookFundingRate')} value={m.funding_rate != null ? `${(m.funding_rate * 100).toFixed(4)}%` : '—'}
-              hint={utcTime(m.funding_at)} />
-            <Stat label={t('aureus.bookFearGreed')} value={m.fear_greed != null ? `${m.fear_greed.toFixed(0)} / 100` : '—'} />
-          </div>
-        </div>
-      )}
 
       <BookTable open title={t('aureus.bookDaysTable')} empty={t('aureus.bookEmpty')}
-        head={[t('aureus.bookColDay'), t('aureus.bookEquity'), t('aureus.bookColReturn'), t('aureus.bookColTrend'), t('aureus.bookColNoon'),
-          t('aureus.bookCosts'), t('aureus.bookFunding'), t('aureus.bookColMeanExposure')]}
-        rows={book.days.map((d) => ({ key: `${d.day}`, cells: [
+        head={[t('aureus.bookColDay'), t('aureus.bookEquity'), t('aureus.bookColReturn'), t('aureus.bookCosts'), t('aureus.bookFunding')]}
+        rows={account.days.map((d) => ({ key: `${d.day}`, cells: [
           { text: utcDay(d.day) }, { text: `$${d.equity_usd.toFixed(2)}` }, { text: fmtPct(d.return_pct), tone: d.return_pct },
-          { text: signedUsd(d.trend_pnl_usd), tone: d.trend_pnl_usd ?? null }, { text: signedUsd(d.noon_pnl_usd), tone: d.noon_pnl_usd ?? null },
           { text: d.cost_usd != null ? `$${d.cost_usd.toFixed(3)}` : '—' },
           { text: signedUsd(fundingEffect(d.funding_usd), 4), tone: fundingEffect(d.funding_usd) },
-          { text: d.mean_exposure != null ? `${d.mean_exposure >= 0 ? '+' : ''}${d.mean_exposure.toFixed(2)}x` : '—' },
         ] }))} />
-      <BookTable title={t('aureus.bookBarsTable')} empty={t('aureus.bookEmpty')}
-        head={[t('aureus.bookColBar'), t('aureus.bookExposure'), t('aureus.bookColMove'), t('aureus.bookColResult'), t('aureus.bookColPnl'),
-          t('aureus.bookCosts'), t('aureus.bookFunding'), t('aureus.bookEquity')]}
-        rows={book.bars.map((b) => ({ key: `${b.bar}`, cells: [
-          { text: utcTime(b.bar) }, { text: `${b.exposure >= 0 ? '+' : ''}${b.exposure.toFixed(2)}x` },
-          { text: rawPct(b.move_pct), tone: b.move_pct }, { text: rawPct(b.result_pct), tone: b.result_pct },
-          { text: signedUsd(b.pnl_usd, 3), tone: b.pnl_usd }, { text: `$${b.cost_usd.toFixed(3)}` },
-          { text: signedUsd(fundingEffect(b.funding_usd), 4), tone: fundingEffect(b.funding_usd) },
-          { text: `$${b.equity_usd.toFixed(2)}${b.liquidated ? ' !' : ''}` },
-        ] }))} />
-      <BookTable title={t('aureus.bookChecksTable')} empty={t('aureus.bookEmpty')}
-        head={[t('aureus.bookColTime'), t('aureus.bookNoonZ'), t('aureus.bookNoonAbove'), t('aureus.bookColSignal'), t('aureus.bookColEntered')]}
-        rows={book.noon_checks.map((c) => ({ key: `${c.at}`, cells: [
-          { text: utcTime(c.at) }, { text: c.z != null ? `${c.z >= 0 ? '+' : ''}${c.z.toFixed(2)}` : '—' },
-          { text: c.above ? t('aureus.bookYes') : t('aureus.bookNo') },
-          { text: c.signal ? t('aureus.bookYes') : t('aureus.bookNo'), tone: c.signal ? 1 : null },
-          { text: c.entered ? t('aureus.bookYes') : t('aureus.bookNo'), tone: c.entered ? 1 : null },
-        ] }))} />
-      <BookTable title={t('aureus.bookSessionsTable')} empty={t('aureus.bookEmpty')}
-        head={[t('aureus.bookColOpened'), t('aureus.bookColEntry'), t('aureus.bookColExit'), t('aureus.bookColLeverage'),
-          t('aureus.bookColMove'), t('aureus.bookColPnl')]}
-        rows={book.sessions.map((x) => ({ key: `${x.opened_at}`, cells: [
-          { text: utcTime(x.opened_at) }, { text: `$${x.entry_price.toFixed(2)}` }, { text: `$${x.exit_price.toFixed(2)}` },
-          { text: `${x.leverage.toFixed(1)}x` }, { text: rawPct(x.move_pct), tone: x.move_pct },
-          { text: `${signedUsd(x.pnl_usd, 3)}${x.liquidated ? ' !' : ''}`, tone: x.pnl_usd },
-        ] }))} />
-      <BookTable title={t('aureus.bookRebalancesTable')} empty={t('aureus.bookEmpty')}
-        head={[t('aureus.bookColTime'), t('aureus.bookColSleeveEquity'), t('aureus.bookColMoved')]}
-        rows={book.rebalances.map((r) => ({ key: `${r.at}`, cells: [
-          { text: utcTime(r.at) }, { text: `$${r.sleeve_equity.toFixed(2)}` }, { text: signedUsd(r.to_trend_usd, 3) },
-        ] }))} />
-
-      <p className="mt-4 text-xs leading-relaxed text-gray-500">
-        {t('aureus.bookParameters')}: {t('aureus.bookTrend')} {p.trend_leverage}x × {p.trend_scale_range.join('–')} ·{' '}
-        {t('aureus.bookNoon')} {p.noon_leverage}x × {p.noon_scale_range.join('–')}, {t('aureus.bookCap')} {p.noon_leverage_cap}x,{' '}
-        {p.noon_hold_hours}h · {t('aureus.bookCostPerSide')} {(p.cost_per_side * 100).toFixed(3)}% ·{' '}
-        {t('aureus.bookMaintenance')} {(p.maintenance * 100).toFixed(0)}%
-      </p>
     </section>
   );
 }
