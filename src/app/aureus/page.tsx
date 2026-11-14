@@ -578,8 +578,6 @@ function AureusContent() {
             </section>
           )}
 
-          {s.book && <BookDetail book={s.book} now={now} />}
-
           {s.open_positions && s.open_positions.length > 0 && !s.open_positions.some((p) => p.size_usd > 0) && (
             <section className="mb-10">
               <h2 className="text-xl font-semibold mb-2">{t('aureus.openPositionsHeading')} (0)</h2>
@@ -668,6 +666,8 @@ function AureusContent() {
               <p className="text-xs text-gray-600 mt-3">{t('aureus.carryNote')}</p>
             </section>
           )}
+
+          {s.book && <BookDetail book={s.book} now={now} />}
 
           {hallOfFame.length > 0 && (
             <section className="mb-10">
