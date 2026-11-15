@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { PublicShell } from '@/components/protocol/public-shell';
 import { useT } from '@/components/protocol/i18n-context';
 
+type Adjustment = { at: number; price: number; size_before_usd: number; size_after_usd: number };
+type HistoryRow = { at: number; asset: string; direction?: string; adjustment?: Adjustment; trade?: Trade };
 type Trade = {
   asset: string;
   pnl_usd: number;
@@ -16,6 +18,7 @@ type Trade = {
   exit_price?: number;
   size_usd?: number;
   liquidated?: boolean;
+  adjustments?: Adjustment[];
 };
 type EquityPoint = { t: number; equity: number };
 type Metrics = {
@@ -41,7 +44,7 @@ type OpenPosition = {
   open_pnl_usd?: number;
   commit_hash: string;
   opened_at: number;
-  adjustments?: { at: number; price: number; size_before_usd: number; size_after_usd: number }[];
+  adjustments?: Adjustment[];
 };
 type AccountDay = {
   day: number; equity_usd: number; return_pct: number; cost_usd?: number | null; funding_usd?: number | null;
@@ -338,6 +341,21 @@ function AureusContent() {
     return filtered.sort((a, b) => (b.closed_at || 0) - (a.closed_at || 0));
   }, [tradeSource, filter]);
 
+  const historyRows = useMemo(() => {
+    const now = Date.now() / 1000;
+    const days = filter === 'today' ? 1 : filter === '7d' ? 7 : filter === '30d' ? 30 : 36500;
+    const rows: HistoryRow[] = filteredTrades.map((t) => ({ at: t.closed_at || 0, asset: t.asset, direction: t.direction, trade: t }));
+    [...(s?.open_positions ?? []), ...tradeSource].forEach((p) => {
+      (p.adjustments ?? []).forEach((a) => {
+        if (now - a.at < days * 86400) rows.push({ at: a.at, asset: p.asset, direction: p.direction, adjustment: a });
+      });
+    });
+    return rows.sort((a, b) => b.at - a.at);
+  }, [s?.open_positions, tradeSource, filteredTrades, filter]);
+
+  const adjustmentLabel = (a: Adjustment) =>
+    t(a.size_after_usd < a.size_before_usd ? 'aureus.positionPartialClose' : 'aureus.positionIncrease');
+
   const hallOfFame = useMemo(() => {
     if (!tradeSource.length) return [];
     const byAsset = new Map<string, Trade[]>();
@@ -436,8 +454,8 @@ function AureusContent() {
                 />
                 <KpiCard
                   label={`${t('aureus.liquidations')} ⚠`}
-                  value={s.metrics.liquidations}
-                  good={(v) => v === 0}
+                  value={`${s.metrics.liquidations}`}
+                  good={() => s.metrics!.liquidations === 0}
                   warn={() => false}
                 />
               </div>
@@ -592,22 +610,15 @@ function AureusContent() {
                         </td>
                         <td className="py-3 pr-4 text-gray-300">
                           ${p.size_usd.toFixed(0)} · {p.leverage}x
-                          {(p.adjustments ?? []).map((a) => (
-                            <span key={a.at} className="block text-[10px] text-gray-500">
-                              {new Date(a.at * 1000).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              {' · '}{t(a.size_after_usd < a.size_before_usd ? 'aureus.positionPartialClose' : 'aureus.positionIncrease')}
-                              {' '}${a.size_before_usd.toFixed(0)} → ${a.size_after_usd.toFixed(0)} @ {a.price.toLocaleString()}
-                            </span>
-                          ))}
                         </td>
                         <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                          {p.entry_price.toLocaleString()}
+                          {p.entry_price.toFixed(2)}
                           <span className="block text-[10px] text-gray-500 font-sans">
                             {new Date(p.opened_at * 1000).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </td>
                         <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
-                          {p.delta_neutral ? '—' : (p.current_price?.toLocaleString() ?? '—')}
+                          {p.delta_neutral ? '—' : (p.current_price?.toFixed(2) ?? '—')}
                         </td>
                         <td className={`py-3 font-bold ${pnlColor(p.unrealized_pnl)}`}>
                           {fmtUsd(p.unrealized_pnl, 4)}
@@ -681,11 +692,37 @@ function AureusContent() {
               </div>
             </div>
 
-            {filteredTrades.length === 0 ? (
+            {historyRows.length === 0 ? (
               <p className="text-sm text-gray-500">{t('aureus.noTradesPeriod')}</p>
             ) : (
               <div className="space-y-2">
-                {filteredTrades.map((t, i) => (
+                {historyRows.map((row, i) => {
+                  const a = row.adjustment;
+                  if (a) {
+                    return (
+                      <div key={i} className="flex justify-between items-center border border-gray-800 rounded-lg px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium">{row.asset}</span>
+                          <span className={`text-xs uppercase px-2 py-0.5 rounded ${
+                            row.direction === 'long' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'
+                          }`}>
+                            {row.direction}
+                          </span>
+                          <span className="text-xs uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-300">
+                            {adjustmentLabel(a)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-gray-400">{new Date(a.at * 1000).toLocaleDateString()}</span>
+                          <span className="text-gray-300 font-mono text-xs">
+                            ${a.size_before_usd.toFixed(0)} → ${a.size_after_usd.toFixed(0)} @ {a.price.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const t = row.trade!;
+                  return (
                   <div
                     key={i}
                     onClick={() => setSelectedTrade(t)}
@@ -718,7 +755,8 @@ function AureusContent() {
                       </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <p className="text-xs text-gray-600 mt-3">
