@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { PublicShell } from '@/components/protocol/public-shell';
 import { useT } from '@/components/protocol/i18n-context';
 
-type Adjustment = { at: number; price: number; size_before_usd: number; size_after_usd: number };
-type HistoryRow = { at: number; asset: string; direction?: string; adjustment?: Adjustment; trade?: Trade };
+type Adjustment = { at: number; price: number; size_before_usd: number; size_after_usd: number; realized_pnl_usd?: number | null };
+type HistoryRow = { at: number; asset: string; direction?: string; entry_price?: number; adjustment?: Adjustment; trade?: Trade };
 type Trade = {
   asset: string;
   pnl_usd: number;
@@ -347,12 +347,17 @@ function AureusContent() {
     const rows: HistoryRow[] = filteredTrades.map((t) => ({ at: t.closed_at || 0, asset: t.asset, direction: t.direction, trade: t }));
     [...(s?.open_positions ?? []), ...tradeSource].forEach((p) => {
       (p.adjustments ?? []).forEach((a) => {
-        if (now - a.at < days * 86400) rows.push({ at: a.at, asset: p.asset, direction: p.direction, adjustment: a });
+        if (now - a.at < days * 86400) rows.push({ at: a.at, asset: p.asset, direction: p.direction, entry_price: p.entry_price, adjustment: a });
       });
     });
     return rows.sort((a, b) => b.at - a.at);
   }, [s?.open_positions, tradeSource, filteredTrades, filter]);
 
+  const adjustmentWords = {
+    closed: t('aureus.positionClosedPart'),
+    added: t('aureus.positionAddedPart'),
+    realized: t('aureus.positionRealized'),
+  };
   const adjustmentLabel = (a: Adjustment) =>
     t(a.size_after_usd < a.size_before_usd ? 'aureus.positionPartialClose' : 'aureus.positionIncrease');
 
@@ -699,6 +704,10 @@ function AureusContent() {
                 {historyRows.map((row, i) => {
                   const a = row.adjustment;
                   if (a) {
+                    const change = Math.abs(a.size_before_usd - a.size_after_usd);
+                    const share = a.size_before_usd ? (change / a.size_before_usd) * 100 : 0;
+                    const reduced = a.size_after_usd < a.size_before_usd;
+                    const realized = typeof a.realized_pnl_usd === 'number' ? a.realized_pnl_usd : null;
                     return (
                       <div key={i} className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border border-gray-800 rounded-lg px-4 py-3">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -714,9 +723,23 @@ function AureusContent() {
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                           <span className="text-gray-400">{new Date(a.at * 1000).toLocaleDateString()}</span>
+                          {row.entry_price != null && (
+                            <span className="text-gray-300 font-mono text-xs whitespace-nowrap">
+                              {row.entry_price.toFixed(2)} → {a.price.toFixed(2)}
+                            </span>
+                          )}
                           <span className="text-gray-300 font-mono text-xs whitespace-nowrap">
-                            ${a.size_before_usd.toFixed(0)} → ${a.size_after_usd.toFixed(0)} @ {a.price.toFixed(2)}
+                            {reduced ? adjustmentWords.closed : adjustmentWords.added} ${change.toFixed(2)} ({share.toFixed(0)}%)
                           </span>
+                          <span className="text-gray-500 font-mono text-xs whitespace-nowrap">
+                            ${a.size_before_usd.toFixed(2)} → ${a.size_after_usd.toFixed(2)}
+                          </span>
+                          {reduced && realized !== null && (
+                            <span className={`font-mono font-medium whitespace-nowrap ${realized >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {adjustmentWords.realized} {realized >= 0 ? '+' : '−'}${Math.abs(realized).toFixed(2)}
+                              {change > 0 && ` (${realized >= 0 ? '+' : '−'}${Math.abs((realized / change) * 100).toFixed(2)}%)`}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
