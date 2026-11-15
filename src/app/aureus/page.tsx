@@ -41,6 +41,7 @@ type OpenPosition = {
   open_pnl_usd?: number;
   commit_hash: string;
   opened_at: number;
+  adjustments?: { at: number; price: number; size_before_usd: number; size_after_usd: number }[];
 };
 type AccountDay = {
   day: number; equity_usd: number; return_pct: number; cost_usd?: number | null; funding_usd?: number | null;
@@ -591,6 +592,13 @@ function AureusContent() {
                         </td>
                         <td className="py-3 pr-4 text-gray-300">
                           ${p.size_usd.toFixed(0)} · {p.leverage}x
+                          {(p.adjustments ?? []).map((a) => (
+                            <span key={a.at} className="block text-[10px] text-gray-500">
+                              {new Date(a.at * 1000).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {' · '}{t(a.size_after_usd < a.size_before_usd ? 'aureus.positionPartialClose' : 'aureus.positionIncrease')}
+                              {' '}${a.size_before_usd.toFixed(0)} → ${a.size_after_usd.toFixed(0)} @ {a.price.toLocaleString()}
+                            </span>
+                          ))}
                         </td>
                         <td className="py-3 pr-4 text-gray-300 font-mono text-xs">
                           {p.entry_price.toLocaleString()}
