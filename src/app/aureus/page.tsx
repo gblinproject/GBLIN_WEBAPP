@@ -700,21 +700,21 @@ function AureusContent() {
                   const a = row.adjustment;
                   if (a) {
                     return (
-                      <div key={i} className="flex justify-between items-center border border-gray-800 rounded-lg px-4 py-3">
-                        <div className="flex items-center gap-3">
+                      <div key={i} className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border border-gray-800 rounded-lg px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                           <span className="font-medium">{row.asset}</span>
                           <span className={`text-xs uppercase px-2 py-0.5 rounded ${
                             row.direction === 'long' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-red-900/40 text-red-400'
                           }`}>
                             {row.direction}
                           </span>
-                          <span className="text-xs uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-300">
+                          <span className="text-xs uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-300 whitespace-nowrap">
                             {adjustmentLabel(a)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                           <span className="text-gray-400">{new Date(a.at * 1000).toLocaleDateString()}</span>
-                          <span className="text-gray-300 font-mono text-xs">
+                          <span className="text-gray-300 font-mono text-xs whitespace-nowrap">
                             ${a.size_before_usd.toFixed(0)} → ${a.size_after_usd.toFixed(0)} @ {a.price.toFixed(2)}
                           </span>
                         </div>
