@@ -219,7 +219,8 @@ export function ReserveCore({
                     y2={p(cy + r2 * Math.sin(ang))}
                   />
                 );
-                state.acc += asset.baseWeight / 100;
+                // Each mark sits on the dynamic weight, the target the auction works towards.
+                state.acc += asset.dynamicWeight / 100;
                 return state;
               },
               { acc: 0, marks: [] }

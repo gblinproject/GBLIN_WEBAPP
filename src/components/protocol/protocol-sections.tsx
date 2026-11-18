@@ -274,13 +274,14 @@ function LiveTicker({ t, onChainData, basket }: { t: (key: string) => string; on
 
 
 function BasketCard({ asset, t, showPrice = true }: { asset: BasketItem; t: (key: string) => string; showPrice?: boolean }) {
-  const target = asset.baseWeight / 100;
+  // The target is the dynamic weight: the one the shield sets and the auction works towards.
+  const target = asset.dynamicWeight / 100;
   const delta = asset.realWeight - target;
   const rows = [
     { k: t('ui.basket.value'), v: formatCurrency(asset.tvl) },
     { k: t('ui.basket.target'), v: formatWeight(target) },
     { k: t('ui.home.delta'), v: `${delta >= 0 ? '+' : '−'}${formatPercent(Math.abs(delta)).replace('%', '')} pp` },
-    ...(showPrice ? [{ k: t('ui.basket.dynamic'), v: formatWeight(asset.dynamicWeight / 100) }] : []),
+    ...(showPrice ? [{ k: t('rebalance.base'), v: formatWeight(asset.baseWeight / 100) }] : []),
   ];
   return (
     <div className="g-card g-hover h-full p-5">
@@ -773,7 +774,7 @@ export function HomeView(props: HomeViewProps) {
                     <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-300">{asset.name}</span>
                     <span className="tnum mt-0.5 block font-mono text-lg font-light leading-none text-[color:var(--ink)]">{formatWeight(asset.realWeight)}</span>
                     <span className="tnum mt-1 block text-[11px] text-zinc-600">
-                      {t('ui.home.target')} {formatPercent(asset.baseWeight / 100, 0)}
+                      {t('ui.home.target')} {formatPercent(asset.dynamicWeight / 100, 1)}
                     </span>
                   </span>
                 </div>

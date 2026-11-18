@@ -745,11 +745,12 @@ function AureusContent() {
                     );
                   }
                   const t = row.trade!;
+                  const size = t.size_usd ?? 0;
                   return (
                   <div
                     key={i}
                     onClick={() => setSelectedTrade(t)}
-                    className={`flex justify-between items-center border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                    className={`flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
                       t.liquidated
                         ? 'border-red-800 bg-red-950/30 hover:bg-red-950/50'
                         : 'border-gray-800 hover:bg-gray-800/50'
@@ -769,12 +770,21 @@ function AureusContent() {
                         <span className="text-[11px] text-emerald-500">✓</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                       <span className="text-gray-400">
                         {t.closed_at ? new Date(t.closed_at * 1000).toLocaleDateString() : '-'}
                       </span>
-                      <span className={`font-bold ${t.pnl_usd >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {t.entry_price != null && t.exit_price != null && (
+                        <span className="text-gray-300 font-mono text-xs whitespace-nowrap">
+                          {t.entry_price.toFixed(2)} → {t.exit_price.toFixed(2)}
+                        </span>
+                      )}
+                      {size > 0 && (
+                        <span className="text-gray-500 font-mono text-xs whitespace-nowrap">${size.toFixed(2)}</span>
+                      )}
+                      <span className={`font-bold whitespace-nowrap ${t.pnl_usd >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {fmtUsd(t.pnl_usd)}
+                        {size > 0 && ` (${t.pnl_usd >= 0 ? '+' : '−'}${Math.abs((t.pnl_usd / size) * 100).toFixed(2)}%)`}
                       </span>
                     </div>
                   </div>
