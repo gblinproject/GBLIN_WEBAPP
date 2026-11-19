@@ -38,6 +38,7 @@ Reading GBLIN's state and preparing its transactions is **free**. Three endpoint
 | `GET /api/x402/attestation` | $0.003 | before trading, rebalancing or moving capital: a 10-minute, EIP-712-signed market-risk attestation (calm / elevated / crash) |
 | `POST /api/x402/seal` | $0.0045 | after an action you may have to prove: seals its hashes into the transparency log (see below) |
 | `GET /api/x402/catalog` | $0.005 | before paying an x402 service you have not used recently: liveness of ~200 Bazaar listings |
+| `GET /api/x402/stock-dividends?address=` | $0.01 | when reporting income on Coinbase tokenized stocks: reinvested distributions credited to an address, in underlying shares, with block, tx and corporate-action record |
 
 Two more paid endpoints live on the Sentinel (`https://gblin-sentinel.vercel.app`): `/api/data/base-risk-pulse` ($0.002) and `/api/data/risk-pulse-pro` ($0.005).
 

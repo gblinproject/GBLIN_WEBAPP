@@ -268,6 +268,47 @@ const x402Middleware = paymentProxy(
         }),
       },
     },
+    "GET /api/x402/stock-dividends": {
+      accepts: accepts("$0.01"),
+      // Keep this description under 512 characters (CDP facilitator limit).
+      description:
+        "Call when your agent reports income on Coinbase tokenized stocks on Base: they reinvest dividends by raising a share multiplier, with no Transfer, so wallets and tax tools record nothing. For one address, every applied distribution since the index start: underlying shares credited, block, tx and Coinbase corporate-action record, each checked against the on-chain multiplier. No prices. Free index: gblin-mcp.gblin-mcp-worker.workers.dev/stocks/corporate-actions",
+      mimeType: "application/json",
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: { address: "0x0000000000000000000000000000000000000001" },
+          inputSchema: {
+            type: "object",
+            properties: {
+              address: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$", description: "Holder address on Base" },
+              token: { type: "string", description: "Optional: one token, by address or symbol (e.g. AAPLc)" },
+            },
+            required: ["address"],
+          },
+          output: {
+            example: {
+              address: "0x0000000000000000000000000000000000000001",
+              actions_checked: 11,
+              credits: [
+                {
+                  token: "0xb200000000000000000000c2e324d24d7eecd1fb",
+                  symbol: "AAPLc",
+                  corporate_action: "Cash Dividend",
+                  block: 58271537,
+                  tx: "0x…",
+                  token_balance: "10.0",
+                  multiplier_before: "1.0",
+                  multiplier_after: "1.000500389301980219",
+                  credited_shares: "0.00500389301980219",
+                  flags: [],
+                },
+              ],
+              totals: [{ symbol: "AAPLc", credited_shares: "0.00500389301980219" }],
+            },
+          },
+        }),
+      },
+    },
     "/api/x402/attestation": {
       accepts: accepts("$0.003"),
       // Keep this description under 512 characters: above that limit the CDP
@@ -316,9 +357,19 @@ const x402Middleware = paymentProxy(
   paywall
 );
 
-// No paid route takes query parameters any more (the six vault-state routes that did were made
-// free on 2026-09-27), so the parameter guard that used to run before verify/settle is gone.
-// A caller with bad input on a free route is answered by the route handler itself.
+// One paid route takes a query parameter: /api/x402/stock-dividends?address=. A malformed address is
+// refused with 400 before the payment pipeline runs, so no caller is asked to pay for a request that
+// cannot succeed. A request with no query at all still receives the 402 challenge (crawlers, validators).
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+function rejectBadParams(url: URL): Response | null {
+  if (url.pathname !== "/api/x402/stock-dividends" || url.search === "") return null;
+  const address = url.searchParams.get("address") ?? "";
+  if (ADDRESS_RE.test(address)) return null;
+  return Response.json(
+    { error: "address must be a 20-byte hex address", example: "/api/x402/stock-dividends?address=0x…" },
+    { status: 400, headers: { "Cache-Control": "no-store" } },
+  );
+}
 
 /**
  * In-memory cache of unpaid 402 responses (per path, per Accept flavor).
@@ -358,6 +409,9 @@ export async function middleware(req: NextRequest) {
   // carrying a query is computed every time: there are few of them, and keying
   // the cache on the full URL would allow unbounded keys.
   const cacheable = url.search === "";
+
+  const rejected = rejectBadParams(url);
+  if (rejected) return rejected;
 
   if (!hasPayment && req.method === "GET" && cacheable) {
     const hit = cache402.get(cacheKey);
@@ -423,12 +477,13 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Only the three paid routes. treasury-state, quote, jit, invest, health and governance are
+  // Only the four paid routes. treasury-state, quote, jit, invest, health and governance are
   // free since 2026-09-27 and must not pass through the payment middleware.
   matcher: [
     "/api/x402/catalog",
     "/api/x402/attestation",
     "/api/x402/seal",
+    "/api/x402/stock-dividends",
   ],
   runtime: "nodejs",
 };

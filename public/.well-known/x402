@@ -24,6 +24,12 @@
       "method": "GET",
       "price": "0.005",
       "description": "Call before your agent pays an x402 service it has not used recently: is that endpoint actually alive? Liveness of the ~200 most recently updated Bazaar listings, probed in rotation (each about every 36h): HTTP status, latency, last-OK time and consecutive failures per endpoint. Measurements only, no judgements; the probes never pay. Free aggregate view: gblin-mcp.gblin-mcp-worker.workers.dev/catalog"
+    },
+    {
+      "path": "/api/x402/stock-dividends",
+      "method": "GET",
+      "price": "0.01",
+      "description": "Call when your agent reports income on Coinbase tokenized stocks on Base: they reinvest dividends by raising a share multiplier, with no Transfer, so wallets and tax tools record nothing. For one address, every applied distribution since the index start: underlying shares credited, block, tx and Coinbase corporate-action record, each checked against the on-chain multiplier. No prices. Free index: gblin-mcp.gblin-mcp-worker.workers.dev/stocks/corporate-actions"
     }
   ],
   "contact": "info@gblin.digital",

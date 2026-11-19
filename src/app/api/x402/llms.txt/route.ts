@@ -74,7 +74,8 @@ Verify owner is the 48h Timelock + read min delay parameters.
 
 This API speaks x402 v2. Recommended client: @x402/fetch or @x402/axios (the current v2 SDK — they
 handle both v1 and v2 automatically). Call attestation BEFORE your agent trades or moves capital,
-seal AFTER an action it may have to prove, catalog BEFORE paying an x402 service you have not used recently.
+seal AFTER an action it may have to prove, catalog BEFORE paying an x402 service you have not used recently,
+stock-dividends WHEN reporting income on Coinbase tokenized stocks.
 
 ### GET /api/x402/attestation               ($0.003 USDC)
 Perishable (10-minute) Risk Attestation: a verifiable proof of the current BTC/ETH
@@ -109,6 +110,16 @@ MCP tools (hosted): receipts.seal (demo) · receipts.get · receipts.verify · r
 
 Attestor address (pin this): 0x3ae65d36e8b1d82B0B80669E769A3dc300D543e4
 Every paid attestation is signed by it; a signature recovering to another address is not ours.
+
+### GET /api/x402/stock-dividends?address=0x…[&token=AAPLc]   ($0.01)
+Distribution statement for Coinbase tokenized stocks on Base. They reinvest cash
+distributions by raising a share-to-token multiplier: the token balance does not
+change and no Transfer is emitted, so transfer-based income tools record nothing.
+For one address, every applied multiplier update since the index start: underlying
+shares credited (balance at the previous block x multiplier change), block, tx,
+the Coinbase corporate-action record, and a check of the multiplier read on-chain.
+Amounts only, no prices. A malformed address answers 400 and is not charged.
+Free index of the corporate actions: gblin-mcp.gblin-mcp-worker.workers.dev/stocks/corporate-actions
 
 ### GET /api/x402/attestation-sample        (FREE)
 Static integration-testing sample of the attestation: identical shape and EIP-712

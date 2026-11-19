@@ -39,7 +39,7 @@
   hashes only, portable receipt (signature + Merkle proof + signed checkpoint), root anchored daily on Base;
   free demo and free reading at https://gblin-mcp.gblin-mcp-worker.workers.dev/log
 - **x402 Uptime Observatory (free data):** https://gblin-mcp.gblin-mcp-worker.workers.dev/observatory
-  — continuous liveness probes of the ~240 most recently updated x402 catalog resources (only ~1/3 answer);
+  — continuous liveness probes of the ~240 most recently updated x402 catalog resources;
   raw JSON at /observatory.json, per-seller badge at /observatory/badge.svg?host=…, our own endpoints in
   the same table under the same rules. Re-run it yourself: https://github.com/gblinproject/x402-catalog-probe
 - **GitHub:** https://github.com/gblinproject/gblin-treasury-risk-regime

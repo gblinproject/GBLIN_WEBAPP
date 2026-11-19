@@ -415,6 +415,59 @@
           }
         }
       }
+    },
+    "/api/x402/stock-dividends": {
+      "get": {
+        "summary": "Tokenized-stock distribution statement",
+        "description": "Coinbase tokenized stocks on Base reinvest cash distributions by raising a share-to-token multiplier: the token balance does not change and no Transfer is emitted. For one address, returns every applied distribution since the index start: underlying shares credited, block, transaction and the Coinbase corporate-action record, each checked against the multiplier read on-chain. Amounts only, no prices.\n\nRequires an x402 USDC payment on Base mainnet ($0.01 USDC). A malformed address answers 400 and is not charged. Free index of corporate actions: https://gblin-mcp.gblin-mcp-worker.workers.dev/stocks/corporate-actions",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{40}$"
+            },
+            "description": "Holder address on Base"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional: one token, by address or symbol (e.g. AAPLc)"
+          }
+        ],
+        "x-payment-info": {
+          "price": {
+            "mode": "fixed",
+            "currency": "USD",
+            "amount": "0.01"
+          },
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ]
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Malformed address (not charged)"
+          },
+          "402": {
+            "description": "Payment Required"
+          },
+          "502": {
+            "description": "Upstream unavailable (not charged)"
+          }
+        }
+      }
     }
   }
 }

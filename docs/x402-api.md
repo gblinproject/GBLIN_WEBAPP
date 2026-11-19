@@ -30,6 +30,7 @@ response on the retry that carries the payment header):
 | `GET /api/x402/attestation`  | $0.003 USDC  | 10-minute, EIP-712-signed market-risk attestation (calm / elevated / crash)           |
 | `POST /api/x402/seal`        | $0.0045 USDC | Seals the hashes of an AI action into the transparency log; returns a portable receipt |
 | `GET /api/x402/catalog`      | $0.005 USDC  | Liveness of the ~200 most recently updated x402 Bazaar listings                      |
+| `GET /api/x402/stock-dividends?address=` | $0.01 USDC | Reinvested distributions credited to one address on Coinbase tokenized stocks, with proofs |
 
 Free endpoints (plain `GET`, no payment, cached at the CDN for 20-60 seconds):
 
@@ -168,12 +169,13 @@ npx @gblin-protocol/mcp-server                              # stdio, 20 tools
 
 ```
 src/
-├── middleware.ts                      # x402 paywall: the three paid paths, prices, descriptions
+├── middleware.ts                      # x402 paywall: the four paid paths, prices, descriptions
 ├── lib/x402-helpers.ts                # NAV, basket, quotes, calldata, protocol limits
 └── app/api/x402/
     ├── attestation/route.ts           # paid
     ├── seal/route.ts                  # paid
     ├── catalog/route.ts               # paid
+    ├── stock-dividends/route.ts       # paid
     ├── attestation-sample/route.ts    # free: a signed sample, already expired, with the same schema
     ├── treasury-state/route.ts        # free
     ├── quote/route.ts                 # free
